@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EvalCrit · Evaluación por criterios</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">EC</span>
+    <div class="brand-txt"><strong>EvalCrit</strong><small>Evaluación por criterios · LOMLOE</small></div>
+  </div>
+  <nav id="nav" class="nav"></nav>
+  <div class="actions">
+    <span id="estado-guardado" class="save-dot" title="Guardado"></span>
+    <button id="btn-exportar" class="btn btn-ghost">Exportar backup</button>
+    <button id="btn-importar" class="btn btn-ghost">Importar backup</button>
+    <input type="file" id="input-importar" accept=".json,application/json" hidden>
+  </div>
+</header>
+<main id="app"></main>
+<div id="modal-root"></div>
+<div id="toast-root"></div>
+<script src="js/utils.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/calc.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/views-alumnos.js"></script>
+<script src="js/views-clases.js"></script>
+<script src="js/views-curriculo.js"></script>
+<script src="js/views-instrumentos.js"></script>
+<script src="js/views-cuadricula.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

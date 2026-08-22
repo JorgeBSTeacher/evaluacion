@@ -1,0 +1,10 @@
+# Backups con datos personales: nunca al repositorio
+*.backup.json
+*backup*.json
+/backups/
+descargas/
+datos/
+
+# Sistema
+.DS_Store
+Thumbs.db

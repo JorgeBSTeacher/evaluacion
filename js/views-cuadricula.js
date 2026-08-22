@@ -1,0 +1,126 @@
+const CuadriculaView = (() => {
+  let claseSel = null;
+  let periodo = 'T1';
+  let tab = 'notas';
+
+  function tablaNotas(alumnos, insts) {
+    return `
+      <table class="tabla">
+        <thead><tr><th>Alumno</th>${insts.map(i => `<th title="${Utils.esc(i.titulo)}" style="max-width:120px">${Utils.esc(i.titulo)}<br><small>${Utils.esc(i.tipo)} · ${Utils.esc(i.periodo)}</small></th>`).join('')}<th>Evaluación</th></tr></thead>
+        <tbody>
+          ${alumnos.map(a => `<tr>
+            <td>${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}</td>
+            ${insts.map(i => {
+              const n = Calc.notaInstrumento(i, a.id);
+              const tiene = n != null;
+              return `<td class="celda-nota num" data-inst="${i.id}">${tiene ? Calc.badgeHtml(n) : '<span class="badge na">—</span>'}</td>`;
+            }).join('')}
+            <td class="num">${Calc.badgeHtml(Calc.notaEvaluacion(claseSel, a.id, periodo))}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+      <p class="no-print" style="color:var(--tinta-suave);font-size:13px">La columna «Evaluación» aplica las ponderaciones de los criterios${periodo === 'Final' ? ' sobre todo el curso' : ' en ' + periodo}. Toca una nota para corregir.</p>`;
+  }
+
+  function tablaCriterios(alumnos) {
+    const criterios = Calc.criteriosDeClase(claseSel);
+    if (!criterios.length) return '<div class="vacio-grande">Esta asignatura no tiene criterios definidos.</div>';
+    return `
+      <table class="tabla">
+        <thead><tr><th>Alumno</th>${criterios.map(c =>
+          `<th title="${Utils.esc(c.descripcion)}">${Utils.esc(c.codigo)}<br><small>${Utils.fmt(c.peso)}%</small></th>`
+        ).join('')}</tr></thead>
+        <tbody>
+          ${alumnos.map(a => `<tr>
+            <td>${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}</td>
+            ${criterios.map(c => {
+              const l = Calc.logroCriterio(c.id, claseSel, a.id, periodo);
+              const nota = l == null ? null : l * 10;
+              return `<td class="num">${l == null ? '<span class="badge na">—</span>' : '<span class="badge ' + Calc.clasif(nota) + '">' + Utils.pct(l * 100) + '</span>'}</td>`;
+            }).join('')}
+          </tr>`).join('')}
+        </tbody>
+      </table>
+      <p class="no-print" style="color:var(--tinta-suave);font-size:13px">% de logro acumulado por criterio${periodo === 'Final' ? ' (todo el curso)' : ' en ' + periodo}. «—» = sin evidencias todavía.</p>`;
+  }
+
+  function tablaCompetencias(alumnos) {
+    const esps = Calc.competenciasEspecificasDeClase(claseSel);
+    if (!esps.length) return '<div class="vacio-grande">Esta asignatura no tiene competencias específicas definidas.</div>';
+    return `
+      <table class="tabla">
+        <thead><tr><th>Alumno</th>${esps.map(e =>
+          `<th title="${Utils.esc(e.descripcion)}">${Utils.esc(e.codigo)}</th>`
+        ).join('')}</tr></thead>
+        <tbody>
+          ${alumnos.map(a => `<tr>
+            <td>${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}</td>
+            ${esps.map(e => {
+              const n = Calc.notaCompetencia(claseSel, a.id, e.id, periodo);
+              return `<td class="num">${Calc.badgeHtml(n)}</td>`;
+            }).join('')}
+          </tr>`).join('')}
+        </tbody>
+      </table>
+      <p class="no-print" style="color:var(--tinta-suave);font-size:13px">Nota por competencia específica (0–10), agregando los criterios vinculados.</p>`;
+  }
+
+  function render(el) {
+    const db = Storage.db;
+    if (!claseSel || !Calc.clase(claseSel)) claseSel = db.clases.length ? db.clases[0].id : null;
+
+    if (!db.clases.length) {
+      el.innerHTML = `<section class="card"><div class="vacio-grande">
+        <strong>No hay clases todavía</strong>
+        Crea grupos, alumnos y clases para ver aquí la cuadrícula de calificación.
+      </div></section>`;
+      return;
+    }
+
+    const alumnos = Calc.alumnosDeClase(claseSel);
+    const insts = Calc.instrumentosDeClase(claseSel).sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
+
+    el.innerHTML = `
+      <section class="card">
+        <div class="card-head">
+          <h2>Cuadrícula de calificación</h2>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <select id="sel-clase" style="max-width:260px">${UI.selectHtml(db.clases.map(c => ({
+              id: c.id,
+              nombre: `${Calc.asignaturaDeClase(c.id)?.nombre || '?'} · ${(Calc.byId(db.grupos, c.grupoId) || {}).nombre || '?'}`
+            })), claseSel, 'id', 'nombre')}</select>
+            <select id="sel-periodo" style="max-width:130px">
+              ${['T1', 'T2', 'T3', 'Final'].map(p => `<option ${p === periodo ? 'selected' : ''}>${p}</option>`).join('')}
+            </select>
+            <button class="btn no-print" id="btn-imprimir">Imprimir / PDF</button>
+          </div>
+        </div>
+        <div class="chips no-print" id="tabs" style="margin-bottom:14px">
+          <label class="chip ${tab === 'notas' ? 'on' : ''}" data-tab="notas">Instrumentos</label>
+          <label class="chip ${tab === 'criterios' ? 'on' : ''}" data-tab="criterios">Criterios</label>
+          <label class="chip ${tab === 'competencias' ? 'on' : ''}" data-tab="competencias">Competencias</label>
+        </div>
+        <div class="scroll-x" id="contenido">
+          ${!insts.length && tab === 'notas'
+            ? '<div class="vacio-grande">Aún no hay instrumentos en esta clase.</div>'
+            : tab === 'notas' ? tablaNotas(alumnos, insts)
+            : tab === 'criterios' ? tablaCriterios(alumnos)
+            : tablaCompetencias(alumnos)}
+        </div>
+      </section>`;
+
+    el.querySelector('#sel-clase').onchange = e => { claseSel = e.target.value; render(el); };
+    el.querySelector('#sel-periodo').onchange = e => { periodo = e.target.value; render(el); };
+    el.querySelector('#btn-imprimir').onclick = () => window.print();
+
+    el.querySelectorAll('#tabs .chip').forEach(ch => {
+      ch.onclick = () => { tab = ch.dataset.tab; render(el); };
+    });
+
+    el.querySelectorAll('.celda-nota[data-inst]').forEach(td => {
+      td.onclick = () => InstrumentosView.renderCorreccion(el, td.dataset.inst);
+    });
+  }
+
+  return { render };
+})();
