@@ -105,6 +105,12 @@ const Storage = {
     return [...ids];
   },
 
+  reiniciar() {
+    try { localStorage.removeItem(this.KEY); } catch (e) {}
+    this.db = this.defaults();
+    this.save();
+  },
+
   importarCurriculo(datos) {
     if (!datos || datos.tipo !== 'curriculo-evalcrit' || datos.version !== 1) {
       throw new Error('El archivo no es una plantilla de currículo EvalCrit válida');
@@ -133,56 +139,64 @@ const Storage = {
       }
     }
 
-    let target = this.db.asignaturas.find(a =>
-      a.nombre.toLowerCase() === nombre.toLowerCase() && (a.etapa || '') === etapa);
-    if (target && this.db.competenciasEspecificas.some(e => e.asignaturaId === target.id)) {
-      throw new Error(`La asignatura «${nombre}» ya tiene currículo. Elimínalo primero o renombra la asignatura en la plantilla.`);
-    }
-    if (!target) {
-      target = { id: Utils.uid(), nombre, etapa };
-      this.db.asignaturas.push(target);
-    }
-
-    const idEsp = {};
-    for (const ce of datos.competenciasEspecificas) {
-      const obj = {
-        id: Utils.uid(),
-        asignaturaId: target.id,
-        codigo: ce.codigo,
-        descripcion: ce.descripcion,
-        perfilSalida: Array.isArray(ce.perfilSalida) ? ce.perfilSalida : []
-      };
-      this.db.competenciasEspecificas.push(obj);
-      idEsp[ce.codigo] = obj;
-    }
-
+    const cursos = Array.isArray(asig.cursos) && asig.cursos.length
+      ? asig.cursos.map(c => String(c).trim()).filter(Boolean)
+      : [''];
     const n = datos.criterios.length;
     const pesoIgual = Math.round((100 / n) * 10000) / 10000;
-    datos.criterios.forEach((c, i) => {
-      const esp = idEsp[c.ceCodigo];
-      const peso = (typeof c.peso === 'number' && !isNaN(c.peso))
-        ? c.peso
-        : (i === n - 1 ? Math.round((100 - pesoIgual * (n - 1)) * 10000) / 10000 : pesoIgual);
-      const claveIds = [...new Set(esp.perfilSalida ? this.claveDesdeDescriptores(esp.perfilSalida) : [])];
-      this.db.criterios.push({
-        id: Utils.uid(),
-        asignaturaId: target.id,
-        codigo: c.codigo,
-        descripcion: c.descripcion,
-        peso,
-        espIds: [esp.id],
-        claveIds
-      });
-    });
+    const creadas = [];
 
-    if (Array.isArray(datos.saberesBasicos)) {
-      target.saberesBasicos = datos.saberesBasicos;
+    for (const curso of cursos) {
+      const nombreCompleto = curso ? `${nombre} ${curso}` : nombre;
+      let target = this.db.asignaturas.find(a =>
+        a.nombre.toLowerCase() === nombreCompleto.toLowerCase() && (a.etapa || '') === etapa);
+      if (target && this.db.competenciasEspecificas.some(e => e.asignaturaId === target.id)) {
+        throw new Error(`La asignatura «${nombreCompleto}» ya tiene currículo. Elimínalo primero o renombra la asignatura en la plantilla.`);
+      }
+      if (!target) {
+        target = { id: Utils.uid(), nombre: nombreCompleto, etapa };
+        this.db.asignaturas.push(target);
+      }
+
+      const idEsp = {};
+      for (const ce of datos.competenciasEspecificas) {
+        const obj = {
+          id: Utils.uid(),
+          asignaturaId: target.id,
+          codigo: ce.codigo,
+          descripcion: ce.descripcion,
+          perfilSalida: Array.isArray(ce.perfilSalida) ? ce.perfilSalida : []
+        };
+        this.db.competenciasEspecificas.push(obj);
+        idEsp[ce.codigo] = obj;
+      }
+
+      datos.criterios.forEach((c, i) => {
+        const esp = idEsp[c.ceCodigo];
+        const peso = (typeof c.peso === 'number' && !isNaN(c.peso))
+          ? c.peso
+          : (i === n - 1 ? Math.round((100 - pesoIgual * (n - 1)) * 10000) / 10000 : pesoIgual);
+        const claveIds = [...new Set(esp.perfilSalida ? this.claveDesdeDescriptores(esp.perfilSalida) : [])];
+        this.db.criterios.push({
+          id: Utils.uid(),
+          asignaturaId: target.id,
+          codigo: c.codigo,
+          descripcion: c.descripcion,
+          peso,
+          espIds: [esp.id],
+          claveIds
+        });
+      });
+
+      if (Array.isArray(datos.saberesBasicos)) {
+        target.saberesBasicos = datos.saberesBasicos;
+      }
+      creadas.push(nombreCompleto);
     }
 
     this.save();
     return {
-      asignaturaId: target.id,
-      asignatura: `${nombre}${etapa ? ` (${etapa})` : ''}`,
+      asignaturas: creadas,
       ces: datos.competenciasEspecificas.length,
       criterios: n,
       pesosAjustados: typeof datos.criterios[0].peso !== 'number'

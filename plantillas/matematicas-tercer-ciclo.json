@@ -5,7 +5,8 @@
   "asignatura": {
     "nombre": "Matemáticas",
     "etapa": "Primaria",
-    "ciclo": "Tercer ciclo"
+    "ciclo": "Tercer ciclo",
+    "cursos": ["5º", "6º"]
   },
   "saberesBasicos": [
     { "bloque": "A. Sentido numérico", "apartados": ["Conteo", "Cantidad", "Sentido de las operaciones", "Relaciones", "Razonamiento proporcional", "Educación financiera"] },

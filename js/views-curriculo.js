@@ -80,32 +80,57 @@ const CurriculoView = (() => {
   }
 
   function modalImportar() {
+    const incluidas = (typeof PLANTILLAS_CURRICULO !== 'undefined') ? PLANTILLAS_CURRICULO : [];
     let datos = null;
-    let resumen = null;
-    UI.openModal({
-      titulo: 'Importar currículo oficial',
-      cuerpo: `
-        <p class="ayuda-modal">Selecciona un archivo de plantilla EvalCrit (<code>.json</code>) generado a partir del Decreto 66/2022. Se crearán la asignatura, sus competencias específicas y sus criterios con ponderaciones equitativas.</p>
-        <label class="campo"><span>Archivo de plantilla</span>
+    const cuerpo = `
+        ${incluidas.length ? `
+        <label class="campo"><span>Plantillas oficiales incluidas (Decreto 66/2022 · Cantabria)</span>
+          <div class="chips" data-campo="plantillas">
+            ${incluidas.map((p, i) => `<label class="chip"><input type="checkbox" value="${i}">${Utils.esc(p.asignatura.nombre)} · ${Utils.esc(p.asignatura.ciclo || '')}</label>`).join('')}
+          </div>
+          <small style="color:var(--tinta-suave)">Cada plantilla crea una asignatura por curso con su currículo completo y pesos equitativos.</small></label>` : ''}
+        <label class="campo"><span>…o carga una plantilla desde archivo (.json)</span>
           <input type="file" id="f-archivo" accept=".json,application/json"></label>
-        <div id="resumen-import" class="aviso" style="display:none"></div>`,
+        <div id="resumen-import" class="aviso" style="display:none"></div>`;
+    const mbody = UI.openModal({
+      titulo: 'Importar currículo oficial',
+      cuerpo,
       textoGuardar: 'Importar',
-      alGuardar(body) {
+      alGuardar(mbody2) {
+        const sel = UI.valoresChips(mbody2.querySelector('[data-campo=plantillas]'));
+        if (sel.length) {
+          const nombres = [];
+          const errores = [];
+          for (const v of sel) {
+            try {
+              const r = Storage.importarCurriculo(incluidas[Number(v)]);
+              nombres.push(...r.asignaturas);
+            } catch (e) { errores.push(e.message); }
+          }
+          if (nombres.length) {
+            UI.toast(`Currículo cargado: ${nombres.join(', ')}`);
+            if (errores.length) alert(errores.join('\n'));
+            return;
+          }
+          alert(errores.join('\n'));
+          return false;
+        }
         if (!datos) {
-          alert('Selecciona antes un archivo de plantilla');
+          alert('Marca alguna plantilla o selecciona un archivo');
           return false;
         }
         try {
-          resumen = Storage.importarCurriculo(datos);
-          UI.toast(`Currículo importado: ${resumen.ces} competencias específicas y ${resumen.criterios} criterios`);
+          const r = Storage.importarCurriculo(datos);
+          UI.toast(`Currículo cargado: ${r.asignaturas.join(', ')} (${r.ces} CE, ${r.criterios} criterios por curso)`);
         } catch (e) {
           alert(e.message);
           return false;
         }
       }
     });
-    const input = document.querySelector('#modal-root #f-archivo');
-    const caja = document.querySelector('#modal-root #resumen-import');
+    const input = mbody.querySelector('#f-archivo');
+    const caja = mbody.querySelector('#resumen-import');
+    UI.wireChips(mbody);
     input.onchange = () => {
       const f = input.files && input.files[0];
       if (!f) return;
@@ -119,8 +144,8 @@ const CurriculoView = (() => {
           const a = datos.asignatura || {};
           caja.style.display = '';
           caja.style.background = '#f0fdf4';
-          caja.innerHTML = `<b>Plantilla válida:</b> ${Utils.esc(a.nombre || '')} · ${Utils.esc(a.ciclo || '')}<br>
-            ${datos.competenciasEspecificas.length} competencias específicas · ${datos.criterios.length} criterios<br>
+          caja.innerHTML = `<b>Plantilla válida:</b> ${Utils.esc(a.nombre || '')}${(a.cursos || []).length ? ' (' + Utils.esc(a.cursos.join(', ')) + ')' : ''} · ${Utils.esc(a.ciclo || '')}<br>
+            ${datos.competenciasEspecificas.length} competencias específicas · ${datos.criterios.length} criterios por curso<br>
             <small>${Utils.esc(datos.fuente || '')}</small>`;
         } catch (e) {
           datos = null;

@@ -33,7 +33,10 @@ const App = (() => {
         </div>
         ${Storage.vacio() ? `
           <div class="aviso">Tu aplicación está vacía. Puedes cargar datos de ejemplo para probarla.</div>
-          <button class="btn btn-primario" id="btn-demo">Cargar datos de ejemplo</button>` : ''}
+          <button class="btn btn-primario" id="btn-demo">Cargar datos de ejemplo</button>` : `
+          <div style="margin-top:14px">
+            <button class="btn btn-peligro" id="btn-reiniciar">Restablecer y vaciar todos los datos</button>
+          </div>`}
         <h2 style="font-size:15px;margin:18px 0 8px">Flujo recomendado</h2>
         <ol style="color:var(--tinta-suave);line-height:1.9;margin:0;padding-left:20px">
           <li>Crea <b>grupos</b> e inscribe <b>alumnos</b>.</li>
@@ -57,6 +60,20 @@ const App = (() => {
       Storage.demoSeed();
       UI.toast('Datos de ejemplo cargados');
       App.ir('inicio');
+    };
+    const reiniciar = el.querySelector('#btn-reiniciar');
+    if (reiniciar) reiniciar.onclick = () => {
+      UI.openModal({
+        titulo: 'Restablecer aplicación',
+        cuerpo: `<p>Se eliminarán <b>todos</b> los grupos, alumnos, clases, currículos, instrumentos y calificaciones guardados en este navegador.</p>
+          <div class="aviso">Si quieres conservar algo, exporta tu backup antes de continuar.</div>`,
+        textoGuardar: 'Sí, vaciar todo',
+        peligro: true,
+        alGuardar() {
+          Storage.reiniciar();
+          UI.toast('Datos eliminados');
+        }
+      });
     };
   }
 
