@@ -116,6 +116,7 @@ Si los pesos no casan con el reparto de puntos, ambas notas difieren **a propós
 - Export: fichero `evalcrit-backup-YYYYMMDD-HHMM.json` con TODO el estado versionado (`schemaVersion`).
 - Import: **modo reemplazo único** (D-20) tras validar esquema; confirmación explícita.
 - Los backups con datos reales NUNCA se suben al repositorio git (`.gitignore` + política).
+- **Estrategia de guardado de backups (D-34, v0.3.2)**: jerarquía automática al exportar — 1) carpeta elegida por el usuario (File System Access API, recordada en IndexedDB con permiso revalidado por clic) → escritura directa; 2) si no hay carpeta, selector «Guardar como» (Chrome/Edge Windows); 3) si el navegador no soporta la API (Chrome Android), descarga clásica a Descargas con aviso de copiar a `backups/`. El nombre siempre es `backup-DD-MM-AAAA-HHMM.json`. `meta.ultimaExportacion` registra cada exportación y se muestra en Inicio («última copia…»), reforzando R-01.
 - Importación de currículo (v0.2): botón «Importar currículo» en la vista Currículo; acepta plantillas de `plantillas/` (formato D-31), muestra resumen previo de validación (asignatura, ciclo, nº CE/criterios y fuente) antes de confirmar.
 
 ## 11. Modelo de datos (schemaVersion 1)
@@ -207,3 +208,4 @@ Futuras: arrastre de cursos (D-07), escala cualitativa Infantil completa, planti
 | v0.2.1 | `dc1312e` | Plantilla Conocimiento del Medio 3.er ciclo (9 CE · 23 criterios · 3 bloques); importación por cursos (`cursos:["5º","6º"]` → una asignatura por curso con pesos independientes); plantillas incrustadas en la app (`js/plantillas.js`); botón «Restablecer y vaciar todos los datos» en Inicio; 25 checks de importador en verde |
 | v0.3 | `68d3292` | Evaluación de competencias clave: `Calc.notaClave` y `Calc.clavesDeClase` (misma fórmula ponderada, D-33); pestaña «Competencias» con sección de claves del perfil de salida |
 | v0.3.1 | `a06e5a2` | Backups con nombre legible `backup-DD-MM-AAAA-HHMM.json` + aviso de carpeta Descargas; carpeta `backups/` local (ignorada por git) para copiar los JSON junto al proyecto; curso escolar seleccionable en Inicio y año por defecto calculado según la fecha (curso arranca en julio) |
+| v0.3.2 | `0ac2709` | Exportación directa a carpeta elegida (D-34): File System Access API con carpeta recordada, fallback a «Guardar como» y a Descargas (Android); indicador de última copia en Inicio (`meta.ultimaExportacion`) |
