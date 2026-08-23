@@ -97,7 +97,11 @@ const App = (() => {
     ir('inicio');
   }
 
-  return { ir, arrancar };
+  return {
+    ir,
+    arrancar,
+    refrescar() { ir(actual); }
+  };
 })();
 
 document.addEventListener('DOMContentLoaded', App.arrancar);

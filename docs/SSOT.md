@@ -95,6 +95,9 @@ Si los pesos no casan con el reparto de puntos, ambas notas difieren **a propós
 - Corrección: tabla alumnos × apartados; en rúbricas, botones de nivel.
 - Autoguardado continuo con indicador visual; confirmación en acciones destructivas.
 - Exportar/Importar siempre visibles en la cabecera.
+- Tras cualquier alta/edición modal, la vista se refresca automáticamente (D-21).
+- Los criterios de cada apartado se eligen con un desplegable compacto por fila, no inline (D-22).
+- Desde la Cuadrícula se puede «Añadir calificación» (alta de instrumento) y editar tocando su cabecera de columna (D-23).
 
 ## 9. Informes
 

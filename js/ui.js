@@ -24,7 +24,10 @@ const UI = {
       const btn = root.querySelector('.guardar');
       if (peligro) btn.classList.add('btn-peligro');
       btn.onclick = () => {
-        if (alGuardar(body, cerrar) !== false) cerrar();
+        if (alGuardar(body, cerrar) !== false) {
+          cerrar();
+          if (typeof App !== 'undefined' && App.refrescar) App.refrescar();
+        }
       };
     }
     return body;

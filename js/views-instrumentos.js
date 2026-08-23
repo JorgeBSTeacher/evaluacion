@@ -21,15 +21,16 @@ const InstrumentosView = (() => {
         ${esRubrica
           ? '<small style="color:var(--tinta-suave)">nivel</small>'
           : `<input type="number" class="ap-max" min="0.5" step="0.5" value="${ap.maxPts}" title="Puntos máximos">`}
-        <button class="btn btn-mini quitar-ap" type="button">Quitar</button>
-        <div style="grid-column:2 / -1">${UI.chipsCriterios(asignaturaId, ap.criterioIds)}</div>
+        <button type="button" class="btn btn-mini toggle-crit" title="Elegir criterios evaluados">Criterios</button>
+        <button type="button" class="btn btn-mini quitar-ap">Quitar</button>
+        <div class="zona-crit" style="display:none">${UI.chipsCriterios(asignaturaId, ap.criterioIds)}</div>
       </div>`;
   }
 
-  function modalInstrumento(inst) {
+  function modalInstrumento(inst, claseIdFijo) {
     const db = Storage.db;
-    if (!claseSel && !inst) { UI.toast('Selecciona primero una clase'); return; }
-    const claseId = inst ? inst.claseId : claseSel;
+    if (!inst && !claseIdFijo && !claseSel) { UI.toast('Selecciona primero una clase'); return; }
+    const claseId = inst ? inst.claseId : (claseIdFijo || claseSel);
     const asig = Calc.asignaturaDeClase(claseId);
     if (!asig || !db.criterios.some(c => c.asignaturaId === asig.id)) {
       UI.toast('Crea criterios en Currículo antes de evaluar esta asignatura');
@@ -82,9 +83,8 @@ const InstrumentosView = (() => {
           orden++;
           const desc = fila.querySelector('.ap-desc').value.trim();
           const maxPts = esRubrica ? 100 : parseFloat(fila.querySelector('.ap-max').value);
-          const chips = fila.querySelector('[data-campo=criterios]');
-          const criterioIds = chips ? UI.valoresChips(chips) : [];
-          if (!criterioIds.length) { alert('Cada apartado necesita al menos un criterio'); return false; }
+          const criterioIds = UI.valoresChips(fila.querySelector('.zona-crit'));
+          if (!criterioIds.length) { alert('Cada apartado necesita al menos un criterio (botón «Criterios»)'); return false; }
           if (!esRubrica && (isNaN(maxPts) || maxPts <= 0)) { alert('Cada apartado necesita puntos máximos'); return false; }
           apartados.push({
             id: fila.dataset.id && fila.dataset.id !== 'nuevo' ? fila.dataset.id : Utils.uid(),
@@ -122,13 +122,26 @@ const InstrumentosView = (() => {
       listaNv.appendChild(div);
     }
 
+    function actualizaEtiquetaCrit(fila) {
+      const zona = fila.querySelector('.zona-crit');
+      const n = zona.querySelectorAll('input:checked').length;
+      fila.querySelector('.toggle-crit').textContent = 'Criterios (' + n + ')';
+    }
+
     function addFilaApartado(ap) {
       const esRubrica = selTipo.value === 'Rúbrica';
       const div = document.createElement('div');
       div.innerHTML = filaApartado(ap || { id: 'nuevo', descripcion: '', maxPts: '', criterioIds: [] }, asig.id, esRubrica).trim();
       const fila = div.firstElementChild;
       fila.querySelector('.quitar-ap').onclick = () => { fila.remove(); refrescaNumeros(); };
+      fila.querySelector('.toggle-crit').onclick = () => {
+        const zona = fila.querySelector('.zona-crit');
+        zona.style.display = zona.style.display === 'none' ? '' : 'none';
+      };
       UI.wireChips(fila);
+      fila.querySelectorAll('.chip input').forEach(inp =>
+        inp.addEventListener('change', () => actualizaEtiquetaCrit(fila)));
+      actualizaEtiquetaCrit(fila);
       listaAp.appendChild(fila);
       refrescaNumeros();
     }
@@ -139,7 +152,7 @@ const InstrumentosView = (() => {
       const actuales = Array.from(listaAp.querySelectorAll('.apartado-fila')).map((fila, i) => ({
         id: fila.dataset.id,
         descripcion: fila.querySelector('.ap-desc').value,
-        criterioIds: UI.valoresChips(fila.querySelector('[data-campo=criterios]')),
+        criterioIds: UI.valoresChips(fila.querySelector('.zona-crit')),
         maxPts: esRubrica ? 100 : parseFloat((fila.querySelector('.ap-max') || {}).value)
       }));
       listaAp.innerHTML = '';

@@ -4,26 +4,29 @@ const CuadriculaView = (() => {
   let tab = 'notas';
 
   function tablaNotas(alumnos, insts) {
+    if (!alumnos.length) {
+      return '<div class="aviso">El grupo de esta clase no tiene alumnos. Añádelos en «Alumnos y grupos».</div>';
+    }
     return `
       <table class="tabla">
-        <thead><tr><th>Alumno</th>${insts.map(i => `<th title="${Utils.esc(i.titulo)}" style="max-width:120px">${Utils.esc(i.titulo)}<br><small>${Utils.esc(i.tipo)} · ${Utils.esc(i.periodo)}</small></th>`).join('')}<th>Evaluación</th></tr></thead>
+        <thead><tr><th>Alumno</th>${insts.map(i => `<th class="celda-nota" data-edit="${i.id}" title="Toca para editar el instrumento" style="max-width:120px">${Utils.esc(i.titulo)}<br><small>${Utils.esc(i.tipo)} · ${Utils.esc(i.periodo)}</small></th>`).join('')}<th>Evaluación</th></tr></thead>
         <tbody>
           ${alumnos.map(a => `<tr>
             <td>${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}</td>
             ${insts.map(i => {
               const n = Calc.notaInstrumento(i, a.id);
-              const tiene = n != null;
-              return `<td class="celda-nota num" data-inst="${i.id}">${tiene ? Calc.badgeHtml(n) : '<span class="badge na">—</span>'}</td>`;
+              return `<td class="celda-nota num" data-inst="${i.id}">${n == null ? '<span class="badge na">—</span>' : Calc.badgeHtml(n)}</td>`;
             }).join('')}
             <td class="num">${Calc.badgeHtml(Calc.notaEvaluacion(claseSel, a.id, periodo))}</td>
           </tr>`).join('')}
         </tbody>
       </table>
-      <p class="no-print" style="color:var(--tinta-suave);font-size:13px">La columna «Evaluación» aplica las ponderaciones de los criterios${periodo === 'Final' ? ' sobre todo el curso' : ' en ' + periodo}. Toca una nota para corregir.</p>`;
+      <p class="no-print" style="color:var(--tinta-suave);font-size:13px">La columna «Evaluación» aplica las ponderaciones de los criterios${periodo === 'Final' ? ' sobre todo el curso' : ' en ' + periodo}. Toca una nota para corregir y una cabecera para editar.</p>`;
   }
 
   function tablaCriterios(alumnos) {
     const criterios = Calc.criteriosDeClase(claseSel);
+    if (!alumnos.length) return '<div class="aviso">El grupo de esta clase no tiene alumnos todavía.</div>';
     if (!criterios.length) return '<div class="vacio-grande">Esta asignatura no tiene criterios definidos.</div>';
     return `
       <table class="tabla">
@@ -35,8 +38,7 @@ const CuadriculaView = (() => {
             <td>${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}</td>
             ${criterios.map(c => {
               const l = Calc.logroCriterio(c.id, claseSel, a.id, periodo);
-              const nota = l == null ? null : l * 10;
-              return `<td class="num">${l == null ? '<span class="badge na">—</span>' : '<span class="badge ' + Calc.clasif(nota) + '">' + Utils.pct(l * 100) + '</span>'}</td>`;
+              return `<td class="num">${l == null ? '<span class="badge na">—</span>' : '<span class="badge ' + Calc.clasif(l * 10) + '">' + Utils.pct(l * 100) + '</span>'}</td>`;
             }).join('')}
           </tr>`).join('')}
         </tbody>
@@ -46,6 +48,7 @@ const CuadriculaView = (() => {
 
   function tablaCompetencias(alumnos) {
     const esps = Calc.competenciasEspecificasDeClase(claseSel);
+    if (!alumnos.length) return '<div class="aviso">El grupo de esta clase no tiene alumnos todavía.</div>';
     if (!esps.length) return '<div class="vacio-grande">Esta asignatura no tiene competencias específicas definidas.</div>';
     return `
       <table class="tabla">
@@ -92,6 +95,7 @@ const CuadriculaView = (() => {
             <select id="sel-periodo" style="max-width:130px">
               ${['T1', 'T2', 'T3', 'Final'].map(p => `<option ${p === periodo ? 'selected' : ''}>${p}</option>`).join('')}
             </select>
+            <button class="btn btn-primario no-print" id="add-inst">Añadir calificación</button>
             <button class="btn no-print" id="btn-imprimir">Imprimir / PDF</button>
           </div>
         </div>
@@ -101,9 +105,11 @@ const CuadriculaView = (() => {
           <label class="chip ${tab === 'competencias' ? 'on' : ''}" data-tab="competencias">Competencias</label>
         </div>
         <div class="scroll-x" id="contenido">
-          ${!insts.length && tab === 'notas'
-            ? '<div class="vacio-grande">Aún no hay instrumentos en esta clase.</div>'
-            : tab === 'notas' ? tablaNotas(alumnos, insts)
+          ${tab === 'notas'
+            ? (insts.length ? tablaNotas(alumnos, insts)
+              : (alumnos.length
+                ? '<div class="aviso">Aún no hay instrumentos. Pulsa «Añadir calificación» para crear el primero.</div>'
+                : tablaNotas(alumnos, insts)))
             : tab === 'criterios' ? tablaCriterios(alumnos)
             : tablaCompetencias(alumnos)}
         </div>
@@ -111,6 +117,7 @@ const CuadriculaView = (() => {
 
     el.querySelector('#sel-clase').onchange = e => { claseSel = e.target.value; render(el); };
     el.querySelector('#sel-periodo').onchange = e => { periodo = e.target.value; render(el); };
+    el.querySelector('#add-inst').onclick = () => InstrumentosView.modalInstrumento(null, claseSel);
     el.querySelector('#btn-imprimir').onclick = () => window.print();
 
     el.querySelectorAll('#tabs .chip').forEach(ch => {
@@ -119,6 +126,9 @@ const CuadriculaView = (() => {
 
     el.querySelectorAll('.celda-nota[data-inst]').forEach(td => {
       td.onclick = () => InstrumentosView.renderCorreccion(el, td.dataset.inst);
+    });
+    el.querySelectorAll('th[data-edit]').forEach(th => {
+      th.onclick = () => InstrumentosView.modalInstrumento(Calc.instrumento(th.dataset.edit));
     });
   }
 
