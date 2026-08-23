@@ -8,6 +8,7 @@ const CuadriculaView = (() => {
       return '<div class="aviso">El grupo de esta clase no tiene alumnos. Añádelos en «Alumnos y grupos».</div>';
     }
     return `
+      ${insts.length ? '' : '<div class="aviso">Aún no hay instrumentos en esta clase. Pulsa «Añadir calificación» para crear el primero.</div>'}
       <table class="tabla">
         <thead><tr><th>Alumno</th>${insts.map(i => `<th class="celda-nota" data-edit="${i.id}" title="Toca para editar el instrumento" style="max-width:120px">${Utils.esc(i.titulo)}<br><small>${Utils.esc(i.tipo)} · ${Utils.esc(i.periodo)}</small></th>`).join('')}<th>Evaluación</th></tr></thead>
         <tbody>
@@ -87,6 +88,12 @@ const CuadriculaView = (() => {
       <section class="card">
         <div class="card-head">
           <h2>Cuadrícula de calificación</h2>
+          ${(() => {
+            const cl = Calc.clase(claseSel);
+            const gru = Calc.byId(db.grupos, cl.grupoId);
+            return `<span style="color:var(--tinta-suave);font-size:13px">
+              Grupo vinculado: <b>${Utils.esc(gru ? gru.nombre : '¿?')}</b> · ${alumnos.length} alumno(s)</span>`;
+          })()}
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
             <select id="sel-clase" style="max-width:260px">${UI.selectHtml(db.clases.map(c => ({
               id: c.id,
@@ -105,11 +112,7 @@ const CuadriculaView = (() => {
           <label class="chip ${tab === 'competencias' ? 'on' : ''}" data-tab="competencias">Competencias</label>
         </div>
         <div class="scroll-x" id="contenido">
-          ${tab === 'notas'
-            ? (insts.length ? tablaNotas(alumnos, insts)
-              : (alumnos.length
-                ? '<div class="aviso">Aún no hay instrumentos. Pulsa «Añadir calificación» para crear el primero.</div>'
-                : tablaNotas(alumnos, insts)))
+          ${tab === 'notas' ? tablaNotas(alumnos, insts)
             : tab === 'criterios' ? tablaCriterios(alumnos)
             : tablaCompetencias(alumnos)}
         </div>
@@ -117,7 +120,14 @@ const CuadriculaView = (() => {
 
     el.querySelector('#sel-clase').onchange = e => { claseSel = e.target.value; render(el); };
     el.querySelector('#sel-periodo').onchange = e => { periodo = e.target.value; render(el); };
-    el.querySelector('#add-inst').onclick = () => InstrumentosView.modalInstrumento(null, claseSel);
+    el.querySelector('#add-inst').onclick = () => {
+      try {
+        InstrumentosView.modalInstrumento(null, claseSel);
+      } catch (e) {
+        console.error(e);
+        alert('Error al abrir el formulario: ' + e.message);
+      }
+    };
     el.querySelector('#btn-imprimir').onclick = () => window.print();
 
     el.querySelectorAll('#tabs .chip').forEach(ch => {
@@ -128,7 +138,14 @@ const CuadriculaView = (() => {
       td.onclick = () => InstrumentosView.renderCorreccion(el, td.dataset.inst);
     });
     el.querySelectorAll('th[data-edit]').forEach(th => {
-      th.onclick = () => InstrumentosView.modalInstrumento(Calc.instrumento(th.dataset.edit));
+      th.onclick = () => {
+        try {
+          InstrumentosView.modalInstrumento(Calc.instrumento(th.dataset.edit));
+        } catch (e) {
+          console.error(e);
+          alert('Error al editar: ' + e.message);
+        }
+      };
     });
   }
 

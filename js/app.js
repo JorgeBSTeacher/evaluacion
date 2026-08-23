@@ -76,6 +76,7 @@ const App = (() => {
     UI.closeModal();
     vista.render(document.getElementById('app'));
     window.scrollTo(0, 0);
+    history.replaceState(null, '', '#' + id);
   }
 
   function arrancar() {
@@ -94,7 +95,8 @@ const App = (() => {
         .catch(() => alert('El archivo no es un backup válido de EvalCrit'));
     };
 
-    ir('inicio');
+    const hash = location.hash.slice(1);
+    ir(VISTAS.some(v => v.id === hash) ? hash : 'inicio');
   }
 
   return {

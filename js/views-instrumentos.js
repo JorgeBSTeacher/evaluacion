@@ -29,13 +29,10 @@ const InstrumentosView = (() => {
 
   function modalInstrumento(inst, claseIdFijo) {
     const db = Storage.db;
-    if (!inst && !claseIdFijo && !claseSel) { UI.toast('Selecciona primero una clase'); return; }
+    if (!inst && !claseIdFijo && !claseSel) { alert('Primero selecciona una clase'); return; }
     const claseId = inst ? inst.claseId : (claseIdFijo || claseSel);
     const asig = Calc.asignaturaDeClase(claseId);
-    if (!asig || !db.criterios.some(c => c.asignaturaId === asig.id)) {
-      UI.toast('Crea criterios en Currículo antes de evaluar esta asignatura');
-      return;
-    }
+    if (!asig) { alert('Error: esta clase no tiene asignatura asociada'); return; }
     const esNueva = !inst;
     const tipoIni = inst ? inst.tipo : 'Control';
     UI.openModal({
