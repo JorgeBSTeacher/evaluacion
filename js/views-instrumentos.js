@@ -350,5 +350,5 @@ const InstrumentosView = (() => {
     });
   }
 
-  return { render, renderCorreccion };
+  return { render, renderCorreccion, modalInstrumento };
 })();
