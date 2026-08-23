@@ -44,8 +44,9 @@ Jerarquía LOMLOE: Etapa → Área → **Competencia específica** → **Criteri
 
 - Criterio: código, descripción, asignatura, **peso % editable fijo durante el curso**; la suma de pesos por asignatura debe ser 100% (aviso si no).
 - Vínculo obligatorio criterio → 1..n competencias específicas; opcional criterio → competencias clave del perfil de salida (CCL, CP, STEM, CD, CPSAA, CC, CE, CCEC).
-- Saberes básicos: NO como campo del criterio (D-09); solo campo informativo opcional en los instrumentos.
-- Plantillas oficiales: generar JSON importable desde el decreto cántabro de Infantil y Primaria (usuario indica **Decreto 66/2022**; P-01: verificar numeración exacta antes de crear la plantilla).
+- Saberes básicos: NO como campo del criterio (D-09); solo campo informativo opcional en los instrumentos. Como novedad v0.2, cada plantilla puede traer los bloques de saberes del área y se guardan como campo informativo `saberesBasicos` en la asignatura.
+- **Plantillas oficiales (D-31)**: ficheros JSON en `plantillas/` generados a partir del decreto verificado — **Decreto 66/2022, de 7 de julio (BOC nº 135, 13-07-2022), Anexo II-A**, currículo Infantil+Primaria Cantabria. Esquema de plantilla (`tipo: "curriculo-evalcrit"`, `version: 1`): asignatura (nombre/etapa/ciclo), competencias específicas con descriptores del Perfil de salida, criterios vinculados por `ceCodigo`, y `peso: null` para reparto equitativo. Fusión segura: si la asignatura ya existe y tiene currículo, la importación se rechaza con mensaje claro; si existe vacía u homónima, se reutiliza; nunca se tocan instrumentos ni registros. Los descriptores (STEM1, CPSAA3…) se traducen automáticamente a competencias clave por prefijo (mayor coincidencia primero).
+- **Pesos por defecto al importar (D-32)**: si la plantilla no trae pesos, se reparte 100 % a partes iguales con redondeo a 4 decimales ajustando el último criterio para que la suma sea exactamente 100; quedan editables como cualquier criterio. Plantilla piloto validada contra el decreto: Matemáticas 3.er ciclo = 8 CE + **17 criterios** (2+3+2×6) + 6 bloques de saberes; suma de pesos verificada = 100.
 
 ## 5. Instrumentos de evaluación
 
@@ -113,6 +114,7 @@ Si los pesos no casan con el reparto de puntos, ambas notas difieren **a propós
 - Export: fichero `evalcrit-backup-YYYYMMDD-HHMM.json` con TODO el estado versionado (`schemaVersion`).
 - Import: **modo reemplazo único** (D-20) tras validar esquema; confirmación explícita.
 - Los backups con datos reales NUNCA se suben al repositorio git (`.gitignore` + política).
+- Importación de currículo (v0.2): botón «Importar currículo» en la vista Currículo; acepta plantillas de `plantillas/` (formato D-31), muestra resumen previo de validación (asignatura, ciclo, nº CE/criterios y fuente) antes de confirmar.
 
 ## 11. Modelo de datos (schemaVersion 1)
 
@@ -122,10 +124,10 @@ Si los pesos no casan con el reparto de puntos, ambas notas difieren **a propós
   "cursoEscolar": "2025/2026",
   "grupos": [{ "id": "", "nombre": "", "etapa": "Primaria" }],
   "alumnos": [{ "id": "", "nombre": "", "apellidos": "", "grupoId": "" }],
-  "asignaturas": [{ "id": "", "nombre": "", "etapa": "" }],
+  "asignaturas": [{ "id": "", "nombre": "", "etapa": "", "saberesBasicos?": [{ "bloque": "A. …", "apartados": ["…"] }] }],
   "clases": [{ "id": "", "asignaturaId": "", "grupoId": "" }],
   "competenciasClave": [{ "id": "", "codigo": "CCL", "nombre": "" }],
-  "competenciasEspecificas": [{ "id": "", "asignaturaId": "", "codigo": "", "descripcion": "" }],
+  "competenciasEspecificas": [{ "id": "", "asignaturaId": "", "codigo": "", "descripcion": "", "perfilSalida?": ["STEM1", "…"] }],
   "criterios": [{ "id": "", "asignaturaId": "", "codigo": "", "descripcion": "", "peso": 0, "espIds": [], "claveIds": [] }],
   "instrumentos": [{
     "id": "", "claseId": "", "tipo": "Control", "titulo": "", "fecha": "",
@@ -168,7 +170,7 @@ Reglas de robustez (lecciones de la v0.1):
 | F0 | Este documento | Hecho |
 | F1 | Esqueleto app + persistencia + export/import | En curso (v0.1) |
 | F2 | Alumnos/grupos/asignaturas/clases | v0.1 |
-| F3 | Editor currículo + plantilla Decreto Cantabria | Editor en v0.1; plantilla P-01 pendiente |
+| F3 | Editor currículo + plantilla Decreto Cantabria | v0.1 editor + v0.2 importador y plantilla Matemáticas 3.er ciclo |
 | F4 | Instrumentos + corrección + cuadrícula | v0.1 |
 | F5 | Motor cálculo + paneles competencia | v0.1 |
 | F6 | Informes impresión | Básico v0.1; pulido después |
@@ -178,7 +180,9 @@ Futuras: arrastre de cursos (D-07), escala cualitativa Infantil completa, planti
 
 ## 14. Pendientes abiertas
 
-- P-01: verificar numeración/denominación del decreto cántabro (66/2022) y extraer currículo a JSON importable.
+- P-01: ~~verificar decreto y extraer currículo a JSON~~ **RESUELTA (v0.2)**: Decreto 66/2022 (BOC nº 135, 13-07-2022) verificado; importador + plantilla Matemáticas 3.er ciclo. Queda replicar el método para Conocimiento del Medio Natural, Social y Cultural.
+- P-04: decidir rediseño de rúbricas — cada ítem con sus propias graduaciones (descriptor + %); por decidir si los ítems heredan una escala común personalizable o son totalmente independientes.
+- P-05: generar y validar plantilla de Conocimiento del Medio 3.er ciclo (mismo método que Matemáticas).
 - P-02: revisar D-13 (agregación multi-instrumento) tras uso real.
 - P-03: asistente "nuevo curso escolar" arrastrando grupos y currículo.
 
@@ -197,3 +201,4 @@ Futuras: arrastre de cursos (D-07), escala cualitativa Infantil completa, planti
 | v0.1 | `2c43968` | Primera versión funcional completa con motor verificado |
 | v0.1.1 | `e54df4f` | Refresco automático de vistas, criterios en desplegable compacto, «Añadir calificación» desde cuadrícula |
 | v0.1.2 | `4570e0a` / `e265ca1` | Cuadrícula siempre con alumnos, hash de navegación, diagnóstico de grupo, errores visibles, cache-busting, export de modalInstrumento |
+| v0.2 | `a71ea27` | Importador de currículo oficial (D-31/D-32) + plantilla Matemáticas 3.er ciclo verificada contra el Decreto 66/2022 (8 CE · 17 criterios · 6 bloques de saberes); P-01 resuelta; nuevos pendientes P-04 (rediseño rúbricas) y P-05 (plantilla CDU) |
