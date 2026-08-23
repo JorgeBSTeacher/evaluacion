@@ -41,6 +41,14 @@ const App = (() => {
         <div class="resumen-stats">
           ${stats.map(([k, v]) => `<div class="stat"><b>${v}</b><span>${k}</span></div>`).join('')}
         </div>
+        <div class="aviso" style="background:#eff6ff;border-color:#bfdbfe;color:#1e40af">
+          <b>Copias de seguridad</b> · <span id="info-backup">…</span><br>
+          <small>Con Chrome/Edge en Windows puedes guardar directamente en la carpeta <code>backups/</code> del proyecto; en Android irán a Descargas.</small>
+          <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap" class="no-print">
+            <button class="btn btn-primario btn-mini" id="btn-exportar-ini">Exportar backup ahora</button>
+            ${Storage.puedeCarpeta() ? '<button class="btn btn-mini" id="btn-carpeta">Elegir carpeta de backups…</button>' : ''}
+          </div>
+        </div>
         ${Storage.vacio() ? `
           <div class="aviso">Tu aplicación está vacía. Puedes cargar datos de ejemplo para probarla.</div>
           <button class="btn btn-primario" id="btn-demo">Cargar datos de ejemplo</button>` : `
@@ -65,6 +73,24 @@ const App = (() => {
         Storage.save();
         UI.toast('Curso escolar: ' + db.cursoEscolar);
       });
+    }
+
+    const info = el.querySelector('#info-backup');
+    const pintaInfo = dir => {
+      const ultima = db.meta && db.meta.ultimaExportacion ? Utils.fechaLegible(new Date(db.meta.ultimaExportacion)) + ' a las ' + new Date(db.meta.ultimaExportacion).toTimeString().slice(0, 5) : 'nunca';
+      info.innerHTML = `última copia <b>${ultima}</b>${dir ? ` · destino: carpeta «${Utils.esc(dir.name)}»` : ''}`;
+    };
+    pintaInfo(null);
+    Storage.idbLeer('dir').then(pintaInfo).catch(() => {});
+
+    const btnExpIni = el.querySelector('#btn-exportar-ini');
+    btnExpIni.onclick = () => Storage.exportar().catch(e => alert('Error al exportar: ' + e.message));
+    const btnCarpeta = el.querySelector('#btn-carpeta');
+    if (btnCarpeta) {
+      btnCarpeta.onclick = async () => {
+        const h = await Storage.elegirCarpetaBackup();
+        if (h) { pintaInfo(h); }
+      };
     }
     const demo = el.querySelector('#btn-demo');
     if (demo) demo.onclick = () => {
@@ -109,7 +135,7 @@ const App = (() => {
 
   function arrancar() {
     Storage.load();
-    document.getElementById('btn-exportar').onclick = () => Storage.exportar();
+    document.getElementById('btn-exportar').onclick = () => Storage.exportar().catch(e => alert('Error al exportar: ' + e.message));
 
     const input = document.getElementById('input-importar');
     document.getElementById('btn-importar').onclick = () => input.click();

@@ -8,6 +8,7 @@ const Storage = {
     return {
       schemaVersion: 1,
       cursoEscolar: `${inicio}/${inicio + 1}`,
+      meta: { ultimaExportacion: null },
       grupos: [],
       alumnos: [],
       asignaturas: [],
@@ -61,15 +62,105 @@ const Storage = {
     return !d.grupos.length && !d.alumnos.length && !d.asignaturas.length && !d.criterios.length && !d.instrumentos.length;
   },
 
-  exportar() {
-    const blob = new Blob([JSON.stringify(this.db, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `backup-${Utils.fechaLegible()}-${Utils.horaCorta()}.json`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    UI.toast('Backup exportado (mira tu carpeta Descargas)');
+  puedeCarpeta() {
+    return typeof window !== 'undefined' && typeof window.showDirectoryPicker === 'function';
+  },
+
+  abrirIdb() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open('evalcrit-fs', 1);
+      req.onupgradeneeded = () => req.result.createObjectStore('kv');
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  },
+
+  idbLeer(clave) {
+    return this.abrirIdb().then(db => new Promise((resolve, reject) => {
+      const tx = db.transaction('kv', 'readonly');
+      const req = tx.objectStore('kv').get(clave);
+      tx.oncomplete = () => resolve(req.result);
+      tx.onerror = () => reject(tx.error);
+    }));
+  },
+
+  idbEscribir(clave, valor) {
+    return this.abrirIdb().then(db => new Promise((resolve, reject) => {
+      const tx = db.transaction('kv', 'readwrite');
+      tx.objectStore('kv').put(valor, clave);
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => reject(tx.error);
+    }));
+  },
+
+  async elegirCarpetaBackup() {
+    if (!this.puedeCarpeta()) {
+      alert('Tu navegador no permite elegir carpeta de guardado (necesitas Chrome o Edge en Windows). Los backups irán a Descargas.');
+      return null;
+    }
+    try {
+      const handle = await window.showDirectoryPicker({ id: 'evalcrit-backups', mode: 'readwrite' });
+      await this.idbEscribir('dir', handle);
+      UI.toast('Los backups se guardarán en la carpeta «' + handle.name + '»');
+      return handle;
+    } catch (e) {
+      if (e && e.name === 'AbortError') return null;
+      console.error(e);
+      alert('No se pudo elegir la carpeta: ' + e.message + '. Puede que tu navegador rechace ubicaciones de red (p. ej. rutas WSL).');
+      return null;
+    }
+  },
+
+  async exportar() {
+    const contenido = JSON.stringify(this.db, null, 2);
+    const nombre = `backup-${Utils.fechaLegible()}-${Utils.horaCorta()}.json`;
+    let destino = '';
+    try {
+      const dir = await this.idbLeer('dir');
+      if (dir) {
+        let perm = 'granted';
+        if (dir.queryPermission) perm = await dir.queryPermission({ mode: 'readwrite' });
+        if (perm !== 'granted' && dir.requestPermission) {
+          perm = await dir.requestPermission({ mode: 'readwrite' });
+        }
+        if (perm === 'granted') {
+          const fh = await dir.getFileHandle(nombre, { create: true });
+          const w = await fh.createWritable();
+          await w.write(contenido);
+          await w.close();
+          destino = `la carpeta «${dir.name}»`;
+        }
+      }
+      if (!destino && typeof window !== 'undefined' && typeof window.showSaveFilePicker === 'function') {
+        const fh = await window.showSaveFilePicker({
+          suggestedName: nombre,
+          types: [{ description: 'Backup EvalCrit (JSON)', accept: { 'application/json': ['.json'] } }]
+        });
+        const w = await fh.createWritable();
+        await w.write(contenido);
+        await w.close();
+        destino = `«${fh.name}»`;
+      }
+    } catch (e) {
+      if (e && e.name === 'AbortError') return;
+      console.error(e);
+    }
+    if (!destino) {
+      const blob = new Blob([contenido], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = nombre;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      destino = 'Descargas';
+    }
+    this.db.meta = this.db.meta || {};
+    this.db.meta.ultimaExportacion = new Date().toISOString();
+    this.save();
+    UI.toast(destino === 'Descargas'
+      ? 'Backup en Descargas: cópialo a la carpeta backups/ del proyecto'
+      : `Backup guardado en ${destino}`);
   },
 
   importar(archivo) {
