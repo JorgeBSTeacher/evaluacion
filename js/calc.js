@@ -36,6 +36,12 @@ const Calc = {
     return Storage.db.competenciasEspecificas.filter(c => c.asignaturaId === asig.id);
   },
 
+  clavesDeClase(claseId) {
+    const usadas = new Set();
+    this.criteriosDeClase(claseId).forEach(c => (c.claveIds || []).forEach(k => usadas.add(k)));
+    return Storage.db.competenciasClave.filter(k => usadas.has(k.id));
+  },
+
   logroCriterioEnInstrumento(inst, alumnoId, criterioId) {
     const reg = (Storage.db.registros[inst.id] || {})[alumnoId] || {};
     let obt = 0, max = 0, hay = false;
@@ -89,6 +95,10 @@ const Calc = {
 
   notaCompetencia(claseId, alumnoId, espId, periodo) {
     return this.notaPonderada(claseId, alumnoId, periodo, c => c.espIds.includes(espId));
+  },
+
+  notaClave(claseId, alumnoId, claveId, periodo) {
+    return this.notaPonderada(claseId, alumnoId, periodo, c => (c.claveIds || []).includes(claveId));
   },
 
   notaInstrumento(inst, alumnoId) {

@@ -49,24 +49,44 @@ const CuadriculaView = (() => {
 
   function tablaCompetencias(alumnos) {
     const esps = Calc.competenciasEspecificasDeClase(claseSel);
+    const claves = Calc.clavesDeClase(claseSel);
     if (!alumnos.length) return '<div class="aviso">El grupo de esta clase no tiene alumnos todavía.</div>';
-    if (!esps.length) return '<div class="vacio-grande">Esta asignatura no tiene competencias específicas definidas.</div>';
+
+    const tabla = (lista, titulo, fnNota, notaPie) => {
+      if (!lista.length) return '';
+      return `
+        <h3 style="font-size:15px;margin:4px 0 8px">${titulo}</h3>
+        <table class="tabla">
+          <thead><tr><th>Alumno</th>${lista.map(x =>
+            `<th title="${Utils.esc(x.descripcion || x.nombre || '')}">${Utils.esc(x.codigo)}</th>`
+          ).join('')}</tr></thead>
+          <tbody>
+            ${alumnos.map(a => `<tr>
+              <td>${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}</td>
+              ${lista.map(x => {
+                const n = fnNota(a, x);
+                return `<td class="num">${Calc.badgeHtml(n)}</td>`;
+              }).join('')}
+            </tr>`).join('')}
+          </tbody>
+        </table>
+        <p class="no-print" style="color:var(--tinta-suave);font-size:13px">${notaPie}</p>`;
+    };
+
+    const hayClaves = criteriosConClaves();
     return `
-      <table class="tabla">
-        <thead><tr><th>Alumno</th>${esps.map(e =>
-          `<th title="${Utils.esc(e.descripcion)}">${Utils.esc(e.codigo)}</th>`
-        ).join('')}</tr></thead>
-        <tbody>
-          ${alumnos.map(a => `<tr>
-            <td>${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}</td>
-            ${esps.map(e => {
-              const n = Calc.notaCompetencia(claseSel, a.id, e.id, periodo);
-              return `<td class="num">${Calc.badgeHtml(n)}</td>`;
-            }).join('')}
-          </tr>`).join('')}
-        </tbody>
-      </table>
-      <p class="no-print" style="color:var(--tinta-suave);font-size:13px">Nota por competencia específica (0–10), agregando los criterios vinculados.</p>`;
+      ${tabla(esps, 'Competencias específicas',
+        (a, e) => Calc.notaCompetencia(claseSel, a.id, e.id, periodo),
+        'Nota por competencia específica (0–10), agregando los criterios vinculados con su peso.')}
+      ${claves.length ? tabla(claves, 'Competencias clave (perfil de salida)',
+        (a, k) => Calc.notaClave(claseSel, a.id, k.id, periodo),
+        'Nota por competencia clave (0–10), agregando con su peso todos los criterios que la llevan asignada.') : `
+        <h3 style="font-size:15px;margin:14px 0 8px">Competencias clave (perfil de salida)</h3>
+        <div class="aviso">${hayClaves ? 'Ninguna clave aparece aún en esta tabla.' : 'Los criterios de esta asignatura no tienen competencias clave asignadas. Asígnalas editando cada criterio en «Currículo»; las plantillas oficiales las traen automáticamente.'}</div>`}`;
+  }
+
+  function criteriosConClaves() {
+    return Calc.criteriosDeClase(claseSel).some(c => (c.claveIds || []).length > 0);
   }
 
   function render(el) {
