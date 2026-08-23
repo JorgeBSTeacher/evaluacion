@@ -1,6 +1,6 @@
 # EvalCrit — Documento Único de Verdad (SSOT)
 
-**Versión:** 1.0 · **Fecha:** 22/08/2026 · **Estado:** Activo
+**Versión:** 1.1 · **Fecha:** 23/08/2026 · **Estado:** Activo
 **Regla:** toda decisión funcional o técnica se registra aquí ANTES de implementarse.
 
 ---
@@ -98,6 +98,9 @@ Si los pesos no casan con el reparto de puntos, ambas notas difieren **a propós
 - Tras cualquier alta/edición modal, la vista se refresca automáticamente (D-21).
 - Los criterios de cada apartado se eligen con un desplegable compacto por fila, no inline (D-22).
 - Desde la Cuadrícula se puede «Añadir calificación» (alta de instrumento) y editar tocando su cabecera de columna (D-23).
+- La cuadrícula muestra SIEMPRE las filas de alumnos del grupo, aunque no existan instrumentos aún: cuaderno en blanco esperando columnas (D-24).
+- La sección activa se conserva al recargar el navegador (F5) mediante hash de URL (#seccion) (D-25).
+- La cabecera de la cuadrícula muestra siempre «Grupo vinculado · N alumno(s)» como diagnóstico inmediato de desajustes entre grupos y clases (D-26).
 
 ## 9. Informes
 
@@ -151,6 +154,13 @@ js/app.js           arranque, navegación, cabecera
 
 Reglas: la lógica jamás accede a localStorage directamente (siempre vía Storage); el cálculo vive solo en Calc; las vistas son funciones puras render(el) + eventos.
 
+Reglas de robustez (lecciones de la v0.1):
+
+- **Nada de fallos silenciosos**: los manejadores de clic capturan excepciones, muestran `alert` con el mensaje y lo registran en consola (D-27).
+- **Formularios siempre accesibles**: el formulario de instrumento abre aunque falten criterios; el aviso aparece dentro (selector de criterios) y solo se bloquea al guardar con mensaje claro (D-28).
+- Los módulos-vista exportan explícitamente sus funciones públicas; una función interna no exportada no es accesible desde otras vistas (causa del bug de «Añadir calificación») (D-29).
+- **Cache-busting**: css y js se cargan con `?v=estampaTiempo`; se regenera en cada entrega para que el navegador nunca ejecute código obsoleto (D-30).
+
 ## 13. Roadmap
 
 | Fase | Contenido | Estado |
@@ -179,3 +189,11 @@ Futuras: arrastre de cursos (D-07), escala cualitativa Infantil completa, planti
 - **Instrumento**: control, rúbrica, proyecto u otro elemento de calificación.
 - **Clase**: asignatura impartida a un grupo.
 - **Periodo**: T1, T2, T3 o Final (recálculo anual).
+
+## 16. Registro de cambios
+
+| Versión | Commit | Contenido |
+|---|---|---|
+| v0.1 | `2c43968` | Primera versión funcional completa con motor verificado |
+| v0.1.1 | `e54df4f` | Refresco automático de vistas, criterios en desplegable compacto, «Añadir calificación» desde cuadrícula |
+| v0.1.2 | `4570e0a` / `e265ca1` | Cuadrícula siempre con alumnos, hash de navegación, diagnóstico de grupo, errores visibles, cache-busting, export de modalInstrumento |
