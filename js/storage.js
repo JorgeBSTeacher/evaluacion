@@ -3,9 +3,11 @@ const Storage = {
   db: null,
 
   defaults() {
+    const hoy = new Date();
+    const inicio = hoy.getMonth() >= 6 ? hoy.getFullYear() : hoy.getFullYear() - 1;
     return {
       schemaVersion: 1,
-      cursoEscolar: '2025/2026',
+      cursoEscolar: `${inicio}/${inicio + 1}`,
       grupos: [],
       alumnos: [],
       asignaturas: [],
@@ -63,11 +65,11 @@ const Storage = {
     const blob = new Blob([JSON.stringify(this.db, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'evalcrit-backup-' + Utils.stamp() + '.json';
+    a.download = `backup-${Utils.fechaLegible()}-${Utils.horaCorta()}.json`;
     document.body.appendChild(a);
     a.click();
     a.remove();
-    UI.toast('Backup exportado');
+    UI.toast('Backup exportado (mira tu carpeta Descargas)');
   },
 
   importar(archivo) {

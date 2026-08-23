@@ -18,6 +18,16 @@ const Utils = {
     const p = x => String(x).padStart(2, '0');
     return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
   },
+
+  fechaLegible(d = new Date()) {
+    const p = x => String(x).padStart(2, '0');
+    return p(d.getDate()) + '-' + p(d.getMonth() + 1) + '-' + d.getFullYear();
+  },
+
+  horaCorta(d = new Date()) {
+    const p = x => String(x).padStart(2, '0');
+    return p(d.getHours()) + p(d.getMinutes());
+  },
   stamp() {
     const d = new Date();
     const p = x => String(x).padStart(2, '0');

@@ -9,6 +9,16 @@ const App = (() => {
   ];
   let actual = 'inicio';
 
+  function opcionesCurso(valorActual) {
+    const m = /^(\d{4})\//.exec(String(valorActual || ''));
+    const base = m ? parseInt(m[1], 10) : new Date().getMonth() >= 6 ? new Date().getFullYear() : new Date().getFullYear() - 1;
+    const lista = [];
+    for (let y = base - 2; y <= base + 4; y++) lista.push(`${y}/${y + 1}`);
+    if (!lista.includes(valorActual)) lista.push(valorActual);
+    lista.sort();
+    return lista.map(v => `<option ${v === valorActual ? 'selected' : ''}>${Utils.esc(v)}</option>`).join('');
+  }
+
   function renderInicio(el) {
     const db = Storage.db;
     const stats = [
@@ -24,7 +34,7 @@ const App = (() => {
         <div class="card-head">
           <h1>Bienvenido a EvalCrit</h1>
           <label class="campo" style="margin:0"><span>Curso escolar</span>
-            <input type="text" id="f-curso" value="${Utils.esc(db.cursoEscolar)}" style="max-width:150px"></label>
+            <select id="sel-curso" style="max-width:150px">${opcionesCurso(db.cursoEscolar)}</select></label>
         </div>
         <p style="color:var(--tinta-suave)">Califica con criterios ponderados según la LOMLOE. Los datos se guardan en este navegador:
           <b>exporta tu backup al USB con frecuencia</b>.</p>
@@ -48,12 +58,13 @@ const App = (() => {
         </ol>
       </section>`;
 
-    const curso = el.querySelector('#f-curso');
+    const curso = el.querySelector('#sel-curso');
     if (curso) {
-      curso.addEventListener('change', Utils.debounce(() => {
-        db.cursoEscolar = curso.value.trim();
+      curso.addEventListener('change', () => {
+        db.cursoEscolar = curso.value;
         Storage.save();
-      }, 400));
+        UI.toast('Curso escolar: ' + db.cursoEscolar);
+      });
     }
     const demo = el.querySelector('#btn-demo');
     if (demo) demo.onclick = () => {
