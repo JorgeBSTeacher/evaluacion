@@ -79,6 +79,60 @@ const CurriculoView = (() => {
     });
   }
 
+  function modalImportar() {
+    let datos = null;
+    let resumen = null;
+    UI.openModal({
+      titulo: 'Importar currículo oficial',
+      cuerpo: `
+        <p class="ayuda-modal">Selecciona un archivo de plantilla EvalCrit (<code>.json</code>) generado a partir del Decreto 66/2022. Se crearán la asignatura, sus competencias específicas y sus criterios con ponderaciones equitativas.</p>
+        <label class="campo"><span>Archivo de plantilla</span>
+          <input type="file" id="f-archivo" accept=".json,application/json"></label>
+        <div id="resumen-import" class="aviso" style="display:none"></div>`,
+      textoGuardar: 'Importar',
+      alGuardar(body) {
+        if (!datos) {
+          alert('Selecciona antes un archivo de plantilla');
+          return false;
+        }
+        try {
+          resumen = Storage.importarCurriculo(datos);
+          UI.toast(`Currículo importado: ${resumen.ces} competencias específicas y ${resumen.criterios} criterios`);
+        } catch (e) {
+          alert(e.message);
+          return false;
+        }
+      }
+    });
+    const input = document.querySelector('#modal-root #f-archivo');
+    const caja = document.querySelector('#modal-root #resumen-import');
+    input.onchange = () => {
+      const f = input.files && input.files[0];
+      if (!f) return;
+      const lector = new FileReader();
+      lector.onload = () => {
+        try {
+          datos = JSON.parse(lector.result);
+          if (datos.tipo !== 'curriculo-evalcrit' || datos.version !== 1) {
+            throw new Error('No es una plantilla EvalCrit (tipo/version no válidos)');
+          }
+          const a = datos.asignatura || {};
+          caja.style.display = '';
+          caja.style.background = '#f0fdf4';
+          caja.innerHTML = `<b>Plantilla válida:</b> ${Utils.esc(a.nombre || '')} · ${Utils.esc(a.ciclo || '')}<br>
+            ${datos.competenciasEspecificas.length} competencias específicas · ${datos.criterios.length} criterios<br>
+            <small>${Utils.esc(datos.fuente || '')}</small>`;
+        } catch (e) {
+          datos = null;
+          caja.style.display = '';
+          caja.style.background = '#fef2f2';
+          caja.innerHTML = `<b>Archivo no válido:</b> ${Utils.esc(e.message)}`;
+        }
+      };
+      lector.readAsText(f);
+    };
+  }
+
   function render(el) {
     const db = Storage.db;
     if (!asigSel || !Calc.asignatura(asigSel)) asigSel = db.asignaturas.length ? db.asignaturas[0].id : null;
@@ -96,7 +150,10 @@ const CurriculoView = (() => {
       <section class="card">
         <div class="card-head">
           <h2>Currículo</h2>
-          <select id="sel-asig" style="max-width:280px">${UI.selectHtml(db.asignaturas, asigSel, 'id', 'nombre')}</select>
+          <div style="display:flex;gap:8px;align-items:center">
+            <select id="sel-asig" style="max-width:280px">${UI.selectHtml(db.asignaturas, asigSel, 'id', 'nombre')}</select>
+            <button class="btn btn-mini" id="btn-importar">Importar currículo</button>
+          </div>
         </div>
         <div class="aviso ${Math.round(sumaPesos) === 100 ? '' : ''}" style="${Math.round(sumaPesos) === 100 ? 'background:#f0fdf4;border-color:#bbf7d0;color:#166534' : ''}">
           Suma de ponderaciones: <b>${Utils.fmt(sumaPesos)}%</b>${Math.round(sumaPesos) === 100 ? ' · correcta' : ' · debería sumar 100%'}
@@ -137,6 +194,7 @@ const CurriculoView = (() => {
       </section>`;
 
     el.querySelector('#sel-asig').onchange = e => { asigSel = e.target.value; render(el); };
+    el.querySelector('#btn-importar').onclick = () => modalImportar();
     el.querySelector('#add-esp').onclick = () => modalEsp();
     el.querySelector('#add-crit').onclick = () => modalCriterio(null);
 
