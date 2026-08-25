@@ -1,0 +1,2041 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EvalCrit · Evaluación por criterios</title>
+<style>
+:root {
+  --papel: #f5f3ec;
+  --tinta: #2b2a26;
+  --tinta-suave: #6b685e;
+  --linea: #e3dfd3;
+  --acento: #4f46e5;
+  --acento-suave: #eceafd;
+  --ok: #16a34a;
+  --ok-suave: #e8f7ee;
+  --ko: #dc2626;
+  --ko-suave: #fdecec;
+  --na: #9ca3af;
+  --na-suave: #f1f2f4;
+  --radio: 14px;
+  --sombra: 0 1px 3px rgba(43, 42, 38, .08), 0 8px 24px rgba(43, 42, 38, .06);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: var(--papel);
+  color: var(--tinta);
+  min-height: 100vh;
+}
+
+.topbar {
+  position: sticky; top: 0; z-index: 50;
+  display: flex; align-items: center; gap: 16px;
+  padding: 10px 18px;
+  background: rgba(245, 243, 236, .92);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid var(--linea);
+  flex-wrap: wrap;
+}
+
+.brand { display: flex; align-items: center; gap: 10px; }
+.logo {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; border-radius: 12px;
+  background: var(--acento); color: #fff; font-weight: 800; font-size: 15px;
+}
+.brand-txt { line-height: 1.1; }
+.brand-txt small { display: block; color: var(--tinta-suave); font-size: 11px; }
+
+.nav { display: flex; gap: 4px; flex-wrap: wrap; flex: 1; }
+.nav button {
+  border: none; background: transparent; cursor: pointer;
+  font-size: 14px; font-weight: 600; color: var(--tinta-suave);
+  padding: 9px 13px; border-radius: 999px; min-height: 40px;
+}
+.nav button:hover { background: var(--acento-suave); color: var(--acento); }
+.nav button.activo { background: var(--acento); color: #fff; }
+.nav button.peligro-activo { background: var(--ko-suave); color: var(--ko); }
+
+.actions { display: flex; align-items: center; gap: 8px; }
+.save-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--ok); display: inline-block; transition: background .3s; }
+.save-dot.guardando { background: #f59e0b; }
+
+main { max-width: 1200px; margin: 0 auto; padding: 20px 18px 60px; }
+
+.card {
+  background: #fff; border: 1px solid var(--linea);
+  border-radius: var(--radio); box-shadow: var(--sombra);
+  padding: 18px; margin-bottom: 18px;
+}
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.card h1, .card h2 { margin: 0; font-size: 18px; }
+.card-head .sub { color: var(--tinta-suave); font-size: 13px; width: 100%; margin-top: -6px; }
+
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
+@media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+
+.btn {
+  appearance: none; border: 1px solid var(--linea); background: #fff;
+  color: var(--tinta); font-weight: 600; font-size: 14px;
+  padding: 9px 14px; border-radius: 10px; cursor: pointer; min-height: 40px;
+}
+.btn:hover { border-color: var(--acento); color: var(--acento); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn-primario { background: var(--acento); border-color: var(--acento); color: #fff; }
+.btn-primario:hover { filter: brightness(1.07); color: #fff; }
+.btn-peligro { color: var(--ko); border-color: #f3caca; }
+.btn-peligro:hover { background: var(--ko-suave); border-color: var(--ko); color: var(--ko); }
+.btn-ghost { border-color: transparent; background: transparent; color: var(--tinta-suave); }
+.btn-ghost:hover { background: var(--acento-suave); color: var(--acento); border-color: transparent; }
+.btn-mini { padding: 4px 9px; min-height: 30px; font-size: 12px; border-radius: 8px; }
+
+.icon-btn {
+  border: none; background: transparent; cursor: pointer;
+  font-size: 16px; line-height: 1; color: var(--na); padding: 6px; border-radius: 8px;
+}
+.icon-btn:hover { background: var(--ko-suave); color: var(--ko); }
+
+.lista { list-style: none; margin: 0; padding: 0; }
+.lista li {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px; border-radius: 10px; cursor: pointer;
+  border: 1px solid transparent;
+}
+.lista li:hover { background: var(--papel); }
+.lista li.activo { background: var(--acento-suave); border-color: #d8d3fb; }
+.lista li span { flex: 1; font-weight: 600; }
+.lista li small { color: var(--tinta-suave); }
+.lista li.vacio, td.vacio { color: var(--na); text-align: center; padding: 18px !important; cursor: default !important; }
+
+.tabla { width: 100%; border-collapse: collapse; font-size: 14px; }
+.tabla th, .tabla td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--linea); vertical-align: middle; }
+.tabla th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--tinta-suave); }
+.tabla tr:last-child td { border-bottom: none; }
+.tabla .num { text-align: right; font-variant-numeric: tabular-nums; }
+.tabla tbody tr:hover { background: #faf9f4; }
+
+.scroll-x { overflow-x: auto; }
+
+input[type="text"], input[type="number"], input[type="date"], select, textarea {
+  font: inherit; color: inherit;
+  border: 1px solid var(--linea); border-radius: 10px;
+  padding: 8px 10px; background: #fff; min-height: 40px; width: 100%;
+}
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--acento-suave); border-color: var(--acento); }
+.campo { display: block; margin-bottom: 12px; }
+.campo > span { display: block; font-size: 12px; font-weight: 700; color: var(--tinta-suave); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .04em; }
+.fila-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+
+.badge {
+  display: inline-block; padding: 3px 10px; border-radius: 999px;
+  font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.badge.ok { background: var(--ok-suave); color: var(--ok); }
+.badge.ko { background: var(--ko-suave); color: var(--ko); }
+.badge.na { background: var(--na-suave); color: var(--na); }
+.badge.info { background: var(--acento-suave); color: var(--acento); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid var(--linea); border-radius: 999px;
+  padding: 6px 12px; font-size: 13px; cursor: pointer; user-select: none; background: #fff;
+}
+.chip.on { background: var(--acento); border-color: var(--acento); color: #fff; }
+.chip input { display: none; }
+
+.aviso {
+  background: #fffbeb; border: 1px solid #fde68a; color: #92400e;
+  padding: 10px 14px; border-radius: 10px; font-size: 13px; margin-bottom: 12px;
+}
+.vacio-grande { text-align: center; color: var(--tinta-suave); padding: 40px 20px; }
+.vacio-grande strong { display: block; font-size: 17px; color: var(--tinta); margin-bottom: 6px; }
+
+#modal-root .velo {
+  position: fixed; inset: 0; background: rgba(43, 42, 38, .45);
+  display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px;
+}
+.modal {
+  background: #fff; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,.25);
+  width: min(720px, 100%); max-height: 90vh; display: flex; flex-direction: column;
+}
+.modal-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--linea); }
+.modal-head h3 { margin: 0; font-size: 16px; }
+.modal-body { padding: 18px; overflow-y: auto; }
+.modal-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 18px; border-top: 1px solid var(--linea); }
+
+#toast-root { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 200; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.toast {
+  background: var(--tinta); color: #fff; padding: 10px 18px; border-radius: 999px;
+  font-size: 14px; box-shadow: var(--sombra); animation: aparecer .2s ease-out;
+}
+@keyframes aparecer { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+.apartado-fila {
+  display: grid; grid-template-columns: 28px 1fr 110px auto auto; gap: 8px; align-items: center;
+  padding: 6px 0; border-bottom: 1px dashed var(--linea);
+}
+.zona-crit { grid-column: 1 / -1; padding: 8px 4px 2px; border-top: 1px dashed var(--linea); }
+.apartado-fila:last-child { border-bottom: none; }
+.nivel-fila { display: grid; grid-template-columns: 90px 1fr auto; gap: 8px; align-items: center; padding: 4px 0; }
+
+.segmentos { display: inline-flex; border: 1px solid var(--linea); border-radius: 999px; overflow: hidden; }
+.segmentos button {
+  border: none; background: #fff; cursor: pointer; font-size: 12px; font-weight: 600;
+  padding: 7px 10px; min-width: 52px; color: var(--tinta-suave);
+}
+.segmentos button + button { border-left: 1px solid var(--linea); }
+.segmentos button.on { background: var(--acento); color: #fff; }
+
+.celda-nota { cursor: pointer; text-align: center; }
+.celda-nota:hover { outline: 2px solid var(--acento-suave); }
+
+.resumen-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 14px 0; }
+.stat { background: #fff; border: 1px solid var(--linea); border-radius: var(--radio); padding: 14px; text-align: center; }
+.stat b { display: block; font-size: 26px; }
+.stat span { font-size: 12px; color: var(--tinta-suave); text-transform: uppercase; letter-spacing: .05em; }
+
+@media print {
+  .topbar, #modal-root, #toast-root, .no-print { display: none !important; }
+  body { background: #fff; }
+  main { max-width: none; padding: 0; }
+  .card { box-shadow: none; border: none; padding: 0; }
+}
+
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">EC</span>
+    <div class="brand-txt"><strong>EvalCrit</strong><small>Evaluación por criterios · LOMLOE</small></div>
+  </div>
+  <nav id="nav" class="nav"></nav>
+  <div class="actions">
+    <span id="estado-guardado" class="save-dot" title="Guardado"></span>
+    <button id="btn-exportar" class="btn btn-ghost">Exportar backup</button>
+    <button id="btn-importar" class="btn btn-ghost">Importar backup</button>
+    <input type="file" id="input-importar" accept=".json,application/json" hidden>
+  </div>
+</header>
+<main id="app"></main>
+<div id="modal-root"></div>
+<div id="toast-root"></div>
+<script>
+const Utils = {
+  uid() {
+    return 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  },
+  esc(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  },
+  fmt(n) {
+    if (n == null || isNaN(n)) return '—';
+    return (Math.round(n * 10) / 10).toFixed(1).replace('.', ',');
+  },
+  pct(n) {
+    if (n == null || isNaN(n)) return '—';
+    return Math.round(n) + '%';
+  },
+  hoy() {
+    const d = new Date();
+    const p = x => String(x).padStart(2, '0');
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+  },
+
+  fechaLegible(d = new Date()) {
+    const p = x => String(x).padStart(2, '0');
+    return p(d.getDate()) + '-' + p(d.getMonth() + 1) + '-' + d.getFullYear();
+  },
+
+  horaCorta(d = new Date()) {
+    const p = x => String(x).padStart(2, '0');
+    return p(d.getHours()) + p(d.getMinutes());
+  },
+  stamp() {
+    const d = new Date();
+    const p = x => String(x).padStart(2, '0');
+    return '' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes());
+  },
+  debounce(fn, ms) {
+    let t;
+    return function (...a) {
+      clearTimeout(t);
+      t = setTimeout(() => fn.apply(this, a), ms);
+    };
+  }
+};
+
+</script>
+<script>
+const Storage = {
+  KEY: 'evalcrit:data',
+  db: null,
+
+  defaults() {
+    const hoy = new Date();
+    const inicio = hoy.getMonth() >= 6 ? hoy.getFullYear() : hoy.getFullYear() - 1;
+    return {
+      schemaVersion: 1,
+      cursoEscolar: `${inicio}/${inicio + 1}`,
+      meta: { ultimaExportacion: null },
+      grupos: [],
+      alumnos: [],
+      asignaturas: [],
+      clases: [],
+      competenciasClave: [
+        { id: 'cc-ccl', codigo: 'CCL', nombre: 'Comunicación lingüística' },
+        { id: 'cc-cp', codigo: 'CP', nombre: 'Competencia plurilingüe' },
+        { id: 'cc-stem', codigo: 'STEM', nombre: 'Competencia científica y tecnológica' },
+        { id: 'cc-cd', codigo: 'CD', nombre: 'Competencia digital' },
+        { id: 'cc-cpsaa', codigo: 'CPSAA', nombre: 'Personal, social y de aprender a aprender' },
+        { id: 'cc-cc', codigo: 'CC', nombre: 'Competencia ciudadana' },
+        { id: 'cc-ce', codigo: 'CE', nombre: 'Competencia emprendedora' },
+        { id: 'cc-ccec', codigo: 'CCEC', nombre: 'En conciencia y expresión culturales' }
+      ],
+      competenciasEspecificas: [],
+      criterios: [],
+      instrumentos: [],
+      registros: {}
+    };
+  },
+
+  load() {
+    try {
+      const raw = localStorage.getItem(this.KEY);
+      this.db = raw ? JSON.parse(raw) : this.defaults();
+    } catch (e) {
+      this.db = this.defaults();
+    }
+    const d = this.defaults();
+    for (const k of Object.keys(d)) {
+      if (this.db[k] == null) this.db[k] = d[k];
+    }
+    return this.db;
+  },
+
+  save() {
+    const dot = document.getElementById('estado-guardado');
+    if (dot) {
+      dot.classList.add('guardando');
+      setTimeout(() => dot.classList.remove('guardando'), 400);
+    }
+    try {
+      localStorage.setItem(this.KEY, JSON.stringify(this.db));
+    } catch (e) {
+      UI.toast('Error al guardar: exporta tu backup ahora');
+    }
+  },
+
+  vacio() {
+    const d = this.db;
+    return !d.grupos.length && !d.alumnos.length && !d.asignaturas.length && !d.criterios.length && !d.instrumentos.length;
+  },
+
+  puedeCarpeta() {
+    return typeof window !== 'undefined' && typeof window.showDirectoryPicker === 'function';
+  },
+
+  abrirIdb() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open('evalcrit-fs', 1);
+      req.onupgradeneeded = () => req.result.createObjectStore('kv');
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  },
+
+  idbLeer(clave) {
+    return this.abrirIdb().then(db => new Promise((resolve, reject) => {
+      const tx = db.transaction('kv', 'readonly');
+      const req = tx.objectStore('kv').get(clave);
+      tx.oncomplete = () => resolve(req.result);
+      tx.onerror = () => reject(tx.error);
+    }));
+  },
+
+  idbEscribir(clave, valor) {
+    return this.abrirIdb().then(db => new Promise((resolve, reject) => {
+      const tx = db.transaction('kv', 'readwrite');
+      tx.objectStore('kv').put(valor, clave);
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => reject(tx.error);
+    }));
+  },
+
+  async elegirCarpetaBackup() {
+    if (!this.puedeCarpeta()) {
+      alert('Tu navegador no permite elegir carpeta de guardado (necesitas Chrome o Edge en Windows). Los backups irán a Descargas.');
+      return null;
+    }
+    try {
+      const handle = await window.showDirectoryPicker({ id: 'evalcrit-backups', mode: 'readwrite' });
+      await this.idbEscribir('dir', handle);
+      UI.toast('Los backups se guardarán en la carpeta «' + handle.name + '»');
+      return handle;
+    } catch (e) {
+      if (e && e.name === 'AbortError') return null;
+      console.error(e);
+      alert('No se pudo elegir la carpeta: ' + e.message + '. Puede que tu navegador rechace ubicaciones de red (p. ej. rutas WSL).');
+      return null;
+    }
+  },
+
+  async exportar() {
+    const contenido = JSON.stringify(this.db, null, 2);
+    const nombre = `backup-${Utils.fechaLegible()}-${Utils.horaCorta()}.json`;
+    let destino = '';
+    try {
+      const dir = await this.idbLeer('dir');
+      if (dir) {
+        let perm = 'granted';
+        if (dir.queryPermission) perm = await dir.queryPermission({ mode: 'readwrite' });
+        if (perm !== 'granted' && dir.requestPermission) {
+          perm = await dir.requestPermission({ mode: 'readwrite' });
+        }
+        if (perm === 'granted') {
+          const fh = await dir.getFileHandle(nombre, { create: true });
+          const w = await fh.createWritable();
+          await w.write(contenido);
+          await w.close();
+          destino = `la carpeta «${dir.name}»`;
+        }
+      }
+      if (!destino && typeof window !== 'undefined' && typeof window.showSaveFilePicker === 'function') {
+        const fh = await window.showSaveFilePicker({
+          suggestedName: nombre,
+          types: [{ description: 'Backup EvalCrit (JSON)', accept: { 'application/json': ['.json'] } }]
+        });
+        const w = await fh.createWritable();
+        await w.write(contenido);
+        await w.close();
+        destino = `«${fh.name}»`;
+      }
+    } catch (e) {
+      if (e && e.name === 'AbortError') return;
+      console.error(e);
+    }
+    if (!destino) {
+      const blob = new Blob([contenido], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = nombre;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      destino = 'Descargas';
+    }
+    this.db.meta = this.db.meta || {};
+    this.db.meta.ultimaExportacion = new Date().toISOString();
+    this.save();
+    UI.toast(destino === 'Descargas'
+      ? 'Backup en Descargas: cópialo a la carpeta backups/ del proyecto'
+      : `Backup guardado en ${destino}`);
+  },
+
+  importar(archivo) {
+    return new Promise((resolve, reject) => {
+      const lector = new FileReader();
+      lector.onload = () => {
+        try {
+          const datos = JSON.parse(lector.result);
+          if (!datos || datos.schemaVersion !== 1 || !Array.isArray(datos.grupos) || !Array.isArray(datos.alumnos)) {
+            throw new Error('Formato no válido');
+          }
+          this.db = datos;
+          this.save();
+          resolve(true);
+        } catch (e) {
+          reject(e);
+        }
+      };
+      lector.onerror = () => reject(new Error('No se pudo leer el archivo'));
+      lector.readAsText(archivo);
+    });
+  },
+
+  claveDesdeDescriptores(descriptores) {
+    const mapa = [
+      ['CPSAA', 'cc-cpsaa'], ['CCEC', 'cc-ccec'], ['CCL', 'cc-ccl'],
+      ['CP', 'cc-cp'], ['STEM', 'cc-stem'], ['CD', 'cc-cd'],
+      ['CC', 'cc-cc'], ['CE', 'cc-ce']
+    ];
+    const ids = new Set();
+    (descriptores || []).forEach(d => {
+      const hit = mapa.find(([pref]) => String(d).startsWith(pref));
+      if (hit) ids.add(hit[1]);
+    });
+    return [...ids];
+  },
+
+  reiniciar() {
+    try { localStorage.removeItem(this.KEY); } catch (e) {}
+    this.db = this.defaults();
+    this.save();
+  },
+
+  importarCurriculo(datos) {
+    if (!datos || datos.tipo !== 'curriculo-evalcrit' || datos.version !== 1) {
+      throw new Error('El archivo no es una plantilla de currículo EvalCrit válida');
+    }
+    const asig = datos.asignatura || {};
+    const nombre = String(asig.nombre || '').trim();
+    const etapa = String(asig.etapa || '').trim();
+    if (!nombre) throw new Error('Falta el nombre de la asignatura');
+    if (!Array.isArray(datos.competenciasEspecificas) || !datos.competenciasEspecificas.length) {
+      throw new Error('La plantilla no incluye competencias específicas');
+    }
+    if (!Array.isArray(datos.criterios) || !datos.criterios.length) {
+      throw new Error('La plantilla no incluye criterios de evaluación');
+    }
+    const cesCodigos = datos.competenciasEspecificas.map(c => c.codigo);
+    if (new Set(cesCodigos).size !== cesCodigos.length) {
+      throw new Error('Hay competencias específicas con código repetido');
+    }
+    const critCodigos = datos.criterios.map(c => c.codigo);
+    if (new Set(critCodigos).size !== critCodigos.length) {
+      throw new Error('Hay criterios con código repetido');
+    }
+    for (const c of datos.criterios) {
+      if (!cesCodigos.includes(c.ceCodigo)) {
+        throw new Error(`El criterio ${c.codigo} referencia una competencia específica inexistente (${c.ceCodigo})`);
+      }
+    }
+
+    const cursos = Array.isArray(asig.cursos) && asig.cursos.length
+      ? asig.cursos.map(c => String(c).trim()).filter(Boolean)
+      : [''];
+    const n = datos.criterios.length;
+    const pesoIgual = Math.round((100 / n) * 10000) / 10000;
+    const creadas = [];
+
+    for (const curso of cursos) {
+      const nombreCompleto = curso ? `${nombre} ${curso}` : nombre;
+      let target = this.db.asignaturas.find(a =>
+        a.nombre.toLowerCase() === nombreCompleto.toLowerCase() && (a.etapa || '') === etapa);
+      if (target && this.db.competenciasEspecificas.some(e => e.asignaturaId === target.id)) {
+        throw new Error(`La asignatura «${nombreCompleto}» ya tiene currículo. Elimínalo primero o renombra la asignatura en la plantilla.`);
+      }
+      if (!target) {
+        target = { id: Utils.uid(), nombre: nombreCompleto, etapa };
+        this.db.asignaturas.push(target);
+      }
+
+      const idEsp = {};
+      for (const ce of datos.competenciasEspecificas) {
+        const obj = {
+          id: Utils.uid(),
+          asignaturaId: target.id,
+          codigo: ce.codigo,
+          descripcion: ce.descripcion,
+          perfilSalida: Array.isArray(ce.perfilSalida) ? ce.perfilSalida : []
+        };
+        this.db.competenciasEspecificas.push(obj);
+        idEsp[ce.codigo] = obj;
+      }
+
+      datos.criterios.forEach((c, i) => {
+        const esp = idEsp[c.ceCodigo];
+        const peso = (typeof c.peso === 'number' && !isNaN(c.peso))
+          ? c.peso
+          : (i === n - 1 ? Math.round((100 - pesoIgual * (n - 1)) * 10000) / 10000 : pesoIgual);
+        const claveIds = [...new Set(esp.perfilSalida ? this.claveDesdeDescriptores(esp.perfilSalida) : [])];
+        this.db.criterios.push({
+          id: Utils.uid(),
+          asignaturaId: target.id,
+          codigo: c.codigo,
+          descripcion: c.descripcion,
+          peso,
+          espIds: [esp.id],
+          claveIds
+        });
+      });
+
+      if (Array.isArray(datos.saberesBasicos)) {
+        target.saberesBasicos = datos.saberesBasicos;
+      }
+      creadas.push(nombreCompleto);
+    }
+
+    this.save();
+    return {
+      asignaturas: creadas,
+      ces: datos.competenciasEspecificas.length,
+      criterios: n,
+      pesosAjustados: typeof datos.criterios[0].peso !== 'number'
+    };
+  },
+
+  demoSeed() {
+    const db = this.defaults();
+    const g = { id: Utils.uid(), nombre: '3ºA', etapa: 'Primaria' };
+    db.grupos.push(g);
+    const nombres = [
+      ['García', 'Lucía'], ['López', 'Mateo'], ['Martínez', 'Sofía'],
+      ['Sánchez', 'Hugo'], ['Fernández', 'María'], ['Pérez', 'Daniel']
+    ];
+    for (const [ape, nom] of nombres) {
+      db.alumnos.push({ id: Utils.uid(), nombre: nom, apellidos: ape, grupoId: g.id });
+    }
+    const mat = { id: Utils.uid(), nombre: 'Matemáticas', etapa: 'Primaria' };
+    db.asignaturas.push(mat);
+    const clase = { id: Utils.uid(), asignaturaId: mat.id, grupoId: g.id };
+    db.clases.push(clase);
+    const ce1 = { id: Utils.uid(), asignaturaId: mat.id, codigo: 'CE1', descripcion: 'Resuelve problemas de la vida cotidiana' };
+    const ce2 = { id: Utils.uid(), asignaturaId: mat.id, codigo: 'CE2', descripcion: 'Razona y argumenta matemáticamente' };
+    db.competenciasEspecificas.push(ce1, ce2);
+    const c1 = { id: Utils.uid(), asignaturaId: mat.id, codigo: 'MAT 1.1', descripcion: 'Resuelve problemas de suma y resta', peso: 50, espIds: [ce1.id], claveIds: ['cc-stem'] };
+    const c2 = { id: Utils.uid(), asignaturaId: mat.id, codigo: 'MAT 2.1', descripcion: 'Domina las tablas de multiplicar', peso: 25, espIds: [ce1.id], claveIds: [] };
+    const c3 = { id: Utils.uid(), asignaturaId: mat.id, codigo: 'MAT 2.2', descripcion: 'Explica el proceso seguido', peso: 25, espIds: [ce2.id], claveIds: ['cc-ccl'] };
+    db.criterios.push(c1, c2, c3);
+    const ap1 = { id: Utils.uid(), orden: 1, descripcion: 'Problemas escritos', maxPts: 4, criterioIds: [c1.id] };
+    const ap2 = { id: Utils.uid(), orden: 2, descripcion: 'Tablas de multiplicar', maxPts: 2, criterioIds: [c2.id] };
+    const ap3 = { id: Utils.uid(), orden: 3, descripcion: 'Explicación oral o escrita', maxPts: 2, criterioIds: [c3.id] };
+    const inst = {
+      id: Utils.uid(), claseId: clase.id, tipo: 'Control', titulo: 'Control de prueba',
+      fecha: Utils.hoy(), periodo: 'T1', saberes: '', niveles: [], apartados: [ap1, ap2, ap3]
+    };
+    db.instrumentos.push(inst);
+    const valores = [
+      [3.5, 2, 1], [4, 1, 2], [2, 0.5, 1], [3, 1.5, 2], [4, 2, 2], [1.5, 1, 0]
+    ];
+    const reg = {};
+    db.alumnos.forEach((al, i) => {
+      reg[al.id] = {};
+      inst.apartados.forEach((ap, j) => { reg[al.id][ap.id] = valores[i % valores.length][j]; });
+    });
+    db.registros[inst.id] = reg;
+    this.db = db;
+    this.save();
+  }
+};
+
+</script>
+<script>
+const Calc = {
+  byId(lista, id) {
+    return (lista || []).find(x => x.id === id) || null;
+  },
+
+  clase(claseId) { return this.byId(Storage.db.clases, claseId); },
+  asignatura(asigId) { return this.byId(Storage.db.asignaturas, asigId); },
+  criterio(critId) { return this.byId(Storage.db.criterios, critId); },
+  instrumento(instId) { return this.byId(Storage.db.instrumentos, instId); },
+  alumno(aluId) { return this.byId(Storage.db.alumnos, aluId); },
+
+  asignaturaDeClase(claseId) {
+    const cl = this.clase(claseId);
+    return cl ? this.asignatura(cl.asignaturaId) : null;
+  },
+
+  alumnosDeClase(claseId) {
+    const cl = this.clase(claseId);
+    if (!cl) return [];
+    return Storage.db.alumnos
+      .filter(a => a.grupoId === cl.grupoId)
+      .sort((x, y) => (x.apellidos + x.nombre).localeCompare(y.apellidos + y.nombre, 'es'));
+  },
+
+  criteriosDeClase(claseId) {
+    const asig = this.asignaturaDeClase(claseId);
+    if (!asig) return [];
+    return Storage.db.criterios
+      .filter(c => c.asignaturaId === asig.id)
+      .sort((x, y) => String(x.codigo).localeCompare(String(y.codigo), 'es'));
+  },
+
+  competenciasEspecificasDeClase(claseId) {
+    const asig = this.asignaturaDeClase(claseId);
+    if (!asig) return [];
+    return Storage.db.competenciasEspecificas.filter(c => c.asignaturaId === asig.id);
+  },
+
+  clavesDeClase(claseId) {
+    const usadas = new Set();
+    this.criteriosDeClase(claseId).forEach(c => (c.claveIds || []).forEach(k => usadas.add(k)));
+    return Storage.db.competenciasClave.filter(k => usadas.has(k.id));
+  },
+
+  logroCriterioEnInstrumento(inst, alumnoId, criterioId) {
+    const reg = (Storage.db.registros[inst.id] || {})[alumnoId] || {};
+    let obt = 0, max = 0, hay = false;
+    for (const ap of inst.apartados) {
+      if (!ap.criterioIds.includes(criterioId)) continue;
+      const v = reg[ap.id];
+      if (v == null || isNaN(v)) continue;
+      obt += Number(v);
+      max += ap.maxPts;
+      hay = true;
+    }
+    return hay && max > 0 ? obt / max : null;
+  },
+
+  instrumentosDeClase(claseId, periodo) {
+    const lista = Storage.db.instrumentos.filter(i => i.claseId === claseId);
+    if (!periodo || periodo === 'Final') return lista;
+    return lista.filter(i => i.periodo === periodo);
+  },
+
+  logroCriterio(criterioId, claseId, alumnoId, periodo) {
+    const insts = this.instrumentosDeClase(claseId, periodo).filter(i =>
+      i.apartados.some(ap => ap.criterioIds.includes(criterioId))
+    );
+    const logros = [];
+    for (const inst of insts) {
+      const l = this.logroCriterioEnInstrumento(inst, alumnoId, criterioId);
+      if (l != null) logros.push(l);
+    }
+    if (!logros.length) return null;
+    return logros.reduce((a, b) => a + b, 0) / logros.length;
+  },
+
+  notaPonderada(claseId, alumnoId, periodo, filtroCriterios) {
+    const todos = this.criteriosDeClase(claseId);
+    const criterios = filtroCriterios ? todos.filter(filtroCriterios) : todos;
+    let suma = 0, pesos = 0;
+    for (const c of criterios) {
+      const l = this.logroCriterio(c.id, claseId, alumnoId, periodo);
+      if (l == null) continue;
+      suma += l * c.peso;
+      pesos += c.peso;
+    }
+    if (pesos <= 0) return null;
+    return (suma / pesos) * 10;
+  },
+
+  notaEvaluacion(claseId, alumnoId, periodo) {
+    return this.notaPonderada(claseId, alumnoId, periodo, null);
+  },
+
+  notaCompetencia(claseId, alumnoId, espId, periodo) {
+    return this.notaPonderada(claseId, alumnoId, periodo, c => c.espIds.includes(espId));
+  },
+
+  notaClave(claseId, alumnoId, claveId, periodo) {
+    return this.notaPonderada(claseId, alumnoId, periodo, c => (c.claveIds || []).includes(claveId));
+  },
+
+  notaInstrumento(inst, alumnoId) {
+    const reg = (Storage.db.registros[inst.id] || {})[alumnoId] || {};
+    let obt = 0, max = 0;
+    for (const ap of inst.apartados) {
+      const v = reg[ap.id];
+      max += ap.maxPts;
+      if (v != null && !isNaN(v)) obt += Number(v);
+    }
+    return max > 0 ? (obt / max) * 10 : null;
+  },
+
+  clasif(n) {
+    if (n == null || isNaN(n)) return 'na';
+    return n >= 5 ? 'ok' : 'ko';
+  },
+
+  badgeHtml(n) {
+    return '<span class="badge ' + this.clasif(n) + '">' + Utils.fmt(n) + '</span>';
+  }
+};
+
+</script>
+<script>
+const UI = {
+  openModal({ titulo, cuerpo, textoGuardar, alGuardar, peligro }) {
+    const root = document.getElementById('modal-root');
+    root.innerHTML = `
+      <div class="velo">
+        <div class="modal">
+          <div class="modal-head">
+            <h3>${Utils.esc(titulo)}</h3>
+            <button class="icon-btn cerrar" title="Cerrar">×</button>
+          </div>
+          <div class="modal-body"></div>
+          <div class="modal-foot">
+            ${alGuardar ? '<button class="btn cancelar">Cancelar</button><button class="btn btn-primario guardar">' + Utils.esc(textoGuardar || 'Guardar') + '</button>' : '<button class="btn cancelar">Cerrar</button>'}
+          </div>
+        </div>
+      </div>`;
+    const velo = root.querySelector('.velo');
+    const body = root.querySelector('.modal-body');
+    body.innerHTML = cuerpo;
+    const cerrar = () => { root.innerHTML = ''; };
+    root.querySelector('.cerrar').onclick = cerrar;
+    root.querySelector('.cancelar').onclick = cerrar;
+    if (alGuardar) {
+      const btn = root.querySelector('.guardar');
+      if (peligro) btn.classList.add('btn-peligro');
+      btn.onclick = () => {
+        if (alGuardar(body, cerrar) !== false) {
+          cerrar();
+          if (typeof App !== 'undefined' && App.refrescar) App.refrescar();
+        }
+      };
+    }
+    return body;
+  },
+
+  closeModal() {
+    document.getElementById('modal-root').innerHTML = '';
+  },
+
+  toast(msg) {
+    const root = document.getElementById('toast-root');
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.textContent = msg;
+    root.appendChild(t);
+    setTimeout(() => t.remove(), 2600);
+  },
+
+  chipsCriterios(asignaturaId, seleccionados) {
+    const lista = Storage.db.criterios
+      .filter(c => c.asignaturaId === asignaturaId)
+      .sort((a, b) => String(a.codigo).localeCompare(String(b.codigo), 'es'));
+    if (!lista.length) return '<div class="aviso">Primero crea criterios en la sección Currículo.</div>';
+    return `<div class="chips" data-campo="criterios">` + lista.map(c => {
+      const on = (seleccionados || []).includes(c.id);
+      return `<label class="chip ${on ? 'on' : ''}"><input type="checkbox" value="${c.id}" ${on ? 'checked' : ''}>${Utils.esc(c.codigo)} · ${Utils.esc(c.descripcion)}</label>`;
+    }).join('') + '</div>';
+  },
+
+  wireChips(container) {
+    container.querySelectorAll('.chip input').forEach(inp => {
+      inp.addEventListener('change', () => {
+        inp.closest('.chip').classList.toggle('on', inp.checked);
+      });
+    });
+  },
+
+  valoresChips(container) {
+    return Array.from(container.querySelectorAll('input:checked')).map(i => i.value);
+  },
+
+  selectHtml(lista, valorActual, campoId, campoNombre) {
+    return lista.map(x =>
+      `<option value="${x[campoId]}" ${x[campoId] === valorActual ? 'selected' : ''}>${Utils.esc(x[campoNombre])}</option>`
+    ).join('');
+  }
+};
+
+</script>
+<script>
+const AlumnosView = (() => {
+  let grupoSel = null;
+
+  const nombreGrupo = () => {
+    const g = Calc.byId(Storage.db.grupos, grupoSel);
+    return g ? g.nombre : '';
+  };
+
+  const alumnosDe = gid => Storage.db.alumnos
+    .filter(a => a.grupoId === gid)
+    .sort((x, y) => (x.apellidos + x.nombre).localeCompare(y.apellidos + y.nombre, 'es'));
+
+  function modalGrupo(g) {
+    UI.openModal({
+      titulo: g ? 'Editar grupo' : 'Nuevo grupo',
+      cuerpo: `
+        <label class="campo"><span>Nombre del grupo</span>
+          <input type="text" id="f-nombre" value="${Utils.esc(g ? g.nombre : '')}" placeholder="Ej. 3ºA"></label>
+        <label class="campo"><span>Etapa</span>
+          <select id="f-etapa">
+            <option ${g && g.etapa === 'Primaria' ? 'selected' : ''}>Primaria</option>
+            <option ${g && g.etapa === 'Infantil' ? 'selected' : ''}>Infantil</option>
+          </select></label>`,
+      alGuardar(body) {
+        const nombre = body.querySelector('#f-nombre').value.trim();
+        if (!nombre) return false;
+        if (g) { g.nombre = nombre; g.etapa = body.querySelector('#f-etapa').value; }
+        else {
+          const nuevo = { id: Utils.uid(), nombre, etapa: body.querySelector('#f-etapa').value };
+          Storage.db.grupos.push(nuevo);
+          grupoSel = nuevo.id;
+        }
+        Storage.save();
+      }
+    });
+  }
+
+  function modalAlumno() {
+    UI.openModal({
+      titulo: 'Nuevo alumno en ' + nombreGrupo(),
+      cuerpo: `
+        <label class="campo"><span>Nombre</span><input type="text" id="f-nombre" placeholder="Nombre"></label>
+        <label class="campo"><span>Apellidos</span><input type="text" id="f-apellidos" placeholder="Apellidos"></label>`,
+      alGuardar(body) {
+        const nombre = body.querySelector('#f-nombre').value.trim();
+        const apellidos = body.querySelector('#f-apellidos').value.trim();
+        if (!nombre && !apellidos) return false;
+        Storage.db.alumnos.push({ id: Utils.uid(), nombre, apellidos, grupoId: grupoSel });
+        Storage.save();
+      }
+    });
+  }
+
+  function render(el) {
+    const db = Storage.db;
+    el.innerHTML = `
+      <div class="grid-2">
+        <section class="card">
+          <div class="card-head">
+            <h2>Grupos</h2>
+            <button class="btn btn-primario" id="add-grupo">Nuevo grupo</button>
+          </div>
+          <ul class="lista" id="lista-grupos">
+            ${db.grupos.map(g => `
+              <li data-id="${g.id}" class="${g.id === grupoSel ? 'activo' : ''}">
+                <span>${Utils.esc(g.nombre)}</span><small>${Utils.esc(g.etapa)}</small>
+                <button class="icon-btn borrar-grupo" data-id="${g.id}" title="Eliminar grupo">×</button>
+              </li>`).join('') || '<li class="vacio">Sin grupos todavía. Crea el primero.</li>'}
+          </ul>
+        </section>
+        <section class="card">
+          <div class="card-head">
+            <h2>Alumnos${grupoSel ? ' · ' + Utils.esc(nombreGrupo()) : ''}</h2>
+            <button class="btn btn-primario" id="add-alumno" ${grupoSel ? '' : 'disabled'}>Nuevo alumno</button>
+          </div>
+          <table class="tabla">
+            <thead><tr><th>Apellidos</th><th>Nombre</th><th></th></tr></thead>
+            <tbody>
+              ${grupoSel ? alumnosDe(grupoSel).map(a => `
+                <tr>
+                  <td>${Utils.esc(a.apellidos)}</td>
+                  <td>${Utils.esc(a.nombre)}</td>
+                  <td style="width:36px"><button class="icon-btn borrar-alumno" data-id="${a.id}" title="Eliminar">×</button></td>
+                </tr>`).join('') || '<tr><td colspan="3" class="vacio">Este grupo no tiene alumnos aún.</td></tr>'
+                : '<tr><td colspan="3" class="vacio">Selecciona un grupo para ver sus alumnos.</td></tr>'}
+            </tbody>
+          </table>
+        </section>
+      </div>`;
+
+    el.querySelector('#add-grupo').onclick = () => modalGrupo(null);
+    el.querySelector('#add-alumno').onclick = () => modalAlumno();
+    el.querySelectorAll('#lista-grupos li[data-id]').forEach(li => {
+      li.addEventListener('click', e => {
+        if (e.target.closest('.borrar-grupo')) return;
+        grupoSel = li.dataset.id;
+        render(el);
+      });
+    });
+    el.querySelectorAll('.borrar-grupo').forEach(b => {
+      b.onclick = e => {
+        e.stopPropagation();
+        const id = b.dataset.id;
+        const nAlu = db.alumnos.filter(a => a.grupoId === id).length;
+        const extra = nAlu ? ` También se eliminarán ${nAlu} alumno(s).` : '';
+        if (confirm('¿Eliminar este grupo?' + extra)) {
+          db.alumnos = db.alumnos.filter(a => a.grupoId !== id);
+          db.clases = db.clases.filter(c => c.grupoId !== id);
+          db.grupos = db.grupos.filter(g => g.id !== id);
+          if (grupoSel === id) grupoSel = null;
+          Storage.save();
+          render(el);
+        }
+      };
+    });
+    el.querySelectorAll('.borrar-alumno').forEach(b => {
+      b.onclick = () => {
+        if (confirm('¿Eliminar este alumno y todas sus notas?')) {
+          const id = b.dataset.id;
+          db.alumnos = db.alumnos.filter(a => a.id !== id);
+          for (const instId of Object.keys(db.registros)) delete db.registros[instId][id];
+          Storage.save();
+          render(el);
+        }
+      };
+    });
+  }
+
+  return { render };
+})();
+
+</script>
+<script>
+const ClasesView = (() => {
+  function modalAsignatura() {
+    UI.openModal({
+      titulo: 'Nueva asignatura / área',
+      cuerpo: `
+        <label class="campo"><span>Nombre</span>
+          <input type="text" id="f-nombre" placeholder="Ej. Matemáticas"></label>
+        <label class="campo"><span>Etapa</span>
+          <select id="f-etapa"><option>Primaria</option><option>Infantil</option></select></label>`,
+      alGuardar(body) {
+        const nombre = body.querySelector('#f-nombre').value.trim();
+        if (!nombre) return false;
+        Storage.db.asignaturas.push({ id: Utils.uid(), nombre, etapa: body.querySelector('#f-etapa').value });
+        Storage.save();
+      }
+    });
+  }
+
+  function modalClase() {
+    const db = Storage.db;
+    if (!db.asignaturas.length || !db.grupos.length) {
+      UI.toast('Necesitas al menos una asignatura y un grupo');
+      return;
+    }
+    UI.openModal({
+      titulo: 'Nueva clase',
+      cuerpo: `
+        <label class="campo"><span>Asignatura</span>
+          <select id="f-asig">${UI.selectHtml(db.asignaturas, null, 'id', 'nombre')}</select></label>
+        <label class="campo"><span>Grupo</span>
+          <select id="f-grupo">${UI.selectHtml(db.grupos, null, 'id', 'nombre')}</select></label>`,
+      alGuardar(body) {
+        const asignaturaId = body.querySelector('#f-asig').value;
+        const grupoId = body.querySelector('#f-grupo').value;
+        if (db.clases.some(c => c.asignaturaId === asignaturaId && c.grupoId === grupoId)) {
+          alert('Esa clase ya existe');
+          return false;
+        }
+        db.clases.push({ id: Utils.uid(), asignaturaId, grupoId });
+        Storage.save();
+      }
+    });
+  }
+
+  function render(el) {
+    const db = Storage.db;
+    el.innerHTML = `
+      <div class="grid-2">
+        <section class="card">
+          <div class="card-head">
+            <h2>Asignaturas</h2>
+            <button class="btn btn-primario" id="add-asig">Nueva asignatura</button>
+          </div>
+          <ul class="lista" id="lista-asig">
+            ${db.asignaturas.map(a => `
+              <li data-id="${a.id}">
+                <span>${Utils.esc(a.nombre)}</span><small>${Utils.esc(a.etapa)}</small>
+                <button class="icon-btn borrar-asig" data-id="${a.id}" title="Eliminar">×</button>
+              </li>`).join('') || '<li class="vacio">Sin asignaturas. Crea la primera.</li>'}
+          </ul>
+        </section>
+        <section class="card">
+          <div class="card-head">
+            <h2>Clases <small class="sub" style="margin:0">asignatura · grupo</small></h2>
+            <button class="btn btn-primario" id="add-clase">Nueva clase</button>
+          </div>
+          <table class="tabla">
+            <thead><tr><th>Asignatura</th><th>Grupo</th><th>Alumnos</th><th></th></tr></thead>
+            <tbody>
+              ${db.clases.map(c => {
+                const asig = Calc.asignatura(c.asignaturaId) || { nombre: '?' };
+                const gru = Calc.byId(db.grupos, c.grupoId) || { nombre: '?' };
+                const nAlu = db.alumnos.filter(a => a.grupoId === c.grupoId).length;
+                return `<tr>
+                  <td>${Utils.esc(asig.nombre)}</td>
+                  <td>${Utils.esc(gru.nombre)}</td>
+                  <td>${nAlu}</td>
+                  <td style="width:36px"><button class="icon-btn borrar-clase" data-id="${c.id}" title="Eliminar">×</button></td>
+                </tr>`;
+              }).join('') || '<tr><td colspan="4" class="vacio">Crea una clase combinando asignatura y grupo.</td></tr>'}
+            </tbody>
+          </table>
+        </section>
+      </div>`;
+
+    el.querySelector('#add-asig').onclick = () => modalAsignatura();
+    el.querySelector('#add-clase').onclick = () => modalClase();
+
+    el.querySelectorAll('.borrar-asig').forEach(b => {
+      b.onclick = e => {
+        e.stopPropagation();
+        const id = b.dataset.id;
+        const nCrit = db.criterios.filter(x => x.asignaturaId === id).length;
+        const nClas = db.clases.filter(x => x.asignaturaId === id).length;
+        if (confirm(`¿Eliminar la asignatura y TODO su currículo? (${nCrit} criterios, ${nClas} clases)`)) {
+          const instIds = db.instrumentos.filter(i => nClas && db.clases.some(c => c.id === i.claseId && c.asignaturaId === id)).map(i => i.id);
+          instIds.forEach(i => delete db.registros[i]);
+          db.instrumentos = db.instrumentos.filter(i => !instIds.includes(i.id));
+          db.criterios = db.criterios.filter(x => x.asignaturaId !== id);
+          db.competenciasEspecificas = db.competenciasEspecificas.filter(x => x.asignaturaId !== id);
+          db.clases = db.clases.filter(x => x.asignaturaId !== id);
+          db.asignaturas = db.asignaturas.filter(x => x.id !== id);
+          Storage.save();
+          render(el);
+        }
+      };
+    });
+
+    el.querySelectorAll('.borrar-clase').forEach(b => {
+      b.onclick = () => {
+        const id = b.dataset.id;
+        if (!confirm('¿Eliminar esta clase? Sus instrumentos y notas también se eliminarán.')) return;
+        delete db.registros[id];
+        db.instrumentos = db.instrumentos.filter(i => i.claseId !== id);
+        db.clases = db.clases.filter(c => c.id !== id);
+        Storage.save();
+        render(el);
+      };
+    });
+  }
+
+  return { render };
+})();
+
+</script>
+<script>
+// Plantillas de currículo oficial generadas desde el Decreto 66/2022 (BOC nº 135).
+// Archivo generado: no editar a mano; regenerar desde plantillas/*.json.
+const PLANTILLAS_CURRICULO = [{"version":1,"tipo":"curriculo-evalcrit","fuente":"Decreto 66/2022, de 7 de julio, por el que se establece el currículo de Educación Infantil y Primaria en la Comunidad Autónoma de Cantabria (BOC nº 135, 13-07-2022), Anexo II-A","asignatura":{"nombre":"Matemáticas","etapa":"Primaria","ciclo":"Tercer ciclo","cursos":["5º","6º"]},"saberesBasicos":[{"bloque":"A. Sentido numérico","apartados":["Conteo","Cantidad","Sentido de las operaciones","Relaciones","Razonamiento proporcional","Educación financiera"]},{"bloque":"B. Sentido de la medida","apartados":["Magnitud","Medición","Estimación y relaciones"]},{"bloque":"C. Sentido espacial","apartados":["Figuras geométricas de dos y tres dimensiones","Localización y sistemas de representación","Movimientos y transformaciones","Visualización, razonamiento y modelización geométrica"]},{"bloque":"D. Sentido algebraico","apartados":["Patrones","Modelo matemático","Relaciones y funciones","Pensamiento computacional"]},{"bloque":"E. Sentido estocástico","apartados":["Organización y análisis de datos","Incertidumbre","Inferencia"]},{"bloque":"F. Sentido socioafectivo","apartados":["Creencias, actitudes y emociones propias","Trabajo en equipo, inclusión, respeto y diversidad"]}],"competenciasEspecificas":[{"codigo":"MAT.TC.CE1","descripcion":"Interpretar situaciones de la vida cotidiana, proporcionando una representación matemática de las mismas mediante conceptos, herramientas y estrategias, para analizar la información más relevante.","perfilSalida":["STEM1","STEM2","STEM4","CD2","CPSAA5","CE1","CE3","CCEC4"]},{"codigo":"MAT.TC.CE2","descripcion":"Resolver situaciones problematizadas, aplicando diferentes técnicas, estrategias y formas de razonamiento, para explorar distintas maneras de proceder, obtener soluciones y asegurar su validez desde un punto de vista formal y en relación con el contexto planteado.","perfilSalida":["STEM1","STEM2","CPSAA4","CPSAA5","CE3"]},{"codigo":"MAT.TC.CE3","descripcion":"Explorar, formular y comprobar conjeturas sencillas o plantear problemas de tipo matemático en situaciones basadas en la vida cotidiana, de forma guiada, reconociendo el valor del razonamiento y la argumentación, para contrastar su validez, adquirir e integrar nuevo conocimiento.","perfilSalida":["CCL1","STEM1","STEM2","CD1","CD3","CD5","CE3"]},{"codigo":"MAT.TC.CE4","descripcion":"Utilizar el pensamiento computacional, organizando datos, descomponiendo en partes, reconociendo patrones, generalizando e interpretando, modificando y creando algoritmos de forma guiada, para modelizar y automatizar situaciones de la vida cotidiana.","perfilSalida":["STEM1","STEM2","STEM3","CD1","CD3","CD5","CE3"]},{"codigo":"MAT.TC.CE5","descripcion":"Reconocer y utilizar conexiones entre las diferentes ideas matemáticas, así como identificar las matemáticas implicadas en otras áreas o en la vida cotidiana, interrelacionando conceptos y procedimientos, para interpretar situaciones y contextos diversos.","perfilSalida":["STEM1","STEM3","CD3","CD5","CC4","CCEC1"]},{"codigo":"MAT.TC.CE6","descripcion":"Comunicar y representar, de forma individual y colectiva, conceptos, procedimientos y resultados matemáticos, utilizando el lenguaje oral, escrito, gráfico, multimodal y la terminología apropiados, para dar significado y permanencia a las ideas matemáticas.","perfilSalida":["CCL1","CCL3","STEM2","STEM4","CD1","CD5","CE3","CCEC4"]},{"codigo":"MAT.TC.CE7","descripcion":"Desarrollar destrezas personales que ayuden a identificar y gestionar emociones al enfrentarse a retos matemáticos, fomentando la confianza en las propias posibilidades, aceptando el error como parte del proceso de aprendizaje y adaptándose a las situaciones de incertidumbre, para mejorar la perseverancia y disfrutar en el aprendizaje de las matemáticas.","perfilSalida":["STEM5","CPSAA1","CPSAA4","CPSAA5","CE2","CE3"]},{"codigo":"MAT.TC.CE8","descripcion":"Desarrollar destrezas sociales, reconociendo y respetando las emociones, las experiencias de los demás y el valor de la diversidad y participando activamente en equipos de trabajo heterogéneos con roles asignados, para construir una identidad positiva como estudiante de matemáticas, fomentar el bienestar personal y crear relaciones saludables.","perfilSalida":["CCL5","CP3","STEM3","CPSAA1","CPSAA3","CC2","CC3"]}],"criterios":[{"codigo":"MAT.TC.1.1","ceCodigo":"MAT.TC.CE1","descripcion":"Comprender problemas de la vida cotidiana a través de la reformulación de la pregunta, de forma verbal y gráfica.","peso":null},{"codigo":"MAT.TC.1.2","ceCodigo":"MAT.TC.CE1","descripcion":"Elaborar representaciones matemáticas que ayuden en la búsqueda y elección de estrategias y herramientas, incluidas las tecnológicas, para la resolución de una situación problematizada.","peso":null},{"codigo":"MAT.TC.2.1","ceCodigo":"MAT.TC.CE2","descripcion":"Seleccionar entre diferentes estrategias para resolver un problema, justificando la elección.","peso":null},{"codigo":"MAT.TC.2.2","ceCodigo":"MAT.TC.CE2","descripcion":"Obtener posibles soluciones de un problema, seleccionando entre varias estrategias conocidas de forma autónoma.","peso":null},{"codigo":"MAT.TC.2.3","ceCodigo":"MAT.TC.CE2","descripcion":"Comprobar la corrección matemática de las soluciones de un problema y su coherencia en el contexto planteado.","peso":null},{"codigo":"MAT.TC.3.1","ceCodigo":"MAT.TC.CE3","descripcion":"Formular conjeturas matemáticas sencillas investigando patrones, propiedades y relaciones de forma guiada.","peso":null},{"codigo":"MAT.TC.3.2","ceCodigo":"MAT.TC.CE3","descripcion":"Plantear nuevos problemas sobre situaciones cotidianas que se resuelvan matemáticamente.","peso":null},{"codigo":"MAT.TC.4.1","ceCodigo":"MAT.TC.CE4","descripcion":"Modelizar situaciones de la vida cotidiana utilizando, de forma pautada, principios básicos del pensamiento computacional.","peso":null},{"codigo":"MAT.TC.4.2","ceCodigo":"MAT.TC.CE4","descripcion":"Emplear herramientas tecnológicas adecuadas en la investigación y resolución de problemas.","peso":null},{"codigo":"MAT.TC.5.1","ceCodigo":"MAT.TC.CE5","descripcion":"Utilizar conexiones entre diferentes elementos matemáticos movilizando conocimientos y experiencias propios.","peso":null},{"codigo":"MAT.TC.5.2","ceCodigo":"MAT.TC.CE5","descripcion":"Utilizar las conexiones entre las matemáticas, otras áreas y la vida cotidiana para resolver problemas en contextos no matemáticos.","peso":null},{"codigo":"MAT.TC.6.1","ceCodigo":"MAT.TC.CE6","descripcion":"Interpretar el lenguaje matemático sencillo presente en la vida cotidiana en diferentes formatos, adquiriendo vocabulario apropiado y mostrando la comprensión del mensaje.","peso":null},{"codigo":"MAT.TC.6.2","ceCodigo":"MAT.TC.CE6","descripcion":"Comunicar en diferentes formatos las conjeturas y procesos matemáticos, utilizando lenguaje matemático adecuado.","peso":null},{"codigo":"MAT.TC.7.1","ceCodigo":"MAT.TC.CE7","descripcion":"Autorregular las emociones propias y reconocer algunas fortalezas y debilidades, desarrollando así la autoconfianza al abordar retos matemáticos.","peso":null},{"codigo":"MAT.TC.7.2","ceCodigo":"MAT.TC.CE7","descripcion":"Elegir actitudes positivas ante retos matemáticos, tales como la perseverancia y la responsabilidad, valorando el error como una oportunidad de aprendizaje.","peso":null},{"codigo":"MAT.TC.8.1","ceCodigo":"MAT.TC.CE8","descripcion":"Trabajar en equipo activa, respetuosa y responsablemente, mostrando iniciativa, comunicándose de forma efectiva, valorando la diversidad, mostrando empatía y estableciendo relaciones saludables basadas en el respeto, la igualdad y la resolución pacífica de conflictos.","peso":null},{"codigo":"MAT.TC.8.2","ceCodigo":"MAT.TC.CE8","descripcion":"Colaborar en el reparto de tareas, asumiendo y respetando las responsabilidades individuales asignadas y empleando estrategias de trabajo en equipo sencillas dirigidas a la consecución de objetivos compartidos.","peso":null}]},{"version":1,"tipo":"curriculo-evalcrit","fuente":"Decreto 66/2022, de 7 de julio (BOC nº 135, 13-07-2022), Anexo II-A. Área oficial: Conocimiento del Medio Natural, Social y Cultural.","asignatura":{"nombre":"Conocimiento del Medio","etapa":"Primaria","ciclo":"Tercer ciclo","cursos":["5º","6º"]},"saberesBasicos":[{"bloque":"A. Cultura científica","apartados":["Iniciación en la actividad científica","La vida en nuestro planeta","Materia, fuerzas y energía"]},{"bloque":"B. Tecnología y digitalización","apartados":["Digitalización del entorno personal de aprendizaje","Proyectos de diseño y pensamiento computacional"]},{"bloque":"C. Sociedades y territorios","apartados":["Retos del mundo actual","Sociedades en el tiempo","Alfabetización cívica"]}],"competenciasEspecificas":[{"codigo":"CM.TC.CE1","descripcion":"Utilizar dispositivos y recursos digitales de forma segura, responsable y eficiente, para buscar información, comunicarse y trabajar de manera individual, en equipo y en red, y para reelaborar y crear contenido digital de acuerdo con las necesidades digitales del contexto educativo.","perfilSalida":["CCL3","STEM4","CD1","CD2","CD3","CD4","CD5","CCEC4"]},{"codigo":"CM.TC.CE2","descripcion":"Plantear y dar respuesta a cuestiones científicas sencillas, utilizando diferentes técnicas, instrumentos y modelos propios del pensamiento científico, para interpretar y explicar hechos y fenómenos que ocurren en el medio natural, social y cultural.","perfilSalida":["CCL1","CCL2","CCL3","STEM2","STEM4","CD1","CD2","CC4"]},{"codigo":"CM.TC.CE3","descripcion":"Resolver problemas a través de proyectos de diseño y de la aplicación del pensamiento computacional, para generar cooperativamente un producto creativo e innovador que responda a necesidades concretas.","perfilSalida":["STEM3","STEM4","CD5","CPSAA3","CPSAA4","CPSAA5","CE1","CE3","CCEC4"]},{"codigo":"CM.TC.CE4","descripcion":"Conocer y tomar conciencia del propio cuerpo, así como de las emociones y sentimientos propios y ajenos, aplicando el conocimiento científico, para desarrollar hábitos saludables y para conseguir el bienestar físico, emocional y social.","perfilSalida":["STEM5","CPSAA1","CPSAA2","CPSAA3","CC3"]},{"codigo":"CM.TC.CE5","descripcion":"Identificar las características de los diferentes elementos o sistemas del medio natural, social y cultural, analizando su organización y propiedades y estableciendo relaciones entre los mismos, para reconocer el valor del patrimonio cultural y natural, conservarlo, mejorarlo y emprender acciones para su uso responsable.","perfilSalida":["STEM1","STEM2","STEM4","STEM5","CD1","CC4","CE1","CCEC1"]},{"codigo":"CM.TC.CE6","descripcion":"Identificar las causas y consecuencias de la intervención humana en el entorno, desde los puntos de vista social, económico, cultural, tecnológico y ambiental, para mejorar la capacidad de afrontar problemas, buscar soluciones y actuar de manera individual y cooperativa en su resolución, y para poner en práctica estilos de vida sostenibles y consecuentes con el respeto, el cuidado y la protección de las personas y del planeta.","perfilSalida":["CCL5","STEM2","STEM5","CPSAA4","CC1","CC3","CC4","CE1"]},{"codigo":"CM.TC.CE7","descripcion":"Observar, comprender e interpretar continuidades y cambios del medio social y cultural, analizando relaciones de causalidad, simultaneidad y sucesión, para explicar y valorar las relaciones entre diferentes elementos y acontecimientos.","perfilSalida":["CCL3","STEM4","CPSAA4","CC1","CC3","CE2","CCEC1"]},{"codigo":"CM.TC.CE8","descripcion":"Reconocer y valorar la diversidad y la igualdad de género, mostrando empatía y respeto por otras culturas y reflexionando sobre cuestiones éticas, para contribuir al bienestar individual y colectivo de una sociedad en continua transformación y al logro de los valores de integración europea.","perfilSalida":["CP3","CPSAA3","CC1","CC2","CC3","CCEC1"]},{"codigo":"CM.TC.CE9","descripcion":"Participar en el entorno y la vida social de forma eficaz y constructiva desde el respeto a los valores democráticos, los derechos humanos y de la infancia y los principios y valores de la Constitución española y la Unión Europea, valorando la función del Estado y sus instituciones en el mantenimiento de la paz y la seguridad integral ciudadana, para generar interacciones respetuosas y equitativas y promover la resolución pacífica y dialogada de los conflictos.","perfilSalida":["CCL5","CPSAA1","CC1","CC2","CC3","CCEC1"]}],"criterios":[{"codigo":"CM.TC.1.1","ceCodigo":"CM.TC.CE1","descripcion":"Utilizar recursos digitales de acuerdo con las necesidades del contexto educativo de forma segura y eficiente, buscando información, comunicándose y trabajando de forma individual, en equipo y en red, reelaborando y creando contenidos digitales sencillos.","peso":null},{"codigo":"CM.TC.2.1","ceCodigo":"CM.TC.CE2","descripcion":"Formular preguntas y realizar predicciones razonadas sobre el medio natural, social o cultural mostrando y manteniendo la curiosidad.","peso":null},{"codigo":"CM.TC.2.2","ceCodigo":"CM.TC.CE2","descripcion":"Buscar, seleccionar y contrastar información, de diferentes fuentes seguras y fiables, usando los criterios de fiabilidad de fuentes, adquiriendo léxico científico básico, y utilizándola en investigaciones relacionadas con el medio natural, social y cultural.","peso":null},{"codigo":"CM.TC.2.3","ceCodigo":"CM.TC.CE2","descripcion":"Diseñar y realizar experimentos guiados, cuando la investigación lo requiera, utilizando diferentes técnicas de indagación y modelos, empleando de forma segura los instrumentos y dispositivos apropiados, realizando observaciones y mediciones precisas y registrándolas correctamente.","peso":null},{"codigo":"CM.TC.2.4","ceCodigo":"CM.TC.CE2","descripcion":"Proponer posibles respuestas a las preguntas planteadas, a través del análisis y la interpretación de la información y los resultados obtenidos, valorando la coherencia de las posibles soluciones y comparándolas con las predicciones realizadas.","peso":null},{"codigo":"CM.TC.2.5","ceCodigo":"CM.TC.CE2","descripcion":"Comunicar los resultados de las investigaciones adaptando el mensaje y el formato a la audiencia a la que va dirigido, utilizando el lenguaje científico y explicando los pasos seguidos.","peso":null},{"codigo":"CM.TC.3.1","ceCodigo":"CM.TC.CE3","descripcion":"Plantear problemas de diseño que se resuelvan con la creación de un prototipo o solución digital, evaluando necesidades del entorno y estableciendo objetivos concretos.","peso":null},{"codigo":"CM.TC.3.2","ceCodigo":"CM.TC.CE3","descripcion":"Diseñar posibles soluciones a los problemas planteados de acuerdo con técnicas sencillas de los proyectos de diseño y pensamiento computacional, mediante estrategias básicas de gestión de proyectos cooperativos, teniendo en cuenta los recursos necesarios y estableciendo criterios concretos para evaluar el proyecto.","peso":null},{"codigo":"CM.TC.3.3","ceCodigo":"CM.TC.CE3","descripcion":"Desarrollar un producto final que dé solución a un problema de diseño, probando en equipo diferentes prototipos o soluciones digitales y utilizando de forma segura las herramientas, dispositivos, técnicas y materiales adecuados.","peso":null},{"codigo":"CM.TC.3.4","ceCodigo":"CM.TC.CE3","descripcion":"Comunicar el diseño de un producto final, adaptando el mensaje y el formato a la audiencia, explicando los pasos seguidos, justificando por qué ese prototipo o solución digital cumple con los requisitos del proyecto y proponiendo posibles retos para futuros proyectos.","peso":null},{"codigo":"CM.TC.4.1","ceCodigo":"CM.TC.CE4","descripcion":"Promover actitudes que fomenten el bienestar emocional y social, gestionando las emociones propias y respetando las de los demás, fomentando relaciones afectivas saludables y reflexionando ante los usos de la tecnología y la gestión del tiempo libre.","peso":null},{"codigo":"CM.TC.4.2","ceCodigo":"CM.TC.CE4","descripcion":"Adoptar estilos de vida saludables valorando la importancia de una alimentación variada, equilibrada y sostenible, el ejercicio físico, el contacto con la naturaleza, el descanso, la higiene, la prevención de enfermedades y el uso adecuado de nuevas tecnologías.","peso":null},{"codigo":"CM.TC.5.1","ceCodigo":"CM.TC.CE5","descripcion":"Identificar y analizar las características, la organización y las propiedades de los elementos del medio natural, social y cultural a través de la indagación utilizando las herramientas y procesos adecuados.","peso":null},{"codigo":"CM.TC.5.2","ceCodigo":"CM.TC.CE5","descripcion":"Establecer conexiones sencillas entre diferentes elementos del medio natural, social y cultural mostrando comprensión de las relaciones que se establecen.","peso":null},{"codigo":"CM.TC.5.3","ceCodigo":"CM.TC.CE5","descripcion":"Valorar, proteger y mostrar actitudes de conservación y mejora del patrimonio natural y cultural a través de propuestas y acciones que reflejen compromisos y conductas en favor de la sostenibilidad.","peso":null},{"codigo":"CM.TC.6.1","ceCodigo":"CM.TC.CE6","descripcion":"Promover estilos de vida sostenible y consecuentes con el respeto, los cuidados, la corresponsabilidad y la protección de las personas y del planeta, a partir del análisis de la intervención humana en el entorno.","peso":null},{"codigo":"CM.TC.6.2","ceCodigo":"CM.TC.CE6","descripcion":"Participar con actitud emprendedora en la búsqueda, contraste y evaluación de propuestas para afrontar problemas ecosociales, buscar soluciones y actuar para su resolución, a partir del análisis de las causas y consecuencias de la intervención humana en el entorno.","peso":null},{"codigo":"CM.TC.7.1","ceCodigo":"CM.TC.CE7","descripcion":"Analizar relaciones de causalidad, simultaneidad y sucesión entre diferentes elementos del medio social y cultural desde la Edad Media hasta la actualidad, situando cronológicamente los hechos.","peso":null},{"codigo":"CM.TC.7.2","ceCodigo":"CM.TC.CE7","descripcion":"Conocer personas, grupos sociales relevantes y formas de vida de las sociedades desde la Edad Media hasta la actualidad, incorporando la perspectiva de género, situándolas cronológicamente e identificando rasgos significativos sociales en distintas épocas de la historia.","peso":null},{"codigo":"CM.TC.8.1","ceCodigo":"CM.TC.CE8","descripcion":"Analizar los procesos geográficos, históricos y culturales que han conformado la sociedad actual, valorando la diversidad etnocultural o afectivo-sexual y la cohesión social y mostrando empatía y respeto por otras culturas y la igualdad de género.","peso":null},{"codigo":"CM.TC.8.2","ceCodigo":"CM.TC.CE8","descripcion":"Promover actitudes de igualdad de género y conductas no sexistas, analizando y contrastando diferentes modelos en nuestra sociedad.","peso":null},{"codigo":"CM.TC.9.1","ceCodigo":"CM.TC.CE9","descripcion":"Resolver de forma pacífica y dialogada los conflictos, promoviendo una interacción respetuosa y equitativa a partir del lenguaje inclusivo y no violento, explicando y ejercitando las principales normas, derechos, deberes y libertades que forman parte de la Constitución española y de la de la Unión Europea, y conociendo la función que el Estado y sus instituciones desempeñan en el mantenimiento de la paz, la seguridad integral ciudadana y el reconocimiento de las víctimas de violencia.","peso":null},{"codigo":"CM.TC.9.2","ceCodigo":"CM.TC.CE9","descripcion":"Explicar el funcionamiento general de los órganos de gobierno del municipio, de las comunidades autónomas, del Estado español y de la Unión Europea, valorando sus funciones y la gestión de los servicios públicos para la ciudadanía.","peso":null}]}];
+
+</script>
+<script>
+const CurriculoView = (() => {
+  let asigSel = null;
+
+  const criteriosDe = () => Storage.db.criterios
+    .filter(c => c.asignaturaId === asigSel)
+    .sort((a, b) => String(a.codigo).localeCompare(String(b.codigo), 'es'));
+
+  const espDe = () => Storage.db.competenciasEspecificas
+    .filter(c => c.asignaturaId === asigSel)
+    .sort((a, b) => String(a.codigo).localeCompare(String(b.codigo), 'es'));
+
+  function modalCriterio(c) {
+    const esp = espDe();
+    const claves = Storage.db.competenciasClave;
+    UI.openModal({
+      titulo: c ? 'Editar criterio' : 'Nuevo criterio',
+      cuerpo: `
+        <div class="fila-campos">
+          <label class="campo"><span>Código</span>
+            <input type="text" id="f-cod" value="${Utils.esc(c ? c.codigo : '')}" placeholder="Ej. MAT 1.1"></label>
+          <label class="campo"><span>Peso %</span>
+            <input type="number" id="f-peso" min="0" max="100" step="0.5" value="${c ? c.peso : ''}" placeholder="50"></label>
+        </div>
+        <label class="campo"><span>Descripción del criterio</span>
+          <textarea id="f-desc" rows="2" placeholder="Qué se evalúa">${Utils.esc(c ? c.descripcion : '')}</textarea></label>
+        <label class="campo"><span>Competencias específicas (obligatorio al menos una)</span>
+          ${esp.length ? `<div class="chips" data-campo="esp">` + esp.map(e => {
+            const on = c && c.espIds.includes(e.id);
+            return `<label class="chip ${on ? 'on' : ''}"><input type="checkbox" value="${e.id}" ${on ? 'checked' : ''}>${Utils.esc(e.codigo)}</label>`;
+          }).join('') + '</div>' : '<div class="aviso">Crea primero una competencia específica.</div>'}
+        </label>
+        <label class="campo"><span>Competencias clave del perfil de salida (opcional)</span>
+          <div class="chips" data-campo="clave">
+            ${claves.map(k => {
+              const on = c && c.claveIds.includes(k.id);
+              return `<label class="chip ${on ? 'on' : ''}"><input type="checkbox" value="${k.id}" ${on ? 'checked' : ''}>${Utils.esc(k.codigo)}</label>`;
+            }).join('')}
+          </div></label>`,
+      textoGuardar: 'Guardar criterio',
+      alGuardar(body) {
+        const codigo = body.querySelector('#f-cod').value.trim();
+        const descripcion = body.querySelector('#f-desc').value.trim();
+        const peso = parseFloat(body.querySelector('#f-peso').value);
+        if (!codigo || !descripcion || isNaN(peso)) return false;
+        const espIds = UI.valoresChips(body.querySelector('[data-campo=esp]'));
+        if (!espIds.length) {
+          alert('Asigna al menos una competencia específica');
+          return false;
+        }
+        const claveIds = UI.valoresChips(body.querySelector('[data-campo=clave]'));
+        if (c) {
+          Object.assign(c, { codigo, descripcion, peso, espIds, claveIds });
+        } else {
+          Storage.db.criterios.push({ id: Utils.uid(), asignaturaId: asigSel, codigo, descripcion, peso, espIds, claveIds });
+        }
+        Storage.save();
+      }
+    });
+    UI.wireChips(document.querySelector('.modal-body'));
+  }
+
+  function modalEsp() {
+    UI.openModal({
+      titulo: 'Nueva competencia específica',
+      cuerpo: `
+        <div class="fila-campos">
+          <label class="campo"><span>Código</span><input type="text" id="f-cod" placeholder="Ej. CE1"></label>
+        </div>
+        <label class="campo"><span>Descripción</span>
+          <textarea id="f-desc" rows="2" placeholder="Descripción de la competencia específica"></textarea></label>`,
+      textoGuardar: 'Añadir',
+      alGuardar(body) {
+        const codigo = body.querySelector('#f-cod').value.trim();
+        const descripcion = body.querySelector('#f-desc').value.trim();
+        if (!codigo || !descripcion) return false;
+        Storage.db.competenciasEspecificas.push({ id: Utils.uid(), asignaturaId: asigSel, codigo, descripcion });
+        Storage.save();
+      }
+    });
+  }
+
+  function modalImportar() {
+    const incluidas = (typeof PLANTILLAS_CURRICULO !== 'undefined') ? PLANTILLAS_CURRICULO : [];
+    let datos = null;
+    const cuerpo = `
+        ${incluidas.length ? `
+        <label class="campo"><span>Plantillas oficiales incluidas (Decreto 66/2022 · Cantabria)</span>
+          <div class="chips" data-campo="plantillas">
+            ${incluidas.map((p, i) => `<label class="chip"><input type="checkbox" value="${i}">${Utils.esc(p.asignatura.nombre)} · ${Utils.esc(p.asignatura.ciclo || '')}</label>`).join('')}
+          </div>
+          <small style="color:var(--tinta-suave)">Cada plantilla crea una asignatura por curso con su currículo completo y pesos equitativos.</small></label>` : ''}
+        <label class="campo"><span>…o carga una plantilla desde archivo (.json)</span>
+          <input type="file" id="f-archivo" accept=".json,application/json"></label>
+        <div id="resumen-import" class="aviso" style="display:none"></div>`;
+    const mbody = UI.openModal({
+      titulo: 'Importar currículo oficial',
+      cuerpo,
+      textoGuardar: 'Importar',
+      alGuardar(mbody2) {
+        const sel = UI.valoresChips(mbody2.querySelector('[data-campo=plantillas]'));
+        if (sel.length) {
+          const nombres = [];
+          const errores = [];
+          for (const v of sel) {
+            try {
+              const r = Storage.importarCurriculo(incluidas[Number(v)]);
+              nombres.push(...r.asignaturas);
+            } catch (e) { errores.push(e.message); }
+          }
+          if (nombres.length) {
+            UI.toast(`Currículo cargado: ${nombres.join(', ')}`);
+            if (errores.length) alert(errores.join('\n'));
+            return;
+          }
+          alert(errores.join('\n'));
+          return false;
+        }
+        if (!datos) {
+          alert('Marca alguna plantilla o selecciona un archivo');
+          return false;
+        }
+        try {
+          const r = Storage.importarCurriculo(datos);
+          UI.toast(`Currículo cargado: ${r.asignaturas.join(', ')} (${r.ces} CE, ${r.criterios} criterios por curso)`);
+        } catch (e) {
+          alert(e.message);
+          return false;
+        }
+      }
+    });
+    const input = mbody.querySelector('#f-archivo');
+    const caja = mbody.querySelector('#resumen-import');
+    UI.wireChips(mbody);
+    input.onchange = () => {
+      const f = input.files && input.files[0];
+      if (!f) return;
+      const lector = new FileReader();
+      lector.onload = () => {
+        try {
+          datos = JSON.parse(lector.result);
+          if (datos.tipo !== 'curriculo-evalcrit' || datos.version !== 1) {
+            throw new Error('No es una plantilla EvalCrit (tipo/version no válidos)');
+          }
+          const a = datos.asignatura || {};
+          caja.style.display = '';
+          caja.style.background = '#f0fdf4';
+          caja.innerHTML = `<b>Plantilla válida:</b> ${Utils.esc(a.nombre || '')}${(a.cursos || []).length ? ' (' + Utils.esc(a.cursos.join(', ')) + ')' : ''} · ${Utils.esc(a.ciclo || '')}<br>
+            ${datos.competenciasEspecificas.length} competencias específicas · ${datos.criterios.length} criterios por curso<br>
+            <small>${Utils.esc(datos.fuente || '')}</small>`;
+        } catch (e) {
+          datos = null;
+          caja.style.display = '';
+          caja.style.background = '#fef2f2';
+          caja.innerHTML = `<b>Archivo no válido:</b> ${Utils.esc(e.message)}`;
+        }
+      };
+      lector.readAsText(f);
+    };
+  }
+
+  function render(el) {
+    const db = Storage.db;
+    if (!asigSel || !Calc.asignatura(asigSel)) asigSel = db.asignaturas.length ? db.asignaturas[0].id : null;
+
+    if (!db.asignaturas.length) {
+      el.innerHTML = `<section class="card"><div class="vacio-grande">
+        <strong>Aún no hay asignaturas</strong>
+        Crea una asignatura en «Asignaturas y clases» para definir su currículo.
+      </div></section>`;
+      return;
+    }
+
+    const sumaPesos = criteriosDe().reduce((s, c) => s + (Number(c.peso) || 0), 0);
+    el.innerHTML = `
+      <section class="card">
+        <div class="card-head">
+          <h2>Currículo</h2>
+          <div style="display:flex;gap:8px;align-items:center">
+            <select id="sel-asig" style="max-width:280px">${UI.selectHtml(db.asignaturas, asigSel, 'id', 'nombre')}</select>
+            <button class="btn btn-mini" id="btn-importar">Importar currículo</button>
+          </div>
+        </div>
+        <div class="aviso ${Math.round(sumaPesos) === 100 ? '' : ''}" style="${Math.round(sumaPesos) === 100 ? 'background:#f0fdf4;border-color:#bbf7d0;color:#166534' : ''}">
+          Suma de ponderaciones: <b>${Utils.fmt(sumaPesos)}%</b>${Math.round(sumaPesos) === 100 ? ' · correcta' : ' · debería sumar 100%'}
+        </div>
+        <div class="grid-2">
+          <div>
+            <div class="card-head"><h2 style="font-size:15px">Competencias específicas</h2>
+              <button class="btn btn-mini btn-primario" id="add-esp">Añadir</button></div>
+            <ul class="lista">
+              ${espDe().map(e => `
+                <li style="cursor:default">
+                  <span>${Utils.esc(e.codigo)}</span>
+                  <small style="flex:1;text-align:left">${Utils.esc(e.descripcion)}</small>
+                </li>`).join('') || '<li class="vacio">Sin competencias específicas.</li>'}
+            </ul>
+          </div>
+          <div>
+            <div class="card-head"><h2 style="font-size:15px">Criterios y ponderaciones</h2>
+              <button class="btn btn-mini btn-primario" id="add-crit">Nuevo criterio</button></div>
+            <table class="tabla">
+              <thead><tr><th>Código</th><th>Descripción</th><th>Peso</th><th>Comp.</th><th></th></tr></thead>
+              <tbody>
+                ${criteriosDe().map(c => `
+                  <tr data-id="${c.id}">
+                    <td><b>${Utils.esc(c.codigo)}</b></td>
+                    <td>${Utils.esc(c.descripcion)}</td>
+                    <td class="num">${Utils.fmt(c.peso)}%</td>
+                    <td>${c.espIds.map(id => { const e = Calc.byId(db.competenciasEspecificas, id); return e ? `<span class="badge info">${Utils.esc(e.codigo)}</span>` : ''; }).join(' ')}</td>
+                    <td style="white-space:nowrap">
+                      <button class="btn btn-mini editar-crit">Editar</button>
+                      <button class="icon-btn borrar-crit" title="Eliminar">×</button>
+                    </td>
+                  </tr>`).join('') || '<tr><td colspan="5" class="vacio">Sin criterios. Añade el primero para poder calificar.</td></tr>'}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>`;
+
+    el.querySelector('#sel-asig').onchange = e => { asigSel = e.target.value; render(el); };
+    el.querySelector('#btn-importar').onclick = () => modalImportar();
+    el.querySelector('#add-esp').onclick = () => modalEsp();
+    el.querySelector('#add-crit').onclick = () => modalCriterio(null);
+
+    el.querySelectorAll('.editar-crit').forEach(b => {
+      b.onclick = () => {
+        const tr = b.closest('tr');
+        modalCriterio(Calc.criterio(tr.dataset.id));
+      };
+    });
+    el.querySelectorAll('.borrar-crit').forEach(b => {
+      b.onclick = () => {
+        const tr = b.closest('tr');
+        const c = Calc.criterio(tr.dataset.id);
+        if (!confirm(`¿Eliminar el criterio ${c.codigo}?`)) return;
+        db.criterios = db.criterios.filter(x => x.id !== c.id);
+        for (const inst of db.instrumentos) {
+          inst.apartados.forEach(ap => ap.criterioIds = ap.criterioIds.filter(x => x !== c.id));
+        }
+        Storage.save();
+        render(el);
+      };
+    });
+  }
+
+  return { render };
+})();
+
+</script>
+<script>
+const InstrumentosView = (() => {
+  let claseSel = null;
+  const TIPOS = ['Control', 'Rúbrica', 'Proyecto', 'Otro'];
+  const PERIODOS = ['T1', 'T2', 'T3'];
+
+  function instrumentosDe() {
+    return Storage.db.instrumentos
+      .filter(i => i.claseId === claseSel)
+      .sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+  }
+
+  function apartadosHtml(inst, asignaturaId, esRubrica) {
+    return (inst ? inst.apartados : []).map(ap => filaApartado(ap, asignaturaId, esRubrica)).join('');
+  }
+
+  function filaApartado(ap, asignaturaId, esRubrica) {
+    return `
+      <div class="apartado-fila" data-id="${ap.id}">
+        <span class="num-ap"></span>
+        <input type="text" class="ap-desc" placeholder="Pregunta o apartado" value="${Utils.esc(ap.descripcion)}">
+        ${esRubrica
+          ? '<small style="color:var(--tinta-suave)">nivel</small>'
+          : `<input type="number" class="ap-max" min="0.5" step="0.5" value="${ap.maxPts}" title="Puntos máximos">`}
+        <button type="button" class="btn btn-mini toggle-crit" title="Elegir criterios evaluados">Criterios</button>
+        <button type="button" class="btn btn-mini quitar-ap">Quitar</button>
+        <div class="zona-crit" style="display:none">${UI.chipsCriterios(asignaturaId, ap.criterioIds)}</div>
+      </div>`;
+  }
+
+  function modalInstrumento(inst, claseIdFijo) {
+    const db = Storage.db;
+    if (!inst && !claseIdFijo && !claseSel) { alert('Primero selecciona una clase'); return; }
+    const claseId = inst ? inst.claseId : (claseIdFijo || claseSel);
+    const asig = Calc.asignaturaDeClase(claseId);
+    if (!asig) { alert('Error: esta clase no tiene asignatura asociada'); return; }
+    const esNueva = !inst;
+    const tipoIni = inst ? inst.tipo : 'Control';
+    UI.openModal({
+      titulo: esNueva ? 'Nuevo instrumento' : 'Editar instrumento',
+      cuerpo: `
+        <div class="fila-campos">
+          <label class="campo"><span>Tipo</span>
+            <select id="f-tipo">${TIPOS.map(t => `<option ${t === tipoIni ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+          <label class="campo"><span>Periodo</span>
+            <select id="f-periodo">${PERIODOS.map(p => `<option ${inst && inst.periodo === p ? 'selected' : ''}>${p}</option>`).join('')}</select></label>
+          <label class="campo"><span>Fecha</span>
+            <input type="date" id="f-fecha" value="${inst ? inst.fecha : Utils.hoy()}"></label>
+        </div>
+        <label class="campo"><span>Título</span>
+          <input type="text" id="f-titulo" value="${Utils.esc(inst ? inst.titulo : '')}" placeholder="Ej. Control de unidades 1-3"></label>
+        <label class="campo"><span>Saberes básicos (informativo)</span>
+          <textarea id="f-saberes" rows="2" placeholder="Opcional">${Utils.esc(inst ? inst.saberes : '')}</textarea></label>
+
+        <div id="bloque-niveles" style="display:none">
+          <label class="campo"><span>Niveles de la rúbrica (% y descriptor)</span><div id="lista-niveles"></div></label>
+          <button class="btn btn-mini" type="button" id="add-nivel">Añadir nivel</button>
+        </div>
+
+        <label class="campo"><span>Apartados y criterios que evalúan</span>
+          <div id="lista-apartados"></div>
+        </label>
+        <button class="btn btn-mini" type="button" id="add-ap">Añadir apartado</button>`,
+      textoGuardar: esNueva ? 'Crear' : 'Guardar cambios',
+      alGuardar(body) {
+        const titulo = body.querySelector('#f-titulo').value.trim();
+        const tipo = body.querySelector('#f-tipo').value;
+        const periodo = body.querySelector('#f-periodo').value;
+        const fecha = body.querySelector('#f-fecha').value || Utils.hoy();
+        const saberes = body.querySelector('#f-saberes').value.trim();
+        const esRubrica = tipo === 'Rúbrica';
+        const niveles = Array.from(body.querySelectorAll('.nivel-fila')).map(f => ({
+          pct: parseFloat(f.querySelector('.nv-pct').value),
+          descriptor: f.querySelector('.nv-desc').value.trim()
+        })).filter(n => !isNaN(n.pct));
+        if (esRubrica && niveles.length < 2) { alert('La rúbrica necesita al menos dos niveles'); return false; }
+
+        const apartados = [];
+        let orden = 0;
+        for (const fila of body.querySelectorAll('.apartado-fila')) {
+          orden++;
+          const desc = fila.querySelector('.ap-desc').value.trim();
+          const maxPts = esRubrica ? 100 : parseFloat(fila.querySelector('.ap-max').value);
+          const criterioIds = UI.valoresChips(fila.querySelector('.zona-crit'));
+          if (!criterioIds.length) { alert('Cada apartado necesita al menos un criterio (botón «Criterios»)'); return false; }
+          if (!esRubrica && (isNaN(maxPts) || maxPts <= 0)) { alert('Cada apartado necesita puntos máximos'); return false; }
+          apartados.push({
+            id: fila.dataset.id && fila.dataset.id !== 'nuevo' ? fila.dataset.id : Utils.uid(),
+            orden, descripcion: desc, maxPts, criterioIds
+          });
+        }
+        if (!apartados.length) { alert('Añade al menos un apartado'); return false; }
+
+        if (esNueva) {
+          Storage.db.instrumentos.push({ id: Utils.uid(), claseId, tipo, titulo, fecha, periodo, saberes, niveles, apartados });
+        } else {
+          Object.assign(inst, { tipo, titulo, fecha, periodo, saberes, niveles, apartados });
+        }
+        Storage.save();
+      }
+    });
+
+    const body = document.querySelector('.modal-body');
+    const selTipo = body.querySelector('#f-tipo');
+    const listaAp = body.querySelector('#lista-apartados');
+    const listaNv = body.querySelector('#lista-niveles');
+
+    function refrescaNumeros() {
+      body.querySelectorAll('.num-ap').forEach((n, i) => { n.textContent = i + 1 + '.'; });
+    }
+
+    function addFilaNivel(n) {
+      const div = document.createElement('div');
+      div.className = 'nivel-fila';
+      div.innerHTML = `
+        <input type="number" class="nv-pct" min="0" max="100" step="5" value="${n ? n.pct : ''}" placeholder="%">
+        <input type="text" class="nv-desc" value="${n ? Utils.esc(n.descriptor) : ''}" placeholder="Descriptor del nivel">
+        <button class="icon-btn quitar-nv" type="button">×</button>`;
+      div.querySelector('.quitar-nv').onclick = () => div.remove();
+      listaNv.appendChild(div);
+    }
+
+    function actualizaEtiquetaCrit(fila) {
+      const zona = fila.querySelector('.zona-crit');
+      const n = zona.querySelectorAll('input:checked').length;
+      fila.querySelector('.toggle-crit').textContent = 'Criterios (' + n + ')';
+    }
+
+    function addFilaApartado(ap) {
+      const esRubrica = selTipo.value === 'Rúbrica';
+      const div = document.createElement('div');
+      div.innerHTML = filaApartado(ap || { id: 'nuevo', descripcion: '', maxPts: '', criterioIds: [] }, asig.id, esRubrica).trim();
+      const fila = div.firstElementChild;
+      fila.querySelector('.quitar-ap').onclick = () => { fila.remove(); refrescaNumeros(); };
+      fila.querySelector('.toggle-crit').onclick = () => {
+        const zona = fila.querySelector('.zona-crit');
+        zona.style.display = zona.style.display === 'none' ? '' : 'none';
+      };
+      UI.wireChips(fila);
+      fila.querySelectorAll('.chip input').forEach(inp =>
+        inp.addEventListener('change', () => actualizaEtiquetaCrit(fila)));
+      actualizaEtiquetaCrit(fila);
+      listaAp.appendChild(fila);
+      refrescaNumeros();
+    }
+
+    function refrescaTipo() {
+      const esRubrica = selTipo.value === 'Rúbrica';
+      body.querySelector('#bloque-niveles').style.display = esRubrica ? '' : 'none';
+      const actuales = Array.from(listaAp.querySelectorAll('.apartado-fila')).map((fila, i) => ({
+        id: fila.dataset.id,
+        descripcion: fila.querySelector('.ap-desc').value,
+        criterioIds: UI.valoresChips(fila.querySelector('.zona-crit')),
+        maxPts: esRubrica ? 100 : parseFloat((fila.querySelector('.ap-max') || {}).value)
+      }));
+      listaAp.innerHTML = '';
+      actuales.forEach(a => addFilaApartado(a));
+    }
+
+    selTipo.onchange = refrescaTipo;
+    body.querySelector('#add-ap').onclick = () => addFilaApartado(null);
+    body.querySelector('#add-nivel').onclick = () => addFilaNivel(null);
+
+    if (esNueva) {
+      [100, 75, 50, 25].forEach(p => addFilaNivel({ pct: p, descriptor: '' }));
+      addFilaApartado(null);
+    } else {
+      (inst.niveles && inst.niveles.length ? inst.niveles.slice().sort((a, b) => b.pct - a.pct) : []).forEach(addFilaNivel);
+      inst.apartados.forEach(a => addFilaApartado(a));
+    }
+  }
+
+  function borrarInstrumento(el, inst) {
+    if (!confirm(`¿Eliminar "${inst.titulo}" y todas sus notas?`)) return;
+    delete Storage.db.registros[inst.id];
+    Storage.db.instrumentos = Storage.db.instrumentos.filter(i => i.id !== inst.id);
+    Storage.save();
+    render(el);
+  }
+
+  function renderCorreccion(el, instId) {
+    const inst = Calc.instrumento(instId);
+    if (!inst) { render(el); return; }
+    const alumnos = Calc.alumnosDeClase(inst.claseId);
+    const esRubrica = inst.tipo === 'Rúbrica';
+    const niveles = (inst.niveles || []).slice().sort((a, b) => b.pct - a.pct);
+
+    el.innerHTML = `
+      <section class="card no-print">
+        <div class="card-head">
+          <h2>${Utils.esc(inst.titulo)}</h2>
+          <button class="btn" id="volver">Volver</button>
+        </div>
+        <div class="chips" style="margin-bottom:10px">
+          <span class="badge info">${Utils.esc(inst.tipo)}</span>
+          <span class="badge info">${Utils.esc(inst.periodo)}</span>
+          <span class="badge na">${inst.apartados.length} apartados</span>
+          ${esRubrica ? '<small style="align-self:center;color:var(--tinta-suave)">Toca un nivel para puntuar; tócalo otra vez para vaciar.</small>' : ''}
+        </div>
+        <div class="scroll-x">
+          <table class="tabla" id="tabla-corrige">
+            <thead><tr><th>Alumno</th>${inst.apartados.map(ap =>
+              `<th title="${Utils.esc(ap.descripcion)}">${Utils.esc(ap.descripcion)}<br><small>${esRubrica ? '%' : 'sobre ' + Utils.fmt(ap.maxPts)}</small></th>`
+            ).join('')}<th>Nota</th></tr></thead>
+            <tbody>
+              ${alumnos.map(a => {
+                const reg = (Storage.db.registros[inst.id] || {})[a.id] || {};
+                return `<tr data-alumno="${a.id}">
+                  <td>${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}</td>
+                  ${inst.apartados.map(ap => `
+                    <td data-apartado="${ap.id}">
+                      ${esRubrica
+                        ? `<div class="segmentos">${niveles.map(nv => {
+                            const on = Number(reg[ap.id]) === nv.pct ? 'on' : '';
+                            return `<button type="button" class="${on}" data-val="${nv.pct}" title="${Utils.esc(nv.descriptor)}">${nv.pct}</button>`;
+                          }).join('')}</div>`
+                        : `<input type="number" class="inp-nota" min="0" max="${ap.maxPts}" step="any"
+                            style="min-width:76px" value="${reg[ap.id] ?? ''}" placeholder="—">`}
+                    </td>`).join('')}
+                  <td class="celda-nota-final"></td>
+                </tr>`;
+              }).join('') || '<tr><td colspan="9" class="vacio">Esta clase no tiene alumnos.</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <p class="no-print" style="color:var(--tinta-suave);font-size:13px">
+        La nota mostrada es la del instrumento (informativa). Las ponderaciones por criterio se aplican en la Cuadrícula.
+      </p>`;
+
+    el.querySelector('#volver').onclick = () => render(el);
+
+    const tabla = el.querySelector('#tabla-corrige');
+
+    function notaFila(tr) {
+      const alumnoId = tr.dataset.alumno;
+      const n = Calc.notaInstrumento(inst, alumnoId);
+      tr.querySelector('.celda-nota-final').innerHTML = Calc.badgeHtml(n);
+    }
+
+    tabla.querySelectorAll('tbody tr[data-alumno]').forEach(tr => {
+      const alumnoId = tr.dataset.alumno;
+
+      tr.querySelectorAll('.inp-nota').forEach(inp => {
+        inp.addEventListener('input', Utils.debounce(() => {
+          const apartadoId = inp.closest('td').dataset.apartado;
+          const v = inp.value.trim();
+          if (!Storage.db.registros[inst.id]) Storage.db.registros[inst.id] = {};
+          if (!Storage.db.registros[inst.id][alumnoId]) Storage.db.registros[inst.id][alumnoId] = {};
+          const regAlu = Storage.db.registros[inst.id][alumnoId];
+          if (v === '') delete regAlu[apartadoId];
+          else {
+            const num = parseFloat(v.replace(',', '.'));
+            if (isNaN(num) || num < 0) return;
+            regAlu[apartadoId] = num;
+          }
+          Storage.save();
+          notaFila(tr);
+        }, 350));
+        inp.addEventListener('change', () => {
+          if (inp.value.trim() !== '') {
+            const num = parseFloat(inp.value.replace(',', '.'));
+            if (!isNaN(num) && num >= 0) {
+              const max = parseFloat(inp.max);
+              if (!isNaN(max) && num > max) inp.value = max;
+            }
+          }
+        });
+      });
+
+      tr.querySelectorAll('.segmentos button').forEach(btn => {
+        btn.onclick = () => {
+          const td = btn.closest('td');
+          const apartadoId = td.dataset.apartado;
+          if (!Storage.db.registros[inst.id]) Storage.db.registros[inst.id] = {};
+          if (!Storage.db.registros[inst.id][alumnoId]) Storage.db.registros[inst.id][alumnoId] = {};
+          const regAlu = Storage.db.registros[inst.id][alumnoId];
+          if (btn.classList.contains('on')) {
+            delete regAlu[apartadoId];
+            btn.classList.remove('on');
+          } else {
+            td.querySelectorAll('button.on').forEach(x => x.classList.remove('on'));
+            btn.classList.add('on');
+            regAlu[apartadoId] = parseFloat(btn.dataset.val);
+          }
+          Storage.save();
+          notaFila(tr);
+        };
+      });
+
+      notaFila(tr);
+    });
+  }
+
+  function render(el) {
+    const db = Storage.db;
+    if (!claseSel || !Calc.clase(claseSel)) claseSel = db.clases.length ? db.clases[0].id : null;
+
+    if (!db.clases.length) {
+      el.innerHTML = `<section class="card"><div class="vacio-grande">
+        <strong>No hay clases todavía</strong>
+        Crea una asignatura y una clase para empezar a evaluar.
+      </div></section>`;
+      return;
+    }
+
+    el.innerHTML = `
+      <section class="card">
+        <div class="card-head">
+          <h2>Instrumentos de evaluación</h2>
+          <select id="sel-clase" style="max-width:280px">${UI.selectHtml(db.clases.map(c => ({
+            id: c.id,
+            nombre: `${Calc.asignaturaDeClase(c.id)?.nombre || '?'} · ${(Calc.byId(db.grupos, c.grupoId) || {}).nombre || '?'}`
+          })), claseSel, 'id', 'nombre')}</select>
+          <button class="btn btn-primario" id="add-inst">Nuevo instrumento</button>
+        </div>
+        <table class="tabla">
+          <thead><tr><th>Título</th><th>Tipo</th><th>Periodo</th><th>Fecha</th><th>Apartados</th><th>Media</th><th></th></tr></thead>
+          <tbody>
+            ${instrumentosDe().map(i => {
+              const notas = Calc.alumnosDeClase(i.claseId)
+                .map(a => Calc.notaInstrumento(i, a.id))
+                .filter(n => n != null);
+              const media = notas.length ? notas.reduce((x, y) => x + y, 0) / notas.length : null;
+              return `<tr data-inst="${i.id}">
+                <td><b>${Utils.esc(i.titulo)}</b></td>
+                <td><span class="badge info">${Utils.esc(i.tipo)}</span></td>
+                <td>${Utils.esc(i.periodo)}</td>
+                <td>${Utils.esc(i.fecha)}</td>
+                <td>${i.apartados.length}</td>
+                <td>${Calc.badgeHtml(media)}</td>
+                <td style="white-space:nowrap">
+                  <button class="btn btn-mini btn-primario corregir">Corregir</button>
+                  <button class="btn btn-mini editar">Editar</button>
+                  <button class="icon-btn borrar-inst" title="Eliminar">×</button>
+                </td>
+              </tr>`;
+            }).join('') || '<tr><td colspan="7" class="vacio">Sin instrumentos en esta clase.</td></tr>'}
+          </tbody>
+        </table>
+      </section>`;
+
+    el.querySelector('#sel-clase').onchange = e => { claseSel = e.target.value; render(el); };
+    el.querySelector('#add-inst').onclick = () => modalInstrumento(null);
+
+    el.querySelectorAll('tr[data-inst]').forEach(tr => {
+      const inst = Calc.instrumento(tr.dataset.inst);
+      tr.querySelector('.corregir').onclick = () => renderCorreccion(el, inst.id);
+      tr.querySelector('.editar').onclick = () => modalInstrumento(inst);
+      tr.querySelector('.borrar-inst').onclick = () => borrarInstrumento(el, inst);
+    });
+  }
+
+  return { render, renderCorreccion, modalInstrumento };
+})();
+
+</script>
+<script>
+const CuadriculaView = (() => {
+  let claseSel = null;
+  let periodo = 'T1';
+  let tab = 'notas';
+
+  function tablaNotas(alumnos, insts) {
+    if (!alumnos.length) {
+      return '<div class="aviso">El grupo de esta clase no tiene alumnos. Añádelos en «Alumnos y grupos».</div>';
+    }
+    return `
+      ${insts.length ? '' : '<div class="aviso">Aún no hay instrumentos en esta clase. Pulsa «Añadir calificación» para crear el primero.</div>'}
+      <table class="tabla">
+        <thead><tr><th>Alumno</th>${insts.map(i => `<th class="celda-nota" data-edit="${i.id}" title="Toca para editar el instrumento" style="max-width:120px">${Utils.esc(i.titulo)}<br><small>${Utils.esc(i.tipo)} · ${Utils.esc(i.periodo)}</small></th>`).join('')}<th>Evaluación</th></tr></thead>
+        <tbody>
+          ${alumnos.map(a => `<tr>
+            <td>${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}</td>
+            ${insts.map(i => {
+              const n = Calc.notaInstrumento(i, a.id);
+              return `<td class="celda-nota num" data-inst="${i.id}">${n == null ? '<span class="badge na">—</span>' : Calc.badgeHtml(n)}</td>`;
+            }).join('')}
+            <td class="num">${Calc.badgeHtml(Calc.notaEvaluacion(claseSel, a.id, periodo))}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+      <p class="no-print" style="color:var(--tinta-suave);font-size:13px">La columna «Evaluación» aplica las ponderaciones de los criterios${periodo === 'Final' ? ' sobre todo el curso' : ' en ' + periodo}. Toca una nota para corregir y una cabecera para editar.</p>`;
+  }
+
+  function tablaCriterios(alumnos) {
+    const criterios = Calc.criteriosDeClase(claseSel);
+    if (!alumnos.length) return '<div class="aviso">El grupo de esta clase no tiene alumnos todavía.</div>';
+    if (!criterios.length) return '<div class="vacio-grande">Esta asignatura no tiene criterios definidos.</div>';
+    return `
+      <table class="tabla">
+        <thead><tr><th>Alumno</th>${criterios.map(c =>
+          `<th title="${Utils.esc(c.descripcion)}">${Utils.esc(c.codigo)}<br><small>${Utils.fmt(c.peso)}%</small></th>`
+        ).join('')}</tr></thead>
+        <tbody>
+          ${alumnos.map(a => `<tr>
+            <td>${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}</td>
+            ${criterios.map(c => {
+              const l = Calc.logroCriterio(c.id, claseSel, a.id, periodo);
+              return `<td class="num">${l == null ? '<span class="badge na">—</span>' : '<span class="badge ' + Calc.clasif(l * 10) + '">' + Utils.pct(l * 100) + '</span>'}</td>`;
+            }).join('')}
+          </tr>`).join('')}
+        </tbody>
+      </table>
+      <p class="no-print" style="color:var(--tinta-suave);font-size:13px">% de logro acumulado por criterio${periodo === 'Final' ? ' (todo el curso)' : ' en ' + periodo}. «—» = sin evidencias todavía.</p>`;
+  }
+
+  function tablaCompetencias(alumnos) {
+    const esps = Calc.competenciasEspecificasDeClase(claseSel);
+    const claves = Calc.clavesDeClase(claseSel);
+    if (!alumnos.length) return '<div class="aviso">El grupo de esta clase no tiene alumnos todavía.</div>';
+
+    const tabla = (lista, titulo, fnNota, notaPie) => {
+      if (!lista.length) return '';
+      return `
+        <h3 style="font-size:15px;margin:4px 0 8px">${titulo}</h3>
+        <table class="tabla">
+          <thead><tr><th>Alumno</th>${lista.map(x =>
+            `<th title="${Utils.esc(x.descripcion || x.nombre || '')}">${Utils.esc(x.codigo)}</th>`
+          ).join('')}</tr></thead>
+          <tbody>
+            ${alumnos.map(a => `<tr>
+              <td>${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}</td>
+              ${lista.map(x => {
+                const n = fnNota(a, x);
+                return `<td class="num">${Calc.badgeHtml(n)}</td>`;
+              }).join('')}
+            </tr>`).join('')}
+          </tbody>
+        </table>
+        <p class="no-print" style="color:var(--tinta-suave);font-size:13px">${notaPie}</p>`;
+    };
+
+    const hayClaves = criteriosConClaves();
+    return `
+      ${tabla(esps, 'Competencias específicas',
+        (a, e) => Calc.notaCompetencia(claseSel, a.id, e.id, periodo),
+        'Nota por competencia específica (0–10), agregando los criterios vinculados con su peso.')}
+      ${claves.length ? tabla(claves, 'Competencias clave (perfil de salida)',
+        (a, k) => Calc.notaClave(claseSel, a.id, k.id, periodo),
+        'Nota por competencia clave (0–10), agregando con su peso todos los criterios que la llevan asignada.') : `
+        <h3 style="font-size:15px;margin:14px 0 8px">Competencias clave (perfil de salida)</h3>
+        <div class="aviso">${hayClaves ? 'Ninguna clave aparece aún en esta tabla.' : 'Los criterios de esta asignatura no tienen competencias clave asignadas. Asígnalas editando cada criterio en «Currículo»; las plantillas oficiales las traen automáticamente.'}</div>`}`;
+  }
+
+  function criteriosConClaves() {
+    return Calc.criteriosDeClase(claseSel).some(c => (c.claveIds || []).length > 0);
+  }
+
+  function render(el) {
+    const db = Storage.db;
+    if (!claseSel || !Calc.clase(claseSel)) claseSel = db.clases.length ? db.clases[0].id : null;
+
+    if (!db.clases.length) {
+      el.innerHTML = `<section class="card"><div class="vacio-grande">
+        <strong>No hay clases todavía</strong>
+        Crea grupos, alumnos y clases para ver aquí la cuadrícula de calificación.
+      </div></section>`;
+      return;
+    }
+
+    const alumnos = Calc.alumnosDeClase(claseSel);
+    const insts = Calc.instrumentosDeClase(claseSel).sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
+
+    el.innerHTML = `
+      <section class="card">
+        <div class="card-head">
+          <h2>Cuadrícula de calificación</h2>
+          ${(() => {
+            const cl = Calc.clase(claseSel);
+            const gru = Calc.byId(db.grupos, cl.grupoId);
+            return `<span style="color:var(--tinta-suave);font-size:13px">
+              Grupo vinculado: <b>${Utils.esc(gru ? gru.nombre : '¿?')}</b> · ${alumnos.length} alumno(s)</span>`;
+          })()}
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <select id="sel-clase" style="max-width:260px">${UI.selectHtml(db.clases.map(c => ({
+              id: c.id,
+              nombre: `${Calc.asignaturaDeClase(c.id)?.nombre || '?'} · ${(Calc.byId(db.grupos, c.grupoId) || {}).nombre || '?'}`
+            })), claseSel, 'id', 'nombre')}</select>
+            <select id="sel-periodo" style="max-width:130px">
+              ${['T1', 'T2', 'T3', 'Final'].map(p => `<option ${p === periodo ? 'selected' : ''}>${p}</option>`).join('')}
+            </select>
+            <button class="btn btn-primario no-print" id="add-inst">Añadir calificación</button>
+            <button class="btn no-print" id="btn-imprimir">Imprimir / PDF</button>
+          </div>
+        </div>
+        <div class="chips no-print" id="tabs" style="margin-bottom:14px">
+          <label class="chip ${tab === 'notas' ? 'on' : ''}" data-tab="notas">Instrumentos</label>
+          <label class="chip ${tab === 'criterios' ? 'on' : ''}" data-tab="criterios">Criterios</label>
+          <label class="chip ${tab === 'competencias' ? 'on' : ''}" data-tab="competencias">Competencias</label>
+        </div>
+        <div class="scroll-x" id="contenido">
+          ${tab === 'notas' ? tablaNotas(alumnos, insts)
+            : tab === 'criterios' ? tablaCriterios(alumnos)
+            : tablaCompetencias(alumnos)}
+        </div>
+      </section>`;
+
+    el.querySelector('#sel-clase').onchange = e => { claseSel = e.target.value; render(el); };
+    el.querySelector('#sel-periodo').onchange = e => { periodo = e.target.value; render(el); };
+    el.querySelector('#add-inst').onclick = () => {
+      try {
+        InstrumentosView.modalInstrumento(null, claseSel);
+      } catch (e) {
+        console.error(e);
+        alert('Error al abrir el formulario: ' + e.message);
+      }
+    };
+    el.querySelector('#btn-imprimir').onclick = () => window.print();
+
+    el.querySelectorAll('#tabs .chip').forEach(ch => {
+      ch.onclick = () => { tab = ch.dataset.tab; render(el); };
+    });
+
+    el.querySelectorAll('.celda-nota[data-inst]').forEach(td => {
+      td.onclick = () => InstrumentosView.renderCorreccion(el, td.dataset.inst);
+    });
+    el.querySelectorAll('th[data-edit]').forEach(th => {
+      th.onclick = () => {
+        try {
+          InstrumentosView.modalInstrumento(Calc.instrumento(th.dataset.edit));
+        } catch (e) {
+          console.error(e);
+          alert('Error al editar: ' + e.message);
+        }
+      };
+    });
+  }
+
+  return { render };
+})();
+
+</script>
+<script>
+const App = (() => {
+  const VISTAS = [
+    { id: 'inicio', label: 'Inicio', render: renderInicio },
+    { id: 'alumnos', label: 'Alumnos y grupos', render: el => AlumnosView.render(el) },
+    { id: 'clases', label: 'Asignaturas y clases', render: el => ClasesView.render(el) },
+    { id: 'curriculo', label: 'Currículo', render: el => CurriculoView.render(el), riesgo: true },
+    { id: 'instrumentos', label: 'Instrumentos', render: el => InstrumentosView.render(el) },
+    { id: 'cuadricula', label: 'Cuadrícula', render: el => CuadriculaView.render(el) }
+  ];
+  let actual = 'inicio';
+
+  function opcionesCurso(valorActual) {
+    const m = /^(\d{4})\//.exec(String(valorActual || ''));
+    const base = m ? parseInt(m[1], 10) : new Date().getMonth() >= 6 ? new Date().getFullYear() : new Date().getFullYear() - 1;
+    const lista = [];
+    for (let y = base - 2; y <= base + 4; y++) lista.push(`${y}/${y + 1}`);
+    if (!lista.includes(valorActual)) lista.push(valorActual);
+    lista.sort();
+    return lista.map(v => `<option ${v === valorActual ? 'selected' : ''}>${Utils.esc(v)}</option>`).join('');
+  }
+
+  function renderInicio(el) {
+    const db = Storage.db;
+    const stats = [
+      ['Grupos', db.grupos.length],
+      ['Alumnos', db.alumnos.length],
+      ['Asignaturas', db.asignaturas.length],
+      ['Clases', db.clases.length],
+      ['Criterios', db.criterios.length],
+      ['Instrumentos', db.instrumentos.length]
+    ];
+    el.innerHTML = `
+      <section class="card">
+        <div class="card-head">
+          <h1>Bienvenido a EvalCrit</h1>
+          <label class="campo" style="margin:0"><span>Curso escolar</span>
+            <select id="sel-curso" style="max-width:150px">${opcionesCurso(db.cursoEscolar)}</select></label>
+        </div>
+        <p style="color:var(--tinta-suave)">Califica con criterios ponderados según la LOMLOE. Los datos se guardan en este navegador:
+          <b>exporta tu backup al USB con frecuencia</b>.</p>
+        <div class="resumen-stats">
+          ${stats.map(([k, v]) => `<div class="stat"><b>${v}</b><span>${k}</span></div>`).join('')}
+        </div>
+        <div class="aviso" style="background:#eff6ff;border-color:#bfdbfe;color:#1e40af">
+          <b>Copias de seguridad</b> · <span id="info-backup">…</span><br>
+          <small>Con Chrome/Edge en Windows puedes guardar directamente en la carpeta <code>backups/</code> del proyecto; en Android irán a Descargas.</small>
+          <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap" class="no-print">
+            <button class="btn btn-primario btn-mini" id="btn-exportar-ini">Exportar backup ahora</button>
+            ${Storage.puedeCarpeta() ? '<button class="btn btn-mini" id="btn-carpeta">Elegir carpeta de backups…</button>' : ''}
+          </div>
+        </div>
+        ${Storage.vacio() ? `
+          <div class="aviso">Tu aplicación está vacía. Puedes cargar datos de ejemplo para probarla.</div>
+          <button class="btn btn-primario" id="btn-demo">Cargar datos de ejemplo</button>` : `
+          <div style="margin-top:14px">
+            <button class="btn btn-peligro" id="btn-reiniciar">Restablecer y vaciar todos los datos</button>
+          </div>`}
+        <h2 style="font-size:15px;margin:18px 0 8px">Flujo recomendado</h2>
+        <ol style="color:var(--tinta-suave);line-height:1.9;margin:0;padding-left:20px">
+          <li>Crea <b>grupos</b> e inscribe <b>alumnos</b>.</li>
+          <li>Crea <b>asignaturas</b> y sus <b>clases</b> (asignatura · grupo).</li>
+          <li>Define en <b>Currículo</b> las competencias específicas, los criterios y sus ponderaciones (suman 100%).</li>
+          <li>Crea <b>instrumentos</b>: control, rúbrica, proyecto u otro, mapeando cada apartado a criterios.</li>
+          <li>Corrige y consulta resultados por instrumento, criterio y competencia en la <b>Cuadrícula</b>.</li>
+          <li>Exporta el backup al terminar cada sesión.</li>
+        </ol>
+      </section>`;
+
+    const curso = el.querySelector('#sel-curso');
+    if (curso) {
+      curso.addEventListener('change', () => {
+        db.cursoEscolar = curso.value;
+        Storage.save();
+        UI.toast('Curso escolar: ' + db.cursoEscolar);
+      });
+    }
+
+    const info = el.querySelector('#info-backup');
+    const pintaInfo = dir => {
+      const ultima = db.meta && db.meta.ultimaExportacion ? Utils.fechaLegible(new Date(db.meta.ultimaExportacion)) + ' a las ' + new Date(db.meta.ultimaExportacion).toTimeString().slice(0, 5) : 'nunca';
+      info.innerHTML = `última copia <b>${ultima}</b>${dir ? ` · destino: carpeta «${Utils.esc(dir.name)}»` : ''}`;
+    };
+    pintaInfo(null);
+    Storage.idbLeer('dir').then(pintaInfo).catch(() => {});
+
+    const btnExpIni = el.querySelector('#btn-exportar-ini');
+    btnExpIni.onclick = () => Storage.exportar().catch(e => alert('Error al exportar: ' + e.message));
+    const btnCarpeta = el.querySelector('#btn-carpeta');
+    if (btnCarpeta) {
+      btnCarpeta.onclick = async () => {
+        const h = await Storage.elegirCarpetaBackup();
+        if (h) { pintaInfo(h); }
+      };
+    }
+    const demo = el.querySelector('#btn-demo');
+    if (demo) demo.onclick = () => {
+      Storage.demoSeed();
+      UI.toast('Datos de ejemplo cargados');
+      App.ir('inicio');
+    };
+    const reiniciar = el.querySelector('#btn-reiniciar');
+    if (reiniciar) reiniciar.onclick = () => {
+      UI.openModal({
+        titulo: 'Restablecer aplicación',
+        cuerpo: `<p>Se eliminarán <b>todos</b> los grupos, alumnos, clases, currículos, instrumentos y calificaciones guardados en este navegador.</p>
+          <div class="aviso">Si quieres conservar algo, exporta tu backup antes de continuar.</div>`,
+        textoGuardar: 'Sí, vaciar todo',
+        peligro: true,
+        alGuardar() {
+          Storage.reiniciar();
+          UI.toast('Datos eliminados');
+        }
+      });
+    };
+  }
+
+  function ir(id) {
+    actual = id;
+    const vista = VISTAS.find(v => v.id === id);
+    const nav = document.getElementById('nav');
+    nav.innerHTML = '';
+    for (const v of VISTAS) {
+      const b = document.createElement('button');
+      b.textContent = v.label;
+      if (v.id === actual) b.classList.add('activo');
+      if (v.riesgo && v.id !== actual) b.classList.add('peligro-activo');
+      b.onclick = () => ir(v.id);
+      nav.appendChild(b);
+    }
+    UI.closeModal();
+    vista.render(document.getElementById('app'));
+    window.scrollTo(0, 0);
+    history.replaceState(null, '', '#' + id);
+  }
+
+  function arrancar() {
+    Storage.load();
+    document.getElementById('btn-exportar').onclick = () => Storage.exportar().catch(e => alert('Error al exportar: ' + e.message));
+
+    const input = document.getElementById('input-importar');
+    document.getElementById('btn-importar').onclick = () => input.click();
+    input.onchange = () => {
+      const archivo = input.files[0];
+      input.value = '';
+      if (!archivo) return;
+      if (!confirm('Importar reemplazará TODOS los datos actuales. ¿Continuar?')) return;
+      Storage.importar(archivo)
+        .then(() => { UI.toast('Backup importado'); ir(actual); })
+        .catch(() => alert('El archivo no es un backup válido de EvalCrit'));
+    };
+
+    const hash = location.hash.slice(1);
+    ir(VISTAS.some(v => v.id === hash) ? hash : 'inicio');
+  }
+
+  return {
+    ir,
+    arrancar,
+    refrescar() { ir(actual); }
+  };
+})();
+
+document.addEventListener('DOMContentLoaded', App.arrancar);
+
+</script>
+</body>
+</html>
