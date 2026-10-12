@@ -8,3 +8,10 @@ datos/
 # Sistema
 .DS_Store
 Thumbs.db
+
+# Artefactos locales y tooling
+usb/
+.atl/
+tools/__pycache__/
+*.pyc
+*:Zone.Identifier

@@ -134,6 +134,10 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--acento-suav
 .badge.info { background: var(--acento-suave); color: var(--acento); }
 
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.hint { display: block; color: var(--tinta-suave); font-size: 12px; margin-bottom: 6px; }
+.importa-areas { display: flex; flex-direction: column; gap: 8px; }
+.importa-area { border: 1px solid var(--linea); border-radius: 10px; padding: 8px 10px; }
+.importa-area > strong { display: block; font-size: 13px; color: var(--tinta); margin-bottom: 6px; }
 .chip {
   display: inline-flex; align-items: center; gap: 6px;
   border: 1px solid var(--linea); border-radius: 999px;

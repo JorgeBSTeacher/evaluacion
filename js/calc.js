@@ -31,15 +31,85 @@ const Calc = {
   },
 
   competenciasEspecificasDeClase(claseId) {
-    const asig = this.asignaturaDeClase(claseId);
+    return this.competenciasEspecificasDeNivel(claseId, '');
+  },
+
+  clavesDeClase(claseId) {
+    return this.clavesDeNivel(claseId, '');
+  },
+
+  competenciasEspecificasDeNivel(claseId, codigo) {
+    const asig = this.asignaturaDeNivel(claseId, codigo);
     if (!asig) return [];
     return Storage.db.competenciasEspecificas.filter(c => c.asignaturaId === asig.id);
   },
 
-  clavesDeClase(claseId) {
+  clavesDeNivel(claseId, codigo) {
     const usadas = new Set();
-    this.criteriosDeClase(claseId).forEach(c => (c.claveIds || []).forEach(k => usadas.add(k)));
+    this.criteriosDeNivel(claseId, codigo).forEach(c => (c.claveIds || []).forEach(k => usadas.add(k)));
     return Storage.db.competenciasClave.filter(k => usadas.has(k.id));
+  },
+
+  // --- Adaptaciones curriculares (ACI) ---
+  // Cada nivel ACI de una clase apunta a la asignatura (currículo) de otro curso.
+  nivelesAciDeClase(claseId) {
+    const cl = this.clase(claseId);
+    return (cl && Array.isArray(cl.nivelesAci)) ? cl.nivelesAci : [];
+  },
+
+  nivelDeAlumno(claseId, alumnoId) {
+    const cl = this.clase(claseId);
+    return (cl && cl.adaptaciones && cl.adaptaciones[alumnoId]) || '';
+  },
+
+  etiquetaNivel(claseId, codigo) {
+    if (!codigo || codigo === 'BASE') return 'Base';
+    const n = this.nivelesAciDeClase(claseId).find(x => x.codigo === codigo);
+    return n ? (n.etiqueta || n.codigo) : codigo;
+  },
+
+  asignaturaDeNivel(claseId, codigo) {
+    if (codigo) {
+      const n = this.nivelesAciDeClase(claseId).find(x => x.codigo === codigo);
+      if (n && n.asignaturaId && this.asignatura(n.asignaturaId)) return this.asignatura(n.asignaturaId);
+    }
+    return this.asignaturaDeClase(claseId);
+  },
+
+  asignaturaDeAlumno(claseId, alumnoId) {
+    return this.asignaturaDeNivel(claseId, this.nivelDeAlumno(claseId, alumnoId));
+  },
+
+  criteriosDeNivel(claseId, codigo) {
+    const asig = this.asignaturaDeNivel(claseId, codigo);
+    if (!asig) return [];
+    return Storage.db.criterios
+      .filter(c => c.asignaturaId === asig.id)
+      .sort((x, y) => String(x.codigo).localeCompare(String(y.codigo), 'es'));
+  },
+
+  criteriosDeAlumno(claseId, alumnoId) {
+    return this.criteriosDeNivel(claseId, this.nivelDeAlumno(claseId, alumnoId));
+  },
+
+  // Un instrumento sin nivel es común a todos; con nivel, solo para ese nivel
+  // ('' = base, es decir, alumnado sin adaptación).
+  instrumentoParaNivel(inst, codigo) {
+    if (!inst || !inst.nivel) return true;
+    return inst.nivel === (codigo || 'BASE');
+  },
+
+  instrumentoParaAlumno(inst, claseId, alumnoId) {
+    return this.instrumentoParaNivel(inst, this.nivelDeAlumno(claseId, alumnoId));
+  },
+
+  alumnosDeInstrumento(inst) {
+    return this.alumnosDeClase(inst.claseId).filter(a => this.instrumentoParaAlumno(inst, inst.claseId, a.id));
+  },
+
+  instrumentosDeAlumno(claseId, alumnoId, periodo) {
+    return this.instrumentosDeClase(claseId, periodo)
+      .filter(i => this.instrumentoParaAlumno(i, claseId, alumnoId));
   },
 
   logroCriterioEnInstrumento(inst, alumnoId, criterioId) {
@@ -63,7 +133,7 @@ const Calc = {
   },
 
   logroCriterio(criterioId, claseId, alumnoId, periodo) {
-    const insts = this.instrumentosDeClase(claseId, periodo).filter(i =>
+    const insts = this.instrumentosDeAlumno(claseId, alumnoId, periodo).filter(i =>
       i.apartados.some(ap => ap.criterioIds.includes(criterioId))
     );
     const logros = [];
@@ -76,7 +146,7 @@ const Calc = {
   },
 
   notaPonderada(claseId, alumnoId, periodo, filtroCriterios) {
-    const todos = this.criteriosDeClase(claseId);
+    const todos = this.criteriosDeAlumno(claseId, alumnoId);
     const criterios = filtroCriterios ? todos.filter(filtroCriterios) : todos;
     let suma = 0, pesos = 0;
     for (const c of criterios) {

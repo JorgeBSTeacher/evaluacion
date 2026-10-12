@@ -6,7 +6,8 @@ const InstrumentosView = (() => {
   function instrumentosDe() {
     return Storage.db.instrumentos
       .filter(i => i.claseId === claseSel)
-      .sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+      .sort((a, b) => (String(a.unidad || '').localeCompare(String(b.unidad || ''), 'es'))
+        || (a.fecha || '').localeCompare(b.fecha || ''));
   }
 
   function apartadosHtml(inst, asignaturaId, esRubrica) {
@@ -35,6 +36,10 @@ const InstrumentosView = (() => {
     if (!asig) { alert('Error: esta clase no tiene asignatura asociada'); return; }
     const esNueva = !inst;
     const tipoIni = inst ? inst.tipo : 'Control';
+    const nivelesAci = Calc.nivelesAciDeClase(claseId);
+    const nivelIni = inst ? (inst.nivel || '') : '';
+    const opcionesNivel = '<option value="">Común (todo el alumnado)</option><option value="BASE"' + (nivelIni === 'BASE' ? ' selected' : '') + '>Base (sin adaptación)</option>'
+      + nivelesAci.map(n => `<option value="${Utils.esc(n.codigo)}" ${nivelIni === n.codigo ? 'selected' : ''}>${Utils.esc(n.etiqueta || n.codigo)}</option>`).join('');
     UI.openModal({
       titulo: esNueva ? 'Nuevo instrumento' : 'Editar instrumento',
       cuerpo: `
@@ -48,6 +53,12 @@ const InstrumentosView = (() => {
         </div>
         <label class="campo"><span>Título</span>
           <input type="text" id="f-titulo" value="${Utils.esc(inst ? inst.titulo : '')}" placeholder="Ej. Control de unidades 1-3"></label>
+        <div class="fila-campos">
+          <label class="campo"><span>Unidad (agrupa exámenes del mismo tema)</span>
+            <input type="text" id="f-unidad" value="${Utils.esc(inst ? (inst.unidad || '') : '')}" placeholder="Ej. UD5"></label>
+          ${nivelesAci.length ? `<label class="campo"><span>Nivel ACI</span>
+            <select id="f-nivel">${opcionesNivel}</select></label>` : '<input type="hidden" id="f-nivel" value="">'}
+        </div>
         <label class="campo"><span>Saberes básicos (informativo)</span>
           <textarea id="f-saberes" rows="2" placeholder="Opcional">${Utils.esc(inst ? inst.saberes : '')}</textarea></label>
 
@@ -67,6 +78,8 @@ const InstrumentosView = (() => {
         const periodo = body.querySelector('#f-periodo').value;
         const fecha = body.querySelector('#f-fecha').value || Utils.hoy();
         const saberes = body.querySelector('#f-saberes').value.trim();
+        const unidad = body.querySelector('#f-unidad').value.trim();
+        const nivel = (body.querySelector('#f-nivel') || {}).value || '';
         const esRubrica = tipo === 'Rúbrica';
         const niveles = Array.from(body.querySelectorAll('.nivel-fila')).map(f => ({
           pct: parseFloat(f.querySelector('.nv-pct').value),
@@ -91,9 +104,9 @@ const InstrumentosView = (() => {
         if (!apartados.length) { alert('Añade al menos un apartado'); return false; }
 
         if (esNueva) {
-          Storage.db.instrumentos.push({ id: Utils.uid(), claseId, tipo, titulo, fecha, periodo, saberes, niveles, apartados });
+          Storage.db.instrumentos.push({ id: Utils.uid(), claseId, tipo, titulo, fecha, periodo, saberes, unidad, nivel, niveles, apartados });
         } else {
-          Object.assign(inst, { tipo, titulo, fecha, periodo, saberes, niveles, apartados });
+          Object.assign(inst, { tipo, titulo, fecha, periodo, saberes, unidad, nivel, niveles, apartados });
         }
         Storage.save();
       }
@@ -180,7 +193,7 @@ const InstrumentosView = (() => {
   function renderCorreccion(el, instId) {
     const inst = Calc.instrumento(instId);
     if (!inst) { render(el); return; }
-    const alumnos = Calc.alumnosDeClase(inst.claseId);
+    const alumnos = Calc.alumnosDeInstrumento(inst);
     const esRubrica = inst.tipo === 'Rúbrica';
     const niveles = (inst.niveles || []).slice().sort((a, b) => b.pct - a.pct);
 
@@ -193,6 +206,8 @@ const InstrumentosView = (() => {
         <div class="chips" style="margin-bottom:10px">
           <span class="badge info">${Utils.esc(inst.tipo)}</span>
           <span class="badge info">${Utils.esc(inst.periodo)}</span>
+          ${inst.unidad ? `<span class="badge info">${Utils.esc(inst.unidad)}</span>` : ''}
+          ${inst.nivel ? `<span class="badge info">Nivel ${Utils.esc(Calc.etiquetaNivel(inst.claseId, inst.nivel))}</span>` : ''}
           <span class="badge na">${inst.apartados.length} apartados</span>
           ${esRubrica ? '<small style="align-self:center;color:var(--tinta-suave)">Toca un nivel para puntuar; tócalo otra vez para vaciar.</small>' : ''}
         </div>
@@ -218,7 +233,7 @@ const InstrumentosView = (() => {
                     </td>`).join('')}
                   <td class="celda-nota-final"></td>
                 </tr>`;
-              }).join('') || '<tr><td colspan="9" class="vacio">Esta clase no tiene alumnos.</td></tr>'}
+              }).join('') || '<tr><td colspan="9" class="vacio">Este instrumento no tiene alumnado asignado.</td></tr>'}
             </tbody>
           </table>
         </div>
@@ -291,6 +306,53 @@ const InstrumentosView = (() => {
     });
   }
 
+  function duplicarInstrumento(inst) {
+    const niveles = Calc.nivelesAciDeClase(inst.claseId).filter(n => n.codigo !== inst.nivel);
+    const cuerpo = niveles.length ? `
+      <div class="aviso">Se creará una copia de <b>${Utils.esc(inst.titulo)}</b> (mismos apartados y criterios${inst.unidad ? `, misma unidad <b>${Utils.esc(inst.unidad)}</b>` : ''}) por cada nivel marcado, con las notas en blanco.</div>
+      <label class="campo"><span>Nivel(es) de la copia</span>
+        <div class="chips" data-campo="niveles-dup">${niveles.map(n =>
+          `<label class="chip"><input type="checkbox" value="${Utils.esc(n.codigo)}">${Utils.esc(n.etiqueta || n.codigo)}</label>`).join('')}</div>
+      </label>`
+      : '<div class="aviso">Esta clase no tiene niveles ACI disponibles. Añádelos con el botón <b>ACI</b> en «Asignaturas y clases».</div>';
+    const mbody = UI.openModal({
+      titulo: 'Examen paralelo',
+      cuerpo,
+      textoGuardar: niveles.length ? 'Crear copias' : 'Cerrar',
+      alGuardar(body) {
+        if (!niveles.length) return;
+        const elegidos = UI.valoresChips(body.querySelector('[data-campo=niveles-dup]'));
+        if (!elegidos.length) { alert('Marca al menos un nivel'); return false; }
+        const titulos = elegidos.map(codigo => {
+          const copia = {
+            id: Utils.uid(),
+            claseId: inst.claseId,
+            tipo: inst.tipo,
+            titulo: `${inst.titulo} (${Calc.etiquetaNivel(inst.claseId, codigo)})`,
+            fecha: inst.fecha,
+            periodo: inst.periodo,
+            saberes: inst.saberes,
+            unidad: inst.unidad,
+            nivel: codigo,
+            niveles: (inst.niveles || []).map(n => ({ pct: n.pct, descriptor: n.descriptor })),
+            apartados: (inst.apartados || []).map(ap => ({
+              id: Utils.uid(),
+              orden: ap.orden,
+              descripcion: ap.descripcion,
+              maxPts: ap.maxPts,
+              criterioIds: (ap.criterioIds || []).slice()
+            }))
+          };
+          Storage.db.instrumentos.push(copia);
+          return copia.titulo;
+        });
+        Storage.save();
+        UI.toast('Creado(s): ' + titulos.join(', '));
+      }
+    });
+    UI.wireChips(mbody);
+  }
+
   function render(el) {
     const db = Storage.db;
     if (!claseSel || !Calc.clase(claseSel)) claseSel = db.clases.length ? db.clases[0].id : null;
@@ -314,16 +376,18 @@ const InstrumentosView = (() => {
           <button class="btn btn-primario" id="add-inst">Nuevo instrumento</button>
         </div>
         <table class="tabla">
-          <thead><tr><th>Título</th><th>Tipo</th><th>Periodo</th><th>Fecha</th><th>Apartados</th><th>Media</th><th></th></tr></thead>
+          <thead><tr><th>Título</th><th>Tipo</th><th>Nivel · Unidad</th><th>Periodo</th><th>Fecha</th><th>Apartados</th><th>Media</th><th></th></tr></thead>
           <tbody>
             ${instrumentosDe().map(i => {
-              const notas = Calc.alumnosDeClase(i.claseId)
+              const notas = Calc.alumnosDeInstrumento(i)
                 .map(a => Calc.notaInstrumento(i, a.id))
                 .filter(n => n != null);
               const media = notas.length ? notas.reduce((x, y) => x + y, 0) / notas.length : null;
+              const nivelTxt = i.nivel ? Calc.etiquetaNivel(i.claseId, i.nivel) : '';
               return `<tr data-inst="${i.id}">
                 <td><b>${Utils.esc(i.titulo)}</b></td>
                 <td><span class="badge info">${Utils.esc(i.tipo)}</span></td>
+                <td>${nivelTxt ? `<span class="badge info">${Utils.esc(nivelTxt)}</span> ` : ''}${i.unidad ? `<span class="badge na">${Utils.esc(i.unidad)}</span>` : ''}${!nivelTxt && !i.unidad ? '<span style="color:var(--tinta-suave)">—</span>' : ''}</td>
                 <td>${Utils.esc(i.periodo)}</td>
                 <td>${Utils.esc(i.fecha)}</td>
                 <td>${i.apartados.length}</td>
@@ -331,10 +395,11 @@ const InstrumentosView = (() => {
                 <td style="white-space:nowrap">
                   <button class="btn btn-mini btn-primario corregir">Corregir</button>
                   <button class="btn btn-mini editar">Editar</button>
+                  <button class="btn btn-mini duplicar" title="Crear examen paralelo para un nivel ACI">Duplicar</button>
                   <button class="icon-btn borrar-inst" title="Eliminar">×</button>
                 </td>
               </tr>`;
-            }).join('') || '<tr><td colspan="7" class="vacio">Sin instrumentos en esta clase.</td></tr>'}
+            }).join('') || '<tr><td colspan="8" class="vacio">Sin instrumentos en esta clase.</td></tr>'}
           </tbody>
         </table>
       </section>`;
@@ -346,6 +411,7 @@ const InstrumentosView = (() => {
       const inst = Calc.instrumento(tr.dataset.inst);
       tr.querySelector('.corregir').onclick = () => renderCorreccion(el, inst.id);
       tr.querySelector('.editar').onclick = () => modalInstrumento(inst);
+      tr.querySelector('.duplicar').onclick = () => duplicarInstrumento(inst);
       tr.querySelector('.borrar-inst').onclick = () => borrarInstrumento(el, inst);
     });
   }

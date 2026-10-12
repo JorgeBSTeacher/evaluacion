@@ -42,6 +42,92 @@ const ClasesView = (() => {
     });
   }
 
+  function modalAci(clase) {
+    const db = Storage.db;
+    const alumnos = Calc.alumnosDeClase(clase.id);
+    let mbody = null;
+
+    const nivelesActuales = () => Array.from(document.querySelectorAll('.nivel-aci-fila')).map(f => ({
+      codigo: (f.querySelector('.nv-cod') || {}).value || '',
+      etiqueta: (f.querySelector('.nv-etq') || {}).value || '',
+      asignaturaId: (f.querySelector('.nv-asig') || {}).value || ''
+    }));
+
+    const opcionesAsig = asignaturaId => '<option value="">— asignatura —</option>'
+      + UI.selectHtml(db.asignaturas, asignaturaId, 'id', 'nombre');
+
+    function filaNivel(n) {
+      const div = document.createElement('div');
+      div.className = 'nivel-aci-fila fila-campos';
+      div.innerHTML = `
+        <label class="campo"><span>Código</span><input type="text" class="nv-cod" value="${Utils.esc(n.codigo || '')}" placeholder="B" style="max-width:80px"></label>
+        <label class="campo"><span>Etiqueta</span><input type="text" class="nv-etq" value="${Utils.esc(n.etiqueta || '')}" placeholder="4º"></label>
+        <label class="campo"><span>Currículo (asignatura)</span><select class="nv-asig">${opcionesAsig(n.asignaturaId)}</select></label>
+        <button type="button" class="icon-btn quitar-nivel-aci">×</button>`;
+      div.querySelector('.quitar-nivel-aci').onclick = () => { div.remove(); pintarAsignacion(); };
+      div.querySelector('.nv-cod').addEventListener('input', pintarAsignacion);
+      return div;
+    }
+
+    function pintarAsignacion() {
+      const cont = mbody.querySelector('#lista-asignacion');
+      const niveles = nivelesActuales().filter(x => String(x.codigo).trim());
+      if (!niveles.length) {
+        cont.innerHTML = '<div class="aviso">Aún no hay niveles definidos. Pulsa «Añadir nivel», escribe su <b>código</b> (p. ej. «B») y elige su currículo; entonces podrás asignar alumnado aquí.</div>';
+        return;
+      }
+      const previos = {};
+      cont.querySelectorAll('.alu-nivel').forEach(s => { previos[s.dataset.alu] = s.value; });
+      cont.innerHTML = alumnos.map(a => {
+        const actual = (a.id in previos) ? previos[a.id] : ((clase.adaptaciones || {})[a.id] || '');
+        const ops = ['<option value="">Base</option>']
+          .concat(niveles.map(n => `<option value="${Utils.esc(n.codigo)}" ${actual === n.codigo ? 'selected' : ''}>${Utils.esc(n.etiqueta || n.codigo)}</option>`))
+          .join('');
+        return `<div class="fila-campos">
+          <span style="flex:1">${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}</span>
+          <select class="alu-nivel" data-alu="${a.id}">${ops}</select></div>`;
+      }).join('') || '<div class="vacio">El grupo de esta clase no tiene alumnado.</div>';
+    }
+
+    mbody = UI.openModal({
+      titulo: 'Niveles ACI · ' + (Calc.asignaturaDeClase(clase.id) || {}).nombre + ' · ' + ((Calc.byId(db.grupos, clase.grupoId) || {}).nombre || ''),
+      cuerpo: `
+        <div class="aviso">Un <b>nivel ACI</b> agrupa al alumnado que trabaja un currículo de otro curso (p. ej. 4º o 2º). Cada nivel apunta a la asignatura que se usará para corregirlo. Los exámenes de cada nivel se crean en «Instrumentos» eligiendo el nivel y una misma <b>unidad</b>.</div>
+        <label class="campo"><span>Niveles ACI</span><div id="lista-niveles-aci"></div></label>
+        <button class="btn btn-mini" type="button" id="add-nivel-aci">Añadir nivel</button>
+        <label class="campo" style="margin-top:14px"><span>Asignación de alumnado</span><div id="lista-asignacion"></div></label>`,
+      textoGuardar: 'Guardar niveles ACI',
+      alGuardar(body) {
+        const niveles = nivelesActuales().map(n => ({
+          codigo: String(n.codigo).trim().toUpperCase(),
+          etiqueta: String(n.etiqueta).trim(),
+          asignaturaId: n.asignaturaId
+        })).filter(n => n.codigo);
+        const codigos = niveles.map(n => n.codigo);
+        if (new Set(codigos).size !== codigos.length) { alert('Hay códigos de nivel repetidos'); return false; }
+        if (codigos.includes('BASE')) { alert('El código BASE está reservado para el nivel base'); return false; }
+        for (const n of niveles) {
+          if (!n.asignaturaId) { alert(`El nivel ${n.codigo} necesita una asignatura (currículo)`); return false; }
+        }
+        clase.nivelesAci = niveles;
+        const adap = {};
+        body.querySelectorAll('.alu-nivel').forEach(sel => { if (sel.value) adap[sel.dataset.alu] = sel.value; });
+        clase.adaptaciones = adap;
+        Storage.save();
+      }
+    });
+
+    mbody.querySelector('#add-nivel-aci').onclick = () => {
+      const cont = mbody.querySelector('#lista-niveles-aci');
+      cont.appendChild(filaNivel({}));
+      pintarAsignacion();
+      const cod = cont.querySelector('.nivel-aci-fila:last-child .nv-cod');
+      if (cod) cod.focus();
+    };
+    (clase.nivelesAci || []).forEach(n => mbody.querySelector('#lista-niveles-aci').appendChild(filaNivel(n)));
+    pintarAsignacion();
+  }
+
   function render(el) {
     const db = Storage.db;
     el.innerHTML = `
@@ -71,11 +157,12 @@ const ClasesView = (() => {
                 const asig = Calc.asignatura(c.asignaturaId) || { nombre: '?' };
                 const gru = Calc.byId(db.grupos, c.grupoId) || { nombre: '?' };
                 const nAlu = db.alumnos.filter(a => a.grupoId === c.grupoId).length;
+                const nAci = (c.nivelesAci || []).length;
                 return `<tr>
                   <td>${Utils.esc(asig.nombre)}</td>
                   <td>${Utils.esc(gru.nombre)}</td>
-                  <td>${nAlu}</td>
-                  <td style="width:36px"><button class="icon-btn borrar-clase" data-id="${c.id}" title="Eliminar">×</button></td>
+                  <td>${nAlu}${nAci ? ` · <span class="badge info">ACI ${nAci}</span>` : ''}</td>
+                  <td style="white-space:nowrap"><button class="btn btn-mini aci-clase" data-id="${c.id}" title="Niveles ACI (adaptaciones)">ACI</button> <button class="icon-btn borrar-clase" data-id="${c.id}" title="Eliminar">×</button></td>
                 </tr>`;
               }).join('') || '<tr><td colspan="4" class="vacio">Crea una clase combinando asignatura y grupo.</td></tr>'}
             </tbody>
@@ -85,6 +172,13 @@ const ClasesView = (() => {
 
     el.querySelector('#add-asig').onclick = () => modalAsignatura();
     el.querySelector('#add-clase').onclick = () => modalClase();
+
+    el.querySelectorAll('.aci-clase').forEach(b => {
+      b.onclick = () => {
+        try { modalAci(Calc.clase(b.dataset.id)); }
+        catch (e) { console.error(e); alert('Error al abrir niveles ACI: ' + e.message); }
+      };
+    });
 
     el.querySelectorAll('.borrar-asig').forEach(b => {
       b.onclick = e => {

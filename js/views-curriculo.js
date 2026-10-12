@@ -1,6 +1,8 @@
 const CurriculoView = (() => {
   let asigSel = null;
 
+  const seleccionar = id => { asigSel = id; };
+
   const criteriosDe = () => Storage.db.criterios
     .filter(c => c.asignaturaId === asigSel)
     .sort((a, b) => String(a.codigo).localeCompare(String(b.codigo), 'es'));
@@ -81,86 +83,65 @@ const CurriculoView = (() => {
 
   function modalImportar() {
     const incluidas = (typeof PLANTILLAS_CURRICULO !== 'undefined') ? PLANTILLAS_CURRICULO : [];
-    let datos = null;
-    const cuerpo = `
-        ${incluidas.length ? `
-        <label class="campo"><span>Plantillas oficiales incluidas (Decreto 66/2022 · Cantabria)</span>
-          <div class="chips" data-campo="plantillas">
-            ${incluidas.map((p, i) => `<label class="chip"><input type="checkbox" value="${i}">${Utils.esc(p.asignatura.nombre)} · ${Utils.esc(p.asignatura.ciclo || '')}</label>`).join('')}
-          </div>
-          <small style="color:var(--tinta-suave)">Cada plantilla crea una asignatura por curso con su currículo completo y pesos equitativos.</small></label>` : ''}
-        <label class="campo"><span>…o carga una plantilla desde archivo (.json)</span>
-          <input type="file" id="f-archivo" accept=".json,application/json"></label>
-        <div id="resumen-import" class="aviso" style="display:none"></div>`;
+    const porArea = [];
+    for (const p of incluidas) {
+      const ult = porArea[porArea.length - 1];
+      if (ult && ult.nombre === p.asignatura.nombre) ult.items.push(p);
+      else porArea.push({ nombre: p.asignatura.nombre, items: [p] });
+    }
+    let idx = 0;
+    const areasHtml = porArea.map(a => `
+      <div class="importa-area">
+        <strong>${Utils.esc(a.nombre)}</strong>
+        <div class="chips">${a.items.map(p => {
+          const etiqueta = `${Utils.esc(p.asignatura.ciclo || '')} (${Utils.esc((p.asignatura.cursos || []).join(' y '))})`;
+          return `<label class="chip"><input type="checkbox" value="${idx++}">${etiqueta}</label>`;
+        }).join('')}</div>
+      </div>`).join('');
     const mbody = UI.openModal({
       titulo: 'Importar currículo oficial',
-      cuerpo,
+      cuerpo: incluidas.length ? `
+        <div class="campo">
+          <span>Plantillas oficiales · Decreto 66/2022 (Cantabria)</span>
+          <small class="hint">Cada plantilla crea una asignatura por curso con su currículo completo y pesos equitativos.</small>
+          <div class="importa-areas" data-campo="plantillas">${areasHtml}</div>
+        </div>` : '<div class="aviso">No hay plantillas embebidas en esta versión.</div>',
       textoGuardar: 'Importar',
       alGuardar(mbody2) {
         const sel = UI.valoresChips(mbody2.querySelector('[data-campo=plantillas]'));
-        if (sel.length) {
-          const nombres = [];
-          const errores = [];
-          for (const v of sel) {
-            try {
-              const r = Storage.importarCurriculo(incluidas[Number(v)]);
-              nombres.push(...r.asignaturas);
-            } catch (e) { errores.push(e.message); }
-          }
-          if (nombres.length) {
-            UI.toast(`Currículo cargado: ${nombres.join(', ')}`);
-            if (errores.length) alert(errores.join('\n'));
-            return;
-          }
-          alert(errores.join('\n'));
+        if (!sel.length) {
+          alert('Selecciona al menos una plantilla');
           return false;
         }
-        if (!datos) {
-          alert('Marca alguna plantilla o selecciona un archivo');
-          return false;
+        const nombres = [];
+        const errores = [];
+        const ids = [];
+        for (const v of sel) {
+          try {
+            const r = Storage.importarCurriculo(incluidas[Number(v)]);
+            nombres.push(...r.asignaturas);
+            ids.push(...r.ids);
+          } catch (e) { errores.push(e.message); }
         }
-        try {
-          const r = Storage.importarCurriculo(datos);
-          UI.toast(`Currículo cargado: ${r.asignaturas.join(', ')} (${r.ces} CE, ${r.criterios} criterios por curso)`);
-        } catch (e) {
-          alert(e.message);
-          return false;
+        if (nombres.length) {
+          if (ids.length) seleccionar(ids[0]);
+          UI.toast(`Currículo cargado: ${nombres.join(', ')}`);
+          if (errores.length) alert(errores.join('\n'));
+          return;
         }
+        alert(errores.join('\n'));
+        return false;
       }
     });
-    const input = mbody.querySelector('#f-archivo');
-    const caja = mbody.querySelector('#resumen-import');
     UI.wireChips(mbody);
-    input.onchange = () => {
-      const f = input.files && input.files[0];
-      if (!f) return;
-      const lector = new FileReader();
-      lector.onload = () => {
-        try {
-          datos = JSON.parse(lector.result);
-          if (datos.tipo !== 'curriculo-evalcrit' || datos.version !== 1) {
-            throw new Error('No es una plantilla EvalCrit (tipo/version no válidos)');
-          }
-          const a = datos.asignatura || {};
-          caja.style.display = '';
-          caja.style.background = '#f0fdf4';
-          caja.innerHTML = `<b>Plantilla válida:</b> ${Utils.esc(a.nombre || '')}${(a.cursos || []).length ? ' (' + Utils.esc(a.cursos.join(', ')) + ')' : ''} · ${Utils.esc(a.ciclo || '')}<br>
-            ${datos.competenciasEspecificas.length} competencias específicas · ${datos.criterios.length} criterios por curso<br>
-            <small>${Utils.esc(datos.fuente || '')}</small>`;
-        } catch (e) {
-          datos = null;
-          caja.style.display = '';
-          caja.style.background = '#fef2f2';
-          caja.innerHTML = `<b>Archivo no válido:</b> ${Utils.esc(e.message)}`;
-        }
-      };
-      lector.readAsText(f);
-    };
   }
 
   function render(el) {
     const db = Storage.db;
-    if (!asigSel || !Calc.asignatura(asigSel)) asigSel = db.asignaturas.length ? db.asignaturas[0].id : null;
+    if (!asigSel || !Calc.asignatura(asigSel)) {
+      const conCurriculo = db.asignaturas.find(a => db.criterios.some(c => c.asignaturaId === a.id));
+      asigSel = (conCurriculo || db.asignaturas[0] || {}).id || null;
+    }
 
     if (!db.asignaturas.length) {
       el.innerHTML = `<section class="card"><div class="vacio-grande">
@@ -244,5 +225,5 @@ const CurriculoView = (() => {
     });
   }
 
-  return { render };
+  return { render, seleccionar };
 })();

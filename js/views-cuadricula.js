@@ -2,19 +2,24 @@ const CuadriculaView = (() => {
   let claseSel = null;
   let periodo = 'T1';
   let tab = 'notas';
+  let nivelSel = '';
+  const TODAS = '__todas__';
 
-  function tablaNotas(alumnos, insts) {
+  function tablaNotas(alumnos, insts, modoTodas) {
     if (!alumnos.length) {
-      return '<div class="aviso">El grupo de esta clase no tiene alumnos. Añádelos en «Alumnos y grupos».</div>';
+      return '<div class="aviso">El grupo de esta clase no tiene alumnado en este nivel. Revísalo en «Alumnos y grupos» o en los niveles ACI de la clase.</div>';
     }
     return `
-      ${insts.length ? '' : '<div class="aviso">Aún no hay instrumentos en esta clase. Pulsa «Añadir calificación» para crear el primero.</div>'}
+      ${insts.length ? '' : '<div class="aviso">Aún no hay instrumentos en esta clase para este nivel. Pulsa «Añadir calificación» para crear el primero.</div>'}
       <table class="tabla">
-        <thead><tr><th>Alumno</th>${insts.map(i => `<th class="celda-nota" data-edit="${i.id}" title="Toca para editar el instrumento" style="max-width:120px">${Utils.esc(i.titulo)}<br><small>${Utils.esc(i.tipo)} · ${Utils.esc(i.periodo)}</small></th>`).join('')}<th>Evaluación</th></tr></thead>
+        <thead><tr><th>Alumno</th>${insts.map(i => `<th class="celda-nota" data-edit="${i.id}" title="Toca para editar el instrumento" style="max-width:130px">${Utils.esc(i.titulo)}<br><small>${Utils.esc(i.tipo)} · ${Utils.esc(i.periodo)}${i.unidad ? ' · ' + Utils.esc(i.unidad) : ''}</small></th>`).join('')}<th>Evaluación</th></tr></thead>
         <tbody>
           ${alumnos.map(a => `<tr>
             <td>${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}</td>
             ${insts.map(i => {
+              if (modoTodas && !Calc.instrumentoParaAlumno(i, claseSel, a.id)) {
+                return '<td class="celda-nota num" style="color:var(--tinta-suave);opacity:.35" title="No aplica a este alumno">—</td>';
+              }
               const n = Calc.notaInstrumento(i, a.id);
               return `<td class="celda-nota num" data-inst="${i.id}">${n == null ? '<span class="badge na">—</span>' : Calc.badgeHtml(n)}</td>`;
             }).join('')}
@@ -22,13 +27,15 @@ const CuadriculaView = (() => {
           </tr>`).join('')}
         </tbody>
       </table>
-      <p class="no-print" style="color:var(--tinta-suave);font-size:13px">La columna «Evaluación» aplica las ponderaciones de los criterios${periodo === 'Final' ? ' sobre todo el curso' : ' en ' + periodo}. Toca una nota para corregir y una cabecera para editar.</p>`;
+      <p class="no-print" style="color:var(--tinta-suave);font-size:13px">${modoTodas
+        ? 'Vista de todo el grupo: cada alumno se evalúa con los criterios de su nivel y la columna «Evaluación» armoniza su nota. «—» en gris = el examen no aplica a ese alumno.'
+        : 'La columna «Evaluación» aplica las ponderaciones de los criterios del nivel mostrado' + (periodo === 'Final' ? ' sobre todo el curso' : ' en ' + periodo) + '. Toca una nota para corregir y una cabecera para editar.'}</p>`;
   }
 
   function tablaCriterios(alumnos) {
-    const criterios = Calc.criteriosDeClase(claseSel);
-    if (!alumnos.length) return '<div class="aviso">El grupo de esta clase no tiene alumnos todavía.</div>';
-    if (!criterios.length) return '<div class="vacio-grande">Esta asignatura no tiene criterios definidos.</div>';
+    const criterios = Calc.criteriosDeNivel(claseSel, nivelSel);
+    if (!alumnos.length) return '<div class="aviso">El grupo de esta clase no tiene alumnado en este nivel.</div>';
+    if (!criterios.length) return '<div class="vacio-grande">Este nivel no tiene criterios definidos.</div>';
     return `
       <table class="tabla">
         <thead><tr><th>Alumno</th>${criterios.map(c =>
@@ -44,13 +51,13 @@ const CuadriculaView = (() => {
           </tr>`).join('')}
         </tbody>
       </table>
-      <p class="no-print" style="color:var(--tinta-suave);font-size:13px">% de logro acumulado por criterio${periodo === 'Final' ? ' (todo el curso)' : ' en ' + periodo}. «—» = sin evidencias todavía.</p>`;
+      <p class="no-print" style="color:var(--tinta-suave);font-size:13px">% de logro acumulado por criterio del nivel${periodo === 'Final' ? ' (todo el curso)' : ' en ' + periodo}. «—» = sin evidencias todavía.</p>`;
   }
 
   function tablaCompetencias(alumnos) {
-    const esps = Calc.competenciasEspecificasDeClase(claseSel);
-    const claves = Calc.clavesDeClase(claseSel);
-    if (!alumnos.length) return '<div class="aviso">El grupo de esta clase no tiene alumnos todavía.</div>';
+    const esps = Calc.competenciasEspecificasDeNivel(claseSel, nivelSel);
+    const claves = Calc.clavesDeNivel(claseSel, nivelSel);
+    if (!alumnos.length) return '<div class="aviso">El grupo de esta clase no tiene alumnado en este nivel.</div>';
 
     const tabla = (lista, titulo, fnNota, notaPie) => {
       if (!lista.length) return '';
@@ -86,7 +93,7 @@ const CuadriculaView = (() => {
   }
 
   function criteriosConClaves() {
-    return Calc.criteriosDeClase(claseSel).some(c => (c.claveIds || []).length > 0);
+    return Calc.criteriosDeNivel(claseSel, nivelSel).some(c => (c.claveIds || []).length > 0);
   }
 
   function render(el) {
@@ -101,8 +108,23 @@ const CuadriculaView = (() => {
       return;
     }
 
-    const alumnos = Calc.alumnosDeClase(claseSel);
-    const insts = Calc.instrumentosDeClase(claseSel).sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
+    const nivelesAci = Calc.nivelesAciDeClase(claseSel);
+    if (nivelSel && nivelSel !== TODAS && !nivelesAci.some(n => n.codigo === nivelSel)) nivelSel = '';
+
+    const alumnosTodos = Calc.alumnosDeClase(claseSel);
+    const modoTodas = nivelSel === TODAS;
+    const alumnos = modoTodas ? alumnosTodos : alumnosTodos.filter(a => Calc.nivelDeAlumno(claseSel, a.id) === nivelSel);
+    const insts = Calc.instrumentosDeClase(claseSel)
+      .filter(i => modoTodas || Calc.instrumentoParaNivel(i, nivelSel))
+      .sort((a, b) => (String(a.unidad || '').localeCompare(String(b.unidad || ''), 'es'))
+        || (a.fecha || '').localeCompare(b.fecha || ''));
+
+    const selNivel = nivelesAci.length ? `
+      <select id="sel-nivel" style="max-width:220px">
+        <option value="${TODAS}" ${modoTodas ? 'selected' : ''}>Todos los niveles (grupo completo)</option>
+        <option value="" ${nivelSel === '' ? 'selected' : ''}>Base (sin adaptación)</option>
+        ${nivelesAci.map(n => `<option value="${Utils.esc(n.codigo)}" ${nivelSel === n.codigo ? 'selected' : ''}>${Utils.esc(n.etiqueta || n.codigo)}</option>`).join('')}
+      </select>` : '';
 
     el.innerHTML = `
       <section class="card">
@@ -111,14 +133,18 @@ const CuadriculaView = (() => {
           ${(() => {
             const cl = Calc.clase(claseSel);
             const gru = Calc.byId(db.grupos, cl.grupoId);
+            const lblNivel = modoTodas
+              ? ' · <b>todos los niveles</b>'
+              : nivelSel ? ` · nivel <b>${Utils.esc(Calc.etiquetaNivel(claseSel, nivelSel))}</b>` : '';
             return `<span style="color:var(--tinta-suave);font-size:13px">
-              Grupo vinculado: <b>${Utils.esc(gru ? gru.nombre : '¿?')}</b> · ${alumnos.length} alumno(s)</span>`;
+              Grupo vinculado: <b>${Utils.esc(gru ? gru.nombre : '¿?')}</b> · ${alumnos.length} de ${alumnosTodos.length} alumno(s)${lblNivel}</span>`;
           })()}
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
             <select id="sel-clase" style="max-width:260px">${UI.selectHtml(db.clases.map(c => ({
               id: c.id,
               nombre: `${Calc.asignaturaDeClase(c.id)?.nombre || '?'} · ${(Calc.byId(db.grupos, c.grupoId) || {}).nombre || '?'}`
             })), claseSel, 'id', 'nombre')}</select>
+            ${selNivel}
             <select id="sel-periodo" style="max-width:130px">
               ${['T1', 'T2', 'T3', 'Final'].map(p => `<option ${p === periodo ? 'selected' : ''}>${p}</option>`).join('')}
             </select>
@@ -132,14 +158,18 @@ const CuadriculaView = (() => {
           <label class="chip ${tab === 'competencias' ? 'on' : ''}" data-tab="competencias">Competencias</label>
         </div>
         <div class="scroll-x" id="contenido">
-          ${tab === 'notas' ? tablaNotas(alumnos, insts)
+          ${tab === 'notas' ? tablaNotas(alumnos, insts, modoTodas)
+            : modoTodas ? '<div class="aviso">En la vista «Todos los niveles» solo se muestran los instrumentos y la nota armonizada de cada alumno. Elige un nivel concreto para ver criterios y competencias.</div>'
             : tab === 'criterios' ? tablaCriterios(alumnos)
             : tablaCompetencias(alumnos)}
         </div>
       </section>`;
 
-    el.querySelector('#sel-clase').onchange = e => { claseSel = e.target.value; render(el); };
+    el.querySelector('#sel-clase').onchange = e => { claseSel = e.target.value; nivelSel = ''; render(el); };
     el.querySelector('#sel-periodo').onchange = e => { periodo = e.target.value; render(el); };
+    if (el.querySelector('#sel-nivel')) {
+      el.querySelector('#sel-nivel').onchange = e => { nivelSel = e.target.value; render(el); };
+    }
     el.querySelector('#add-inst').onclick = () => {
       try {
         InstrumentosView.modalInstrumento(null, claseSel);

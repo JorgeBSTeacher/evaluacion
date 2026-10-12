@@ -33,13 +33,9 @@ const Storage = {
   load() {
     try {
       const raw = localStorage.getItem(this.KEY);
-      this.db = raw ? JSON.parse(raw) : this.defaults();
+      this.db = raw ? this.migrar(JSON.parse(raw)) : this.defaults();
     } catch (e) {
       this.db = this.defaults();
-    }
-    const d = this.defaults();
-    for (const k of Object.keys(d)) {
-      if (this.db[k] == null) this.db[k] = d[k];
     }
     return this.db;
   },
@@ -172,7 +168,7 @@ const Storage = {
           if (!datos || datos.schemaVersion !== 1 || !Array.isArray(datos.grupos) || !Array.isArray(datos.alumnos)) {
             throw new Error('Formato no válido');
           }
-          this.db = datos;
+          this.db = this.migrar(datos);
           this.save();
           resolve(true);
         } catch (e) {
@@ -182,6 +178,29 @@ const Storage = {
       lector.onerror = () => reject(new Error('No se pudo leer el archivo'));
       lector.readAsText(archivo);
     });
+  },
+
+  migrar(datos) {
+    const d = this.defaults();
+    const db = datos && typeof datos === 'object' ? datos : {};
+    db.schemaVersion = 1;
+    for (const k of Object.keys(d)) {
+      if (db[k] == null) db[k] = d[k];
+    }
+    if (!db.meta || typeof db.meta !== 'object') db.meta = { ultimaExportacion: null };
+    db.grupos.forEach(g => { if (g.etapa == null) g.etapa = ''; });
+    db.clases.forEach(c => {
+      if (!Array.isArray(c.nivelesAci)) c.nivelesAci = [];
+      if (!c.adaptaciones || typeof c.adaptaciones !== 'object') c.adaptaciones = {};
+    });
+    db.criterios.forEach(c => { if (!Array.isArray(c.claveIds)) c.claveIds = []; });
+    db.instrumentos.forEach(i => {
+      if (i.nivel == null) i.nivel = '';
+      if (i.unidad == null) i.unidad = '';
+      if (!Array.isArray(i.apartados)) i.apartados = [];
+      if (!Array.isArray(i.niveles)) i.niveles = [];
+    });
+    return db;
   },
 
   claveDesdeDescriptores(descriptores) {
@@ -238,6 +257,7 @@ const Storage = {
     const n = datos.criterios.length;
     const pesoIgual = Math.round((100 / n) * 10000) / 10000;
     const creadas = [];
+    const ids = [];
 
     for (const curso of cursos) {
       const nombreCompleto = curso ? `${nombre} ${curso}` : nombre;
@@ -285,11 +305,13 @@ const Storage = {
         target.saberesBasicos = datos.saberesBasicos;
       }
       creadas.push(nombreCompleto);
+      ids.push(target.id);
     }
 
     this.save();
     return {
       asignaturas: creadas,
+      ids,
       ces: datos.competenciasEspecificas.length,
       criterios: n,
       pesosAjustados: typeof datos.criterios[0].peso !== 'number'
