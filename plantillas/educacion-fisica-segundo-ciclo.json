@@ -1,0 +1,173 @@
+{
+  "version": 1,
+  "tipo": "curriculo-evalcrit",
+  "fuente": "Decreto 66/2022, de 7 de julio, por el que se establece el currículo de Educación Infantil y Primaria en la Comunidad Autónoma de Cantabria (BOC nº 135, 13-07-2022), Anexo II-A",
+  "asignatura": {
+    "nombre": "Educación Física",
+    "etapa": "Primaria",
+    "ciclo": "Segundo ciclo",
+    "cursos": [
+      "3º",
+      "4º"
+    ]
+  },
+  "saberesBasicos": [
+    {
+      "bloque": "A. Vida activa y saludable",
+      "apartados": []
+    },
+    {
+      "bloque": "B. Organización y gestión de la actividad física",
+      "apartados": []
+    },
+    {
+      "bloque": "C. Resolución de problemas en situaciones motrices",
+      "apartados": []
+    },
+    {
+      "bloque": "E. Manifestaciones de la cultura motriz",
+      "apartados": []
+    },
+    {
+      "bloque": "F. Interacción eficiente y sostenible con el entorno",
+      "apartados": []
+    }
+  ],
+  "competenciasEspecificas": [
+    {
+      "codigo": "EFIS.SC.CE1",
+      "descripcion": "Adoptar un estilo de vida activo y saludable, practicando regularmente actividades físicas, lúdicas y deportivas, adoptando comportamientos que potencien la salud física, mental y social, así como medidas de responsabilidad individual y colectiva durante la práctica motriz, para interiorizar e integrar hábitos de actividad física sistemática que contribuyan al bienestar.",
+      "perfilSalida": [
+        "STEM2",
+        "STEM5",
+        "CPSAA2",
+        "CPSAA5",
+        "CE3"
+      ]
+    },
+    {
+      "codigo": "EFIS.SC.CE2",
+      "descripcion": "Adaptar los elementos propios del esquema corporal, las capacidades físicas, perceptivo- motrices y coordinativas, así como las habilidades y destrezas motrices, aplicando procesos de percepción, decisión y ejecución adecuados a la lógica interna y a los objetivos de diferentes situaciones, para dar respuesta a las demandas de proyectos motores y de prácticas motrices con distintas finalidades en contextos de la vida diaria.",
+      "perfilSalida": [
+        "STEM1",
+        "CPSAA4",
+        "CPSAA5"
+      ]
+    },
+    {
+      "codigo": "EFIS.SC.CE3",
+      "descripcion": "Desarrollar procesos de autorregulación e interacción en el marco de la práctica motriz, con actitud empática e inclusiva, haciendo uso de habilidades sociales y actitudes de cooperación, respeto, trabajo en equipo y deportividad, con independencia de las diferencias etnoculturales, sociales, de género y de habilidad de los participantes, para contribuir a la convivencia y al compromiso ético en los diferentes espacios en los que se participa.",
+      "perfilSalida": [
+        "CCL1",
+        "CCL5",
+        "CPSAA1",
+        "CPSAA3",
+        "CPSAA5",
+        "CC2",
+        "CC3"
+      ]
+    },
+    {
+      "codigo": "EFIS.SC.CE4",
+      "descripcion": "Reconocer y practicar diferentes manifestaciones lúdicas, físico-deportivas y artístico- expresivas propias de la cultura motriz, valorando su influencia y sus aportaciones estéticas y creativas a la cultura tradicional y contemporánea, para integrarlas en las situaciones motrices que se utilizan regularmente en la vida cotidiana.",
+      "perfilSalida": [
+        "CC3",
+        "CCEC1",
+        "CCEC2",
+        "CCEC3",
+        "CCEC4"
+      ]
+    },
+    {
+      "codigo": "EFIS.SC.CE5",
+      "descripcion": "Valorar diferentes medios naturales y urbanos como contextos de práctica motriz, interactuando con ellos y comprendiendo la importancia de su conservación desde un enfoque sostenible, adoptando medidas de responsabilidad individual durante la práctica de juegos y actividades físico-deportivas, para realizar una práctica eficiente y respetuosa con el entorno y participar en su cuidado y mejora.",
+      "perfilSalida": []
+    }
+  ],
+  "criterios": [
+    {
+      "codigo": "EFIS.SC.1.1",
+      "ceCodigo": "EFIS.SC.CE1",
+      "descripcion": "Reconocer y valorar la actividad física como alternativa de ocio saludable, identificando los efectos beneficiosos a nivel físico y mental como base de un estilo de vida activo.",
+      "peso": null
+    },
+    {
+      "codigo": "EFIS.SC.1.2",
+      "ceCodigo": "EFIS.SC.CE1",
+      "descripcion": "Aplicar medidas de educación postural, alimentación saludable, higiene corporal y preparación de la práctica motriz, asumiendo responsabilidades y generando hábitos y rutinas en situaciones cotidianas.",
+      "peso": null
+    },
+    {
+      "codigo": "EFIS.SC.1.3",
+      "ceCodigo": "EFIS.SC.CE1",
+      "descripcion": "Tomar medidas de precaución y prevención de lesiones, conociendo protocolos básicos de actuación ante accidentes que se puedan producir durante la sesión.",
+      "peso": null
+    },
+    {
+      "codigo": "EFIS.SC.1.4",
+      "ceCodigo": "EFIS.SC.CE1",
+      "descripcion": "Reconocer la propia imagen corporal y la de los demás, aceptando y respetando las diferencias individuales que puedan existir, superando y rechazando las conductas discriminatorias que se puedan producir en contextos de práctica motriz.",
+      "peso": null
+    },
+    {
+      "codigo": "EFIS.SC.1.5",
+      "ceCodigo": "EFIS.SC.CE1",
+      "descripcion": "Cuidar y respetar el material participando de forma segura en su traslado y recogida.",
+      "peso": null
+    },
+    {
+      "codigo": "EFIS.SC.2.1",
+      "ceCodigo": "EFIS.SC.CE2",
+      "descripcion": "Llevar a cabo proyectos motores de carácter individual, cooperativo o colaborativo empleando estrategias de monitorización y seguimiento que permitan analizar los resultados obtenidos.",
+      "peso": null
+    },
+    {
+      "codigo": "EFIS.SC.2.2",
+      "ceCodigo": "EFIS.SC.CE2",
+      "descripcion": "Tomar decisiones en contextos de practica motriz, ajustándose a las demandas derivadas de los objetivos motores, de las características del grupo y de la lógica interna de situaciones individuales, de cooperación, de oposición y de colaboración-oposición, en contextos simulados de actuación.",
+      "peso": null
+    },
+    {
+      "codigo": "EFIS.SC.2.3",
+      "ceCodigo": "EFIS.SC.CE2",
+      "descripcion": "Emplear los componentes cualitativos (coordinación y equilibrio) y cuantitativos (fuerza, velocidad, resistencia y flexibilidad) de la motricidad de manera eficiente y creativa en distintos contextos y situaciones motrices, adquiriendo un progresivo control y dominio corporal sobre ellos.",
+      "peso": null
+    },
+    {
+      "codigo": "EFIS.SC.3.1",
+      "ceCodigo": "EFIS.SC.CE3",
+      "descripcion": "Mostrar una disposición positiva hacia la práctica física y hacia el esfuerzo, controlando la impulsividad y las emociones negativas que surjan en contextos de actividad motriz.",
+      "peso": null
+    },
+    {
+      "codigo": "EFIS.SC.3.2",
+      "ceCodigo": "EFIS.SC.CE3",
+      "descripcion": "Respetar las normas consensuadas en clase, así como las reglas de juego y actuar desde los parámetros de la deportividad y el juego limpio, valorando la aportación de los participantes y aceptando sus características y niveles de juego.",
+      "peso": null
+    },
+    {
+      "codigo": "EFIS.SC.3.3",
+      "ceCodigo": "EFIS.SC.CE3",
+      "descripcion": "Desarrollar habilidades sociales de acogida, inclusión, ayuda y cooperación al participar en prácticas motrices variadas, resolviendo los conflictos individuales y colectivos de forma dialogada y justa, y mostrando un compromiso activo frente a los estereotipos, las actuaciones discriminatorias y de violencia.",
+      "peso": null
+    },
+    {
+      "codigo": "EFIS.SC.4.1",
+      "ceCodigo": "EFIS.SC.CE4",
+      "descripcion": "Participar activamente en juegos motores y otras manifestaciones artístico- expresivas con arraigo en la cultura propia, tradicional o actual de Cantabria, así como otros procedentes de diversas culturas, contextualizando su origen, su aparición y su transmisión a lo largo del tiempo y valorando su importancia, repercusión e influencia en las sociedades pasadas y presentes.",
+      "peso": null
+    },
+    {
+      "codigo": "EFIS.SC.4.2",
+      "ceCodigo": "EFIS.SC.CE4",
+      "descripcion": "Asumir una visión abierta del deporte identificando y rechazando comportamientos contrarios a la convivencia independientemente del contexto en el que tengan lugar.",
+      "peso": null
+    },
+    {
+      "codigo": "EFIS.SC.4.3",
+      "ceCodigo": "EFIS.SC.CE4",
+      "descripcion": "Reproducir distintas combinaciones (dadas y/o elegidas por el maestro) de movimientos o coreografías individuales y grupales que incorporen prácticas comunicativas que transmitan sentimientos, emociones o ideas a través del cuerpo, empleando los distintos recursos expresivos y rítmicos de la corporalidad. Desarrollar una práctica motriz segura en contextos naturales y urbanos de carácter terrestre o acuático, adecuando las acciones al análisis de cada situación, aplicando medidas de conservación ambiental.",
+      "peso": null
+    }
+  ]
+}

@@ -1,0 +1,153 @@
+{
+  "version": 1,
+  "tipo": "curriculo-evalcrit",
+  "fuente": "Decreto 66/2022, de 7 de julio, por el que se establece el currículo de Educación Infantil y Primaria en la Comunidad Autónoma de Cantabria (BOC nº 135, 13-07-2022), Anexo II-A",
+  "asignatura": {
+    "nombre": "Educación Artística",
+    "etapa": "Primaria",
+    "ciclo": "Tercer ciclo",
+    "cursos": [
+      "5º",
+      "6º"
+    ]
+  },
+  "saberesBasicos": [
+    {
+      "bloque": "A. Recepción y análisis",
+      "apartados": []
+    },
+    {
+      "bloque": "B. Creación e interpretación",
+      "apartados": []
+    },
+    {
+      "bloque": "C. Artes plásticas, visuales y audiovisuales",
+      "apartados": []
+    },
+    {
+      "bloque": "D. Música y artes escénicas y performativas",
+      "apartados": []
+    }
+  ],
+  "competenciasEspecificas": [
+    {
+      "codigo": "EART.TC.CE1",
+      "descripcion": "Descubrir propuestas artísticas de diferentes géneros, estilos, épocas y culturas, a través de la recepción activa, para desarrollar la curiosidad y el respeto por la diversidad.",
+      "perfilSalida": [
+        "CP3",
+        "STEM1",
+        "CD1",
+        "CPSAA3",
+        "CC1",
+        "CE2",
+        "CCEC1",
+        "CCEC2"
+      ]
+    },
+    {
+      "codigo": "EART.TC.CE2",
+      "descripcion": "Investigar sobre manifestaciones culturales y artísticas y sus contextos, empleando diversos canales, medios y técnicas, para disfrutar de ellas, entender su valor y empezar a desarrollar una sensibilidad artística propia.",
+      "perfilSalida": [
+        "CCL3",
+        "CP3",
+        "STEM2",
+        "CD1",
+        "CPSAA4",
+        "CC3",
+        "CCEC1",
+        "CCEC2"
+      ]
+    },
+    {
+      "codigo": "EART.TC.CE3",
+      "descripcion": "Expresar y comunicar de manera creativa ideas, sentimientos y emociones, experimentando con las posibilidades del sonido, la imagen, el cuerpo y los medios digitales, para producir obras propias.",
+      "perfilSalida": [
+        "CCL1",
+        "CD2",
+        "CPSAA1",
+        "CPSAA5",
+        "CC2",
+        "CE1",
+        "CCEC3",
+        "CCEC4"
+      ]
+    },
+    {
+      "codigo": "EART.TC.CE4",
+      "descripcion": "Participar del diseño, la elaboración y la difusión de producciones culturales y artísticas individuales o colectivas, poniendo en valor el proceso y asumiendo diferentes funciones en la consecución de un resultado final, para desarrollar la creatividad, la noción de autoría y el sentido de pertenencia.",
+      "perfilSalida": [
+        "CCL1",
+        "CCL5",
+        "CP3",
+        "STEM3",
+        "CC2",
+        "CE1",
+        "CE3",
+        "CCEC3",
+        "CCEC4"
+      ]
+    }
+  ],
+  "criterios": [
+    {
+      "codigo": "EART.TC.1.1",
+      "ceCodigo": "EART.TC.CE1",
+      "descripcion": "Distinguir propuestas artísticas de diferentes géneros, estilos, épocas y culturas, a través de la recepción activa y mostrando curiosidad y respeto por las mismas.",
+      "peso": null
+    },
+    {
+      "codigo": "EART.TC.1.2",
+      "ceCodigo": "EART.TC.CE1",
+      "descripcion": "Describir manifestaciones culturales y artísticas, explorando sus características con actitud abierta e interés, estableciendo relaciones entre ellas y valorando la diversidad que las genera.",
+      "peso": null
+    },
+    {
+      "codigo": "EART.TC.2.1",
+      "ceCodigo": "EART.TC.CE2",
+      "descripcion": "Seleccionar y aplicar estrategias para la búsqueda de información sobre manifestaciones culturales y artísticas, a través de diversos canales y medios de acceso, tanto de forma individual como colaborativa.",
+      "peso": null
+    },
+    {
+      "codigo": "EART.TC.2.2",
+      "ceCodigo": "EART.TC.CE2",
+      "descripcion": "Comparar el significado y los elementos característicos de distintas manifestaciones culturales y artísticas que forman parte del patrimonio, analizando los canales, medios y técnicas vinculados a ellas, así como sus diferencias y similitudes, y desarrollando criterios de valoración propios, con actitud abierta y respetuosa.",
+      "peso": null
+    },
+    {
+      "codigo": "EART.TC.2.3",
+      "ceCodigo": "EART.TC.CE2",
+      "descripcion": "Valorar las sensaciones y emociones producidas por diferentes manifestaciones culturales y artísticas, a partir del análisis y la comprensión de dichas manifestaciones.",
+      "peso": null
+    },
+    {
+      "codigo": "EART.TC.3.1",
+      "ceCodigo": "EART.TC.CE3",
+      "descripcion": "Producir obras propias básicas, utilizando las posibilidades expresivas del cuerpo, el sonido, la imagen y los medios digitales básicos y mostrando confianza en las capacidades propias.",
+      "peso": null
+    },
+    {
+      "codigo": "EART.TC.3.2",
+      "ceCodigo": "EART.TC.CE3",
+      "descripcion": "Expresar con creatividad ideas, sentimientos y emociones a través de diversas manifestaciones artísticas, utilizando los diferentes lenguajes e instrumentos a su alcance, mostrando confianza en las propias capacidades y perfeccionando la ejecución.",
+      "peso": null
+    },
+    {
+      "codigo": "EART.TC.4.1",
+      "ceCodigo": "EART.TC.CE4",
+      "descripcion": "Planificar y diseñar producciones culturales y artísticas colectivas, trabajando de forma colaborativa en la consecución de un resultado final y asumiendo diferentes funciones, desde la igualdad y el respeto a la diversidad.",
+      "peso": null
+    },
+    {
+      "codigo": "EART.TC.4.2",
+      "ceCodigo": "EART.TC.CE4",
+      "descripcion": "Participar activamente en el proceso colaborativo de producciones culturales y artísticas, de forma creativa y respetuosa y utilizando elementos de diferentes lenguajes y técnicas artísticas.",
+      "peso": null
+    },
+    {
+      "codigo": "EART.TC.4.3",
+      "ceCodigo": "EART.TC.CE4",
+      "descripcion": "Compartir los proyectos creativos, empleando diferentes estrategias comunicativas y a través de diversos medios, explicando el proceso y el resultado final obtenido, y respetando y valorando las experiencias propias y de los demás.",
+      "peso": null
+    }
+  ]
+}

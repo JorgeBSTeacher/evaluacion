@@ -1,0 +1,2 @@
+Plantillas generadas automaticamente desde sources/Decreto 662022.pdf
+con tools/extract-decreto.py. No editar a mano.

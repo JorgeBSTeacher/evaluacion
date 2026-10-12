@@ -1,0 +1,289 @@
+{
+  "version": 1,
+  "tipo": "curriculo-evalcrit",
+  "fuente": "Decreto 66/2022, de 7 de julio, por el que se establece el currículo de Educación Infantil y Primaria en la Comunidad Autónoma de Cantabria (BOC nº 135, 13-07-2022), Anexo II-A",
+  "asignatura": {
+    "nombre": "Conocimiento del Medio Natural, Social y Cultural",
+    "etapa": "Primaria",
+    "ciclo": "Segundo ciclo",
+    "cursos": [
+      "3º",
+      "4º"
+    ]
+  },
+  "saberesBasicos": [
+    {
+      "bloque": "A. Cultura científica",
+      "apartados": [
+        "Iniciación en la actividad científica",
+        "La vida en nuestro planeta",
+        "Materia, fuerzas y energía"
+      ]
+    },
+    {
+      "bloque": "B. Tecnología y digitalización",
+      "apartados": [
+        "Digitalización del entorno personal de aprendizaje",
+        "Proyectos de diseño y pensamiento computacional"
+      ]
+    },
+    {
+      "bloque": "C. Sociedades y territorios",
+      "apartados": [
+        "Retos del mundo actual",
+        "Sociedades en el tiempo",
+        "Alfabetización cívica",
+        "Conciencia ecosocial"
+      ]
+    }
+  ],
+  "competenciasEspecificas": [
+    {
+      "codigo": "CMNSC.SC.CE1",
+      "descripcion": "Utilizar dispositivos y recursos digitales de forma segura, responsable y eficiente, para buscar información, comunicarse y trabajar de manera individual, en equipo y en red, y para reelaborar y crear contenido digital de acuerdo con las necesidades digitales del contexto educativo.",
+      "perfilSalida": [
+        "CCL3",
+        "STEM4",
+        "CD1",
+        "CD2",
+        "CD3",
+        "CD4",
+        "CD5",
+        "CCEC4"
+      ]
+    },
+    {
+      "codigo": "CMNSC.SC.CE2",
+      "descripcion": "Plantear y dar respuesta a cuestiones científicas sencillas, utilizando diferentes técnicas, instrumentos y modelos propios del pensamiento científico, para interpretar y explicar hechos y fenómenos que ocurren en el medio natural, social y cultural.",
+      "perfilSalida": [
+        "CCL1",
+        "CCL2",
+        "CCL3",
+        "STEM2",
+        "STEM4",
+        "CD1",
+        "CD2",
+        "CC4"
+      ]
+    },
+    {
+      "codigo": "CMNSC.SC.CE3",
+      "descripcion": "Resolver problemas a través de proyectos de diseño y de la aplicación del pensamiento computacional, para generar cooperativamente un producto creativo e innovador que responda a necesidades concretas.",
+      "perfilSalida": [
+        "STEM3",
+        "STEM4",
+        "CD5",
+        "CPSAA3",
+        "CPSAA4",
+        "CPSAA5",
+        "CE1",
+        "CE3",
+        "CCEC4"
+      ]
+    },
+    {
+      "codigo": "CMNSC.SC.CE4",
+      "descripcion": "Conocer y tomar conciencia del propio cuerpo, así como de las emociones y sentimientos propios y ajenos, aplicando el conocimiento científico, para desarrollar hábitos saludables y para conseguir el bienestar físico, emocional y social.",
+      "perfilSalida": [
+        "STEM5",
+        "CPSAA1",
+        "CPSAA2",
+        "CPSAA3",
+        "CC3"
+      ]
+    },
+    {
+      "codigo": "CMNSC.SC.CE5",
+      "descripcion": "Identificar las características de los diferentes elementos o sistemas del medio natural, social y cultural, analizando su organización y propiedades y estableciendo relaciones entre los mismos, para reconocer el valor del patrimonio cultural y natural, conservarlo, mejorarlo y emprender acciones para su uso responsable.",
+      "perfilSalida": [
+        "STEM1",
+        "STEM2",
+        "STEM4",
+        "STEM5",
+        "CD1",
+        "CC4",
+        "CE1",
+        "CCEC1"
+      ]
+    },
+    {
+      "codigo": "CMNSC.SC.CE6",
+      "descripcion": "Identificar las causas y consecuencias de la intervención humana en el entorno, desde los puntos de vista social, económico, cultural, tecnológico y ambiental, para mejorar la capacidad de afrontar problemas, buscar soluciones y actuar de manera individual y cooperativa en su resolución, y para poner en práctica estilos de vida sostenibles y consecuentes con el respeto, el cuidado y la protección de las personas y del planeta.",
+      "perfilSalida": [
+        "CCL5",
+        "STEM2",
+        "STEM5",
+        "CPSAA4",
+        "CC1",
+        "CC3",
+        "CC4",
+        "CE1"
+      ]
+    },
+    {
+      "codigo": "CMNSC.SC.CE7",
+      "descripcion": "Observar, comprender e interpretar continuidades y cambios del medio social y cultural, analizando relaciones de causalidad, simultaneidad y sucesión, para explicar y valorar las relaciones entre diferentes elementos y acontecimientos.",
+      "perfilSalida": [
+        "CCL3",
+        "STEM4",
+        "CPSAA4",
+        "CC1",
+        "CC3",
+        "CE2",
+        "CCEC1"
+      ]
+    },
+    {
+      "codigo": "CMNSC.SC.CE8",
+      "descripcion": "Reconocer y valorar la diversidad y la igualdad de género, mostrando empatía y respeto por otras culturas y reflexionando sobre cuestiones éticas, para contribuir al bienestar individual y colectivo de una sociedad en continua transformación y al logro de los valores de integración europea.",
+      "perfilSalida": [
+        "CP3",
+        "CPSAA3",
+        "CC1",
+        "CC2",
+        "CC3",
+        "CCEC1"
+      ]
+    },
+    {
+      "codigo": "CMNSC.SC.CE9",
+      "descripcion": "Participar en el entorno y la vida social de forma eficaz y constructiva desde el respeto a los valores democráticos, los derechos humanos y de la infancia y los principios y valores de la Constitución española y la Unión Europea, valorando la función del Estado y sus instituciones en el mantenimiento de la paz y la seguridad integral ciudadana, para generar interacciones respetuosas y equitativas y promover la resolución pacífica y dialogada de los conflictos.",
+      "perfilSalida": [
+        "CCL5",
+        "CPSAA1",
+        "CC1",
+        "CC2",
+        "CC3",
+        "CCEC1"
+      ]
+    }
+  ],
+  "criterios": [
+    {
+      "codigo": "CMNSC.SC.1.1",
+      "ceCodigo": "CMNSC.SC.CE1",
+      "descripcion": "Utilizar dispositivos y recursos digitales, de acuerdo con las necesidades del contexto educativo de forma segura, buscando información, comunicándose y trabajando de forma individual y en equipo, reelaborando y creando contenidos digitales sencillos.",
+      "peso": null
+    },
+    {
+      "codigo": "CMNSC.SC.2.1",
+      "ceCodigo": "CMNSC.SC.CE2",
+      "descripcion": "Formular preguntas y realizar predicciones razonadas, demostrando curiosidad por el medio natural, social y cultural cercano.",
+      "peso": null
+    },
+    {
+      "codigo": "CMNSC.SC.2.2",
+      "ceCodigo": "CMNSC.SC.CE2",
+      "descripcion": "Buscar y seleccionar información de diferentes fuentes seguras y fiables, utilizándola en investigaciones relacionadas con el medio natural, social y cultural y adquiriendo léxico científico básico.",
+      "peso": null
+    },
+    {
+      "codigo": "CMNSC.SC.2.3",
+      "ceCodigo": "CMNSC.SC.CE2",
+      "descripcion": "Realizar experimentos guiados, cuando la investigación lo requiera, utilizando diferentes técnicas de indagación y modelos, empleando de forma segura instrumentos y dispositivos, realizando observaciones y mediciones precisas y registrándolas correctamente.",
+      "peso": null
+    },
+    {
+      "codigo": "CMNSC.SC.2.4",
+      "ceCodigo": "CMNSC.SC.CE2",
+      "descripcion": "Proponer posibles respuestas a las preguntas planteadas, a través de la interpretación de la información y los resultados obtenidos, comparándolos con las predicciones realizadas.",
+      "peso": null
+    },
+    {
+      "codigo": "CMNSC.SC.2.5",
+      "ceCodigo": "CMNSC.SC.CE2",
+      "descripcion": "Presentar los resultados de las investigaciones en diferentes formatos, utilizando lenguaje científico básico y explicando los pasos seguidos.",
+      "peso": null
+    },
+    {
+      "codigo": "CMNSC.SC.3.1",
+      "ceCodigo": "CMNSC.SC.CE3",
+      "descripcion": "Construir en equipo un producto final sencillo que dé solución a un problema de diseño, proponiendo posibles soluciones, probando diferentes prototipos y utilizando de forma segura las herramientas, técnicas y materiales adecuados.",
+      "peso": null
+    },
+    {
+      "codigo": "CMNSC.SC.3.2",
+      "ceCodigo": "CMNSC.SC.CE3",
+      "descripcion": "Presentar el producto final de los proyectos de diseño en diferentes formatos y explicando los pasos seguidos.",
+      "peso": null
+    },
+    {
+      "codigo": "CMNSC.SC.3.3",
+      "ceCodigo": "CMNSC.SC.CE3",
+      "descripcion": "Resolver, de forma guiada, problemas sencillos de programación, modificando algoritmos de acuerdo con los principios básicos del pensamiento computacional.",
+      "peso": null
+    },
+    {
+      "codigo": "CMNSC.SC.4.1",
+      "ceCodigo": "CMNSC.SC.CE4",
+      "descripcion": "Mostrar actitudes que fomenten el bienestar emocional y social, identificando las emociones propias y las de los demás, mostrando empatía y estableciendo relaciones afectivas saludables.",
+      "peso": null
+    },
+    {
+      "codigo": "CMNSC.SC.5.1",
+      "ceCodigo": "CMNSC.SC.CE5",
+      "descripcion": "Identificar las características, la organización y las propiedades de los elementos del medio natural, social y cultural a través de la indagación y utilizando las herramientas y procesos adecuados.",
+      "peso": null
+    },
+    {
+      "codigo": "CMNSC.SC.5.2",
+      "ceCodigo": "CMNSC.SC.CE5",
+      "descripcion": "Identificar conexiones sencillas entre diferentes elementos del medio natural social y cultural mostrando comprensión de las relaciones que se establecen.",
+      "peso": null
+    },
+    {
+      "codigo": "CMNSC.SC.5.3",
+      "ceCodigo": "CMNSC.SC.CE5",
+      "descripcion": "Proteger el patrimonio natural y cultural y valorarlo como un bien común, adoptando conductas respetuosas para su disfrute y proponiendo acciones para su conservación y mejora.",
+      "peso": null
+    },
+    {
+      "codigo": "CMNSC.SC.6.1",
+      "ceCodigo": "CMNSC.SC.CE6",
+      "descripcion": "Identificar problemas ecosociales, proponer posibles soluciones y poner en práctica estilos de vida sostenible, reconociendo comportamientos respetuosos de cuidado, corresponsabilidad y protección del entorno y uso sostenible de los recursos naturales, y expresando los cambios positivos y negativos causados en el medio por la acción humana.",
+      "peso": null
+    },
+    {
+      "codigo": "CMNSC.SC.7.1",
+      "ceCodigo": "CMNSC.SC.CE7",
+      "descripcion": "Identificar hechos del entorno social y cultural desde la Prehistoria hasta la Edad Antigua, empleando las nociones de causalidad, simultaneidad y sucesión.",
+      "peso": null
+    },
+    {
+      "codigo": "CMNSC.SC.7.2",
+      "ceCodigo": "CMNSC.SC.CE7",
+      "descripcion": "Conocer personas, grupos sociales relevantes y formas de vida de las sociedades desde la Prehistoria hasta la Edad Antigua, incorporando la perspectiva de género.",
+      "peso": null
+    },
+    {
+      "codigo": "CMNSC.SC.8.1",
+      "ceCodigo": "CMNSC.SC.CE8",
+      "descripcion": "Analizar la importancia demográfica, cultural y económica de las migraciones en la actualidad, valorando con respeto y empatía el aporte de la diversidad cultural al bienestar individual y colectivo.",
+      "peso": null
+    },
+    {
+      "codigo": "CMNSC.SC.8.2",
+      "ceCodigo": "CMNSC.SC.CE8",
+      "descripcion": "Valorar positivamente las acciones que fomentan la igualdad de género y las conductas no sexistas reconociendo modelos positivos a lo largo de la historia.",
+      "peso": null
+    },
+    {
+      "codigo": "CMNSC.SC.9.1",
+      "ceCodigo": "CMNSC.SC.CE9",
+      "descripcion": "Realizar actividades en el contexto de la comunidad escolar, asumiendo responsabilidades y estableciendo acuerdos de forma dialogada y democrática y empleando un lenguaje inclusivo y no violento.",
+      "peso": null
+    },
+    {
+      "codigo": "CMNSC.SC.9.2",
+      "ceCodigo": "CMNSC.SC.CE9",
+      "descripcion": "Conocer los principales órganos de gobierno y funciones de diversas administraciones y servicios públicos, valorando la importancia de su gestión para la seguridad integral ciudadana y la participación democrática.",
+      "peso": null
+    },
+    {
+      "codigo": "CMNSC.SC.9.3",
+      "ceCodigo": "CMNSC.SC.CE9",
+      "descripcion": "Interiorizar normas básicas para la convivencia en el uso de los espacios públicos como peatones o como usuarios de los medios de locomoción, identificando las señales de tráfico y tomando conciencia de la importancia de una movilidad segura, saludable y sostenible tanto para las personas como para el planeta.",
+      "peso": null
+    }
+  ]
+}

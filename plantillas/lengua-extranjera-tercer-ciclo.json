@@ -1,0 +1,204 @@
+{
+  "version": 1,
+  "tipo": "curriculo-evalcrit",
+  "fuente": "Decreto 66/2022, de 7 de julio, por el que se establece el currículo de Educación Infantil y Primaria en la Comunidad Autónoma de Cantabria (BOC nº 135, 13-07-2022), Anexo II-A",
+  "asignatura": {
+    "nombre": "Lengua Extranjera",
+    "etapa": "Primaria",
+    "ciclo": "Tercer ciclo",
+    "cursos": [
+      "5º",
+      "6º"
+    ]
+  },
+  "saberesBasicos": [
+    {
+      "bloque": "A. Comunicación",
+      "apartados": []
+    },
+    {
+      "bloque": "B. Plurilingüismo",
+      "apartados": []
+    },
+    {
+      "bloque": "C. Interculturalidad",
+      "apartados": []
+    }
+  ],
+  "competenciasEspecificas": [
+    {
+      "codigo": "LEXT.TC.CE1",
+      "descripcion": "Comprender el sentido general e información específica y predecible de textos breves y sencillos, expresados de forma clara y en la lengua estándar, haciendo uso de diversas estrategias y recurriendo, cuando sea necesario, al uso de distintos tipos de apoyo, para desarrollar el repertorio lingüístico y para responder a necesidades comunicativas cotidianas.",
+      "perfilSalida": [
+        "CCL2",
+        "CCL3",
+        "CP1",
+        "CP2",
+        "STEM1",
+        "CD1",
+        "CPSAA5",
+        "CCEC2"
+      ]
+    },
+    {
+      "codigo": "LEXT.TC.CE2",
+      "descripcion": "Producir textos sencillos de manera comprensible y estructurada, mediante el empleo de estrategias como la planificación o la compensación, para expresar mensajes breves relacionados con necesidades inmediatas y responder a propósitos comunicativos cotidianos.",
+      "perfilSalida": [
+        "CCL1",
+        "CP1",
+        "CP2",
+        "STEM1",
+        "CD2",
+        "CPSAA5",
+        "CE1",
+        "CCEC4"
+      ]
+    },
+    {
+      "codigo": "LEXT.TC.CE3",
+      "descripcion": "Interactuar con otras personas usando expresiones cotidianas, recurriendo a estrategias de cooperación y empleando recursos analógicos y digitales, para responder a necesidades inmediatas de su interés en intercambios comunicativos respetuosos con las normas de cortesía.",
+      "perfilSalida": [
+        "CCL5",
+        "CP1",
+        "CP2",
+        "STEM1",
+        "CPSAA3",
+        "CC3",
+        "CE1",
+        "CE3"
+      ]
+    },
+    {
+      "codigo": "LEXT.TC.CE4",
+      "descripcion": "Mediar en situaciones predecibles, usando estrategias y conocimientos para procesar y transmitir información básica y sencilla, con el fin de facilitar la comunicación.",
+      "perfilSalida": [
+        "CCL5",
+        "CP1",
+        "CP2",
+        "CP3",
+        "STEM1",
+        "CPSAA1",
+        "CPSAA3",
+        "CCEC1"
+      ]
+    },
+    {
+      "codigo": "LEXT.TC.CE5",
+      "descripcion": "Reconocer y usar los repertorios lingüísticos personales entre distintas lenguas, reflexionando sobre su funcionamiento e identificando las estrategias y conocimientos propios, para mejorar la respuesta a necesidades comunicativas concretas en situaciones conocidas.",
+      "perfilSalida": [
+        "CP2",
+        "STEM1",
+        "CD2",
+        "CPSAA1",
+        "CPSAA4",
+        "CPSAA5",
+        "CE3"
+      ]
+    },
+    {
+      "codigo": "LEXT.TC.CE6",
+      "descripcion": "Apreciar y respetar la diversidad lingüística, cultural y artística a partir de la lengua extranjera, identificando y valorando las diferencias y semejanzas entre lenguas y culturas, para aprender a gestionar situaciones interculturales.",
+      "perfilSalida": [
+        "CCL5",
+        "CP3",
+        "CPSAA1",
+        "CPSAA3",
+        "CC2",
+        "CC3",
+        "CCEC1"
+      ]
+    }
+  ],
+  "criterios": [
+    {
+      "codigo": "LEXT.TC.1.1",
+      "ceCodigo": "LEXT.TC.CE1",
+      "descripcion": "Reconocer, interpretar e inferir el sentido global, así como palabras y frases específicas de textos orales, escritos y multimodales, breves y sencillos sobre temas frecuentes y cotidianos de relevancia personal y ámbitos próximos a su experiencia, así como de textos expositivos adecuados al nivel de desarrollo del alumnado, expresados de forma comprensible, clara y en lengua estándar a través de distintos soportes.",
+      "peso": null
+    },
+    {
+      "codigo": "LEXT.TC.1.2",
+      "ceCodigo": "LEXT.TC.CE1",
+      "descripcion": "Seleccionar, planificar y aplicar, de forma guiada, estrategias y conocimientos adecuados en situaciones comunicativas cotidianas y de relevancia para el alumnado para captar el sentido global y procesar informaciones explícitas en textos diversos.",
+      "peso": null
+    },
+    {
+      "codigo": "LEXT.TC.2.1",
+      "ceCodigo": "LEXT.TC.CE2",
+      "descripcion": "Expresar oralmente textos breves y sencillos, previamente preparados, sobre asuntos cotidianos y de relevancia para el alumnado, utilizando, de forma guiada, recursos verbales y no verbales, y usando formas y estructuras básicas y de uso frecuente, reproduciendo en la medida de lo posible el ritmo, la acentuación y la entonación de la lengua extranjera.",
+      "peso": null
+    },
+    {
+      "codigo": "LEXT.TC.2.2",
+      "ceCodigo": "LEXT.TC.CE2",
+      "descripcion": "Organizar y redactar textos breves y sencillos, con adecuación a la situación comunicativa propuesta, a través de herramientas analógicas y digitales, y usando estructuras y léxico básico de uso común sobre asuntos cotidianos y frecuentes, de relevancia personal para el alumnado y próximos a su experiencia.",
+      "peso": null
+    },
+    {
+      "codigo": "LEXT.TC.2.3",
+      "ceCodigo": "LEXT.TC.CE2",
+      "descripcion": "Seleccionar, planificar y aplicar, de forma guiada, conocimientos y estrategias para preparar y producir textos adecuados a las intenciones comunicativas, las características contextuales y la tipología textual, usando, con ayuda, recursos físicos o digitales en función de la tarea y las necesidades de cada momento.",
+      "peso": null
+    },
+    {
+      "codigo": "LEXT.TC.3.1",
+      "ceCodigo": "LEXT.TC.CE3",
+      "descripcion": "Planificar y participar de forma libre y activa en situaciones interactivas breves y sencillas sobre temas cotidianos, de relevancia personal y próximos a su experiencia, a través de diversos soportes, apoyándose en recursos tales como la repetición, el ritmo pausado o el lenguaje no verbal, y mostrando empatía y respeto por la cortesía lingüística y la etiqueta digital, así como por las diferentes necesidades, ideas y motivaciones de los interlocutores e interlocutoras.",
+      "peso": null
+    },
+    {
+      "codigo": "LEXT.TC.3.2",
+      "ceCodigo": "LEXT.TC.CE3",
+      "descripcion": "Seleccionar, planificar y aplicar en situaciones cotidianas, estrategias elementales para saludar, despedirse y presentarse; formular y contestar preguntas sencillas; expresar mensajes, e iniciar, mantener y terminar la comunicación.",
+      "peso": null
+    },
+    {
+      "codigo": "LEXT.TC.4.1",
+      "ceCodigo": "LEXT.TC.CE4",
+      "descripcion": "Inferir y explicar textos, conceptos y comunicaciones breves y sencillas, de forma guiada, en situaciones en las que atender a la diversidad, mostrando respeto y empatía por los interlocutores e interlocutoras y por las lenguas empleadas, e interés por participar en la solución de problemas de intercomprensión y de entendimiento en su entorno próximo, apoyándose en diversos recursos y soportes.",
+      "peso": null
+    },
+    {
+      "codigo": "LEXT.TC.4.2",
+      "ceCodigo": "LEXT.TC.CE4",
+      "descripcion": "Identificar y aplicar correctamente, estrategias básicas que ayuden a crear puentes y faciliten la comprensión y producción de información y la comunicación, adecuadas a las intenciones comunicativas, usando, con ayuda, recursos y apoyos físicos o digitales en función de las necesidades de cada contexto.",
+      "peso": null
+    },
+    {
+      "codigo": "LEXT.TC.5.1",
+      "ceCodigo": "LEXT.TC.CE5",
+      "descripcion": "Comparar y contrastar las similitudes y diferencias entre distintas lenguas reflexionando de manera progresivamente autónoma sobre aspectos básicos de su funcionamiento.",
+      "peso": null
+    },
+    {
+      "codigo": "LEXT.TC.5.2",
+      "ceCodigo": "LEXT.TC.CE5",
+      "descripcion": "Utilizar, diferenciar y aplicar de forma progresivamente autónoma los conocimientos y estrategias de mejora de su capacidad de comunicar y de aprender la lengua extranjera, con apoyo de otros participantes y de soportes analógicos y digitales.",
+      "peso": null
+    },
+    {
+      "codigo": "LEXT.TC.5.3",
+      "ceCodigo": "LEXT.TC.CE5",
+      "descripcion": "Identificar, registrar, aplicar y explicar, de forma progresivamente autónoma, los progresos y dificultades en el proceso de aprendizaje de la lengua extranjera, reconociendo los aspectos que ayudan a mejorar y realizando actividades de autoevaluación y coevaluación, como las propuestas en el Portfolio Europeo de las Lenguas (PEL) o en un diario de aprendizaje.",
+      "peso": null
+    },
+    {
+      "codigo": "LEXT.TC.6.1",
+      "ceCodigo": "LEXT.TC.CE6",
+      "descripcion": "Actuar con aprecio y respeto en situaciones interculturales, construyendo vínculos entre las diferentes lenguas y culturas, y mostrando rechazo ante cualquier tipo de discriminación, prejuicio y estereotipo en contextos comunicativos cotidianos y habituales.",
+      "peso": null
+    },
+    {
+      "codigo": "LEXT.TC.6.2",
+      "ceCodigo": "LEXT.TC.CE6",
+      "descripcion": "Aceptar y respetar la diversidad lingüística, cultural y artística propia de países donde se habla la lengua extranjera como fuente de enriquecimiento personal, mostrando interés por comprender elementos culturales y lingüísticos básicos que fomenten la sostenibilidad y la democracia.",
+      "peso": null
+    },
+    {
+      "codigo": "LEXT.TC.6.3",
+      "ceCodigo": "LEXT.TC.CE6",
+      "descripcion": "Seleccionar y aplicar, de forma guiada, estrategias básicas para entender y apreciar la diversidad lingüística, cultural y artística",
+      "peso": null
+    }
+  ]
+}

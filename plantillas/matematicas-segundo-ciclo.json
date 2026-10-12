@@ -1,0 +1,275 @@
+{
+  "version": 1,
+  "tipo": "curriculo-evalcrit",
+  "fuente": "Decreto 66/2022, de 7 de julio, por el que se establece el currículo de Educación Infantil y Primaria en la Comunidad Autónoma de Cantabria (BOC nº 135, 13-07-2022), Anexo II-A",
+  "asignatura": {
+    "nombre": "Matemáticas",
+    "etapa": "Primaria",
+    "ciclo": "Segundo ciclo",
+    "cursos": [
+      "3º",
+      "4º"
+    ]
+  },
+  "saberesBasicos": [
+    {
+      "bloque": "A. Sentido numérico",
+      "apartados": [
+        "Conteo",
+        "Cantidad",
+        "Sentido de las operaciones",
+        "Relaciones",
+        "Educación financiera"
+      ]
+    },
+    {
+      "bloque": "B. Sentido de la medida",
+      "apartados": [
+        "Magnitud",
+        "Medición",
+        "Estimación y relaciones"
+      ]
+    },
+    {
+      "bloque": "C. Sentido espacial",
+      "apartados": [
+        "Figuras geométricas de dos y tres dimensiones",
+        "Localización y sistemas de representación",
+        "Movimientos y transformaciones",
+        "Visualización, razonamiento y modelización geométrica"
+      ]
+    },
+    {
+      "bloque": "D. Sentido algebraico",
+      "apartados": [
+        "Patrones",
+        "Modelo matemático",
+        "Relaciones y funciones",
+        "Pensamiento computacional"
+      ]
+    },
+    {
+      "bloque": "E. Sentido estocástico",
+      "apartados": [
+        "Organización y análisis de datos",
+        "Incertidumbre",
+        "Inferencia"
+      ]
+    },
+    {
+      "bloque": "F. Sentido socioafectivo",
+      "apartados": [
+        "Creencias, actitudes y emociones",
+        "Trabajo en equipo, inclusión, respeto y diversidad"
+      ]
+    }
+  ],
+  "competenciasEspecificas": [
+    {
+      "codigo": "MAT.SC.CE1",
+      "descripcion": "Interpretar situaciones de la vida cotidiana, proporcionando una representación matemática de las mismas mediante conceptos, herramientas y estrategias, para analizar la información más relevante.",
+      "perfilSalida": [
+        "STEM1",
+        "STEM2",
+        "STEM4",
+        "CD2",
+        "CPSAA5",
+        "CE1",
+        "CE3",
+        "CCEC4"
+      ]
+    },
+    {
+      "codigo": "MAT.SC.CE2",
+      "descripcion": "Resolver situaciones problematizadas, aplicando diferentes técnicas, estrategias y formas de razonamiento, para explorar distintas maneras de proceder, obtener soluciones y asegurar su validez desde un punto de vista formal y en relación con el contexto planteado.",
+      "perfilSalida": [
+        "STEM1",
+        "STEM2",
+        "CPSAA4",
+        "CPSAA5",
+        "CE3"
+      ]
+    },
+    {
+      "codigo": "MAT.SC.CE3",
+      "descripcion": "Explorar, formular y comprobar conjeturas sencillas o plantear problemas de tipo matemático en situaciones basadas en la vida cotidiana, de forma guiada, reconociendo el valor del razonamiento y la argumentación, para contrastar su validez, adquirir e integrar nuevo conocimiento.",
+      "perfilSalida": [
+        "CCL1",
+        "STEM1",
+        "STEM2",
+        "CD1",
+        "CD3",
+        "CD5",
+        "CE3"
+      ]
+    },
+    {
+      "codigo": "MAT.SC.CE4",
+      "descripcion": "Utilizar el pensamiento computacional, organizando datos, descomponiendo en partes, reconociendo patrones, generalizando e interpretando, modificando y creando algoritmos de forma guiada, para modelizar y automatizar situaciones de la vida cotidiana.",
+      "perfilSalida": [
+        "STEM1",
+        "STEM2",
+        "STEM3",
+        "CD1",
+        "CD3",
+        "CD5",
+        "CE3"
+      ]
+    },
+    {
+      "codigo": "MAT.SC.CE5",
+      "descripcion": "Reconocer y utilizar conexiones entre las diferentes ideas matemáticas, así como identificar las matemáticas implicadas en otras áreas o en la vida cotidiana, interrelacionando conceptos y procedimientos, para interpretar situaciones y contextos diversos.",
+      "perfilSalida": [
+        "STEM1",
+        "STEM3",
+        "CD3",
+        "CD5",
+        "CC4",
+        "CCEC1"
+      ]
+    },
+    {
+      "codigo": "MAT.SC.CE6",
+      "descripcion": "Comunicar y representar, de forma individual y colectiva, conceptos, procedimientos y resultados matemáticos, utilizando el lenguaje oral, escrito, gráfico, multimodal y la terminología apropiados, para dar significado y permanencia a las ideas matemáticas.",
+      "perfilSalida": [
+        "CCL1",
+        "CCL3",
+        "STEM2",
+        "STEM4",
+        "CD1",
+        "CD5",
+        "CE3",
+        "CCEC4"
+      ]
+    },
+    {
+      "codigo": "MAT.SC.CE7",
+      "descripcion": "Desarrollar destrezas personales que ayuden a identificar y gestionar emociones al enfrentarse a retos matemáticos, fomentando la confianza en las propias posibilidades, aceptando el error como parte del proceso de aprendizaje y adaptándose a las situaciones de incertidumbre, para mejorar la perseverancia y disfrutar en el aprendizaje de las matemáticas.",
+      "perfilSalida": [
+        "STEM5",
+        "CPSAA1",
+        "CPSAA4",
+        "CPSAA5",
+        "CE2",
+        "CE3"
+      ]
+    },
+    {
+      "codigo": "MAT.SC.CE8",
+      "descripcion": "Desarrollar destrezas sociales, reconociendo y respetando las emociones, las experiencias de los demás y el valor de la diversidad y participando activamente en equipos de trabajo heterogéneos con roles asignados, para construir una identidad positiva como estudiante de matemáticas, fomentar el bienestar personal y crear relaciones saludables.",
+      "perfilSalida": [
+        "CCL5",
+        "CP3",
+        "STEM3",
+        "CPSAA1",
+        "CPSAA3",
+        "CC2",
+        "CC3"
+      ]
+    }
+  ],
+  "criterios": [
+    {
+      "codigo": "MAT.SC.1.1",
+      "ceCodigo": "MAT.SC.CE1",
+      "descripcion": "Interpretar, de forma verbal o gráfica, problemas de la vida cotidiana, comprendiendo las preguntas planteadas a través de diferentes estrategias o herramientas, incluidas las tecnológicas.",
+      "peso": null
+    },
+    {
+      "codigo": "MAT.SC.1.2",
+      "ceCodigo": "MAT.SC.CE1",
+      "descripcion": "Producir representaciones matemáticas a través de esquemas o diagramas que ayuden en la resolución de una situación problematizada.",
+      "peso": null
+    },
+    {
+      "codigo": "MAT.SC.2.1",
+      "ceCodigo": "MAT.SC.CE2",
+      "descripcion": "Comparar entre diferentes estrategias para resolver un problema de forma pautada.",
+      "peso": null
+    },
+    {
+      "codigo": "MAT.SC.2.2",
+      "ceCodigo": "MAT.SC.CE2",
+      "descripcion": "Obtener posibles soluciones de un problema siguiendo alguna estrategia conocida.",
+      "peso": null
+    },
+    {
+      "codigo": "MAT.SC.2.3",
+      "ceCodigo": "MAT.SC.CE2",
+      "descripcion": "Demostrar la corrección matemática de las soluciones de un problema y su coherencia en el contexto planteado.",
+      "peso": null
+    },
+    {
+      "codigo": "MAT.SC.3.1",
+      "ceCodigo": "MAT.SC.CE3",
+      "descripcion": "Analizar conjeturas matemáticas sencillas investigando patrones, propiedades y relaciones de forma pautada.",
+      "peso": null
+    },
+    {
+      "codigo": "MAT.SC.3.2",
+      "ceCodigo": "MAT.SC.CE3",
+      "descripcion": "Dar ejemplos de problemas sobre situaciones cotidianas que se resuelven matemáticamente.",
+      "peso": null
+    },
+    {
+      "codigo": "MAT.SC.4.1",
+      "ceCodigo": "MAT.SC.CE4",
+      "descripcion": "Automatizar situaciones sencillas de la vida cotidiana que se realicen paso a paso o sigan una rutina, utilizando de forma pautada principios básicos del pensamiento computacional.",
+      "peso": null
+    },
+    {
+      "codigo": "MAT.SC.4.2",
+      "ceCodigo": "MAT.SC.CE4",
+      "descripcion": "Emplear herramientas tecnológicas adecuadas en el proceso de resolución de problemas.",
+      "peso": null
+    },
+    {
+      "codigo": "MAT.SC.5.1",
+      "ceCodigo": "MAT.SC.CE5",
+      "descripcion": "Realizar conexiones entre los diferentes elementos matemáticos, aplicando conocimientos y experiencias propios.",
+      "peso": null
+    },
+    {
+      "codigo": "MAT.SC.5.2",
+      "ceCodigo": "MAT.SC.CE5",
+      "descripcion": "Interpretar situaciones en contextos diversos, reconociendo las conexiones entre las matemáticas y la vida cotidiana.",
+      "peso": null
+    },
+    {
+      "codigo": "MAT.SC.6.1",
+      "ceCodigo": "MAT.SC.CE6",
+      "descripcion": "Reconocer el lenguaje matemático sencillo presente en la vida cotidiana en diferentes formatos, adquiriendo vocabulario específico básico y mostrando la comprensión del mensaje.",
+      "peso": null
+    },
+    {
+      "codigo": "MAT.SC.6.2",
+      "ceCodigo": "MAT.SC.CE6",
+      "descripcion": "Explicar los procesos e ideas matemáticas, los pasos seguidos en la resolución de un problema o los resultados obtenidos, utilizando un lenguaje matemático sencillo en diferentes formatos.",
+      "peso": null
+    },
+    {
+      "codigo": "MAT.SC.7.1",
+      "ceCodigo": "MAT.SC.CE7",
+      "descripcion": "Identificar las emociones propias al abordar retos matemáticos, pidiendo ayuda solo cuando sea necesario y desarrollando la autoconfianza.",
+      "peso": null
+    },
+    {
+      "codigo": "MAT.SC.7.2",
+      "ceCodigo": "MAT.SC.CE7",
+      "descripcion": "Mostrar actitudes positivas ante retos matemáticos tales como el esfuerzo y la flexibilidad, valorando el error como una oportunidad de aprendizaje.",
+      "peso": null
+    },
+    {
+      "codigo": "MAT.SC.8.1",
+      "ceCodigo": "MAT.SC.CE8",
+      "descripcion": "Trabajar en equipo activa y respetuosamente, comunicándose adecuadamente, respetando la diversidad del grupo y estableciendo relaciones saludables basadas en la igualdad y la resolución pacífica de conflictos.",
+      "peso": null
+    },
+    {
+      "codigo": "MAT.SC.8.2",
+      "ceCodigo": "MAT.SC.CE8",
+      "descripcion": "Participar en el reparto de tareas, asumiendo y respetando las responsabilidades individuales asignadas y empleando estrategias sencillas de trabajo en equipo dirigidas a la consecución de objetivos compartidos.",
+      "peso": null
+    }
+  ]
+}

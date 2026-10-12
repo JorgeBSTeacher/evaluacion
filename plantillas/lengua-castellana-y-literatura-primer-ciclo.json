@@ -1,0 +1,264 @@
+{
+  "version": 1,
+  "tipo": "curriculo-evalcrit",
+  "fuente": "Decreto 66/2022, de 7 de julio, por el que se establece el currículo de Educación Infantil y Primaria en la Comunidad Autónoma de Cantabria (BOC nº 135, 13-07-2022), Anexo II-A",
+  "asignatura": {
+    "nombre": "Lengua Castellana y Literatura",
+    "etapa": "Primaria",
+    "ciclo": "Primer ciclo",
+    "cursos": [
+      "1º",
+      "2º"
+    ]
+  },
+  "saberesBasicos": [
+    {
+      "bloque": "A. Las lenguas y sus hablantes",
+      "apartados": []
+    },
+    {
+      "bloque": "B. Comunicación",
+      "apartados": [
+        "Contexto",
+        "Géneros discursivos",
+        "Procesos"
+      ]
+    },
+    {
+      "bloque": "C. Educación literaria",
+      "apartados": []
+    }
+  ],
+  "competenciasEspecificas": [
+    {
+      "codigo": "LCL.PC.CE1",
+      "descripcion": "Reconocer la diversidad lingüística del mundo a partir de la identificación de las lenguas del alumnado y de la realidad plurilingüe y multicultural de España, para favorecer la reflexión interlingüística, para identificar y rechazar estereotipos y prejuicios lingüísticos y para valorar dicha diversidad como fuente de riqueza cultural.",
+      "perfilSalida": [
+        "CCL1",
+        "CCL5",
+        "CP2",
+        "CP3",
+        "CC1",
+        "CC2",
+        "CCEC1",
+        "CCEC3"
+      ]
+    },
+    {
+      "codigo": "LCL.PC.CE2",
+      "descripcion": "Comprender e interpretar textos orales y multimodales, identificando el sentido general y la información más relevante y valorando con ayuda aspectos formales y de contenido básicos, para construir conocimiento y responder a diferentes necesidades comunicativas.",
+      "perfilSalida": [
+        "CCL2",
+        "CP2",
+        "STEM1",
+        "CD3",
+        "CPSAA3",
+        "CC3"
+      ]
+    },
+    {
+      "codigo": "LCL.PC.CE3",
+      "descripcion": "Producir textos orales y multimodales, con coherencia, claridad y registro adecuados, para expresar ideas, sentimientos y conceptos; construir conocimiento; establecer vínculos personales; y participar con autonomía y una actitud cooperativa y empática en interacciones orales variadas.",
+      "perfilSalida": [
+        "CCL1",
+        "CCL3",
+        "CCL5",
+        "CP2",
+        "STEM1",
+        "CD2",
+        "CD3",
+        "CC2",
+        "CE1"
+      ]
+    },
+    {
+      "codigo": "LCL.PC.CE4",
+      "descripcion": "Comprender e interpretar textos escritos y multimodales, reconociendo el sentido global, las ideas principales y la información explícita e implícita, y realizando con ayuda reflexiones elementales sobre aspectos formales y de contenido, para adquirir y construir conocimiento y para responder a necesidades e intereses comunicativos diversos.",
+      "perfilSalida": [
+        "CCL2",
+        "CCL3",
+        "CCL5",
+        "CP2",
+        "STEM1",
+        "CD1",
+        "CPSAA4",
+        "CPSAA5"
+      ]
+    },
+    {
+      "codigo": "LCL.PC.CE5",
+      "descripcion": "Producir textos escritos y multimodales, con corrección gramatical y ortográfica básicas, secuenciando correctamente los contenidos y aplicando estrategias elementales de planificación, textualización, revisión y edición, para construir conocimiento y para dar respuesta a demandas comunicativas concretas.",
+      "perfilSalida": [
+        "CCL1",
+        "CCL3",
+        "CCL5",
+        "STEM1",
+        "CD2",
+        "CD3",
+        "CPSAA5",
+        "CC2"
+      ]
+    },
+    {
+      "codigo": "LCL.PC.CE6",
+      "descripcion": "Buscar, seleccionar y contrastar información procedente de dos o más fuentes, de forma planificada y con el debido acompañamiento, evaluando su fiabilidad y reconociendo algunos riesgos de manipulación y desinformación, para transformarla en conocimiento y para comunicarla de manera creativa, adoptando un punto de vista personal y respetuoso con la propiedad intelectual.",
+      "perfilSalida": [
+        "CCL3",
+        "CD1",
+        "CD2",
+        "CD3",
+        "CD4",
+        "CPSAA5",
+        "CC2",
+        "CE3"
+      ]
+    },
+    {
+      "codigo": "LCL.PC.CE7",
+      "descripcion": "Leer de manera autónoma obras diversas seleccionadas atendiendo a sus gustos e intereses, compartiendo las experiencias de lectura, para iniciar la construcción de la identidad lectora, para fomentar el gusto por la lectura como fuente de placer y para disfrutar de su dimensión social.",
+      "perfilSalida": [
+        "CCL1",
+        "CCL4",
+        "CD3",
+        "CPSAA1",
+        "CCEC1",
+        "CCEC2",
+        "CCEC3"
+      ]
+    },
+    {
+      "codigo": "LCL.PC.CE8",
+      "descripcion": "Leer, interpretar y analizar, de manera acompañada, obras o fragmentos literarios adecuados a su desarrollo, estableciendo relaciones entre ellos e identificando el género literario y sus convenciones fundamentales, para iniciarse en el reconocimiento de la literatura como manifestación artística y fuente de placer, conocimiento e inspiración para crear textos de intención literaria.",
+      "perfilSalida": [
+        "CCL1",
+        "CCL2",
+        "CCL4",
+        "CCEC1",
+        "CCEC2",
+        "CCEC3",
+        "CCEC4"
+      ]
+    },
+    {
+      "codigo": "LCL.PC.CE9",
+      "descripcion": "Reflexionar de forma guiada sobre el lenguaje a partir de procesos de producción y comprensión de textos en contextos significativos, utilizando la terminología elemental adecuada, para iniciarse en el desarrollo de la conciencia lingüística y para mejorar las destrezas de producción y comprensión oral y escrita.",
+      "perfilSalida": [
+        "CCL1",
+        "CCL2",
+        "CP2",
+        "STEM1",
+        "STEM2",
+        "CPSAA5"
+      ]
+    },
+    {
+      "codigo": "LCL.PC.CE10",
+      "descripcion": "Poner las propias prácticas comunicativas al servicio de la convivencia democrática utilizando un lenguaje no discriminatorio y detectando y rechazando los abusos de poder a través de la palabra, para favorecer un uso no solo eficaz sino también ético del lenguaje.",
+      "perfilSalida": []
+    }
+  ],
+  "criterios": [
+    {
+      "codigo": "LCL.PC.1.1",
+      "ceCodigo": "LCL.PC.CE1",
+      "descripcion": "Mostrar interés y respeto a las distintas lenguas y variedades dialectales de su entorno, valorando la igualdad en las diferencias.",
+      "peso": null
+    },
+    {
+      "codigo": "LCL.PC.1.2",
+      "ceCodigo": "LCL.PC.CE1",
+      "descripcion": "Reconocer, de manera acompañada y en contextos próximos, algunos prejuicios y estereotipos lingüísticos y culturales muy frecuentes. Comprender el sentido de textos orales y multimodales sencillos, reconociendo las ideas principales y los mensajes explícitos y los mensajes implícitos más sencillos, e iniciando, de manera acompañada, la valoración del contenido y de los elementos no verbales más elementales.",
+      "peso": null
+    },
+    {
+      "codigo": "LCL.PC.3.1",
+      "ceCodigo": "LCL.PC.CE3",
+      "descripcion": "Producir textos orales y multimodales coherentes, con planificación acompañada y utilizando recursos no verbales elementales.",
+      "peso": null
+    },
+    {
+      "codigo": "LCL.PC.3.2",
+      "ceCodigo": "LCL.PC.CE3",
+      "descripcion": "Participar en interacciones orales espontáneas, incorporando estrategias elementales de escucha activa y de cortesía lingüística.",
+      "peso": null
+    },
+    {
+      "codigo": "LCL.PC.4.1",
+      "ceCodigo": "LCL.PC.CE4",
+      "descripcion": "Comprender el sentido global y la información relevante de textos cercanos, escritos y multimodales, a partir de estrategias básicas de comprensión antes, durante y después de la lectura.",
+      "peso": null
+    },
+    {
+      "codigo": "LCL.PC.4.2",
+      "ceCodigo": "LCL.PC.CE4",
+      "descripcion": "Analizar, de manera acompañada, el contenido y aspectos formales y no formales elementales de textos escritos y multimodales sencillos valorando su contenido y estructura. Producir textos escritos y multimodales sencillos y coherentes en distintos soportes, desde las diferentes etapas del proceso evolutivo de la escritura, ajustándose a modelos dados y movilizando, de manera acompañada, estrategias elementales, individuales o grupales, de planificación, textualización y revisión.",
+      "peso": null
+    },
+    {
+      "codigo": "LCL.PC.6.1",
+      "ceCodigo": "LCL.PC.CE6",
+      "descripcion": "Localizar, seleccionar y contrastar información de distintas fuentes, incluidas las digitales, citándolas y recreándolas mediante la adaptación creativa de modelos dados.",
+      "peso": null
+    },
+    {
+      "codigo": "LCL.PC.6.2",
+      "ceCodigo": "LCL.PC.CE6",
+      "descripcion": "Compartir los resultados de un proceso de investigación sencillo, individual o grupal, sobre algún tema de interés personal, realizado de manera acompañada.",
+      "peso": null
+    },
+    {
+      "codigo": "LCL.PC.6.3",
+      "ceCodigo": "LCL.PC.CE6",
+      "descripcion": "Adoptar hábitos de uso crítico, seguro, sostenible y saludable de las tecnologías digitales en relación con la búsqueda y la comunicación de la información.",
+      "peso": null
+    },
+    {
+      "codigo": "LCL.PC.7.1",
+      "ceCodigo": "LCL.PC.CE7",
+      "descripcion": "Leer con progresiva autonomía textos de distintos autores y autoras acordes con sus gustos e intereses, seleccionados de manera acompañada, desde las diferentes etapas del proceso evolutivo de la lectura.",
+      "peso": null
+    },
+    {
+      "codigo": "LCL.PC.7.2",
+      "ceCodigo": "LCL.PC.CE7",
+      "descripcion": "Compartir oralmente la experiencia y disfrute por la lectura participando en comunidades lectoras de ámbito escolar.",
+      "peso": null
+    },
+    {
+      "codigo": "LCL.PC.8.1",
+      "ceCodigo": "LCL.PC.CE8",
+      "descripcion": "Escuchar y leer textos orales y escritos de la literatura infantil, que recojan diversidad de autores y autoras, estableciendo de manera acompañada relaciones elementales entre ellos y con otras manifestaciones artísticas o culturales.",
+      "peso": null
+    },
+    {
+      "codigo": "LCL.PC.8.2",
+      "ceCodigo": "LCL.PC.CE8",
+      "descripcion": "Producir, de manera acompañada, textos sencillos individuales o colectivos con intención literaria, adaptados a las diferentes etapas del proceso evolutivo de la escritura, ajustándose a modelos dados, en distintos soportes y complementándolos con otros lenguajes artísticos.",
+      "peso": null
+    },
+    {
+      "codigo": "LCL.PC.9.1",
+      "ceCodigo": "LCL.PC.CE9",
+      "descripcion": "Formular conclusiones elementales sobre el funcionamiento de la lengua, prestando especial atención a la concordancia y a las relaciones de significado entre las palabras, a partir de la observación, comparación y transformación de palabras y enunciados, en un proceso acompañado de producción o comprensión de textos en contextos significativos.",
+      "peso": null
+    },
+    {
+      "codigo": "LCL.PC.9.2",
+      "ceCodigo": "LCL.PC.CE9",
+      "descripcion": "Revisar y mejorar los textos propios y subsanar algunos problemas de comprensión lectora, de manera acompañada, a partir de la reflexión metalingüística e interlingüística y usando la terminología lingüística básica adecuada.",
+      "peso": null
+    },
+    {
+      "codigo": "LCL.PC.10.1",
+      "ceCodigo": "LCL.PC.CE10",
+      "descripcion": "Rechazar los usos lingüísticos discriminatorios identificados a partir de la reflexión grupal acompañada sobre los aspectos elementales, verbales y no verbales, de la comunicación, teniendo en cuenta una perspectiva de género.",
+      "peso": null
+    },
+    {
+      "codigo": "LCL.PC.10.2",
+      "ceCodigo": "LCL.PC.CE10",
+      "descripcion": "Movilizar, con la planificación y el acompañamiento necesarios, estrategias elementales para la escucha activa, la comunicación asertiva y el consenso, iniciándose en la gestión dialogada de conflictos.",
+      "peso": null
+    }
+  ]
+}
