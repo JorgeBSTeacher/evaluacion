@@ -46,7 +46,7 @@ Jerarquía LOMLOE: Etapa → Área → **Competencia específica** → **Criteri
 - Vínculo obligatorio criterio → 1..n competencias específicas; opcional criterio → competencias clave del perfil de salida (CCL, CP, STEM, CD, CPSAA, CC, CE, CCEC).
 - Saberes básicos: NO como campo del criterio (D-09); solo campo informativo opcional en los instrumentos. Como novedad v0.2, cada plantilla puede traer los bloques de saberes del área y se guardan como campo informativo `saberesBasicos` en la asignatura.
 - **Plantillas oficiales (D-31)**: ficheros JSON en `plantillas/` generados a partir del decreto verificado — **Decreto 66/2022, de 7 de julio (BOC nº 135, 13-07-2022), Anexo II-A**, currículo Infantil+Primaria Cantabria. Esquema de plantilla (`tipo: "curriculo-evalcrit"`, `version: 1`): asignatura (nombre/etapa/ciclo), competencias específicas con descriptores del Perfil de salida, criterios vinculados por `ceCodigo`, y `peso: null` para reparto equitativo. **Campo `asignatura.cursos`** (v0.2.1): si la plantilla lo trae (ej. `["5º","6º"]`), el importador crea una asignatura por curso (`Matemáticas 5º`, `Matemáticas 6º`) con currículo completo y pesos independientes en cada una; sin `cursos` se crea una sola asignatura (compatibilidad). Fusión segura: si la asignatura destino ya existe y tiene currículo, la importación se rechaza con mensaje claro; nunca se tocan instrumentos ni registros. Los descriptores (STEM1, CPSAA3…) se traducen automáticamente a competencias clave por prefijo (mayor coincidencia primero).
-- **Plantillas integradas (v0.2.1)**: `js/plantillas.js` incrusta las plantillas como script clásico (`PLANTILLAS_CURRICULO`), generado desde `plantillas/*.json`; así la carga del currículo funciona en `file://` sin selector de archivos ni fetch. El modal «Importar currículo» muestra chips por plantilla y admite ambas vías (chips o archivo).
+- **Plantillas integradas (v0.2.1)**: `js/plantillas.js` incrusta las plantillas como script clásico (`PLANTILLAS_CURRICULO`), generado desde `plantillas/*.json`; así la carga del currículo funciona en `file://` sin selector de archivos ni fetch. El modal «Importar currículo» agrupa las plantillas por área y ciclo.
 - **Pesos por defecto al importar (D-32)**: si la plantilla no trae pesos, se reparte 100 % a partes iguales con redondeo a 4 decimales ajustando el último criterio para que la suma sea exactamente 100; quedan editables como cualquier criterio. Plantilla piloto validada contra el decreto: Matemáticas 3.er ciclo = 8 CE + **17 criterios** (2+3+2×6) + 6 bloques de saberes; suma de pesos verificada = 100.
 - **Competencias clave (D-33, v0.3)**: la calificación por clave (CCL, CP, STEM…) usa exactamente la misma fórmula ponderada que las específicas (`notaPonderada` filtrando los criterios que llevan esa clave en `claveIds`); sin evidencias → «—». Las claves se derivan automáticamente del Perfil de salida al importar plantillas oficiales y son editables en el criterio. Se muestran en Cuadrícula → pestaña «Competencias», sección «Competencias clave».
 
@@ -54,7 +54,22 @@ Jerarquía LOMLOE: Etapa → Área → **Competencia específica** → **Criteri
 
 Tipos: **Control/Examen**, **Rúbrica**, **Proyecto**, **Otro**.
 
-Común: título, fecha, periodo (T1/T2/T3), clase, saberes básicos informativos, apartados.
+Común: título, fecha, periodo (T1/T2/T3), clase, saberes básicos informativos, apartados y, desde v0.4, **nivel ACI** (opcional) y **unidad** (etiqueta informativa).
+
+- **Nivel ACI** (v0.4): un instrumento sin nivel es **común** a todo el alumnado; con `nivel: "BASE"` solo para el alumnado sin adaptación; con el código de un nivel (`"4"`) solo para ese alumnado adaptado. La pantalla de corrección muestra únicamente el alumnado del instrumento.
+- **Unidad** (v0.4): texto libre (ej. `UD5`) que agrupa los distintos exámenes del mismo tema (control base, control ACI…); se muestra como etiqueta y se usa para ordenar las columnas de la cuadrícula y el listado de instrumentos.
+- **Examen paralelo** (v0.4.3): desde el listado de Instrumentos, el botón **Duplicar** de cualquier examen abre un modal para marcar uno o varios niveles ACI; se crea una copia por nivel (mismos apartados y criterios, misma `unidad`, `nivel` = el código elegido) con las notas en blanco. Es la vía rápida para el «examen B/C» del alumnado adaptado.
+
+### Adaptaciones curriculares (ACI) — v0.4
+
+Escenario real: en un aula de 6º hay alumnado que trabaja el currículo de 4º. Solución:
+
+- Cada **clase** define 0..n **niveles ACI** (`clase.nivelesAci`): `{ codigo, etiqueta, asignaturaId }`, donde `asignaturaId` apunta al currículo del curso de referencia (p. ej. «Matemáticas 4º»). Se gestiona con el botón **ACI** de la lista de clases.
+- Cada alumno se asigna a un nivel (`clase.adaptaciones` = alumno→código); sin asignación = **base**.
+- El motor (`Calc`) resuelve, por alumno, su **asignatura/criterios** según el nivel y descarta los instrumentos que no le corresponden. La columna «Evaluación», las pestañas Criterios/Competencias y la corrección respetan el nivel.
+- La cuadrícula incorpora un **selector de nivel** (Base por defecto) que alterna entre el currículo base y cada ACI. Desde v0.4.3 incluye la opción **«Todos los niveles»**: muestra al grupo completo junto, cada examen solo en las columnas de quien lo hace (resto «—» en gris) y la columna «Evaluación» armonizada por el currículo de cada alumno (los base con 6º, los ACI con el suyo).
+- Retrocompatible: una clase sin niveles ACI se comporta exactamente como antes (todo es base).
+
 
 - **Control/Proyecto/Otro**: N apartados; cada uno con puntuación máxima decimal libre (ej. 4, 2, 3.5) y mapeo a 1..n criterios. La suma de máximos define el total (informativo; se normaliza).
 - **Rúbrica**: niveles definidos al crearla (4 por defecto, editables) con descriptor y % de logro (25/50/75/100 por defecto). Cada apartado evalúa 1..n criterios eligiendo un nivel.
@@ -77,6 +92,7 @@ Común: título, fecha, periodo (T1/T2/T3), clase, saberes básicos informativos
 8. Nota por competencia específica = misma agregación restringida a sus criterios.
 9. Redondeo: 1 decimal, clásico al más cercano; solo para mostrar, nunca acumulado (D-15).
 10. La nota del instrumento (Σobtenidos/Σmáx ×10) es **informativa**; no interviene en la nota de evaluación (D-16).
+11. **ACI (v0.4)**: los pasos 1–10 se calculan por alumno usando su propio currículo (criterios del nivel) y solo los instrumentos que le aplican (comunes + los de su nivel). Para un alumno base el resultado es idéntico al anterior.
 
 ### Ejemplo verificado
 
@@ -104,6 +120,7 @@ Si los pesos no casan con el reparto de puntos, ambas notas difieren **a propós
 - La cuadrícula muestra SIEMPRE las filas de alumnos del grupo, aunque no existan instrumentos aún: cuaderno en blanco esperando columnas (D-24).
 - La sección activa se conserva al recargar el navegador (F5) mediante hash de URL (#seccion) (D-25).
 - La cabecera de la cuadrícula muestra siempre «Grupo vinculado · N alumno(s)» como diagnóstico inmediato de desajustes entre grupos y clases (D-26).
+- Modal ACI (v0.4.3): si aún no hay niveles con código, la sección «Asignación de alumnado» explica qué hacer en vez de mostrar desplegables con solo «Base»; al pulsar «Añadir nivel» el foco va al campo Código y el desplegable por alumno se actualiza al teclear el código.
 
 ## 9. Informes
 
@@ -117,7 +134,7 @@ Si los pesos no casan con el reparto de puntos, ambas notas difieren **a propós
 - Import: **modo reemplazo único** (D-20) tras validar esquema; confirmación explícita.
 - Los backups con datos reales NUNCA se suben al repositorio git (`.gitignore` + política).
 - **Estrategia de guardado de backups (D-34, v0.3.2)**: jerarquía automática al exportar — 1) carpeta elegida por el usuario (File System Access API, recordada en IndexedDB con permiso revalidado por clic) → escritura directa; 2) si no hay carpeta, selector «Guardar como» (Chrome/Edge Windows); 3) si el navegador no soporta la API (Chrome Android), descarga clásica a Descargas con aviso de copiar a `backups/`. El nombre siempre es `backup-DD-MM-AAAA-HHMM.json`. `meta.ultimaExportacion` registra cada exportación y se muestra en Inicio («última copia…»), reforzando R-01.
-- Importación de currículo (v0.2): botón «Importar currículo» en la vista Currículo; acepta plantillas de `plantillas/` (formato D-31), muestra resumen previo de validación (asignatura, ciclo, nº CE/criterios y fuente) antes de confirmar.
+- Importación de currículo (v0.2): botón «Importar currículo» en la vista Currículo; eliges plantillas oficiales embebidas (v0.4.2); el modal agrupa por área y ciclo, y cada plantilla crea una asignatura por curso. La importación manual desde archivo `.json` se retiró (los formatos los genera la propia app vía `tools/build-plantillas.js`).
 
 ## 11. Modelo de datos (schemaVersion 1)
 
@@ -128,13 +145,13 @@ Si los pesos no casan con el reparto de puntos, ambas notas difieren **a propós
   "grupos": [{ "id": "", "nombre": "", "etapa": "Primaria" }],
   "alumnos": [{ "id": "", "nombre": "", "apellidos": "", "grupoId": "" }],
   "asignaturas": [{ "id": "", "nombre": "", "etapa": "", "saberesBasicos?": [{ "bloque": "A. …", "apartados": ["…"] }] }],
-  "clases": [{ "id": "", "asignaturaId": "", "grupoId": "" }],
+  "clases": [{ "id": "", "asignaturaId": "", "grupoId": "", "nivelesAci?": [{ "codigo": "4", "etiqueta": "4º", "asignaturaId": "" }], "adaptaciones?": { "alumnoId": "4" } }],
   "competenciasClave": [{ "id": "", "codigo": "CCL", "nombre": "" }],
   "competenciasEspecificas": [{ "id": "", "asignaturaId": "", "codigo": "", "descripcion": "", "perfilSalida?": ["STEM1", "…"] }],
   "criterios": [{ "id": "", "asignaturaId": "", "codigo": "", "descripcion": "", "peso": 0, "espIds": [], "claveIds": [] }],
   "instrumentos": [{
     "id": "", "claseId": "", "tipo": "Control", "titulo": "", "fecha": "",
-    "periodo": "T1", "saberes": "",
+    "periodo": "T1", "saberes": "", "nivel?": "", "unidad?": "",
     "niveles": [{ "pct": 100, "descriptor": "" }],
     "apartados": [{ "id": "", "orden": 1, "descripcion": "", "maxPts": 5, "criterioIds": [] }]
   }],
@@ -143,6 +160,8 @@ Si los pesos no casan con el reparto de puntos, ambas notas difieren **a propós
 ```
 
 Nota: en rúbricas cada apartado usa `maxPts: 100` implícito y el valor registrado es el % del nivel elegido; así el motor de cálculo es único para todos los tipos.
+
+Nota ACI (adaptación curricular): `clase.nivelesAci` define niveles (p. ej. un aula de 6º con alumnado que trabaja el currículo de 4º); cada nivel apunta a la `asignaturaId` (currículo de otro curso) con la que se corrige. `clase.adaptaciones` asigna alumno→código de nivel (ausente = base). Semántica de instrumentos: `nivel: ""` = común a todo el alumnado; `nivel: "BASE"` = solo base; `nivel: "<codigo>"` = solo ese nivel. El motor usa el currículo del nivel del alumno para criterios y nota (D-37). `unidad` es solo una etiqueta informativa para agrupar exámenes del mismo tema.
 
 ## 12. Arquitectura
 
@@ -186,6 +205,8 @@ Futuras: arrastre de cursos (D-07), escala cualitativa Infantil completa, planti
 - P-01: ~~verificar decreto y extraer currículo a JSON~~ **RESUELTA (v0.2)**: Decreto 66/2022 (BOC nº 135, 13-07-2022) verificado; importador + plantilla Matemáticas 3.er ciclo. Queda replicar el método para Conocimiento del Medio Natural, Social y Cultural.
 - P-04: decidir rediseño de rúbricas — cada ítem con sus propias graduaciones (descriptor + %); por decidir si los ítems heredan una escala común personalizable o son totalmente independientes.
 - P-05: ~~plantilla CDU 3.er ciclo~~ **HECHA (v0.2.1)**. Quedan fases siguientes: Lengua, Plástica (Ed. Artística) y Educación en Valores (5º), y los cursos 1º–4º si se amplía el piloto.
+- P-06: ~~generar las plantillas de todas las áreas y ciclos de Primaria~~ **RESUELTA (v0.4.1)**: `tools/extract-decreto.py` extrae el Anexo II-A del Decreto 66/2022 (modo `layout` de `pypdf`) y escribe 19 plantillas (7 áreas × ciclos; 130 CE · 294 criterios) en `plantillas/*.json`, validado contra la plantilla Matemáticas 3.er ciclo hecha a mano (coincidencia exacta). `tools/check-plantillas.js` valida estructura, códigos únicos, vínculos criterio→CE y duplicados; `tools/build-plantillas.js` embebe las 19 en `js/plantillas.js` (~156 KB). Los niveles ACI ya pueden apuntar a cualquier área y curso de 1º a 6º.
+- P-07 (licencia y distribución, D-35): se contempla proponer el uso de la app a otros profesores y a la consejería (no el hosting, sino el código/app). **Decisión provisional: mantener todo privado por ahora.** Si se abre, decidir licencia — recomendación **EUPL-1.2** para administración pública (versión oficial en castellano, copyleft) o **MIT/Apache-2.0** si se prioriza máxima adopción. Mantener el modo local/offline como postura por defecto (minimización RGPD de datos de menores); la nube (OneDrive/backend) queda siempre opcional y apagada por defecto. Kit de distribución pendiente: `LICENSE`, `README`, nota de seguridad «cero red, datos en el dispositivo», entregable `dist/evalcrit.html`.
 - P-02: revisar D-13 (agregación multi-instrumento) tras uso real.
 - P-03: asistente "nuevo curso escolar" arrastrando grupos y currículo.
 
@@ -195,6 +216,7 @@ Futuras: arrastre de cursos (D-07), escala cualitativa Infantil completa, planti
 - **Logro**: % conseguido en un criterio/apartado (obtenido/máximo).
 - **Instrumento**: control, rúbrica, proyecto u otro elemento de calificación.
 - **Clase**: asignatura impartida a un grupo.
+- **Nivel ACI**: adaptación curricular de un subgrupo de la clase que trabaja el currículo de otro curso (p. ej. 4º dentro de un aula de 6º).
 - **Periodo**: T1, T2, T3 o Final (recálculo anual).
 
 ## 16. Registro de cambios
@@ -210,3 +232,7 @@ Futuras: arrastre de cursos (D-07), escala cualitativa Infantil completa, planti
 | v0.3.1 | `a06e5a2` | Backups con nombre legible `backup-DD-MM-AAAA-HHMM.json` + aviso de carpeta Descargas; carpeta `backups/` local (ignorada por git) para copiar los JSON junto al proyecto; curso escolar seleccionable en Inicio y año por defecto calculado según la fecha (curso arranca en julio) |
 | v0.3.2 | `0ac2709` | Exportación directa a carpeta elegida (D-34): File System Access API con carpeta recordada, fallback a «Guardar como» y a Descargas (Android); indicador de última copia en Inicio (`meta.ultimaExportacion`) |
 | v0.3.3 | rama `fichero-unico` | `dist/evalcrit.html`: app completa en un solo fichero (CSS+JS incrustados, ~105 KB) vía `tools/build-singlefile.js`; solución a R-03 (Chrome Android abre por `content://` y no carga recursos externos) |
+| v0.4.0 | rama `fichero-unico` | **ACI (adaptación curricular)**: niveles por clase que apuntan al currículo de otro curso, asignación de alumnado, instrumentos con `nivel`/`unidad`, motor de cálculo por alumno (D-35/D-37) y selector de nivel en la cuadrícula. **Fix**: el currículo recién importado ya aparece sin borrar áreas (`CurriculoView.seleccionar`, D-35). **Retrocompatibilidad**: `Storage.migrar` añade los campos nuevos a backups antiguos sin cambiar `schemaVersion`. **Infra**: `tools/checks.js` (31 comprobaciones Node en verde, incluye el caso 6º con Control base/ACI/común). *Pendiente Hito 4: currículo de todas las áreas/ciclos de Primaria para alimentar los niveles ACI.* |
+| v0.4.1 | rama `fichero-unico` | **Hito 4**: currículo completo de Primaria (Hito 4, P-06). `tools/extract-decreto.py` genera 19 plantillas desde el Anexo II-A del Decreto 66/2022 (7 áreas × ciclos; 130 CE · 294 criterios); validado contra la plantilla Matemáticas 3.er ciclo (coincidencia exacta). `tools/check-plantillas.js` (306 comprobaciones) y `tools/build-plantillas.js` → `js/plantillas.js` regenerado. El importador suma 100 al importar cada plantilla (48 checks Node en verde; se suprime la plantilla reducida Conocimiento del Medio). `dist/evalcrit.html` (~248 KB). |
+| v0.4.2 | rama `fichero-unico` | **Importador estético**: el modal «Importar currículo» agrupa las 19 plantillas por área (tarjetas) y ciclo (chips «Primer ciclo (1º y 2º)»…); se retira la importación manual desde archivo `.json` (formatos que solo genera la propia app). Nuevos estilos `.importa-area`/`.hint`. |
+| v0.4.3 | rama `fichero-unico` | **Exámenes paralelos y vista armonizada**: botón **Duplicar** en Instrumentos que crea copias de un examen para uno o varios niveles ACI (mismos apartados/criterios, misma `unidad`, notas en blanco); listado de instrumentos ordenado por unidad. Cuadrícula con opción **«Todos los niveles»** que muestra al grupo completo con cada examen solo donde aplica («—» en gris) y la nota armonizada por currículo de cada alumno. Modal ACI: aviso cuando no hay niveles y foco en el campo Código al añadir uno. `dist/evalcrit.html` (~250 KB); 48 + 306 comprobaciones en verde. |
