@@ -209,6 +209,29 @@ Futuras: arrastre de cursos (D-07), escala cualitativa Infantil completa, planti
 - P-07 (licencia y distribución, D-35): se contempla proponer el uso de la app a otros profesores y a la consejería (no el hosting, sino el código/app). **Decisión provisional: mantener todo privado por ahora.** Si se abre, decidir licencia — recomendación **EUPL-1.2** para administración pública (versión oficial en castellano, copyleft) o **MIT/Apache-2.0** si se prioriza máxima adopción. Mantener el modo local/offline como postura por defecto (minimización RGPD de datos de menores); la nube (OneDrive/backend) queda siempre opcional y apagada por defecto. Kit de distribución pendiente: `LICENSE`, `README`, nota de seguridad «cero red, datos en el dispositivo», entregable `dist/evalcrit.html`.
 - P-02: revisar D-13 (agregación multi-instrumento) tras uso real.
 - P-03: asistente "nuevo curso escolar" arrastrando grupos y currículo.
+- P-08: importar rúbricas desde **CSV** para poder crearlas con herramientas de IA (ChatGPT, Claude…). **Formato tipo definido** (ver más abajo); pendiente de implementar en `Storage.importarRúbricaCsv` y en un modal «Importar rúbrica».
+
+### Formato tipo CSV de rúbrica (P-08)
+
+Fichero UTF-8, separador `;` (comillas opcionales), pensado para que una IA genere la rúbrica con una sola instrucción. Fila por apartado; primer columna `apartado`, segunda `peso` (≥ 0,01), tercera `criterios` (códigos separados por `|`), y una columna por nivel de la escala en formato `pct:etiqueta`.
+
+```
+# Comentario: la rúbrica debe ser para la asignatura activa
+titulo;Corrección de libreta · 5ºB
+unidad;UD1
+nivel;                 ← vacío = examen común; 'BASE' solo base; '4' = nivel ACI
+apartado;peso;criterios;100:Excelente;75:Notable;50:Adecuado;25:Insuficiente
+Ortografía y acentos;3;LCL3;Casi sin errores;Errores puntuales;Errores frecuentes;Impide la lectura
+Letra y limpieza;1;LCL3;Muy clara;Legible;Aceptable;Ilegible
+Entrega a tiempo;1;LCL1;Cumple la fecha;Casi siempre;Bastante tarde;No entrega
+```
+
+Reglas para el importador (pendiente de implementar):
+- Líneas que empiezan por `#` se ignoran. `titulo` es obligatorio; `unidad` y `nivel` opcionales.
+- La columna `apartado` no puede repetirse. El `peso` debe ser número > 0.
+- Los códigos se resuelven contra los criterios de la asignatura activa; si alguno no existe, se aborta la importación y se listan los desconocidos.
+- Los niveles se crean de las columnas (pct ordenado desc); los descriptores de cada celda no se guardan aún (el modelo actual usa escala común por instrumento; el texto por ítem queda para el rediseño P-04).
+- Con la cabecera dada se crea un instrumento tipo `Rúbrica` con esos apartados, pesos y niveles.
 
 ## 15. Glosario
 
@@ -236,3 +259,4 @@ Futuras: arrastre de cursos (D-07), escala cualitativa Infantil completa, planti
 | v0.4.1 | rama `fichero-unico` | **Hito 4**: currículo completo de Primaria (Hito 4, P-06). `tools/extract-decreto.py` genera 19 plantillas desde el Anexo II-A del Decreto 66/2022 (7 áreas × ciclos; 130 CE · 294 criterios); validado contra la plantilla Matemáticas 3.er ciclo (coincidencia exacta). `tools/check-plantillas.js` (306 comprobaciones) y `tools/build-plantillas.js` → `js/plantillas.js` regenerado. El importador suma 100 al importar cada plantilla (48 checks Node en verde; se suprime la plantilla reducida Conocimiento del Medio). `dist/evalcrit.html` (~248 KB). |
 | v0.4.2 | rama `fichero-unico` | **Importador estético**: el modal «Importar currículo» agrupa las 19 plantillas por área (tarjetas) y ciclo (chips «Primer ciclo (1º y 2º)»…); se retira la importación manual desde archivo `.json` (formatos que solo genera la propia app). Nuevos estilos `.importa-area`/`.hint`. |
 | v0.4.3 | rama `fichero-unico` | **Exámenes paralelos y vista armonizada**: botón **Duplicar** en Instrumentos que crea copias de un examen para uno o varios niveles ACI (mismos apartados/criterios, misma `unidad`, notas en blanco); listado de instrumentos ordenado por unidad. Cuadrícula con opción **«Todos los niveles»** que muestra al grupo completo con cada examen solo donde aplica («—» en gris) y la nota armonizada por currículo de cada alumno. Modal ACI: aviso cuando no hay niveles y foco en el campo Código al añadir uno. `dist/evalcrit.html` (~250 KB); 48 + 306 comprobaciones en verde. |
+| v0.4.4 | sin commit | **Criterios globales/desglosados y pesos en rúbrica**: Control/Proyecto con criterios por apartado (desglosado) o globales a todo el instrumento (campo `criteriosModo` + `criterioIdsGlobal`); en Proyecto las filas se llaman «partes/fases». Rúbrica con campo `peso` por fila y nota = media ponderada. Fixes: los chips de criterios del modal respetan el nivel ACI (`Calc.asignaturaDeNivel`), y en modo global los apartados ya no piden criterios individuales. Botón **Guardar** que sobrescribe `evalcrit.json` en la carpeta de backups elegida. Pendiente **P-08**: importar rúbricas desde CSV (formato tipo definido en §14). `dist/evalcrit.html` (~258 KB); 48 + 306 comprobaciones en verde. |

@@ -107,6 +107,39 @@ const Storage = {
     }
   },
 
+  async guardar() {
+    // Guarda siempre en el mismo fichero (evalcrit.json) dentro de la carpeta
+    // de backups elegida: sobrescribe, evitando amontonar archivos.
+    const contenido = JSON.stringify(this.db, null, 2);
+    if (!this.puedeCarpeta()) return this.exportar();
+    let dir = await this.idbLeer('dir');
+    if (!dir) dir = await this.elegirCarpetaBackup();
+    if (!dir) return; // el usuario canceló
+    let perm = 'granted';
+    if (dir.queryPermission) perm = await dir.queryPermission({ mode: 'readwrite' });
+    if (perm !== 'granted' && dir.requestPermission) {
+      perm = await dir.requestPermission({ mode: 'readwrite' });
+    }
+    if (perm !== 'granted') {
+      // Sin permiso: caemos al export normal para no perder nada.
+      return this.exportar();
+    }
+    try {
+      const fh = await dir.getFileHandle('evalcrit.json', { create: true });
+      const w = await fh.createWritable();
+      await w.write(contenido);
+      await w.close();
+      this.db.meta = this.db.meta || {};
+      this.db.meta.ultimaExportacion = new Date().toISOString();
+      this.save();
+      UI.toast('Guardado en «' + dir.name + '/evalcrit.json»');
+    } catch (e) {
+      if (e && e.name === 'AbortError') return;
+      console.error(e);
+      return this.exportar();
+    }
+  },
+
   async exportar() {
     const contenido = JSON.stringify(this.db, null, 2);
     const nombre = `backup-${Utils.fechaLegible()}-${Utils.horaCorta()}.json`;
@@ -199,6 +232,14 @@ const Storage = {
       if (i.unidad == null) i.unidad = '';
       if (!Array.isArray(i.apartados)) i.apartados = [];
       if (!Array.isArray(i.niveles)) i.niveles = [];
+      if (i.criteriosModo == null) i.criteriosModo = 'desglosado';
+      if (!Array.isArray(i.criterioIdsGlobal)) i.criterioIdsGlobal = [];
+      i.apartados.forEach(ap => {
+        if (ap.peso == null || isNaN(ap.peso)) {
+          ap.peso = (i.tipo === 'Rúbrica') ? 1 : (ap.maxPts || 1);
+        }
+        if (!Array.isArray(ap.criterioIds)) ap.criterioIds = [];
+      });
     });
     return db;
   },

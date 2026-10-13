@@ -45,7 +45,8 @@ const App = (() => {
           <b>Copias de seguridad</b> · <span id="info-backup">…</span><br>
           <small>Con Chrome/Edge en Windows puedes guardar directamente en la carpeta <code>backups/</code> del proyecto; en Android irán a Descargas.</small>
           <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap" class="no-print">
-            <button class="btn btn-primario btn-mini" id="btn-exportar-ini">Exportar backup ahora</button>
+            <button class="btn btn-primario btn-mini" id="btn-guardar-ini">Guardar (evalcrit.json)</button>
+            <button class="btn btn-mini" id="btn-exportar-ini">Exportar backup ahora</button>
             ${Storage.puedeCarpeta() ? '<button class="btn btn-mini" id="btn-carpeta">Elegir carpeta de backups…</button>' : ''}
           </div>
         </div>
@@ -85,6 +86,8 @@ const App = (() => {
 
     const btnExpIni = el.querySelector('#btn-exportar-ini');
     btnExpIni.onclick = () => Storage.exportar().catch(e => alert('Error al exportar: ' + e.message));
+    const btnGuardarIni = el.querySelector('#btn-guardar-ini');
+    btnGuardarIni.onclick = () => Storage.guardar().catch(e => alert('Error al guardar: ' + e.message));
     const btnCarpeta = el.querySelector('#btn-carpeta');
     if (btnCarpeta) {
       btnCarpeta.onclick = async () => {
@@ -135,6 +138,7 @@ const App = (() => {
 
   function arrancar() {
     Storage.load();
+    document.getElementById('btn-guardar').onclick = () => Storage.guardar().catch(e => alert('Error al guardar: ' + e.message));
     document.getElementById('btn-exportar').onclick = () => Storage.exportar().catch(e => alert('Error al exportar: ' + e.message));
 
     const input = document.getElementById('input-importar');

@@ -113,7 +113,21 @@ const Calc = {
   },
 
   logroCriterioEnInstrumento(inst, alumnoId, criterioId) {
+    const modo = inst.criteriosModo || 'desglosado';
     const reg = (Storage.db.registros[inst.id] || {})[alumnoId] || {};
+    if (modo === 'global') {
+      const globalIds = inst.criterioIdsGlobal || [];
+      if (globalIds.length && !globalIds.includes(criterioId)) return null;
+      let obt = 0, max = 0, hay = false;
+      for (const ap of inst.apartados) {
+        const v = reg[ap.id];
+        if (v == null || isNaN(v)) continue;
+        obt += Number(v);
+        max += ap.maxPts;
+        hay = true;
+      }
+      return hay && max > 0 ? obt / max : null;
+    }
     let obt = 0, max = 0, hay = false;
     for (const ap of inst.apartados) {
       if (!ap.criterioIds.includes(criterioId)) continue;
@@ -133,9 +147,12 @@ const Calc = {
   },
 
   logroCriterio(criterioId, claseId, alumnoId, periodo) {
-    const insts = this.instrumentosDeAlumno(claseId, alumnoId, periodo).filter(i =>
-      i.apartados.some(ap => ap.criterioIds.includes(criterioId))
-    );
+    const insts = this.instrumentosDeAlumno(claseId, alumnoId, periodo).filter(i => {
+      if ((i.criteriosModo || 'desglosado') === 'global') {
+        return (i.criterioIdsGlobal || []).includes(criterioId);
+      }
+      return i.apartados.some(ap => ap.criterioIds.includes(criterioId));
+    });
     const logros = [];
     for (const inst of insts) {
       const l = this.logroCriterioEnInstrumento(inst, alumnoId, criterioId);
@@ -173,6 +190,22 @@ const Calc = {
 
   notaInstrumento(inst, alumnoId) {
     const reg = (Storage.db.registros[inst.id] || {})[alumnoId] || {};
+    const esRubrica = inst.tipo === 'Rúbrica';
+    if (esRubrica) {
+      let suma = 0, pesos = 0;
+      const niveles = (inst.niveles || []).slice().sort((a, b) => b.pct - a.pct);
+      for (const ap of inst.apartados) {
+        const v = reg[ap.id];
+        if (v == null || isNaN(v)) continue;
+        const nv = niveles.find(n => Math.abs(Number(v) - Number(n.pct)) < 1e-9);
+        const pct = nv ? Number(nv.pct) : Number(v);
+        const p = ap.peso == null || isNaN(ap.peso) ? 1 : Number(ap.peso);
+        suma += (pct / 100) * p;
+        pesos += p;
+      }
+      if (pesos <= 0) return null;
+      return (suma / pesos) * 10;
+    }
     let obt = 0, max = 0;
     for (const ap of inst.apartados) {
       const v = reg[ap.id];

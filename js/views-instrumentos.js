@@ -14,17 +14,21 @@ const InstrumentosView = (() => {
     return (inst ? inst.apartados : []).map(ap => filaApartado(ap, asignaturaId, esRubrica)).join('');
   }
 
-  function filaApartado(ap, asignaturaId, esRubrica) {
+  function filaApartado(ap, asignaturaId, esRubrica, modoGlobal) {
+    const peso = ap.peso != null ? ap.peso : (esRubrica ? 1 : ap.maxPts);
     return `
       <div class="apartado-fila" data-id="${ap.id}">
         <span class="num-ap"></span>
-        <input type="text" class="ap-desc" placeholder="Pregunta o apartado" value="${Utils.esc(ap.descripcion)}">
+        <input type="text" class="ap-desc" placeholder="Pregunta, parte o fase" value="${Utils.esc(ap.descripcion)}">
         ${esRubrica
-          ? '<small style="color:var(--tinta-suave)">nivel</small>'
+          ? `<input type="number" class="ap-peso" min="0.01" step="0.5" value="${peso}" title="Peso de esta fila en la rúbrica">`
           : `<input type="number" class="ap-max" min="0.5" step="0.5" value="${ap.maxPts}" title="Puntos máximos">`}
-        <button type="button" class="btn btn-mini toggle-crit" title="Elegir criterios evaluados">Criterios</button>
+        ${esRubrica ? '<small style="color:var(--tinta-suave)">peso</small>' : ''}
+        ${modoGlobal
+          ? '<small style="color:var(--tinta-suave)">aplica criterios globales</small>'
+          : `<button type="button" class="btn btn-mini toggle-crit" title="Elegir criterios evaluados">Criterios</button>`}
         <button type="button" class="btn btn-mini quitar-ap">Quitar</button>
-        <div class="zona-crit" style="display:none">${UI.chipsCriterios(asignaturaId, ap.criterioIds)}</div>
+        ${modoGlobal ? '' : `<div class="zona-crit" style="display:none">${UI.chipsCriterios(asignaturaId, ap.criterioIds)}</div>`}
       </div>`;
   }
 
@@ -59,6 +63,14 @@ const InstrumentosView = (() => {
           ${nivelesAci.length ? `<label class="campo"><span>Nivel ACI</span>
             <select id="f-nivel">${opcionesNivel}</select></label>` : '<input type="hidden" id="f-nivel" value="">'}
         </div>
+        <div class="fila-campos" id="fila-critmodo" style="margin-bottom:10px">
+          <label class="campo"><span>Criterios</span>
+            <select id="f-critmodo">
+              <option value="desglosado" ${(inst && inst.criteriosModo) === 'desglosado' ? 'selected' : (!inst ? 'selected' : '')}>Desglosado (por apartado/parte)</option>
+              <option value="global" ${(inst && inst.criteriosModo) === 'global' ? 'selected' : ''}>Global al instrumento</option>
+            </select>
+          </label>
+        </div>
         <label class="campo"><span>Saberes básicos (informativo)</span>
           <textarea id="f-saberes" rows="2" placeholder="Opcional">${Utils.esc(inst ? inst.saberes : '')}</textarea></label>
 
@@ -67,7 +79,14 @@ const InstrumentosView = (() => {
           <button class="btn btn-mini" type="button" id="add-nivel">Añadir nivel</button>
         </div>
 
+        <div id="bloque-criterios-global" style="display:none">
+          <label class="campo"><span>Criterios de evaluación que se trabajan</span>
+            <div id="chips-criterios-global"></div>
+          </label>
+        </div>
+
         <label class="campo"><span>Apartados y criterios que evalúan</span>
+          <small id="hint-asig-crit" style="display:block;color:var(--tinta-suave)"></small>
           <div id="lista-apartados"></div>
         </label>
         <button class="btn btn-mini" type="button" id="add-ap">Añadir apartado</button>`,
@@ -89,24 +108,34 @@ const InstrumentosView = (() => {
 
         const apartados = [];
         let orden = 0;
+        const criteriosModo = body.querySelector('#f-critmodo') ? body.querySelector('#f-critmodo').value : 'desglosado';
+        const esModoGlobal = criteriosModo === 'global' && !esRubrica;
         for (const fila of body.querySelectorAll('.apartado-fila')) {
           orden++;
           const desc = fila.querySelector('.ap-desc').value.trim();
           const maxPts = esRubrica ? 100 : parseFloat(fila.querySelector('.ap-max').value);
-          const criterioIds = UI.valoresChips(fila.querySelector('.zona-crit'));
-          if (!criterioIds.length) { alert('Cada apartado necesita al menos un criterio (botón «Criterios»)'); return false; }
-          if (!esRubrica && (isNaN(maxPts) || maxPts <= 0)) { alert('Cada apartado necesita puntos máximos'); return false; }
+          const criterioIds = esModoGlobal ? [] : UI.valoresChips(fila.querySelector('.zona-crit'));
+          if (esRubrica) {
+            if (isNaN(maxPts) || maxPts <= 0) maxPts = 100;
+          } else {
+            if (!esModoGlobal && !criterioIds.length) { alert('Cada apartado necesita al menos un criterio (botón «Criterios»)'); return false; }
+            if (isNaN(maxPts) || maxPts <= 0) { alert('Cada apartado necesita puntos máximos'); return false; }
+          }
+          const peso = fila.querySelector('.ap-peso') ? parseFloat(fila.querySelector('.ap-peso').value) : (esRubrica ? 1 : maxPts);
           apartados.push({
             id: fila.dataset.id && fila.dataset.id !== 'nuevo' ? fila.dataset.id : Utils.uid(),
-            orden, descripcion: desc, maxPts, criterioIds
+            orden, descripcion: desc, maxPts, criterioIds,
+            peso: (isNaN(peso) || peso <= 0) ? 1 : peso
           });
         }
         if (!apartados.length) { alert('Añade al menos un apartado'); return false; }
+        const criterioIdsGlobal = UI.valoresChips(body.querySelector('[data-campo="criterios-global"]') || body);
+        if (esModoGlobal && !criterioIdsGlobal.length) { alert('Selecciona al menos un criterio global en el bloque superior'); return false; }
 
         if (esNueva) {
-          Storage.db.instrumentos.push({ id: Utils.uid(), claseId, tipo, titulo, fecha, periodo, saberes, unidad, nivel, niveles, apartados });
+          Storage.db.instrumentos.push({ id: Utils.uid(), claseId, tipo, titulo, fecha, periodo, saberes, unidad, nivel, niveles, apartados, criteriosModo, criterioIdsGlobal });
         } else {
-          Object.assign(inst, { tipo, titulo, fecha, periodo, saberes, unidad, nivel, niveles, apartados });
+          Object.assign(inst, { tipo, titulo, fecha, periodo, saberes, unidad, nivel, niveles, apartados, criteriosModo, criterioIdsGlobal });
         }
         Storage.save();
       }
@@ -116,6 +145,9 @@ const InstrumentosView = (() => {
     const selTipo = body.querySelector('#f-tipo');
     const listaAp = body.querySelector('#lista-apartados');
     const listaNv = body.querySelector('#lista-niveles');
+    const chipsGlobal = body.querySelector('#chips-criterios-global');
+    chipsGlobal.innerHTML = UI.chipsCriterios(asig.id, inst ? (inst.criterioIdsGlobal || []) : []);
+    UI.wireChips(chipsGlobal);
 
     function refrescaNumeros() {
       body.querySelectorAll('.num-ap').forEach((n, i) => { n.textContent = i + 1 + '.'; });
@@ -134,20 +166,25 @@ const InstrumentosView = (() => {
 
     function actualizaEtiquetaCrit(fila) {
       const zona = fila.querySelector('.zona-crit');
+      if (!zona) return;
       const n = zona.querySelectorAll('input:checked').length;
       fila.querySelector('.toggle-crit').textContent = 'Criterios (' + n + ')';
     }
 
-    function addFilaApartado(ap) {
+    function addFilaApartado(ap, nivel) {
       const esRubrica = selTipo.value === 'Rúbrica';
+      const modoGlobal = !esRubrica && (body.querySelector('#f-critmodo') || {}).value === 'global';
+      const asigCrit = Calc.asignaturaDeNivel(claseId, nivel || (body.querySelector('#f-nivel') || {}).value || '');
       const div = document.createElement('div');
-      div.innerHTML = filaApartado(ap || { id: 'nuevo', descripcion: '', maxPts: '', criterioIds: [] }, asig.id, esRubrica).trim();
+      div.innerHTML = filaApartado(ap || { id: 'nuevo', descripcion: '', maxPts: '', criterioIds: [] }, asigCrit ? asigCrit.id : asig.id, esRubrica, modoGlobal).trim();
       const fila = div.firstElementChild;
       fila.querySelector('.quitar-ap').onclick = () => { fila.remove(); refrescaNumeros(); };
-      fila.querySelector('.toggle-crit').onclick = () => {
-        const zona = fila.querySelector('.zona-crit');
-        zona.style.display = zona.style.display === 'none' ? '' : 'none';
-      };
+      if (fila.querySelector('.toggle-crit')) {
+        fila.querySelector('.toggle-crit').onclick = () => {
+          const zona = fila.querySelector('.zona-crit');
+          zona.style.display = zona.style.display === 'none' ? '' : 'none';
+        };
+      }
       UI.wireChips(fila);
       fila.querySelectorAll('.chip input').forEach(inp =>
         inp.addEventListener('change', () => actualizaEtiquetaCrit(fila)));
@@ -158,18 +195,45 @@ const InstrumentosView = (() => {
 
     function refrescaTipo() {
       const esRubrica = selTipo.value === 'Rúbrica';
+      const critmodo = (body.querySelector('#f-critmodo') || {}).value || 'desglosado';
       body.querySelector('#bloque-niveles').style.display = esRubrica ? '' : 'none';
+      body.querySelector('#bloque-criterios-global').style.display = (critmodo === 'global' && !esRubrica) ? '' : 'none';
+      body.querySelector('#fila-critmodo').style.display = esRubrica ? 'none' : '';
       const actuales = Array.from(listaAp.querySelectorAll('.apartado-fila')).map((fila, i) => ({
         id: fila.dataset.id,
         descripcion: fila.querySelector('.ap-desc').value,
         criterioIds: UI.valoresChips(fila.querySelector('.zona-crit')),
-        maxPts: esRubrica ? 100 : parseFloat((fila.querySelector('.ap-max') || {}).value)
+        maxPts: esRubrica ? 100 : parseFloat((fila.querySelector('.ap-max') || {}).value),
+        peso: fila.querySelector('.ap-peso') ? parseFloat(fila.querySelector('.ap-peso').value) : null
       }));
       listaAp.innerHTML = '';
       actuales.forEach(a => addFilaApartado(a));
     }
 
+    function refrescaNivel() {
+      const selNivel = body.querySelector('#f-nivel');
+      const nivel = selNivel ? selNivel.value : '';
+      const asigCrit = Calc.asignaturaDeNivel(claseId, nivel);
+      const hint = body.querySelector('#hint-asig-crit');
+      if (hint) hint.textContent = 'Criterios del currículo de ' + (asigCrit ? asigCrit.nombre : '') +
+        (nivel && nivel !== 'BASE' ? ' (nivel ' + Calc.etiquetaNivel(claseId, nivel) + ')' : '');
+      const esRubrica = selTipo.value === 'Rúbrica';
+      const actuales = Array.from(listaAp.querySelectorAll('.apartado-fila')).map((fila, i) => ({
+        id: fila.dataset.id,
+        descripcion: fila.querySelector('.ap-desc').value,
+        criterioIds: UI.valoresChips(fila.querySelector('.zona-crit')),
+        maxPts: esRubrica ? 100 : parseFloat((fila.querySelector('.ap-max') || {}).value),
+        peso: fila.querySelector('.ap-peso') ? parseFloat(fila.querySelector('.ap-peso').value) : null
+      }));
+      listaAp.innerHTML = '';
+      actuales.forEach(a => addFilaApartado(a, nivel));
+      chipsGlobal.innerHTML = UI.chipsCriterios(asigCrit ? asigCrit.id : asig.id, inst ? (inst.criterioIdsGlobal || []) : []);
+      UI.wireChips(chipsGlobal);
+    }
     selTipo.onchange = refrescaTipo;
+    if (body.querySelector('#f-critmodo')) body.querySelector('#f-critmodo').onchange = refrescaTipo;
+    const selNivelEl = body.querySelector('#f-nivel');
+    if (selNivelEl) selNivelEl.onchange = refrescaNivel;
     body.querySelector('#add-ap').onclick = () => addFilaApartado(null);
     body.querySelector('#add-nivel').onclick = () => addFilaNivel(null);
 
@@ -178,8 +242,9 @@ const InstrumentosView = (() => {
       addFilaApartado(null);
     } else {
       (inst.niveles && inst.niveles.length ? inst.niveles.slice().sort((a, b) => b.pct - a.pct) : []).forEach(addFilaNivel);
-      inst.apartados.forEach(a => addFilaApartado(a));
+      inst.apartados.forEach(a => addFilaApartado(a, inst.nivel));
     }
+    refrescaNivel();
   }
 
   function borrarInstrumento(el, inst) {
@@ -208,7 +273,7 @@ const InstrumentosView = (() => {
           <span class="badge info">${Utils.esc(inst.periodo)}</span>
           ${inst.unidad ? `<span class="badge info">${Utils.esc(inst.unidad)}</span>` : ''}
           ${inst.nivel ? `<span class="badge info">Nivel ${Utils.esc(Calc.etiquetaNivel(inst.claseId, inst.nivel))}</span>` : ''}
-          <span class="badge na">${inst.apartados.length} apartados</span>
+          <span class="badge na">${inst.apartados.length} ${inst.tipo === 'Proyecto' ? 'partes/fases' : 'apartados'}</span>
           ${esRubrica ? '<small style="align-self:center;color:var(--tinta-suave)">Toca un nivel para puntuar; tócalo otra vez para vaciar.</small>' : ''}
         </div>
         <div class="scroll-x">
@@ -340,7 +405,8 @@ const InstrumentosView = (() => {
               orden: ap.orden,
               descripcion: ap.descripcion,
               maxPts: ap.maxPts,
-              criterioIds: (ap.criterioIds || []).slice()
+              criterioIds: (ap.criterioIds || []).slice(),
+              peso: ap.peso
             }))
           };
           Storage.db.instrumentos.push(copia);
@@ -390,7 +456,7 @@ const InstrumentosView = (() => {
                 <td>${nivelTxt ? `<span class="badge info">${Utils.esc(nivelTxt)}</span> ` : ''}${i.unidad ? `<span class="badge na">${Utils.esc(i.unidad)}</span>` : ''}${!nivelTxt && !i.unidad ? '<span style="color:var(--tinta-suave)">—</span>' : ''}</td>
                 <td>${Utils.esc(i.periodo)}</td>
                 <td>${Utils.esc(i.fecha)}</td>
-                <td>${i.apartados.length}</td>
+                <td>${i.apartados.length} ${i.tipo === 'Proyecto' ? 'partes/fases' : 'apartados'}</td>
                 <td>${Calc.badgeHtml(media)}</td>
                 <td style="white-space:nowrap">
                   <button class="btn btn-mini btn-primario corregir">Corregir</button>
