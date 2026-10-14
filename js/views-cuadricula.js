@@ -3,16 +3,30 @@ const CuadriculaView = (() => {
   let periodo = 'T1';
   let tab = 'notas';
   let nivelSel = '';
+  let udSel = '__todas__';
   const TODAS = '__todas__';
 
   function tablaNotas(alumnos, insts, modoTodas) {
     if (!alumnos.length) {
       return '<div class="aviso">El grupo de esta clase no tiene alumnado en este nivel. Revísalo en «Alumnos y grupos» o en los niveles ACI de la clase.</div>';
     }
+    const cabeceraInst = i => `<th class="celda-nota" data-edit="${i.id}" title="Toca para editar el instrumento" style="max-width:130px">${Utils.esc(i.titulo)}<br><small>${Utils.esc(i.tipo)} · ${Utils.esc(i.periodo)}${i.unidad ? ' · ' + Utils.esc(i.unidad) : ''}</small></th>`;
+    const grupos = [];
+    insts.forEach(i => {
+      const ud = i.unidad || '';
+      let g = grupos.find(x => x.ud === ud);
+      if (!g) { g = { ud, insts: [] }; grupos.push(g); }
+      g.insts.push(i);
+    });
+    const thead = grupos.length > 1
+      ? `<tr class="fila-ud"><th rowspan="2">Alumno</th>${grupos.map(g => `<th class="ud-grupo" colspan="${g.insts.length}">${g.ud ? Utils.esc(g.ud) : 'Sin unidad'}</th>`).join('')}<th rowspan="2">Evaluación</th></tr>
+         <tr>${insts.map(cabeceraInst).join('')}</tr>`
+      : `<tr><th>Alumno</th>${insts.map(cabeceraInst).join('')}<th>Evaluación</th></tr>`;
+    const sinUd = udSel !== TODAS ? ` de la unidad «${Utils.esc(udSel)}»` : '';
     return `
-      ${insts.length ? '' : '<div class="aviso">Aún no hay instrumentos en esta clase para este nivel. Pulsa «Añadir calificación» para crear el primero.</div>'}
-      <table class="tabla">
-        <thead><tr><th>Alumno</th>${insts.map(i => `<th class="celda-nota" data-edit="${i.id}" title="Toca para editar el instrumento" style="max-width:130px">${Utils.esc(i.titulo)}<br><small>${Utils.esc(i.tipo)} · ${Utils.esc(i.periodo)}${i.unidad ? ' · ' + Utils.esc(i.unidad) : ''}</small></th>`).join('')}<th>Evaluación</th></tr></thead>
+      ${insts.length ? '' : `<div class="aviso">Aún no hay instrumentos en esta clase para este nivel${sinUd}. Pulsa «Añadir calificación» para crear el primero.</div>`}
+      <table class="tabla tabla-cuadricula">
+        <thead>${thead}</thead>
         <tbody>
           ${alumnos.map(a => `<tr>
             <td>${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}</td>
@@ -37,7 +51,7 @@ const CuadriculaView = (() => {
     if (!alumnos.length) return '<div class="aviso">El grupo de esta clase no tiene alumnado en este nivel.</div>';
     if (!criterios.length) return '<div class="vacio-grande">Este nivel no tiene criterios definidos.</div>';
     return `
-      <table class="tabla">
+      <table class="tabla tabla-cuadricula">
         <thead><tr><th>Alumno</th>${criterios.map(c =>
           `<th title="${Utils.esc(c.descripcion)}">${Utils.esc(c.codigo)}<br><small>${Utils.fmt(c.peso)}%</small></th>`
         ).join('')}</tr></thead>
@@ -63,7 +77,7 @@ const CuadriculaView = (() => {
       if (!lista.length) return '';
       return `
         <h3 style="font-size:15px;margin:4px 0 8px">${titulo}</h3>
-        <table class="tabla">
+        <table class="tabla tabla-cuadricula">
           <thead><tr><th>Alumno</th>${lista.map(x =>
             `<th title="${Utils.esc(x.descripcion || x.nombre || '')}">${Utils.esc(x.codigo)}</th>`
           ).join('')}</tr></thead>
@@ -114,16 +128,25 @@ const CuadriculaView = (() => {
     const alumnosTodos = Calc.alumnosDeClase(claseSel);
     const modoTodas = nivelSel === TODAS;
     const alumnos = modoTodas ? alumnosTodos : alumnosTodos.filter(a => Calc.nivelDeAlumno(claseSel, a.id) === nivelSel);
-    const insts = Calc.instrumentosDeClase(claseSel)
+    const instsNivel = Calc.instrumentosDeClase(claseSel)
       .filter(i => modoTodas || Calc.instrumentoParaNivel(i, nivelSel))
       .sort((a, b) => (String(a.unidad || '').localeCompare(String(b.unidad || ''), 'es'))
         || (a.fecha || '').localeCompare(b.fecha || ''));
+    const uds = Calc.unidadesDe(instsNivel);
+    if (udSel !== TODAS && !uds.includes(udSel)) udSel = TODAS;
+    const insts = udSel === TODAS ? instsNivel : instsNivel.filter(i => i.unidad === udSel);
 
     const selNivel = nivelesAci.length ? `
       <select id="sel-nivel" style="max-width:220px">
         <option value="${TODAS}" ${modoTodas ? 'selected' : ''}>Todos los niveles (grupo completo)</option>
         <option value="" ${nivelSel === '' ? 'selected' : ''}>Base (sin adaptación)</option>
         ${nivelesAci.map(n => `<option value="${Utils.esc(n.codigo)}" ${nivelSel === n.codigo ? 'selected' : ''}>${Utils.esc(n.etiqueta || n.codigo)}</option>`).join('')}
+      </select>` : '';
+
+    const selUd = uds.length ? `
+      <select id="sel-ud" title="Filtrar por unidad didáctica" style="max-width:170px">
+        <option value="${TODAS}" ${udSel === TODAS ? 'selected' : ''}>Todas las unidades</option>
+        ${uds.map(u => `<option value="${Utils.esc(u)}" ${udSel === u ? 'selected' : ''}>${Utils.esc(u)}</option>`).join('')}
       </select>` : '';
 
     el.innerHTML = `
@@ -145,6 +168,7 @@ const CuadriculaView = (() => {
               nombre: `${Calc.asignaturaDeClase(c.id)?.nombre || '?'} · ${(Calc.byId(db.grupos, c.grupoId) || {}).nombre || '?'}`
             })), claseSel, 'id', 'nombre')}</select>
             ${selNivel}
+            ${selUd}
             <select id="sel-periodo" style="max-width:130px">
               ${['T1', 'T2', 'T3', 'Final'].map(p => `<option ${p === periodo ? 'selected' : ''}>${p}</option>`).join('')}
             </select>
@@ -169,6 +193,9 @@ const CuadriculaView = (() => {
     el.querySelector('#sel-periodo').onchange = e => { periodo = e.target.value; render(el); };
     if (el.querySelector('#sel-nivel')) {
       el.querySelector('#sel-nivel').onchange = e => { nivelSel = e.target.value; render(el); };
+    }
+    if (el.querySelector('#sel-ud')) {
+      el.querySelector('#sel-ud').onchange = e => { udSel = e.target.value; render(el); };
     }
     el.querySelector('#add-inst').onclick = () => {
       try {

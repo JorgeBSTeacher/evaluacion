@@ -146,6 +146,12 @@ const Calc = {
     return lista.filter(i => i.periodo === periodo);
   },
 
+  // Etiquetas de unidad didáctica presentes en una lista de instrumentos, ordenadas alfabéticamente.
+  unidadesDe(insts) {
+    return [...new Set((insts || []).map(i => i.unidad).filter(Boolean))]
+      .sort((a, b) => String(a).localeCompare(String(b), 'es'));
+  },
+
   logroCriterio(criterioId, claseId, alumnoId, periodo) {
     const insts = this.instrumentosDeAlumno(claseId, alumnoId, periodo).filter(i => {
       if ((i.criteriosModo || 'desglosado') === 'global') {

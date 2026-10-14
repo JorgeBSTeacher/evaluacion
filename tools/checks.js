@@ -206,6 +206,20 @@ async function main() {
     check('nota ACI c1al T1 = 7,5', app.Utils.fmt(C.notaEvaluacion('c1', 'c1al', 'T1')) === '7,5', app.Utils.fmt(C.notaEvaluacion('c1', 'c1al', 'T1')));
     check('instrumentos del alumno base excluyen iAci', C.instrumentosDeAlumno('c1', 'a1', 'T1').map(i => i.id).join(',') === 'iBase,iComun');
     check('instrumentos del alumno ACI excluyen iBase', C.instrumentosDeAlumno('c1', 'c1al', 'T1').map(i => i.id).join(',') === 'iAci,iComun');
+    check('unidades didácticas únicas y ordenadas', C.unidadesDe(app.Storage.db.instrumentos).join(',') === 'UD1,UD2', C.unidadesDe(app.Storage.db.instrumentos).join(','));
+    check('unidadesDe ignora instrumentos sin unidad', C.unidadesDe([{ unidad: '' }, { unidad: 'UD9' }, {}]).join(',') === 'UD9');
+  }
+
+  console.log('\n== Vista Cuadrícula (agrupación por unidades didácticas) ==');
+  {
+    const app = cargarApp();
+    app.Storage.load();
+    await importarJson(app, estadoAci());
+    const el = makeEl();
+    app.CuadriculaView.render(el);
+    const h = el.innerHTML;
+    check('la cuadrícula ofrece el desplegable de unidades', h.includes('id="sel-ud"'));
+    check('cabecera agrupada por UD1 y UD2', h.includes('ud-grupo') && h.includes('>UD1</th>') && h.includes('>UD2</th>'));
   }
 
   console.log('\n== Importador de currículo ==');

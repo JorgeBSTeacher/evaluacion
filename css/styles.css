@@ -114,6 +114,15 @@ main { max-width: 1200px; margin: 0 auto; padding: 20px 18px 60px; }
 
 .scroll-x { overflow-x: auto; }
 
+/* Cuadrícula ancha: fija la columna del alumno y agrupa por unidades didácticas */
+.tabla-cuadricula th:first-child, .tabla-cuadricula td:first-child {
+  position: sticky; left: 0; background: #fff; z-index: 2;
+  box-shadow: 1px 0 0 var(--linea);
+}
+.tabla-cuadricula tbody tr:hover td:first-child { background: #faf9f4; }
+.tabla-cuadricula .fila-ud .ud-grupo { text-align: center; background: var(--acento-suave); color: var(--acento); }
+.tabla-cuadricula .fila-ud th { border-bottom: 2px solid var(--linea); }
+
 input[type="text"], input[type="number"], input[type="date"], select, textarea {
   font: inherit; color: inherit;
   border: 1px solid var(--linea); border-radius: 10px;
