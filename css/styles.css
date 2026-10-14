@@ -201,6 +201,11 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--acento-suav
 .celda-nota { cursor: pointer; text-align: center; }
 .celda-nota:hover { outline: 2px solid var(--acento-suave); }
 
+/* Corrección: barra de navegación y resaltado del alumno en curso */
+.barra-correccion { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 2px 0 12px; }
+.barra-correccion #nav-info { flex: 1; color: var(--tinta-suave); font-size: 13px; }
+.tabla tbody tr.fila-actual { background: var(--acento-suave); }
+
 .resumen-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 14px 0; }
 .stat { background: #fff; border: 1px solid var(--linea); border-radius: var(--radio); padding: 14px; text-align: center; }
 .stat b { display: block; font-size: 26px; }

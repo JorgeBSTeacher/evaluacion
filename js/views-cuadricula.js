@@ -149,6 +149,8 @@ const CuadriculaView = (() => {
         ${uds.map(u => `<option value="${Utils.esc(u)}" ${udSel === u ? 'selected' : ''}>${Utils.esc(u)}</option>`).join('')}
       </select>` : '';
 
+    const buscaAlumno = alumnos.length > 6 ? '<input type="text" id="busca-alumno" class="no-print" placeholder="Buscar alumn@" style="max-width:170px">' : '';
+
     el.innerHTML = `
       <section class="card">
         <div class="card-head">
@@ -169,6 +171,7 @@ const CuadriculaView = (() => {
             })), claseSel, 'id', 'nombre')}</select>
             ${selNivel}
             ${selUd}
+            ${buscaAlumno}
             <select id="sel-periodo" style="max-width:130px">
               ${['T1', 'T2', 'T3', 'Final'].map(p => `<option ${p === periodo ? 'selected' : ''}>${p}</option>`).join('')}
             </select>
@@ -196,6 +199,17 @@ const CuadriculaView = (() => {
     }
     if (el.querySelector('#sel-ud')) {
       el.querySelector('#sel-ud').onchange = e => { udSel = e.target.value; render(el); };
+    }
+    const busca = el.querySelector('#busca-alumno');
+    if (busca) {
+      const norm = s => String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      busca.oninput = () => {
+        const q = norm(busca.value.trim());
+        el.querySelectorAll('#contenido tbody tr').forEach(tr => {
+          const cel = tr.querySelector('td');
+          tr.style.display = !q || (cel && norm(cel.textContent).includes(q)) ? '' : 'none';
+        });
+      };
     }
     el.querySelector('#add-inst').onclick = () => {
       try {

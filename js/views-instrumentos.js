@@ -276,6 +276,11 @@ const InstrumentosView = (() => {
           <span class="badge na">${inst.apartados.length} ${inst.tipo === 'Proyecto' ? 'partes/fases' : 'apartados'}</span>
           ${esRubrica ? '<small style="align-self:center;color:var(--tinta-suave)">Toca un nivel para puntuar; tócalo otra vez para vaciar.</small>' : ''}
         </div>
+        <div class="barra-correccion no-print" id="barra-nav">
+          <button class="btn btn-mini" id="btn-anterior">← Anterior</button>
+          <span id="nav-info"></span>
+          <button class="btn btn-mini btn-primario" id="btn-siguiente">Guardar y siguiente →</button>
+        </div>
         <div class="scroll-x">
           <table class="tabla" id="tabla-corrige">
             <thead><tr><th>Alumno</th>${inst.apartados.map(ap =>
@@ -317,11 +322,13 @@ const InstrumentosView = (() => {
       tr.querySelector('.celda-nota-final').innerHTML = Calc.badgeHtml(n);
     }
 
+    const persistir = Utils.debounce(() => Storage.save(), 400);
+
     tabla.querySelectorAll('tbody tr[data-alumno]').forEach(tr => {
       const alumnoId = tr.dataset.alumno;
 
       tr.querySelectorAll('.inp-nota').forEach(inp => {
-        inp.addEventListener('input', Utils.debounce(() => {
+        inp.addEventListener('input', () => {
           const apartadoId = inp.closest('td').dataset.apartado;
           const v = inp.value.trim();
           if (!Storage.db.registros[inst.id]) Storage.db.registros[inst.id] = {};
@@ -333,9 +340,9 @@ const InstrumentosView = (() => {
             if (isNaN(num) || num < 0) return;
             regAlu[apartadoId] = num;
           }
-          Storage.save();
+          persistir();
           notaFila(tr);
-        }, 350));
+        });
         inp.addEventListener('change', () => {
           if (inp.value.trim() !== '') {
             const num = parseFloat(inp.value.replace(',', '.'));
@@ -369,6 +376,41 @@ const InstrumentosView = (() => {
 
       notaFila(tr);
     });
+
+    const filas = [...tabla.querySelectorAll('tbody tr[data-alumno]')];
+    const navInfo = el.querySelector('#nav-info');
+    let idx = 0;
+
+    function pintaNav() {
+      if (!filas.length) return;
+      const a = alumnos[idx];
+      navInfo.innerHTML = `Alumno <b>${idx + 1}</b> de <b>${filas.length}</b> · ${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}`;
+    }
+
+    function irA(i, opciones) {
+      const op = opciones || {};
+      if (!filas.length) return;
+      idx = Math.max(0, Math.min(filas.length - 1, i));
+      filas.forEach((tr, k) => tr.classList.toggle('fila-actual', k === idx));
+      if (op.scroll !== false) filas[idx].scrollIntoView({ block: 'center', behavior: 'smooth' });
+      const primer = filas[idx].querySelector('.inp-nota');
+      if (primer && op.foco !== false) primer.focus({ preventScroll: true });
+      pintaNav();
+    }
+
+    if (filas.length) {
+      el.querySelector('#btn-anterior').onclick = () => { Storage.save(); irA(idx - 1); };
+      el.querySelector('#btn-siguiente').onclick = () => {
+        Storage.save();
+        if (idx >= filas.length - 1) UI.toast('Era el último alumno; notas guardadas');
+        irA(idx + 1);
+      };
+      filas.forEach((tr, k) => tr.addEventListener('click', () => irA(k, { scroll: false, foco: false })));
+      irA(0, { scroll: false, foco: false });
+    } else {
+      const barra = el.querySelector('#barra-nav');
+      if (barra) barra.remove();
+    }
   }
 
   function duplicarInstrumento(inst) {

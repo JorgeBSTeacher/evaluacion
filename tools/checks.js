@@ -220,6 +220,28 @@ async function main() {
     const h = el.innerHTML;
     check('la cuadrícula ofrece el desplegable de unidades', h.includes('id="sel-ud"'));
     check('cabecera agrupada por UD1 y UD2', h.includes('ud-grupo') && h.includes('>UD1</th>') && h.includes('>UD2</th>'));
+
+    // Con un grupo grande debe aparecer el buscador de alumnado
+    const est = estadoAci();
+    for (let i = 1; i <= 6; i++) est.alumnos.push({ id: 'x' + i, nombre: 'Alumno' + i, apellidos: 'Zeta', grupoId: 'g1' });
+    const app2 = cargarApp();
+    app2.Storage.load();
+    await importarJson(app2, est);
+    const el2 = makeEl();
+    app2.CuadriculaView.render(el2);
+    check('con más de 6 alumnos aparece el buscador', el2.innerHTML.includes('id="busca-alumno"'));
+  }
+
+  console.log('\n== Vista Corrección (guardar y siguiente alumno) ==');
+  {
+    const app = cargarApp();
+    app.Storage.load();
+    await importarJson(app, estadoAci());
+    const el = makeEl();
+    app.InstrumentosView.renderCorreccion(el, 'iBase');
+    const h = el.innerHTML;
+    check('la corrección incluye la barra de navegación', h.includes('id="barra-nav"') && h.includes('id="nav-info"'));
+    check('el botón «Guardar y siguiente» existe', h.includes('id="btn-siguiente"') && h.includes('Guardar y siguiente'));
   }
 
   console.log('\n== Importador de currículo ==');
