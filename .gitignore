@@ -15,3 +15,6 @@ usb/
 tools/__pycache__/
 *.pyc
 *:Zone.Identifier
+
+# Referencias internas de diseño (no se publican)
+/sources/rubrica_evaluacion.png
