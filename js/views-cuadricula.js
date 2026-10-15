@@ -5,15 +5,15 @@ const CuadriculaView = (() => {
   let nivelSel = '';
   let udSel = '__todas__';
   const TODAS = '__todas__';
-  // Unidades cuyas columnas están plegadas en la pestaña Instrumentos.
-  const udsPlegadas = new Set();
+  // Unidades cuyas columnas están DESPLEGADAS en la pestaña Instrumentos.
+  // El conjunto vacío significa «todas plegadas al entrar» (igual que en la vista
+  // Instrumentos), de modo que el gesto que aprende el claustro es el mismo.
+  const udsAbiertas = new Set();
 
   function tablaNotas(alumnos, insts, modoTodas) {
     if (!alumnos.length) {
       return '<div class="aviso">El grupo de esta clase no tiene alumnado en este nivel. Revísalo en «Alumnos y grupos» o en los niveles ACI de la clase.</div>';
     }
-    const plegada = ud => udsPlegadas.has(ud || '');
-    const cabeceraInst = i => `<th class="celda-nota${plegada(i.unidad) ? ' col-plegada' : ''}" data-ud="${Utils.esc(i.unidad || '')}" data-edit="${i.id}" title="Toca para editar el instrumento" style="max-width:130px">${Utils.esc(i.titulo)}<br><small>${Utils.esc(i.tipo)} · ${Utils.esc(i.periodo)}${i.unidad ? ' · ' + Utils.esc(i.unidad) : ''}</small></th>`;
     const grupos = [];
     insts.forEach(i => {
       const ud = i.unidad || '';
@@ -21,8 +21,17 @@ const CuadriculaView = (() => {
       if (!g) { g = { ud, insts: [] }; grupos.push(g); }
       g.insts.push(i);
     });
-    const thead = grupos.length > 1
-      ? `<tr class="fila-ud"><th rowspan="2">Alumno</th>${grupos.map(g => `<th class="ud-grupo plegable" colspan="${g.insts.length}" data-toggle-ud="${Utils.esc(g.ud)}" title="Plegar o desplegar las columnas de esta unidad"><span class="ud-flecha">${udsPlegadas.has(g.ud) ? '▸' : '▾'}</span>${g.ud ? Utils.esc(g.ud) : 'Sin unidad'}</th>`).join('')}<th rowspan="2">Evaluación</th></tr>
+    // La barra de unidad (con su plegado) solo tiene sentido si hay algo que
+    // agrupar: varias unidades, o una sola con nombre. Si todo va sin unidad no
+    // hay barra, y sin barra no se pliega nada (las columnas se ven siempre).
+    const conBarra = grupos.length > 1 || (grupos.length === 1 && grupos[0].ud !== '');
+    const plegada = ud => conBarra && !udsAbiertas.has(ud || '');
+    const cabeceraInst = i => `<th class="celda-nota${plegada(i.unidad) ? ' col-plegada' : ''}" data-ud="${Utils.esc(i.unidad || '')}" data-edit="${i.id}" title="Toca para editar el instrumento" style="max-width:130px">${Utils.esc(i.titulo)}<br><small>${Utils.esc(i.tipo)} · ${Utils.esc(i.periodo)}${i.unidad ? ' · ' + Utils.esc(i.unidad) : ''}</small></th>`;
+    const barraUd = g => `<th class="ud-grupo plegable" colspan="${g.insts.length}" data-toggle-ud="${Utils.esc(g.ud)}" title="Plegar o desplegar las columnas de esta unidad">` +
+      `<span class="ud-flecha">${plegada(g.ud) ? '▸' : '▾'}</span>${g.ud ? Utils.esc(g.ud) : 'Sin unidad'}` +
+      `<small>${g.insts.length} instrumento${g.insts.length === 1 ? '' : 's'}</small></th>`;
+    const thead = conBarra
+      ? `<tr class="fila-ud"><th rowspan="2">Alumno</th>${grupos.map(barraUd).join('')}<th rowspan="2">Evaluación</th></tr>
          <tr>${insts.map(cabeceraInst).join('')}</tr>`
       : `<tr><th>Alumno</th>${insts.map(cabeceraInst).join('')}<th>Evaluación</th></tr>`;
     const sinUd = udSel !== TODAS ? ` de la unidad «${Utils.esc(udSel)}»` : '';
@@ -207,7 +216,13 @@ const CuadriculaView = (() => {
       el.querySelector('#sel-nivel').onchange = e => { nivelSel = e.target.value; render(el); };
     }
     if (el.querySelector('#sel-ud')) {
-      el.querySelector('#sel-ud').onchange = e => { udSel = e.target.value; render(el); };
+      el.querySelector('#sel-ud').onchange = e => {
+        udSel = e.target.value;
+        // Si el docente filtra por una unidad, es porque quiere verla: la dejamos
+        // desplegada para no obligarle a un clic de más.
+        if (udSel !== TODAS) udsAbiertas.add(udSel);
+        render(el);
+      };
     }
     const busca = el.querySelector('#busca-alumno');
     if (busca) {
@@ -240,7 +255,7 @@ const CuadriculaView = (() => {
     el.querySelectorAll('[data-toggle-ud]').forEach(th => {
       th.onclick = () => {
         const clave = th.dataset.toggleUd || '';
-        if (udsPlegadas.has(clave)) udsPlegadas.delete(clave); else udsPlegadas.add(clave);
+        if (udsAbiertas.has(clave)) udsAbiertas.delete(clave); else udsAbiertas.add(clave);
         render(el);
       };
     });

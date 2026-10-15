@@ -248,6 +248,9 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--acento-suav
 .tabla-cuadricula .ud-grupo.plegable { cursor: pointer; user-select: none; }
 .tabla-cuadricula .ud-grupo.plegable:hover { filter: brightness(.95); }
 .tabla-cuadricula .ud-grupo .ud-flecha { margin-right: 5px; font-size: 11px; }
+/* Mismo aspecto que las barras de unidad de la vista Instrumentos. */
+.tabla-cuadricula .ud-grupo { text-transform: none; letter-spacing: normal; }
+.tabla-cuadricula .ud-grupo small { margin-left: 6px; color: var(--tinta-suave); font-weight: 400; }
 .barra-tab { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
 
 @media print {

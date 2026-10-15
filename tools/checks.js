@@ -221,9 +221,10 @@ async function main() {
     const h = el.innerHTML;
     check('la pestaña se llama «Competencias específicas y clave»', h.includes('Competencias específicas y clave'));
     check('el desplegable de unidades y «Añadir calificación» viven en Instrumentos', h.includes('id="sel-ud"') && h.includes('id="add-inst"'));
-    check('cabecera agrupada por UD1 y UD2', h.includes('ud-grupo') && h.includes('>UD1</th>') && h.includes('>UD2</th>'));
+    check('cabecera agrupada por UD1 y UD2', h.includes('ud-grupo') && h.includes('>UD1<small>') && h.includes('>UD2<small>'));
     check('las unidades se pueden plegar', h.includes('data-toggle-ud="UD1"') && h.includes('data-toggle-ud="UD2"'));
-    check('las columnas empiezan desplegadas', !h.includes('col-plegada'));
+    check('las columnas de las unidades empiezan plegadas', h.includes('col-plegada') && h.includes('ud-flecha">▸'));
+    check('la barra de unidad indica cuántos instrumentos tiene', h.includes('instrumentos</small>') || h.includes('instrumento</small>'));
 
     // Con un grupo grande debe aparecer el buscador de alumnado, en todas las pestañas.
     const est = estadoAci();
@@ -245,6 +246,18 @@ async function main() {
     const el4 = makeEl();
     app2.CuadriculaView.render(el4, { tab: 'competencias' });
     check('en Competencias el buscador sigue disponible', el4.innerHTML.includes('id="busca-alumno"'));
+
+    // Trampa a evitar: con UNA sola unidad debe seguir habiendo barra, o las
+    // columnas quedarían plegadas sin nada que tocar para abrirlas.
+    const estUna = estadoAci();
+    estUna.instrumentos.filter(i => i.claseId === 'c1').forEach(i => { i.unidad = 'UD1'; });
+    const app4 = cargarApp();
+    app4.Storage.load();
+    await importarJson(app4, estUna);
+    const el5 = makeEl();
+    app4.CuadriculaView.render(el5);
+    const h5 = el5.innerHTML;
+    check('con una sola unidad sigue habiendo barra para desplegarla', h5.includes('data-toggle-ud="UD1"') && h5.includes('col-plegada'));
   }
 
   console.log('\n== Vista Corrección (guardar y siguiente alumno) ==');
