@@ -295,3 +295,4 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--acento-suav
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   @page { margin: 12mm; }
 }
+.aci-ast { font-size: 11px; vertical-align: text-top; margin-left: 1px; }

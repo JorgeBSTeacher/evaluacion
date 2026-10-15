@@ -246,6 +246,10 @@ async function main() {
     check('el listado de corrección enseña cuánto falta', filas.includes('0/4 corregidos'));
     check('el listado de corrección marca lo que ya está completo', filas.includes('>Completo<'));
     check('cada fila lleva su progreso junto al título', filas.includes('Control A (base)') && filas.includes('Control · T1 · UD1'));
+
+    // En «Todos los niveles» deben verse todos los alumnos y, si hay ACI, las notas
+    // de los adaptados llevan «*» para distinguirlos del nivel base.
+
     check('cabecera agrupada por UD1 y UD2', h.includes('ud-grupo') && h.includes('>UD1<small>') && h.includes('>UD2<small>'));
     check('las unidades se pueden plegar', h.includes('data-toggle-ud="UD1"') && h.includes('data-toggle-ud="UD2"'));
     check('las columnas de las unidades empiezan plegadas', h.includes('celda-plegada') && h.includes('ud-flecha">▸'));
