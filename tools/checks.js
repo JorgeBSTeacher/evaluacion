@@ -409,6 +409,30 @@ async function main() {
     check('el listado incluye los tres instrumentos', h.includes('UD1 control') && h.includes('UD2 control') && h.includes('Sin unidad'));
   }
 
+  console.log('== Unidad: sugerencias editables (datalist) ==');
+  {
+    const app = cargarApp();
+    app.Storage.load();
+    const est = estadoAci();
+    // La asignatura s1 ya tiene UD1/UD2 en la clase c1. Anadimos otra clase de
+    // la misma asignatura (s1) y una de otra (s2) para comprobar el alcance.
+    est.clases.push({ id: 'c2', asignaturaId: 's1', grupoId: 'g1', nivelesAci: [], adaptaciones: {} });
+    est.clases.push({ id: 'c3', asignaturaId: 's2', grupoId: 'g1', nivelesAci: [], adaptaciones: {} });
+    est.instrumentos.push(
+      { id: 'j1', claseId: 'c2', tipo: 'Control', titulo: 'UD3 otra clase s1', fecha: '2026-04-10', periodo: 'T3', nivel: '', unidad: 'UD3', saberes: '', niveles: [], apartados: [{ id: 'z1', orden: 1, descripcion: 'a', maxPts: 10, criterioIds: ['k1'] }] },
+      { id: 'j2', claseId: 'c3', tipo: 'Control', titulo: 'UD9 otra asignatura', fecha: '2026-04-10', periodo: 'T3', nivel: '', unidad: 'UD9', saberes: '', niveles: [], apartados: [{ id: 'z2', orden: 1, descripcion: 'a', maxPts: 10, criterioIds: ['m1'] }] }
+    );
+    await importarJson(app, est);
+    const C = app.Calc;
+
+    check('unidadesDeAsignatura junta las clases de la asignatura', C.unidadesDeAsignatura('s1').join(',') === 'UD1,UD2,UD3', C.unidadesDeAsignatura('s1').join(','));
+    check('unidadesDeAsignatura no mezcla otras asignaturas', C.unidadesDeAsignatura('s2').join(',') === 'UD9', C.unidadesDeAsignatura('s2').join(','));
+
+    const dl = app.InstrumentosView.datalistUnidades('s1');
+    check('datalistUnidades genera el datalist con las unidades', dl.indexOf('<datalist id="lista-unidades">') === 0 && dl.indexOf('value="UD1"') !== -1 && dl.indexOf('value="UD3"') !== -1);
+    check('datalistUnidades sin unidades devuelve vacio', app.InstrumentosView.datalistUnidades('sX') === '');
+  }
+
   console.log('\n' + (fallos ? 'FALLOS: ' + fallos + '/' + total : 'TODO OK: ' + total + ' comprobaciones'));
   process.exitCode = fallos ? 1 : 0;
 }

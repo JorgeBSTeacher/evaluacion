@@ -170,6 +170,13 @@ const Calc = {
     return (insts || []).filter(i => i.unidad === unidad);
   },
 
+  // Unidades didácticas ya usadas en una asignatura (todas sus clases). Sirve
+  // para sugerirlas al escribir: una UD1 de 6ºA se ofrece también en 6ºB.
+  unidadesDeAsignatura(asigId) {
+    const clases = Storage.db.clases.filter(c => c.asignaturaId === asigId).map(c => c.id);
+    return this.unidadesDe(Storage.db.instrumentos.filter(i => clases.indexOf(i.claseId) !== -1));
+  },
+
   logroCriterio(criterioId, claseId, alumnoId, periodo) {
     const insts = this.instrumentosDeAlumno(claseId, alumnoId, periodo).filter(i => {
       if ((i.criteriosModo || 'desglosado') === 'global') {

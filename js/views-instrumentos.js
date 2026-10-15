@@ -10,6 +10,16 @@ const InstrumentosView = (() => {
     return Calc.unidadesDe(Storage.db.instrumentos.filter(i => i.claseId === claseSel));
   }
 
+  // Sugerencias para el campo «Unidad»: un <datalist> editable (sugiere, no
+  // obliga). Recoge las unidades ya usadas en toda la asignatura; si todavía no
+  // hay ninguna, devuelve cadena vacía y el campo queda como texto libre.
+  function datalistUnidades(asigId) {
+    const us = Calc.unidadesDeAsignatura(asigId);
+    if (!us.length) return '';
+    return `<datalist id="lista-unidades">${us
+      .map(u => `<option value="${Utils.esc(u)}"></option>`).join('')}</datalist>`;
+  }
+
   function instrumentosDe() {
     const lista = Storage.db.instrumentos
       .filter(i => i.claseId === claseSel)
@@ -92,7 +102,8 @@ const InstrumentosView = (() => {
           <input type="text" id="f-titulo" value="${Utils.esc(inst ? inst.titulo : '')}" placeholder="Ej. Control de unidades 1-3"></label>
         <div class="fila-campos">
           <label class="campo"><span>Unidad (agrupa exámenes del mismo tema)</span>
-            <input type="text" id="f-unidad" value="${Utils.esc(inst ? (inst.unidad || '') : '')}" placeholder="Ej. UD5"></label>
+            <input type="text" id="f-unidad" list="lista-unidades" value="${Utils.esc(inst ? (inst.unidad || '') : '')}" placeholder="Ej. UD5" title="Puedes elegir una unidad ya usada o escribir una nueva">
+            ${datalistUnidades(asig.id)}</label>
           ${nivelesAci.length ? `<label class="campo"><span>Nivel ACI</span>
             <select id="f-nivel">${opcionesNivel}</select></label>` : '<input type="hidden" id="f-nivel" value="">'}
         </div>
@@ -776,5 +787,5 @@ ${codigos}`;
 
   // Se exportan también los constructores de la cuadrícula para poder comprobar
   // en los tests que cabecera y filas tienen el mismo número de columnas.
-  return { render, renderCorreccion, modalInstrumento, filaApartado, cabeceraRubrica, plantillaColumnas, promptIa };
+  return { render, renderCorreccion, modalInstrumento, filaApartado, cabeceraRubrica, plantillaColumnas, promptIa, datalistUnidades };
 })();
