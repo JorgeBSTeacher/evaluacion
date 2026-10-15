@@ -164,6 +164,12 @@ const Calc = {
       .sort((a, b) => String(a).localeCompare(String(b), 'es'));
   },
 
+  // Instrumentos de una unidad concreta. `unidad` vacío o nulo = todos.
+  instrumentosDeUnidad(insts, unidad) {
+    if (!unidad) return insts || [];
+    return (insts || []).filter(i => i.unidad === unidad);
+  },
+
   logroCriterio(criterioId, claseId, alumnoId, periodo) {
     const insts = this.instrumentosDeAlumno(claseId, alumnoId, periodo).filter(i => {
       if ((i.criteriosModo || 'desglosado') === 'global') {

@@ -383,6 +383,32 @@ async function main() {
     }
   }
 
+  console.log('\n== Instrumentos: desplegable por unidad ==');
+  {
+    const app = cargarApp();
+    app.Storage.load();
+    const est = estadoAci();
+    est.instrumentos.push(
+      { id: 'i1', claseId: 'c1', tipo: 'Control', titulo: 'UD1 control', fecha: '2026-01-10', periodo: 'T1', nivel: '', unidad: 'UD1', saberes: '', niveles: [{ pct: 100, descriptor: '' }], apartados: [{ id: 'p1', orden: 1, descripcion: 'a', maxPts: 10, criterioIds: ['k1'] }], criteriosModo: 'desglosado', criterioIdsGlobal: [] },
+      { id: 'i2', claseId: 'c1', tipo: 'Control', titulo: 'UD2 control', fecha: '2026-02-10', periodo: 'T2', nivel: '', unidad: 'UD2', saberes: '', niveles: [{ pct: 100, descriptor: '' }], apartados: [{ id: 'p2', orden: 1, descripcion: 'a', maxPts: 10, criterioIds: ['k2'] }], criteriosModo: 'desglosado', criterioIdsGlobal: [] },
+      { id: 'i3', claseId: 'c1', tipo: 'Proyecto', titulo: 'Sin unidad', fecha: '2026-03-10', periodo: 'T1', nivel: '', unidad: '', saberes: '', niveles: [{ pct: 100, descriptor: '' }], apartados: [{ id: 'p3', orden: 1, descripcion: 'a', maxPts: 10, criterioIds: ['k1'] }], criteriosModo: 'desglosado', criterioIdsGlobal: [] }
+    );
+    await importarJson(app, est);
+    const C = app.Calc;
+    const insts = app.Storage.db.instrumentos.filter(i => i.claseId === 'c1');
+    check('unidadesDe: lista ordenada y sin vacios', C.unidadesDe(insts).join(',') === 'UD1,UD2');
+    const ud1 = C.instrumentosDeUnidad(insts, 'UD1').map(i => i.id);
+    check('instrumentosDeUnidad filtra por unidad', ud1.indexOf('i1') !== -1 && ud1.every(id => ['iBase', 'iAci', 'i1'].indexOf(id) !== -1), ud1.join(','));
+    check('instrumentosDeUnidad sin unidad devuelve todo', C.instrumentosDeUnidad(insts, null).length === insts.length && C.instrumentosDeUnidad(insts, '').length === insts.length);
+
+    const el = makeEl();
+    app.InstrumentosView.render(el);
+    const h = el.innerHTML;
+    check('el listado muestra el desplegable de unidades', h.includes('id="sel-ud-inst"') && h.includes('Todas las unidades'));
+    check('el desplegable ofrece UD1 y UD2', h.includes('>UD1<') && h.includes('>UD2<'));
+    check('el listado incluye los tres instrumentos', h.includes('UD1 control') && h.includes('UD2 control') && h.includes('Sin unidad'));
+  }
+
   console.log('\n' + (fallos ? 'FALLOS: ' + fallos + '/' + total : 'TODO OK: ' + total + ' comprobaciones'));
   process.exitCode = fallos ? 1 : 0;
 }

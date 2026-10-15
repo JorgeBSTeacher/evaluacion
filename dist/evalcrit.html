@@ -966,6 +966,12 @@ const Calc = {
       .sort((a, b) => String(a).localeCompare(String(b), 'es'));
   },
 
+  // Instrumentos de una unidad concreta. `unidad` vacío o nulo = todos.
+  instrumentosDeUnidad(insts, unidad) {
+    if (!unidad) return insts || [];
+    return (insts || []).filter(i => i.unidad === unidad);
+  },
+
   logroCriterio(criterioId, claseId, alumnoId, periodo) {
     const insts = this.instrumentosDeAlumno(claseId, alumnoId, periodo).filter(i => {
       if ((i.criteriosModo || 'desglosado') === 'global') {
@@ -1721,14 +1727,22 @@ const CurriculoView = (() => {
 <script>
 const InstrumentosView = (() => {
   let claseSel = null;
+  let udSel = '__todas__';
+  const TODAS = '__todas__';
   const TIPOS = ['Control', 'Rúbrica', 'Proyecto', 'Otro'];
   const PERIODOS = ['T1', 'T2', 'T3'];
 
+  // Unidades didácticas presentes en la clase activa (alimenta el desplegable).
+  function unidadesDeClase() {
+    return Calc.unidadesDe(Storage.db.instrumentos.filter(i => i.claseId === claseSel));
+  }
+
   function instrumentosDe() {
-    return Storage.db.instrumentos
+    const lista = Storage.db.instrumentos
       .filter(i => i.claseId === claseSel)
       .sort((a, b) => (String(a.unidad || '').localeCompare(String(b.unidad || ''), 'es'))
         || (a.fecha || '').localeCompare(b.fecha || ''));
+    return Calc.instrumentosDeUnidad(lista, udSel === TODAS ? null : udSel);
   }
 
   // Descriptor que un ítem de rúbrica define para un nivel concreto ('' = usa el común).
@@ -2417,6 +2431,15 @@ ${codigos}`;
       return;
     }
 
+    // Desplegable por unidad didáctica (solo si la clase tiene instrumentos con unidad).
+    const uds = unidadesDeClase();
+    if (udSel !== TODAS && !uds.includes(udSel)) udSel = TODAS;
+    const selUd = uds.length ? `
+          <select id="sel-ud-inst" title="Ver solo los instrumentos de una unidad didáctica" style="max-width:190px">
+            <option value="${TODAS}" ${udSel === TODAS ? 'selected' : ''}>Todas las unidades</option>
+            ${uds.map(u => `<option value="${Utils.esc(u)}" ${udSel === u ? 'selected' : ''}>${Utils.esc(u)}</option>`).join('')}
+          </select>` : '';
+
     el.innerHTML = `
       <section class="card">
         <div class="card-head">
@@ -2425,6 +2448,7 @@ ${codigos}`;
             id: c.id,
             nombre: `${Calc.asignaturaDeClase(c.id)?.nombre || '?'} · ${(Calc.byId(db.grupos, c.grupoId) || {}).nombre || '?'}`
           })), claseSel, 'id', 'nombre')}</select>
+          ${selUd}
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn" id="btn-importar-rub" title="Pega aquí una rúbrica creada con una IA">Importar rúbrica (IA)</button>
             <button class="btn btn-primario" id="add-inst">Nuevo instrumento</button>
@@ -2454,12 +2478,17 @@ ${codigos}`;
                   <button class="icon-btn borrar-inst" title="Eliminar">×</button>
                 </td>
               </tr>`;
-            }).join('') || '<tr><td colspan="8" class="vacio">Sin instrumentos en esta clase.</td></tr>'}
+            }).join('') || `<tr><td colspan="8" class="vacio">${udSel === TODAS
+                ? 'Sin instrumentos en esta clase.'
+                : `Sin instrumentos en la unidad «${Utils.esc(udSel)}».`}</td></tr>`}
           </tbody>
         </table>
       </section>`;
 
-    el.querySelector('#sel-clase').onchange = e => { claseSel = e.target.value; render(el); };
+    el.querySelector('#sel-clase').onchange = e => { claseSel = e.target.value; udSel = TODAS; render(el); };
+    if (el.querySelector('#sel-ud-inst')) {
+      el.querySelector('#sel-ud-inst').onchange = e => { udSel = e.target.value; render(el); };
+    }
     el.querySelector('#add-inst').onclick = () => modalInstrumento(null);
     el.querySelector('#btn-importar-rub').onclick = () => modalImportarRubrica();
 
