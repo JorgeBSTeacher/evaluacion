@@ -114,7 +114,8 @@ Si los pesos no casan con el reparto de puntos, ambas notas difieren **a propós
 - Selector de **unidad didáctica** (D-38, v0.4.5): cuando la clase tiene instrumentos con `unidad`, aparece un desplegable «Todas las unidades / UD1 / UD2…» que filtra las columnas; con varias unidades y «Todas» seleccionado, la cabecera se agrupa con una fila superior por UD. La primera columna (alumno) y esa fila de grupo quedan fijas al desplazar horizontalmente, para no perder la referencia en tablas de muchas columnas.
 - Corrección ágil (D-39, v0.4.6): barra «← Anterior · Guardar y siguiente →» con contador «Alumno X de N» y resaltado de la fila en curso; el botón guarda y salta al siguiente alumno. Las notas se escriben en memoria al teclear (el guardado en `localStorage` va con retardo) para que ese salto nunca pierda lo escrito.
 - Buscador de alumnado (v0.4.6): con grupos de más de 6 alumnos, la cuadrícula muestra un campo «Buscar alumn@» que filtra las filas ignorando acentos y mayúsculas.
-- Editor de rúbricas (D-40, v0.4.7): tabla con cabecera **criterio · peso · nivel 1 · nivel 2 · nivel 3 · nivel 4**; la celda de cada nivel es un descriptor editable (por defecto, el de la escala común). La corrección muestra los niveles de menor a mayor y usa el descriptor del ítem.
+- Editor de rúbricas (D-40, v0.4.7): cuadrícula con cabecera **criterio · peso · nivel 1 · nivel 2 · nivel 3 · nivel 4**; la celda de cada nivel es un descriptor editable (con el de la escala común como *placeholder*; vacío = lo hereda). La corrección muestra los niveles de menor a mayor y usa el descriptor del ítem; incluye un desplegable **«Ver los descriptores de cada nivel»** (útil en tableta, donde no hay tooltips). El modal se ensancha solo cuando aparece la cuadrícula (`:has(.rub-head)`).
+- Importar rúbrica creada con IA (P-08, v0.4.7): botón **«Importar rúbrica (IA)»** en Instrumentos que abre un modal en dos pasos — (1) instrucciones listas para pegar en un chat, rellenas con los códigos del currículo de la asignatura y con **huecos `___`** para personalizar («Copiar instrucciones» / «Descargar .txt»); (2) pegar la respuesta JSON, elegir periodo e **Importar**. Si algo falla, aviso en castellano y no se crea nada.
 - Corrección: tabla alumnos × apartados; en rúbricas, botones de nivel.
 - Autoguardado continuo con indicador visual; confirmación en acciones destructivas.
 - Exportar/Importar siempre visibles en la cabecera.
@@ -157,13 +158,13 @@ Si los pesos no casan con el reparto de puntos, ambas notas difieren **a propós
     "id": "", "claseId": "", "tipo": "Control", "titulo": "", "fecha": "",
     "periodo": "T1", "saberes": "", "nivel?": "", "unidad?": "",
     "niveles": [{ "pct": 100, "descriptor": "" }],
-    "apartados": [{ "id": "", "orden": 1, "descripcion": "", "maxPts": 5, "criterioIds": [] }]
+    "apartados": [{ "id": "", "orden": 1, "descripcion": "", "maxPts": 5, "criterioIds": [], "peso?": 1, "niveles?": [{ "pct": 25, "descriptor": "" }] }]
   }],
   "registros": { "instrumentoId": { "alumnoId": { "apartadoId": 3.4 } } }
 }
 ```
 
-Nota: en rúbricas cada apartado usa `maxPts: 100` implícito y el valor registrado es el % del nivel elegido; así el motor de cálculo es único para todos los tipos.
+Nota: en rúbricas cada apartado usa `maxPts: 100` implícito y el valor registrado es el % del nivel elegido; así el motor de cálculo es único para todos los tipos. En rúbricas, `apartado.peso` pondera la media y `apartado.niveles` (D-40, v0.4.7) permite descriptores propios por ítem; si está vacío (`[]`) el ítem **hereda** `instrumento.niveles`. `Calc.nivelesDeApartado(inst, ap)` resuelve la escala efectiva de un ítem (siempre de menor a mayor).
 
 Nota ACI (adaptación curricular): `clase.nivelesAci` define niveles (p. ej. un aula de 6º con alumnado que trabaja el currículo de 4º); cada nivel apunta a la `asignaturaId` (currículo de otro curso) con la que se corrige. `clase.adaptaciones` asigna alumno→código de nivel (ausente = base). Semántica de instrumentos: `nivel: ""` = común a todo el alumnado; `nivel: "BASE"` = solo base; `nivel: "<codigo>"` = solo ese nivel. El motor usa el currículo del nivel del alumno para criterios y nota (D-37). `unidad` es solo una etiqueta informativa para agrupar exámenes del mismo tema.
 
@@ -213,7 +214,8 @@ Futuras: arrastre de cursos (D-07), escala cualitativa Infantil completa, planti
 - P-07 (licencia y distribución, D-35): se contempla proponer el uso de la app a otros profesores y a la consejería (no el hosting, sino el código/app). **Decisión provisional: mantener todo privado por ahora.** Si se abre, decidir licencia — recomendación **EUPL-1.2** para administración pública (versión oficial en castellano, copyleft) o **MIT/Apache-2.0** si se prioriza máxima adopción. Mantener el modo local/offline como postura por defecto (minimización RGPD de datos de menores); la nube (OneDrive/backend) queda siempre opcional y apagada por defecto. Kit de distribución pendiente: `LICENSE`, `README`, nota de seguridad «cero red, datos en el dispositivo», entregable `dist/evalcrit.html`.
 - P-02: revisar D-13 (agregación multi-instrumento) tras uso real.
 - P-03: asistente "nuevo curso escolar" arrastrando grupos y currículo.
-- P-08: importar rúbricas generadas por una **IA** («cualquier chat») desde un bloque **JSON**. Formato y plantilla de prompt definidos (ver más abajo); pendiente de implementar en `Storage.importarRubrica` y en un modal «Importar rúbrica».
+- P-08: importar rúbricas generadas por una **IA** («cualquier chat») desde un bloque **JSON**. Formato, plantilla de prompt y UI definidos. **RESUELTA (v0.4.7)**: `Storage.importarRubrica(datos, claseId, periodo)` valida y crea el instrumento, y el botón **«Importar rúbrica (IA)»** de Instrumentos abre un modal que (1) genera las instrucciones con los códigos reales de la asignatura y **huecos `___`** para personalizar, con botones «Copiar instrucciones» y «Descargar .txt», y (2) importa el JSON pegado. Nunca importa a medias (ver reglas abajo).
+- P-09 (cobertura de pruebas): el editor de rúbricas (cuadrícula del modal) y el modal de importación **no están cubiertos** por pruebas automáticas. `tools/checks.js` sí cubre el motor (`Calc.nivelesDeApartado`, `notaInstrumento`) y `Storage.importarRubrica`, y expone `filaApartado`/`cabeceraRubrica`/`plantillaColumnas`/`promptIa` para comprobar que cabecera y filas alinean columnas; pero el ciclo real abrir→editar→guardar de un ítem debe verificarse a mano en navegador (ver F7). Riesgo conocido: no regresar los descriptores propios al reabrir un ítem ya guardado.
 
 ### Formato de rúbrica para IA (P-08, v0.4.7)
 
@@ -242,11 +244,12 @@ Futuras: arrastre de cursos (D-07), escala cualitativa Infantil completa, planti
 }
 ```
 
-Reglas para el importador (pendiente de implementar):
+Reglas del importador (implementado en v0.4.7):
 - Se valida `tipo`/`version`; `titulo` obligatorio; `unidad` y `nivel` opcionales (`nivel`: `""` = común, `"BASE"` = sin adaptación, o el código de un nivel ACI de la clase).
-- `items` no vacío; `criterio` no puede repetirse; `peso` numérico > 0; exactamente 4 niveles ordenados por `pct` ascendente.
-- Los códigos de `criterios` se resuelven contra los criterios de la **asignatura del nivel** correspondiente; si alguno no existe, se aborta la importación y se listan los desconocidos (nunca se importa a medias).
-- El resultado es un instrumento tipo `Rúbrica` con esos ítems, pesos, criterios y descriptores por nivel.
+- `items` no vacío; `criterio` no puede repetirse; `peso` numérico > 0; cada ítem necesita **al menos 2 niveles** (se aceptan y ordenan por `pct` ascendente; la plantilla pide 4). Se admite que distintos ítems traigan distinto número de niveles.
+- Cada ítem debe indicar al menos un criterio. Los códigos de `criterios` se resuelven contra los criterios de la **asignatura del nivel** correspondiente; si alguno no existe, se aborta la importación y se listan los desconocidos (nunca se importa a medias).
+- El resultado es un instrumento tipo `Rúbrica` con esos ítems, pesos, criterios y descriptores por nivel; `instrumento.niveles` toma la escala del primer ítem y cada `apartado.niveles` guarda la suya. El `periodo` se elige en el modal (por defecto `T1`).
+- Tolerancia deliberada con el claustro (baja competencia digital): si el JSON está mal, el error se explica en castellano llano y no se crea nada.
 
 ## 15. Glosario
 
@@ -277,4 +280,4 @@ Reglas para el importador (pendiente de implementar):
 | v0.4.4 | `f9dfe3e` | **Criterios globales/desglosados y pesos en rúbrica**: Control/Proyecto con criterios por apartado (desglosado) o globales a todo el instrumento (campo `criteriosModo` + `criterioIdsGlobal`); en Proyecto las filas se llaman «partes/fases». Rúbrica con campo `peso` por fila y nota = media ponderada. Fixes: los chips de criterios del modal respetan el nivel ACI (`Calc.asignaturaDeNivel`), y en modo global los apartados ya no piden criterios individuales. Botón **Guardar** que sobrescribe `evalcrit.json` en la carpeta de backups elegida. Pendiente **P-08**: importar rúbricas desde CSV (formato tipo definido en §14). `dist/evalcrit.html` (~258 KB); 48 + 306 comprobaciones en verde. |
 | v0.4.5 | `9a8ee60` | **Agrupación por unidades didácticas (D-38)**: desplegable de UD en la cuadrícula que filtra las columnas, fila de cabecera agrupada por unidad cuando se ven varias, y columna del alumno fija (sticky) en las tablas anchas. Helper `Calc.unidadesDe`. `tools/checks.js` (52 comprobaciones, incluye render de la vista). |
 | v0.4.6 | `d54dabe` | **Corrección ágil y buscador (D-39)**: barra «Anterior · Guardar y siguiente» con contador y resaltado del alumno en curso en la pantalla de corrección; las notas se vuelcan a memoria al teclear (el `localStorage` se guarda con retardo) para no perder nada al saltar de alumno. Buscador de alumnado en la cuadrícula para grupos de más de 6. `tools/checks.js` (55 comprobaciones). |
-| v0.4.7 | pendiente | **Rúbricas por ítem (D-40) y plantilla para IA (P-08)**: decisión de cabecera «criterio · peso · nivel 1…4» con descriptores editables por ítem (heredan la escala común si no se definen); se sustituye el formato de importación CSV por **JSON** (`tipo: "rubrica-evalcrit"`) y se añade la plantilla de prompt `plantillas/rubrica-para-ia.md`. Pendiente de implementar: modelo, editor en cuadrícula y `Storage.importarRubrica`. |
+| v0.4.7 | `11aad3f` | **Rúbricas por ítem (D-40) e importación desde IA (P-08)**: cada ítem de la rúbrica puede definir **sus propios descriptores por nivel** y hereda la escala común del instrumento si los deja vacíos (`apartado.niveles`; `Calc.nivelesDeApartado` resuelve la escala efectiva, ascendente). El editor muestra la cuadrícula **criterio · peso · nivel 1…N** con el descriptor heredado como *placeholder* y la corrección usa el descriptor del ítem (más un desplegable de descriptores para tableta). Botón **«Importar rúbrica (IA)»**: genera las instrucciones con los códigos del currículo y **huecos `___`** (copiar/descargar), importa el JSON pegado (`Storage.importarRubrica`), valida con errores en castellano y **nunca importa a medias**. Se sustituye el formato CSV por **JSON** (`tipo: "rubrica-evalcrit"`). `dist/evalcrit.html` (~280 KB); `tools/checks.js` (89 comprobaciones) + plantillas (306). |
