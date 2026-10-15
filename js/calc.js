@@ -112,6 +112,37 @@ const Calc = {
       .filter(i => this.instrumentoParaAlumno(i, claseId, alumnoId));
   },
 
+  // Cuánto falta por corregir de un instrumento: alumnado asignado que todavía
+  // tiene algún apartado sin nota. Lo que se deja en blanco se cuenta como
+  // pendiente (una ausencia también queda en blanco, y así se ve).
+  progresoInstrumento(inst) {
+    if (!inst) return { hechos: 0, total: 0, pendientes: 0 };
+    const alumnos = this.alumnosDeInstrumento(inst);
+    const registros = (Storage.db.registros || {})[inst.id] || {};
+    let hechos = 0;
+    if (inst.apartados && inst.apartados.length) {
+      alumnos.forEach(a => {
+        const fila = registros[a.id] || {};
+        const completo = inst.apartados.every(ap => {
+          const v = fila[ap.id];
+          return v !== undefined && v !== null && v !== '';
+        });
+        if (completo) hechos++;
+      });
+    }
+    return { hechos, total: alumnos.length, pendientes: alumnos.length - hechos };
+  },
+
+  // Instrumentos de una clase ordenados para corregir: lo que más falta tiene
+  // primero y, a igualdad, lo más reciente.
+  instrumentosPorCorregir(claseId) {
+    return this.instrumentosDeClase(claseId)
+      .map(i => ({ i, p: this.progresoInstrumento(i) }))
+      .sort((a, b) => (b.p.pendientes - a.p.pendientes)
+        || String(b.i.fecha || '').localeCompare(String(a.i.fecha || '')))
+      .map(x => x.i);
+  },
+
   logroCriterioEnInstrumento(inst, alumnoId, criterioId) {
     const modo = inst.criteriosModo || 'desglosado';
     const reg = (Storage.db.registros[inst.id] || {})[alumnoId] || {};

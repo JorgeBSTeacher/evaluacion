@@ -412,7 +412,40 @@ const InstrumentosView = (() => {
     render(el);
   }
 
-  function renderCorreccion(el, instId) {
+  // «¿Qué quieres corregir?»: listado de la clase ordenado por lo que falta.
+  // `alElegir(instrumentoId)` decide a dónde lleva tocar cada fila.
+  // Las filas se generan aparte para poder comprobarlas sin navegador.
+  function filasCorregirHtml(lista) {
+    return lista.map(i => {
+      const p = Calc.progresoInstrumento(i);
+      let marca = 'Sin alumnado', clase = 'na';
+      if (p.total) {
+        if (!p.pendientes) { marca = 'Completo'; clase = 'ok'; }
+        else { marca = `${p.hechos}/${p.total} corregidos`; clase = p.hechos ? 'info' : 'na'; }
+      }
+      const meta = [i.tipo, i.periodo, i.unidad || 'sin unidad'].join(' · ');
+      return `<button type="button" class="fila-corrige" data-inst="${i.id}">
+        <span class="fila-corrige-txt"><b>${Utils.esc(i.titulo)}</b><small>${Utils.esc(meta)}</small></span>
+        <span class="badge ${clase}">${marca}</span>
+      </button>`;
+    }).join('');
+  }
+
+  function modalCalificar(claseId, alElegir) {
+    const lista = Calc.instrumentosPorCorregir(claseId);
+    const mbody = UI.openModal({
+      titulo: '¿Qué quieres corregir?',
+      cuerpo: `<p class="hint">Instrumentos de esta clase, con lo que falta por corregir primero. Toca uno para corregirlo.</p>
+        ${filasCorregirHtml(lista) || '<div class="aviso">Esta clase todavía no tiene instrumentos. Créalos en «Instrumentos».</div>'}`
+    });
+    mbody.querySelectorAll('.fila-corrige').forEach(b => {
+      b.onclick = () => { UI.closeModal(); alElegir(b.dataset.inst); };
+    });
+  }
+
+  // `volverA` permite volver a la vista desde la que se abrió (p. ej. la
+  // Cuadrícula) en lugar de ir siempre al listado de Instrumentos.
+  function renderCorreccion(el, instId, volverA) {
     const inst = Calc.instrumento(instId);
     if (!inst) { render(el); return; }
     const alumnos = Calc.alumnosDeInstrumento(inst);
@@ -477,7 +510,7 @@ const InstrumentosView = (() => {
         La nota mostrada es la del instrumento (informativa). Las ponderaciones por criterio se aplican en la Cuadrícula.
       </p>`;
 
-    el.querySelector('#volver').onclick = () => render(el);
+    el.querySelector('#volver').onclick = () => (volverA ? volverA() : render(el));
 
     const tabla = el.querySelector('#tabla-corrige');
 
@@ -834,7 +867,6 @@ ${codigos}`;
     });
   }
 
-  // Se exportan también los constructores de la cuadrícula para poder comprobar
-  // en los tests que cabecera y filas tienen el mismo número de columnas.
-  return { render, renderCorreccion, modalInstrumento, filaApartado, cabeceraRubrica, plantillaColumnas, promptIa, datalistUnidades };
+  // API pública de la vista: las demás vistas solo deben usar esto (D-29).
+  return { render, renderCorreccion, modalInstrumento, modalCalificar, filasCorregirHtml, filaApartado, cabeceraRubrica, plantillaColumnas, promptIa, datalistUnidades };
 })();

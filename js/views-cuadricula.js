@@ -3,7 +3,6 @@ const CuadriculaView = (() => {
   let periodo = 'T1';
   let tab = 'notas';
   let nivelSel = '';
-  let udSel = '__todas__';
   const TODAS = '__todas__';
   // Unidades cuyas columnas están DESPLEGADAS en la pestaña Instrumentos.
   // El conjunto vacío significa «todas plegadas al entrar» (igual que en la vista
@@ -51,9 +50,8 @@ const CuadriculaView = (() => {
       ? `<tr class="fila-ud"><th rowspan="2">Alumno</th>${grupos.map(barraUd).join('')}<th rowspan="2">Evaluación</th></tr>
          <tr>${grupos.map(cabecerasGrupo).join('')}</tr>`
       : `<tr><th>Alumno</th>${insts.map(cabeceraInst).join('')}<th>Evaluación</th></tr>`;
-    const sinUd = udSel !== TODAS ? ` de la unidad «${Utils.esc(udSel)}»` : '';
     return `
-      ${insts.length ? '' : `<div class="aviso">Aún no hay instrumentos en esta clase para este nivel${sinUd}. Pulsa «Añadir calificación» para crear el primero.</div>`}
+      ${insts.length ? '' : '<div class="aviso">Aún no hay instrumentos en esta clase para este nivel. Créalos en «Instrumentos».</div>'}
       <table class="tabla tabla-cuadricula">
         <thead>${thead}</thead>
         <tbody>
@@ -162,9 +160,9 @@ const CuadriculaView = (() => {
       .filter(i => modoTodas || Calc.instrumentoParaNivel(i, nivelSel))
       .sort((a, b) => (String(a.unidad || '').localeCompare(String(b.unidad || ''), 'es'))
         || (a.fecha || '').localeCompare(b.fecha || ''));
-    const uds = Calc.unidadesDe(instsNivel);
-    if (udSel !== TODAS && !uds.includes(udSel)) udSel = TODAS;
-    const insts = Calc.instrumentosDeUnidad(instsNivel, udSel === TODAS ? null : udSel);
+    // Las unidades se ven en el orden en que se despliegan en la propia tabla:
+    // el plegado de las barras es el único filtro que se ofrece (D-45).
+    const insts = instsNivel;
 
     const selNivel = nivelesAci.length ? `
       <select id="sel-nivel" style="max-width:220px">
@@ -173,21 +171,35 @@ const CuadriculaView = (() => {
         ${nivelesAci.map(n => `<option value="${Utils.esc(n.codigo)}" ${nivelSel === n.codigo ? 'selected' : ''}>${Utils.esc(n.etiqueta || n.codigo)}</option>`).join('')}
       </select>` : '';
 
-    const selUd = uds.length ? `
-      <select id="sel-ud" title="Filtrar por unidad didáctica" style="max-width:170px">
-        <option value="${TODAS}" ${udSel === TODAS ? 'selected' : ''}>Todas las unidades</option>
-        ${uds.map(u => `<option value="${Utils.esc(u)}" ${udSel === u ? 'selected' : ''}>${Utils.esc(u)}</option>`).join('')}
-      </select>` : '';
-
     const buscaAlumno = alumnos.length > 6 ? '<input type="text" id="busca-alumno" class="no-print" placeholder="Buscar alumn@" style="max-width:170px">' : '';
+
+    // Instrumentos que todavía tienen alumnado sin nota: es lo que ofrece
+    // «Corregir», y también lo que da sentido a imprimir la cuadrícula entera.
+    const porCorregir = insts.filter(i => Calc.progresoInstrumento(i).pendientes > 0).length;
+    const btnCorregir = porCorregir
+      ? `<button class="btn btn-primario no-print" id="btn-corregir">Corregir · ${porCorregir} pendiente${porCorregir === 1 ? '' : 's'}</button>`
+      : '<button class="btn no-print" id="btn-corregir">Corregir</button>';
+
+    // El mismo grupo/asignatura se usa en pantalla y en la cabecera impresa.
+    const cl = Calc.clase(claseSel);
+    const gru = Calc.byId(db.grupos, cl.grupoId);
+
+    // Cabecera que solo sale impresa: el informe se lee solo, sin la vista.
+    const asigImp = (Calc.asignaturaDeClase(claseSel) || {}).nombre || '';
+    const grupoImp = gru ? gru.nombre : '';
+    const nivelImp = modoTodas ? 'todos los niveles' : nivelSel ? 'nivel ' + Calc.etiquetaNivel(claseSel, nivelSel) : 'base';
+    const tituloImp = tab === 'notas' ? 'Instrumentos' : tab === 'criterios' ? 'Criterios' : 'Competencias específicas y clave';
+    const cabeceraImp = `<div class="solo-impresion cabecera-impresion">
+      <strong>Cuadrícula de alumnado · ${tituloImp}</strong>
+      <span>${Utils.esc(asigImp)} · ${Utils.esc(grupoImp)} · ${periodo} · ${nivelImp} · impreso el ${Utils.hoy().split('-').reverse().join('/')}</span>
+    </div>`;
 
     el.innerHTML = `
       <section class="card">
-        <div class="card-head">
+        ${cabeceraImp}
+        <div class="card-head no-print">
           <h2>Cuadrícula de calificación</h2>
           ${(() => {
-            const cl = Calc.clase(claseSel);
-            const gru = Calc.byId(db.grupos, cl.grupoId);
             const lblNivel = modoTodas
               ? ' · <b>todos los niveles</b>'
               : nivelSel ? ` · nivel <b>${Utils.esc(Calc.etiquetaNivel(claseSel, nivelSel))}</b>` : '';
@@ -213,8 +225,7 @@ const CuadriculaView = (() => {
           <label class="chip ${tab === 'competencias' ? 'on' : ''}" data-tab="competencias">Competencias específicas y clave</label>
         </div>
         ${tab === 'notas' ? `<div class="barra-tab no-print">
-          ${selUd}
-          <button class="btn btn-primario no-print" id="add-inst">Añadir calificación</button>
+          ${btnCorregir}
         </div>` : ''}
         <div class="scroll-x" id="contenido">
           ${tab === 'notas' ? tablaNotas(alumnos, insts, modoTodas)
@@ -229,15 +240,6 @@ const CuadriculaView = (() => {
     if (el.querySelector('#sel-nivel')) {
       el.querySelector('#sel-nivel').onchange = e => { nivelSel = e.target.value; render(el); };
     }
-    if (el.querySelector('#sel-ud')) {
-      el.querySelector('#sel-ud').onchange = e => {
-        udSel = e.target.value;
-        // Si el docente filtra por una unidad, es porque quiere verla: la dejamos
-        // desplegada para no obligarle a un clic de más.
-        if (udSel !== TODAS) udsAbiertas.add(udSel);
-        render(el);
-      };
-    }
     const busca = el.querySelector('#busca-alumno');
     if (busca) {
       const norm = s => String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -249,17 +251,28 @@ const CuadriculaView = (() => {
         });
       };
     }
-    if (el.querySelector('#add-inst')) {
-      el.querySelector('#add-inst').onclick = () => {
-        try {
-          InstrumentosView.modalInstrumento(null, claseSel);
-        } catch (e) {
-          console.error(e);
-          alert('Error al abrir el formulario: ' + e.message);
-        }
+
+    // El botón solo existe en la pestaña «Instrumentos».
+    const btnCorregirEl = el.querySelector('#btn-corregir');
+    if (btnCorregirEl) {
+      btnCorregirEl.onclick = () => {
+        // Corregir desde aquí no debe arrastrar a otra vista: al salir del
+        // corrector se vuelve a la cuadrícula.
+        InstrumentosView.modalCalificar(claseSel,
+          id => InstrumentosView.renderCorreccion(el, id, () => render(el)));
       };
     }
-    el.querySelector('#btn-imprimir').onclick = () => window.print();
+
+    // Al imprimir salen TODAS las columnas desplegadas: una unidad plegada deja
+    // su celda de relleno y CSS no puede recuperarla, así que se abren en JS.
+    el.querySelector('#btn-imprimir').onclick = () => {
+      if (tab === 'notas') {
+        udsAbiertas.clear();
+        Calc.unidadesDe(insts).forEach(u => udsAbiertas.add(u));
+        render(el);
+      }
+      window.print();
+    };
 
     el.querySelectorAll('#tabs .chip').forEach(ch => {
       ch.onclick = () => { tab = ch.dataset.tab; render(el); };
@@ -275,7 +288,7 @@ const CuadriculaView = (() => {
     });
 
     el.querySelectorAll('.celda-nota[data-inst]').forEach(td => {
-      td.onclick = () => InstrumentosView.renderCorreccion(el, td.dataset.inst);
+      td.onclick = () => InstrumentosView.renderCorreccion(el, td.dataset.inst, () => render(el));
     });
     el.querySelectorAll('th[data-edit]').forEach(th => {
       th.onclick = () => {

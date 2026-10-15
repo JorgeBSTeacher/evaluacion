@@ -255,6 +255,21 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--acento-suav
 .tabla-cuadricula .ud-grupo small { margin-left: 6px; color: var(--tinta-suave); font-weight: 400; }
 .barra-tab { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
 
+/* Cabecera de informe: solo existe al imprimir, para que el PDF se lea solo. */
+.solo-impresion { display: none; }
+
+/* Filas del modal «¿ qué quieres corregir? » (de lista, no de acción). */
+.fila-corrige {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  width: 100%; text-align: left; font: inherit; color: var(--tinta);
+  background: #fff; border: 1px solid var(--linea); border-radius: 10px;
+  padding: 10px 12px; margin-bottom: 8px; cursor: pointer;
+}
+.fila-corrige:hover { border-color: var(--acento); background: var(--acento-suave); }
+.fila-corrige-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.fila-corrige-txt b { font-size: 14px; }
+.fila-corrige-txt small { color: var(--tinta-suave); font-size: 12px; }
+
 @media print {
   .topbar, #modal-root, #toast-root, .no-print { display: none !important; }
   /* Al imprimir, los bloques plegables de Instrumentos salen abiertos. */
@@ -262,4 +277,21 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--acento-suav
   body { background: #fff; }
   main { max-width: none; padding: 0; }
   .card { box-shadow: none; border: none; padding: 0; }
+
+  /* Salen solo los datos: los controles (selects, botones) se quedan en pantalla. */
+  .solo-impresion { display: block !important; }
+  .card-head select, .card-head input, .btn, .icon-btn { display: none !important; }
+  .cabecera-impresion { display: flex; flex-direction: column; gap: 2px; margin: 0 0 10px; }
+  .cabecera-impresion strong { font-size: 15px; }
+  .cabecera-impresion span { color: #555; font-size: 12px; }
+
+  /* La tabla entera, con su cabecera repetida en cada página y sin cortar filas. */
+  .scroll-x { overflow: visible !important; }
+  .tabla-cuadricula th:first-child, .tabla-cuadricula td:first-child {
+    position: static !important; box-shadow: none;
+  }
+  thead { display: table-header-group; }
+  tr { page-break-inside: avoid; break-inside: avoid; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  @page { margin: 12mm; }
 }

@@ -209,6 +209,19 @@ async function main() {
     check('instrumentos del alumno ACI excluyen iBase', C.instrumentosDeAlumno('c1', 'c1al', 'T1').map(i => i.id).join(',') === 'iAci,iComun');
     check('unidades didácticas únicas y ordenadas', C.unidadesDe(app.Storage.db.instrumentos).join(',') === 'UD1,UD2', C.unidadesDe(app.Storage.db.instrumentos).join(','));
     check('unidadesDe ignora instrumentos sin unidad', C.unidadesDe([{ unidad: '' }, { unidad: 'UD9' }, {}]).join(',') === 'UD9');
+
+    // Lo que sostiene el modal «¿Qué quieres corregir?».
+    const progBase = C.progresoInstrumento(C.instrumento('iBase'));
+    check('progresoInstrumento: iBase está completo (2 de 2)', progBase.hechos === 2 && progBase.total === 2 && progBase.pendientes === 0, JSON.stringify(progBase));
+    const progComun = C.progresoInstrumento(C.instrumento('iComun'));
+    check('progresoInstrumento: iComun tiene a los 4 sin terminar', progComun.hechos === 0 && progComun.pendientes === 4, JSON.stringify(progComun));
+    check('progresoInstrumento: sin alumnado no se queda a cero', C.progresoInstrumento({ id: 'x', apartados: [] }).total === 0);
+    check('progresoInstrumento: un instrumento sin apartados no cuenta como hecho', (() => {
+      const p = C.progresoInstrumento({ id: 'iBase', claseId: 'c1', nivel: 'BASE', apartados: [] });
+      return p.hechos === 0 && p.total === 2 && p.pendientes === 2;
+    })());
+    check('instrumentosPorCorregir pone lo pendiente primero', C.instrumentosPorCorregir('c1').map(i => i.id).join(',') === 'iComun,iBase,iAci', C.instrumentosPorCorregir('c1').map(i => i.id).join(','));
+    check('instrumentosPorCorregir de una clase vacía', C.instrumentosPorCorregir('noexiste').length === 0);
   }
 
   console.log('\n== Vista Cuadrícula (pestañas, buscador y plegado por UD) ==');
@@ -220,7 +233,19 @@ async function main() {
     app.CuadriculaView.render(el);
     const h = el.innerHTML;
     check('la pestaña se llama «Competencias específicas y clave»', h.includes('Competencias específicas y clave'));
-    check('el desplegable de unidades y «Añadir calificación» viven en Instrumentos', h.includes('id="sel-ud"') && h.includes('id="add-inst"'));
+    // La cuadrícula ya no filtra por desplegable ni da de alta instrumentos:
+    // el plegado de las barras es el único filtro y crear se hace en «Instrumentos».
+    check('la cuadrícula ya no ofrece desplegable de unidades ni crear instrumentos', !h.includes('id="sel-ud"') && !h.includes('id="add-inst"'), 'aparece sel-ud o add-inst');
+    check('la cuadrícula ofrece «Corregir» lo que falta', h.includes('id="btn-corregir"'));
+    check('«Corregir» indica cuántos instrumentos están sin corregir', h.includes('Corregir · 1 pendiente</button>'));
+    check('la cuadrícula lleva cabecera de informe solo para imprimir', h.includes('class="solo-impresion cabecera-impresion"'));
+
+    // El modal «¿Qué quieres corregir?» se apoya en estas filas.
+    const filas = app.InstrumentosView.filasCorregirHtml(app.Calc.instrumentosPorCorregir('c1'));
+    check('el listado de corrección pone lo pendiente primero', filas.indexOf('data-inst="iComun"') < filas.indexOf('data-inst="iBase"'), filas.replace(/\s+/g, ' ').slice(0, 200));
+    check('el listado de corrección enseña cuánto falta', filas.includes('0/4 corregidos'));
+    check('el listado de corrección marca lo que ya está completo', filas.includes('>Completo<'));
+    check('cada fila lleva su progreso junto al título', filas.includes('Control A (base)') && filas.includes('Control · T1 · UD1'));
     check('cabecera agrupada por UD1 y UD2', h.includes('ud-grupo') && h.includes('>UD1<small>') && h.includes('>UD2<small>'));
     check('las unidades se pueden plegar', h.includes('data-toggle-ud="UD1"') && h.includes('data-toggle-ud="UD2"'));
     check('las columnas de las unidades empiezan plegadas', h.includes('celda-plegada') && h.includes('ud-flecha">▸'));
@@ -289,6 +314,7 @@ async function main() {
     const h3 = el3.innerHTML;
     check('en Criterios el buscador sigue disponible', h3.includes('id="busca-alumno"'));
     check('en Criterios no aparece «Añadir calificación»', !h3.includes('id="add-inst"'));
+    check('en Criterios tampoco hay botón de «Corregir»', !h3.includes('id="btn-corregir"'));
     check('en Criterios tampoco el desplegable de unidades', !h3.includes('id="sel-ud"'));
 
     const el4 = makeEl();
@@ -513,6 +539,16 @@ async function main() {
     const dl = app.InstrumentosView.datalistUnidades('s1');
     check('datalistUnidades genera el datalist con las unidades', dl.indexOf('<datalist id="lista-unidades">') === 0 && dl.indexOf('value="UD1"') !== -1 && dl.indexOf('value="UD3"') !== -1);
     check('datalistUnidades sin unidades devuelve vacio', app.InstrumentosView.datalistUnidades('sX') === '');
+  }
+
+  // Formato de impresión (P-10): el PDF sale como informe, sin controles.
+  {
+    const css = fs.readFileSync(path.join(raiz, 'css', 'styles.css'), 'utf8');
+    check('al imprimir se ocultan controles y botones', css.includes('.card-head select, .card-head input, .btn, .icon-btn { display: none !important; }'));
+    check('la cabecera de informe solo sale impresa', css.includes('.solo-impresion { display: none;') && css.includes('.solo-impresion { display: block !important; }'));
+    check('la cabecera de tabla se repite en cada página', css.includes('thead { display: table-header-group; }'));
+    check('las filas no se parten entre páginas', css.includes('tr { page-break-inside: avoid; break-inside: avoid; }'));
+    check('al imprimir la tabla ocupa todo el ancho', css.includes('.scroll-x { overflow: visible !important; }'));
   }
 
   console.log('\n' + (fallos ? 'FALLOS: ' + fallos + '/' + total : 'TODO OK: ' + total + ' comprobaciones'));
