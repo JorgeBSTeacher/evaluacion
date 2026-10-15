@@ -1,14 +1,11 @@
 const InstrumentosView = (() => {
   let claseSel = null;
-  let udSel = '__todas__';
-  const TODAS = '__todas__';
+  let perSel = 'Todos';           // 'Todos' | 'T1' | 'T2' | 'T3'
+  // Claves «periodo::unidad» de los bloques que el usuario ha desplegado.
+  // El conjunto vacío significa «todos cerrados».
+  const udsAbiertas = new Set();
   const TIPOS = ['Control', 'Rúbrica', 'Proyecto', 'Otro'];
   const PERIODOS = ['T1', 'T2', 'T3'];
-
-  // Unidades didácticas presentes en la clase activa (alimenta el desplegable).
-  function unidadesDeClase() {
-    return Calc.unidadesDe(Storage.db.instrumentos.filter(i => i.claseId === claseSel));
-  }
 
   // Sugerencias para el campo «Unidad»: un <datalist> editable (sugiere, no
   // obliga). Recoge las unidades ya usadas en toda la asignatura; si todavía no
@@ -21,11 +18,56 @@ const InstrumentosView = (() => {
   }
 
   function instrumentosDe() {
-    const lista = Storage.db.instrumentos
+    return Storage.db.instrumentos
       .filter(i => i.claseId === claseSel)
       .sort((a, b) => (String(a.unidad || '').localeCompare(String(b.unidad || ''), 'es'))
         || (a.fecha || '').localeCompare(b.fecha || ''));
-    return Calc.instrumentosDeUnidad(lista, udSel === TODAS ? null : udSel);
+  }
+
+  // Fila de la tabla de instrumentos (sin columna de periodo: el trimestre ya
+  // es el encabezado de sección).
+  function filaInstrumento(i) {
+    const notas = Calc.alumnosDeInstrumento(i)
+      .map(a => Calc.notaInstrumento(i, a.id))
+      .filter(n => n != null);
+    const media = notas.length ? notas.reduce((x, y) => x + y, 0) / notas.length : null;
+    const nivelTxt = i.nivel ? Calc.etiquetaNivel(i.claseId, i.nivel) : '';
+    return `<tr data-inst="${i.id}">
+      <td><b>${Utils.esc(i.titulo)}</b></td>
+      <td><span class="badge info">${Utils.esc(i.tipo)}</span></td>
+      <td>${nivelTxt ? `<span class="badge info">${Utils.esc(nivelTxt)}</span> ` : ''}${i.unidad ? `<span class="badge na">${Utils.esc(i.unidad)}</span>` : ''}${!nivelTxt && !i.unidad ? '<span style="color:var(--tinta-suave)">—</span>' : ''}</td>
+      <td>${Utils.esc(i.fecha)}</td>
+      <td>${i.apartados.length} ${i.tipo === 'Proyecto' ? 'partes/fases' : 'apartados'}</td>
+      <td>${Calc.badgeHtml(media)}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-mini btn-primario corregir">Corregir</button>
+        <button class="btn btn-mini editar">Editar</button>
+        <button class="btn btn-mini duplicar" title="Crear examen paralelo para un nivel ACI">Duplicar</button>
+        <button class="icon-btn borrar-inst" title="Eliminar">×</button>
+      </td>
+    </tr>`;
+  }
+
+  function tablaInstrumentos(insts) {
+    return `<table class="tabla">
+      <thead><tr><th>Título</th><th>Tipo</th><th>Nivel · Unidad</th><th>Fecha</th><th>Apartados</th><th>Media</th><th></th></tr></thead>
+      <tbody>${insts.map(filaInstrumento).join('')}</tbody>
+    </table>`;
+  }
+
+  // Bloque plegable de una unidad: cabecera siempre visible, cuerpo con la tabla.
+  function bloqueUnidad(periodo, unidad, insts) {
+    const clave = periodo + '::' + unidad;
+    const abierta = udsAbiertas.has(clave);
+    const n = insts.length;
+    return `<div class="ud-bloque${abierta ? ' abierta' : ''}">
+      <button type="button" class="ud-cabecera" data-ud-clave="${Utils.esc(clave)}" aria-expanded="${abierta}">
+        <span class="ud-flecha">${abierta ? '▾' : '▸'}</span>
+        <b>${Utils.esc(unidad || 'Sin unidad')}</b>
+        <small>${n} instrumento${n === 1 ? '' : 's'}</small>
+      </button>
+      <div class="ud-cuerpo">${tablaInstrumentos(insts)}</div>
+    </div>`;
   }
 
   // Descriptor que un ítem de rúbrica define para un nivel concreto ('' = usa el común).
@@ -715,14 +757,30 @@ ${codigos}`;
       return;
     }
 
-    // Desplegable por unidad didáctica (solo si la clase tiene instrumentos con unidad).
-    const uds = unidadesDeClase();
-    if (udSel !== TODAS && !uds.includes(udSel)) udSel = TODAS;
-    const selUd = uds.length ? `
-          <select id="sel-ud-inst" title="Ver solo los instrumentos de una unidad didáctica" style="max-width:190px">
-            <option value="${TODAS}" ${udSel === TODAS ? 'selected' : ''}>Todas las unidades</option>
-            ${uds.map(u => `<option value="${Utils.esc(u)}" ${udSel === u ? 'selected' : ''}>${Utils.esc(u)}</option>`).join('')}
-          </select>` : '';
+    const lista = instrumentosDe();
+    const visibles = perSel === 'Todos' ? lista : lista.filter(i => i.periodo === perSel);
+    const periodosMostrados = perSel === 'Todos' ? PERIODOS : [perSel];
+
+    const secciones = periodosMostrados.map(p => {
+      const delPeriodo = visibles.filter(i => i.periodo === p);
+      const uds = Calc.unidadesDe(delPeriodo);
+      const grupos = uds.map(u => ({ u, insts: Calc.instrumentosDeUnidad(delPeriodo, u) }));
+      const sinUnidad = delPeriodo.filter(i => !i.unidad);
+      if (sinUnidad.length) grupos.push({ u: '', insts: sinUnidad });
+
+      const titulo = perSel === 'Todos'
+        ? `<h3 class="per-titulo">${p} <small>${delPeriodo.length} instrumento${delPeriodo.length === 1 ? '' : 's'}</small></h3>`
+        : '';
+      const cuerpo = grupos.length
+        ? grupos.map(g => bloqueUnidad(p, g.u, g.insts)).join('')
+        : `<div class="aviso">Sin instrumentos en ${p}.</div>`;
+      return titulo + cuerpo;
+    }).join('');
+
+    const selPer = `<select id="sel-per" title="Ver un trimestre concreto" style="max-width:190px">
+      <option value="Todos" ${perSel === 'Todos' ? 'selected' : ''}>Todos los trimestres</option>
+      ${PERIODOS.map(p => `<option value="${p}" ${perSel === p ? 'selected' : ''}>${p}</option>`).join('')}
+    </select>`;
 
     el.innerHTML = `
       <section class="card">
@@ -732,49 +790,29 @@ ${codigos}`;
             id: c.id,
             nombre: `${Calc.asignaturaDeClase(c.id)?.nombre || '?'} · ${(Calc.byId(db.grupos, c.grupoId) || {}).nombre || '?'}`
           })), claseSel, 'id', 'nombre')}</select>
-          ${selUd}
+          ${lista.length ? selPer : ''}
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn" id="btn-importar-rub" title="Pega aquí una rúbrica creada con una IA">Importar rúbrica (IA)</button>
             <button class="btn btn-primario" id="add-inst">Nuevo instrumento</button>
           </div>
         </div>
-        <table class="tabla">
-          <thead><tr><th>Título</th><th>Tipo</th><th>Nivel · Unidad</th><th>Periodo</th><th>Fecha</th><th>Apartados</th><th>Media</th><th></th></tr></thead>
-          <tbody>
-            ${instrumentosDe().map(i => {
-              const notas = Calc.alumnosDeInstrumento(i)
-                .map(a => Calc.notaInstrumento(i, a.id))
-                .filter(n => n != null);
-              const media = notas.length ? notas.reduce((x, y) => x + y, 0) / notas.length : null;
-              const nivelTxt = i.nivel ? Calc.etiquetaNivel(i.claseId, i.nivel) : '';
-              return `<tr data-inst="${i.id}">
-                <td><b>${Utils.esc(i.titulo)}</b></td>
-                <td><span class="badge info">${Utils.esc(i.tipo)}</span></td>
-                <td>${nivelTxt ? `<span class="badge info">${Utils.esc(nivelTxt)}</span> ` : ''}${i.unidad ? `<span class="badge na">${Utils.esc(i.unidad)}</span>` : ''}${!nivelTxt && !i.unidad ? '<span style="color:var(--tinta-suave)">—</span>' : ''}</td>
-                <td>${Utils.esc(i.periodo)}</td>
-                <td>${Utils.esc(i.fecha)}</td>
-                <td>${i.apartados.length} ${i.tipo === 'Proyecto' ? 'partes/fases' : 'apartados'}</td>
-                <td>${Calc.badgeHtml(media)}</td>
-                <td style="white-space:nowrap">
-                  <button class="btn btn-mini btn-primario corregir">Corregir</button>
-                  <button class="btn btn-mini editar">Editar</button>
-                  <button class="btn btn-mini duplicar" title="Crear examen paralelo para un nivel ACI">Duplicar</button>
-                  <button class="icon-btn borrar-inst" title="Eliminar">×</button>
-                </td>
-              </tr>`;
-            }).join('') || `<tr><td colspan="8" class="vacio">${udSel === TODAS
-                ? 'Sin instrumentos en esta clase.'
-                : `Sin instrumentos en la unidad «${Utils.esc(udSel)}».`}</td></tr>`}
-          </tbody>
-        </table>
+        ${lista.length ? secciones : '<div class="aviso">Sin instrumentos en esta clase.</div>'}
       </section>`;
 
-    el.querySelector('#sel-clase').onchange = e => { claseSel = e.target.value; udSel = TODAS; render(el); };
-    if (el.querySelector('#sel-ud-inst')) {
-      el.querySelector('#sel-ud-inst').onchange = e => { udSel = e.target.value; render(el); };
+    el.querySelector('#sel-clase').onchange = e => { claseSel = e.target.value; perSel = 'Todos'; udsAbiertas.clear(); render(el); };
+    if (el.querySelector('#sel-per')) {
+      el.querySelector('#sel-per').onchange = e => { perSel = e.target.value; render(el); };
     }
     el.querySelector('#add-inst').onclick = () => modalInstrumento(null);
     el.querySelector('#btn-importar-rub').onclick = () => modalImportarRubrica();
+
+    el.querySelectorAll('[data-ud-clave]').forEach(b => {
+      b.onclick = () => {
+        const clave = b.dataset.udClave;
+        if (udsAbiertas.has(clave)) udsAbiertas.delete(clave); else udsAbiertas.add(clave);
+        render(el);
+      };
+    });
 
     el.querySelectorAll('tr[data-inst]').forEach(tr => {
       const inst = Calc.instrumento(tr.dataset.inst);

@@ -230,8 +230,30 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--acento-suav
 .stat b { display: block; font-size: 26px; }
 .stat span { font-size: 12px; color: var(--tinta-suave); text-transform: uppercase; letter-spacing: .05em; }
 
+/* Instrumentos: secciones por trimestre y bloques plegables por unidad didáctica */
+.per-titulo { font-size: 15px; margin: 18px 0 8px; }
+.per-titulo:first-child { margin-top: 0; }
+.per-titulo small { color: var(--tinta-suave); font-weight: 400; }
+.ud-bloque { border: 1px solid var(--linea); border-radius: 10px; margin-bottom: 10px; overflow: hidden; background: #fffdf8; }
+.ud-cabecera { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 10px 12px; background: var(--acento-suave); border: 0; font: inherit; color: var(--acento); cursor: pointer; }
+.ud-cabecera:hover { filter: brightness(.97); }
+.ud-cabecera .ud-flecha { width: 1em; }
+.ud-cabecera small { margin-left: auto; color: var(--tinta-suave); font-size: 12px; }
+.ud-bloque .ud-cuerpo { display: none; }
+.ud-bloque.abierta .ud-cuerpo { display: block; }
+.ud-cuerpo .tabla { margin: 0; }
+
+/* Cuadrícula · pestaña Instrumentos: plegado de columnas por unidad */
+.col-plegada { display: none !important; }
+.tabla-cuadricula .ud-grupo.plegable { cursor: pointer; user-select: none; }
+.tabla-cuadricula .ud-grupo.plegable:hover { filter: brightness(.95); }
+.tabla-cuadricula .ud-grupo .ud-flecha { margin-right: 5px; font-size: 11px; }
+.barra-tab { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+
 @media print {
   .topbar, #modal-root, #toast-root, .no-print { display: none !important; }
+  /* Al imprimir, los bloques plegables de Instrumentos salen abiertos. */
+  .ud-bloque .ud-cuerpo { display: block !important; }
   body { background: #fff; }
   main { max-width: none; padding: 0; }
   .card { box-shadow: none; border: none; padding: 0; }

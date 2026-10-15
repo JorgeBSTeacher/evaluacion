@@ -211,7 +211,7 @@ async function main() {
     check('unidadesDe ignora instrumentos sin unidad', C.unidadesDe([{ unidad: '' }, { unidad: 'UD9' }, {}]).join(',') === 'UD9');
   }
 
-  console.log('\n== Vista Cuadrícula (agrupación por unidades didácticas) ==');
+  console.log('\n== Vista Cuadrícula (pestañas, buscador y plegado por UD) ==');
   {
     const app = cargarApp();
     app.Storage.load();
@@ -219,10 +219,13 @@ async function main() {
     const el = makeEl();
     app.CuadriculaView.render(el);
     const h = el.innerHTML;
-    check('la cuadrícula ofrece el desplegable de unidades', h.includes('id="sel-ud"'));
+    check('la pestaña se llama «Competencias específicas y clave»', h.includes('Competencias específicas y clave'));
+    check('el desplegable de unidades y «Añadir calificación» viven en Instrumentos', h.includes('id="sel-ud"') && h.includes('id="add-inst"'));
     check('cabecera agrupada por UD1 y UD2', h.includes('ud-grupo') && h.includes('>UD1</th>') && h.includes('>UD2</th>'));
+    check('las unidades se pueden plegar', h.includes('data-toggle-ud="UD1"') && h.includes('data-toggle-ud="UD2"'));
+    check('las columnas empiezan desplegadas', !h.includes('col-plegada'));
 
-    // Con un grupo grande debe aparecer el buscador de alumnado
+    // Con un grupo grande debe aparecer el buscador de alumnado, en todas las pestañas.
     const est = estadoAci();
     for (let i = 1; i <= 6; i++) est.alumnos.push({ id: 'x' + i, nombre: 'Alumno' + i, apellidos: 'Zeta', grupoId: 'g1' });
     const app2 = cargarApp();
@@ -231,6 +234,17 @@ async function main() {
     const el2 = makeEl();
     app2.CuadriculaView.render(el2);
     check('con más de 6 alumnos aparece el buscador', el2.innerHTML.includes('id="busca-alumno"'));
+
+    const el3 = makeEl();
+    app2.CuadriculaView.render(el3, { tab: 'criterios' });
+    const h3 = el3.innerHTML;
+    check('en Criterios el buscador sigue disponible', h3.includes('id="busca-alumno"'));
+    check('en Criterios no aparece «Añadir calificación»', !h3.includes('id="add-inst"'));
+    check('en Criterios tampoco el desplegable de unidades', !h3.includes('id="sel-ud"'));
+
+    const el4 = makeEl();
+    app2.CuadriculaView.render(el4, { tab: 'competencias' });
+    check('en Competencias el buscador sigue disponible', el4.innerHTML.includes('id="busca-alumno"'));
   }
 
   console.log('\n== Vista Corrección (guardar y siguiente alumno) ==');
@@ -383,7 +397,7 @@ async function main() {
     }
   }
 
-  console.log('\n== Instrumentos: desplegable por unidad ==');
+  console.log('\n== Instrumentos: por trimestre y unidades plegables ==');
   {
     const app = cargarApp();
     app.Storage.load();
@@ -391,7 +405,7 @@ async function main() {
     est.instrumentos.push(
       { id: 'i1', claseId: 'c1', tipo: 'Control', titulo: 'UD1 control', fecha: '2026-01-10', periodo: 'T1', nivel: '', unidad: 'UD1', saberes: '', niveles: [{ pct: 100, descriptor: '' }], apartados: [{ id: 'p1', orden: 1, descripcion: 'a', maxPts: 10, criterioIds: ['k1'] }], criteriosModo: 'desglosado', criterioIdsGlobal: [] },
       { id: 'i2', claseId: 'c1', tipo: 'Control', titulo: 'UD2 control', fecha: '2026-02-10', periodo: 'T2', nivel: '', unidad: 'UD2', saberes: '', niveles: [{ pct: 100, descriptor: '' }], apartados: [{ id: 'p2', orden: 1, descripcion: 'a', maxPts: 10, criterioIds: ['k2'] }], criteriosModo: 'desglosado', criterioIdsGlobal: [] },
-      { id: 'i3', claseId: 'c1', tipo: 'Proyecto', titulo: 'Sin unidad', fecha: '2026-03-10', periodo: 'T1', nivel: '', unidad: '', saberes: '', niveles: [{ pct: 100, descriptor: '' }], apartados: [{ id: 'p3', orden: 1, descripcion: 'a', maxPts: 10, criterioIds: ['k1'] }], criteriosModo: 'desglosado', criterioIdsGlobal: [] }
+      { id: 'i3', claseId: 'c1', tipo: 'Proyecto', titulo: 'Proyecto suelto', fecha: '2026-03-10', periodo: 'T1', nivel: '', unidad: '', saberes: '', niveles: [{ pct: 100, descriptor: '' }], apartados: [{ id: 'p3', orden: 1, descripcion: 'a', maxPts: 10, criterioIds: ['k1'] }], criteriosModo: 'desglosado', criterioIdsGlobal: [] }
     );
     await importarJson(app, est);
     const C = app.Calc;
@@ -404,9 +418,16 @@ async function main() {
     const el = makeEl();
     app.InstrumentosView.render(el);
     const h = el.innerHTML;
-    check('el listado muestra el desplegable de unidades', h.includes('id="sel-ud-inst"') && h.includes('Todas las unidades'));
-    check('el desplegable ofrece UD1 y UD2', h.includes('>UD1<') && h.includes('>UD2<'));
-    check('el listado incluye los tres instrumentos', h.includes('UD1 control') && h.includes('UD2 control') && h.includes('Sin unidad'));
+    check('hay desplegable de trimestre con «Todos los trimestres»', h.includes('id="sel-per"') && h.includes('Todos los trimestres'));
+    check('la opción «Todos» lleva el valor correcto', h.includes('<option value="Todos"') && h.includes('<option value="T1"'));
+    check('se muestran las secciones T1 y T2', h.includes('class="per-titulo">T1') && h.includes('class="per-titulo">T2'));
+    check('T3 aparece aunque esté vacío', h.includes('Sin instrumentos en T3'));
+    check('bloques plegables por periodo y unidad', h.includes('data-ud-clave="T1::UD1"') && h.includes('data-ud-clave="T1::UD2"') && h.includes('data-ud-clave="T2::UD2"'));
+    check('los instrumentos sin unidad van a su propio bloque', h.includes('data-ud-clave="T1::"'));
+    check('por defecto todos los bloques están cerrados', h.includes('ud-bloque') && !h.includes('ud-bloque abierta'));
+    check('cada bloque lleva su tabla de instrumentos', h.includes('ud-cuerpo'));
+    check('los instrumentos siguen estando en el listado', h.includes('UD1 control') && h.includes('UD2 control') && h.includes('Proyecto suelto'));
+    check('la vista ya no tiene el desplegable de unidades', !h.includes('id="sel-ud-inst"'));
   }
 
   console.log('== Unidad: sugerencias editables (datalist) ==');

@@ -5,12 +5,15 @@ const CuadriculaView = (() => {
   let nivelSel = '';
   let udSel = '__todas__';
   const TODAS = '__todas__';
+  // Unidades cuyas columnas están plegadas en la pestaña Instrumentos.
+  const udsPlegadas = new Set();
 
   function tablaNotas(alumnos, insts, modoTodas) {
     if (!alumnos.length) {
       return '<div class="aviso">El grupo de esta clase no tiene alumnado en este nivel. Revísalo en «Alumnos y grupos» o en los niveles ACI de la clase.</div>';
     }
-    const cabeceraInst = i => `<th class="celda-nota" data-edit="${i.id}" title="Toca para editar el instrumento" style="max-width:130px">${Utils.esc(i.titulo)}<br><small>${Utils.esc(i.tipo)} · ${Utils.esc(i.periodo)}${i.unidad ? ' · ' + Utils.esc(i.unidad) : ''}</small></th>`;
+    const plegada = ud => udsPlegadas.has(ud || '');
+    const cabeceraInst = i => `<th class="celda-nota${plegada(i.unidad) ? ' col-plegada' : ''}" data-ud="${Utils.esc(i.unidad || '')}" data-edit="${i.id}" title="Toca para editar el instrumento" style="max-width:130px">${Utils.esc(i.titulo)}<br><small>${Utils.esc(i.tipo)} · ${Utils.esc(i.periodo)}${i.unidad ? ' · ' + Utils.esc(i.unidad) : ''}</small></th>`;
     const grupos = [];
     insts.forEach(i => {
       const ud = i.unidad || '';
@@ -19,7 +22,7 @@ const CuadriculaView = (() => {
       g.insts.push(i);
     });
     const thead = grupos.length > 1
-      ? `<tr class="fila-ud"><th rowspan="2">Alumno</th>${grupos.map(g => `<th class="ud-grupo" colspan="${g.insts.length}">${g.ud ? Utils.esc(g.ud) : 'Sin unidad'}</th>`).join('')}<th rowspan="2">Evaluación</th></tr>
+      ? `<tr class="fila-ud"><th rowspan="2">Alumno</th>${grupos.map(g => `<th class="ud-grupo plegable" colspan="${g.insts.length}" data-toggle-ud="${Utils.esc(g.ud)}" title="Plegar o desplegar las columnas de esta unidad"><span class="ud-flecha">${udsPlegadas.has(g.ud) ? '▸' : '▾'}</span>${g.ud ? Utils.esc(g.ud) : 'Sin unidad'}</th>`).join('')}<th rowspan="2">Evaluación</th></tr>
          <tr>${insts.map(cabeceraInst).join('')}</tr>`
       : `<tr><th>Alumno</th>${insts.map(cabeceraInst).join('')}<th>Evaluación</th></tr>`;
     const sinUd = udSel !== TODAS ? ` de la unidad «${Utils.esc(udSel)}»` : '';
@@ -31,11 +34,13 @@ const CuadriculaView = (() => {
           ${alumnos.map(a => `<tr>
             <td>${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}</td>
             ${insts.map(i => {
+              const cls = 'celda-nota num' + (plegada(i.unidad) ? ' col-plegada' : '');
+              const ud = `data-ud="${Utils.esc(i.unidad || '')}"`;
               if (modoTodas && !Calc.instrumentoParaAlumno(i, claseSel, a.id)) {
-                return '<td class="celda-nota num" style="color:var(--tinta-suave);opacity:.35" title="No aplica a este alumno">—</td>';
+                return `<td class="${cls}" ${ud} style="color:var(--tinta-suave);opacity:.35" title="No aplica a este alumno">—</td>`;
               }
               const n = Calc.notaInstrumento(i, a.id);
-              return `<td class="celda-nota num" data-inst="${i.id}">${n == null ? '<span class="badge na">—</span>' : Calc.badgeHtml(n)}</td>`;
+              return `<td class="${cls}" ${ud} data-inst="${i.id}">${n == null ? '<span class="badge na">—</span>' : Calc.badgeHtml(n)}</td>`;
             }).join('')}
             <td class="num">${Calc.badgeHtml(Calc.notaEvaluacion(claseSel, a.id, periodo))}</td>
           </tr>`).join('')}
@@ -110,7 +115,9 @@ const CuadriculaView = (() => {
     return Calc.criteriosDeNivel(claseSel, nivelSel).some(c => (c.claveIds || []).length > 0);
   }
 
-  function render(el) {
+  // `opciones.tab` permite fijar la pestaña activa (uso interno y pruebas).
+  function render(el, opciones) {
+    if (opciones && opciones.tab) tab = opciones.tab;
     const db = Storage.db;
     if (!claseSel || !Calc.clase(claseSel)) claseSel = db.clases.length ? db.clases[0].id : null;
 
@@ -134,7 +141,7 @@ const CuadriculaView = (() => {
         || (a.fecha || '').localeCompare(b.fecha || ''));
     const uds = Calc.unidadesDe(instsNivel);
     if (udSel !== TODAS && !uds.includes(udSel)) udSel = TODAS;
-    const insts = udSel === TODAS ? instsNivel : instsNivel.filter(i => i.unidad === udSel);
+    const insts = Calc.instrumentosDeUnidad(instsNivel, udSel === TODAS ? null : udSel);
 
     const selNivel = nivelesAci.length ? `
       <select id="sel-nivel" style="max-width:220px">
@@ -170,20 +177,22 @@ const CuadriculaView = (() => {
               nombre: `${Calc.asignaturaDeClase(c.id)?.nombre || '?'} · ${(Calc.byId(db.grupos, c.grupoId) || {}).nombre || '?'}`
             })), claseSel, 'id', 'nombre')}</select>
             ${selNivel}
-            ${selUd}
             ${buscaAlumno}
             <select id="sel-periodo" style="max-width:130px">
               ${['T1', 'T2', 'T3', 'Final'].map(p => `<option ${p === periodo ? 'selected' : ''}>${p}</option>`).join('')}
             </select>
-            <button class="btn btn-primario no-print" id="add-inst">Añadir calificación</button>
             <button class="btn no-print" id="btn-imprimir">Imprimir / PDF</button>
           </div>
         </div>
         <div class="chips no-print" id="tabs" style="margin-bottom:14px">
           <label class="chip ${tab === 'notas' ? 'on' : ''}" data-tab="notas">Instrumentos</label>
           <label class="chip ${tab === 'criterios' ? 'on' : ''}" data-tab="criterios">Criterios</label>
-          <label class="chip ${tab === 'competencias' ? 'on' : ''}" data-tab="competencias">Competencias</label>
+          <label class="chip ${tab === 'competencias' ? 'on' : ''}" data-tab="competencias">Competencias específicas y clave</label>
         </div>
+        ${tab === 'notas' ? `<div class="barra-tab no-print">
+          ${selUd}
+          <button class="btn btn-primario no-print" id="add-inst">Añadir calificación</button>
+        </div>` : ''}
         <div class="scroll-x" id="contenido">
           ${tab === 'notas' ? tablaNotas(alumnos, insts, modoTodas)
             : modoTodas ? '<div class="aviso">En la vista «Todos los niveles» solo se muestran los instrumentos y la nota armonizada de cada alumno. Elige un nivel concreto para ver criterios y competencias.</div>'
@@ -211,18 +220,29 @@ const CuadriculaView = (() => {
         });
       };
     }
-    el.querySelector('#add-inst').onclick = () => {
-      try {
-        InstrumentosView.modalInstrumento(null, claseSel);
-      } catch (e) {
-        console.error(e);
-        alert('Error al abrir el formulario: ' + e.message);
-      }
-    };
+    if (el.querySelector('#add-inst')) {
+      el.querySelector('#add-inst').onclick = () => {
+        try {
+          InstrumentosView.modalInstrumento(null, claseSel);
+        } catch (e) {
+          console.error(e);
+          alert('Error al abrir el formulario: ' + e.message);
+        }
+      };
+    }
     el.querySelector('#btn-imprimir').onclick = () => window.print();
 
     el.querySelectorAll('#tabs .chip').forEach(ch => {
       ch.onclick = () => { tab = ch.dataset.tab; render(el); };
+    });
+
+    // Plegar o desplegar las columnas de una unidad didáctica.
+    el.querySelectorAll('[data-toggle-ud]').forEach(th => {
+      th.onclick = () => {
+        const clave = th.dataset.toggleUd || '';
+        if (udsPlegadas.has(clave)) udsPlegadas.delete(clave); else udsPlegadas.add(clave);
+        render(el);
+      };
     });
 
     el.querySelectorAll('.celda-nota[data-inst]').forEach(td => {
