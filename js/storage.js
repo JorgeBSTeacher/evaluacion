@@ -239,6 +239,7 @@ const Storage = {
           ap.peso = (i.tipo === 'Rúbrica') ? 1 : (ap.maxPts || 1);
         }
         if (!Array.isArray(ap.criterioIds)) ap.criterioIds = [];
+        if (!Array.isArray(ap.niveles)) ap.niveles = [];
       });
     });
     return db;
@@ -357,6 +358,87 @@ const Storage = {
       criterios: n,
       pesosAjustados: typeof datos.criterios[0].peso !== 'number'
     };
+  },
+
+  // Importa una rúbrica generada por una IA (formato "rubrica-evalcrit", ver §14
+  // del SSOT). `claseId` fija la asignatura y, con ella, los códigos de criterio.
+  // Lanza Error con un mensaje en castellano si algo no cuadra: en ese caso no
+  // se importa nada.
+  importarRubrica(datos, claseId, periodo) {
+    if (!datos || datos.tipo !== 'rubrica-evalcrit' || datos.version !== 1) {
+      throw new Error('El texto no es una rúbrica EvalCrit válida (debe empezar por "tipo": "rubrica-evalcrit").');
+    }
+    const titulo = String(datos.titulo || '').trim();
+    if (!titulo) throw new Error('La rúbrica no tiene título.');
+
+    const items = Array.isArray(datos.items) ? datos.items : [];
+    if (!items.length) throw new Error('La rúbrica no trae ningún ítem.');
+
+    const nivel = String(datos.nivel || '').trim();
+    const asig = Calc.asignaturaDeNivel(claseId, nivel);
+    if (!asig) throw new Error('Esta clase no tiene una asignatura asociada con currículo.');
+
+    const porCodigo = {};
+    this.db.criterios
+      .filter(c => c.asignaturaId === asig.id)
+      .forEach(c => { porCodigo[String(c.codigo).trim().toLowerCase()] = c.id; });
+
+    const vistos = new Set();
+    const desconocidos = new Set();
+    const apartados = items.map((it, i) => {
+      const nombre = String((it && it.criterio) || '').trim();
+      if (!nombre) throw new Error(`El ítem ${i + 1} no tiene nombre en el campo "criterio".`);
+      if (vistos.has(nombre.toLowerCase())) throw new Error(`El ítem «${nombre}» está repetido.`);
+      vistos.add(nombre.toLowerCase());
+
+      const peso = Number(it.peso);
+      if (!isFinite(peso) || peso <= 0) throw new Error(`El ítem «${nombre}» necesita un "peso" mayor que 0.`);
+
+      const niveles = (Array.isArray(it.niveles) ? it.niveles : [])
+        .filter(n => n && isFinite(Number(n.pct)))
+        .map(n => ({ pct: Number(n.pct), descriptor: String(n.descriptor || '').trim() }))
+        .sort((a, b) => a.pct - b.pct);
+      if (niveles.length < 2) throw new Error(`El ítem «${nombre}» necesita al menos 2 niveles.`);
+
+      const codigos = Array.isArray(it.criterios) ? it.criterios : [];
+      const criterioIds = [];
+      for (const cod of codigos) {
+        const limpio = String(cod).trim();
+        const id = porCodigo[limpio.toLowerCase()];
+        if (id && !criterioIds.includes(id)) criterioIds.push(id);
+        else if (!id && limpio) desconocidos.add(limpio);
+      }
+      return { id: Utils.uid(), orden: i + 1, descripcion: nombre, maxPts: 100, criterioIds, peso, niveles };
+    });
+
+    if (desconocidos.size) {
+      throw new Error(`Estos criterios no existen en ${asig.nombre}: ${[...desconocidos].join(', ')}. ` +
+        'Pídele a la IA que use solo los códigos de la lista, o créalos en la vista Currículo.');
+    }
+    const sinCriterios = apartados.filter(a => !a.criterioIds.length);
+    if (sinCriterios.length) {
+      throw new Error(`Estos ítems no indican ningún criterio: ${sinCriterios.map(a => a.descripcion).join(', ')}.`);
+    }
+
+    const instrumento = {
+      id: Utils.uid(),
+      claseId,
+      tipo: 'Rúbrica',
+      titulo,
+      fecha: Utils.hoy(),
+      periodo: periodo || 'T1',
+      saberes: String(datos.saberes || ''),
+      unidad: String(datos.unidad || '').trim(),
+      nivel,
+      // Escala por defecto: la del primer ítem. Cada ítem guarda además la suya.
+      niveles: apartados[0].niveles.map(n => ({ pct: n.pct, descriptor: n.descriptor })),
+      apartados,
+      criteriosModo: 'desglosado',
+      criterioIdsGlobal: []
+    };
+    this.db.instrumentos.push(instrumento);
+    this.save();
+    return { id: instrumento.id, titulo, items: apartados.length };
   },
 
   demoSeed() {

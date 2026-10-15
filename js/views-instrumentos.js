@@ -10,25 +10,50 @@ const InstrumentosView = (() => {
         || (a.fecha || '').localeCompare(b.fecha || ''));
   }
 
-  function apartadosHtml(inst, asignaturaId, esRubrica) {
-    return (inst ? inst.apartados : []).map(ap => filaApartado(ap, asignaturaId, esRubrica)).join('');
+  // Descriptor que un ítem de rúbrica define para un nivel concreto ('' = usa el común).
+  function descriptorPropio(ap, pct) {
+    const n = (ap.niveles || []).find(x => Math.abs(Number(x.pct) - Number(pct)) < 1e-9);
+    return n ? (n.descriptor || '') : '';
   }
 
-  function filaApartado(ap, asignaturaId, esRubrica, modoGlobal) {
+  function plantillaColumnas(nColsNivel) {
+    return `28px minmax(150px,1.5fr) 82px ${'minmax(130px,1fr) '.repeat(nColsNivel)}auto auto`;
+  }
+
+  function filaApartado(ap, asignaturaId, esRubrica, modoGlobal, columnasNv) {
     const peso = ap.peso != null ? ap.peso : (esRubrica ? 1 : ap.maxPts);
+    const cols = esRubrica ? (columnasNv || []) : [];
     return `
-      <div class="apartado-fila" data-id="${ap.id}">
+      <div class="apartado-fila${esRubrica ? ' rub' : ''}" data-id="${ap.id}"${esRubrica ? ` style="grid-template-columns:${plantillaColumnas(cols.length)}"` : ''}>
         <span class="num-ap"></span>
-        <input type="text" class="ap-desc" placeholder="Pregunta, parte o fase" value="${Utils.esc(ap.descripcion)}">
+        <input type="text" class="ap-desc" placeholder="${esRubrica ? 'Ítem evaluado (ej. Ortografía)' : 'Pregunta, parte o fase'}" value="${Utils.esc(ap.descripcion)}">
         ${esRubrica
-          ? `<input type="number" class="ap-peso" min="0.01" step="0.5" value="${peso}" title="Peso de esta fila en la rúbrica">`
+          ? `<input type="number" class="ap-peso" min="0.01" step="0.5" value="${peso}" title="Peso de este ítem en la rúbrica">`
           : `<input type="number" class="ap-max" min="0.5" step="0.5" value="${ap.maxPts}" title="Puntos máximos">`}
-        ${esRubrica ? '<small style="color:var(--tinta-suave)">peso</small>' : ''}
+        ${esRubrica ? '' : '<small style="color:var(--tinta-suave)">peso</small>'}
+        ${cols.map((nv, k) => `
+          <input type="text" class="ap-nv" data-pct="${nv.pct}"
+            value="${Utils.esc(descriptorPropio(ap, nv.pct))}"
+            placeholder="${Utils.esc(nv.descriptor || '')}"
+            title="Nivel ${k + 1} · ${nv.pct}%. Déjalo vacío para usar el descriptor por defecto">`).join('')}
         ${modoGlobal
           ? '<small style="color:var(--tinta-suave)">aplica criterios globales</small>'
           : `<button type="button" class="btn btn-mini toggle-crit" title="Elegir criterios evaluados">Criterios</button>`}
         <button type="button" class="btn btn-mini quitar-ap">Quitar</button>
         ${modoGlobal ? '' : `<div class="zona-crit" style="display:none">${UI.chipsCriterios(asignaturaId, ap.criterioIds)}</div>`}
+      </div>`;
+  }
+
+  // Cabecera de la cuadrícula de rúbrica: criterio · peso · nivel 1 … nivel N.
+  function cabeceraRubrica(columnasNv) {
+    return `
+      <div class="rub-head" style="grid-template-columns:${plantillaColumnas(columnasNv.length)}">
+        <span></span>
+        <span>Criterio</span>
+        <span>Peso</span>
+        ${columnasNv.map((nv, k) => `<span title="${Utils.esc(nv.descriptor || '')}">Nivel ${k + 1}<br><small>${nv.pct}%</small></span>`).join('')}
+        <span></span>
+        <span></span>
       </div>`;
   }
 
@@ -75,7 +100,9 @@ const InstrumentosView = (() => {
           <textarea id="f-saberes" rows="2" placeholder="Opcional">${Utils.esc(inst ? inst.saberes : '')}</textarea></label>
 
         <div id="bloque-niveles" style="display:none">
-          <label class="campo"><span>Niveles de la rúbrica (% y descriptor)</span><div id="lista-niveles"></div></label>
+          <label class="campo"><span>Escala por defecto (% y descriptor)</span>
+            <small class="hint">Son los descriptores que usan los ítems que no escriban el suyo. Cada ítem puede sobrescribirlos.</small>
+            <div id="lista-niveles"></div></label>
           <button class="btn btn-mini" type="button" id="add-nivel">Añadir nivel</button>
         </div>
 
@@ -85,7 +112,7 @@ const InstrumentosView = (() => {
           </label>
         </div>
 
-        <label class="campo"><span>Apartados y criterios que evalúan</span>
+        <label class="campo"><span id="lbl-apartados">Apartados y criterios que evalúan</span>
           <small id="hint-asig-crit" style="display:block;color:var(--tinta-suave)"></small>
           <div id="lista-apartados"></div>
         </label>
@@ -103,7 +130,7 @@ const InstrumentosView = (() => {
         const niveles = Array.from(body.querySelectorAll('.nivel-fila')).map(f => ({
           pct: parseFloat(f.querySelector('.nv-pct').value),
           descriptor: f.querySelector('.nv-desc').value.trim()
-        })).filter(n => !isNaN(n.pct));
+        })).filter(n => !isNaN(n.pct)).sort((a, b) => a.pct - b.pct);
         if (esRubrica && niveles.length < 2) { alert('La rúbrica necesita al menos dos niveles'); return false; }
 
         const apartados = [];
@@ -122,10 +149,22 @@ const InstrumentosView = (() => {
             if (isNaN(maxPts) || maxPts <= 0) { alert('Cada apartado necesita puntos máximos'); return false; }
           }
           const peso = fila.querySelector('.ap-peso') ? parseFloat(fila.querySelector('.ap-peso').value) : (esRubrica ? 1 : maxPts);
+          const nvFila = Array.from(fila.querySelectorAll('.ap-nv')).map(i => ({
+            pct: Number(i.dataset.pct),
+            descriptor: i.value.trim()
+          }));
+          const personalizada = nvFila.some(n => n.descriptor);
           apartados.push({
             id: fila.dataset.id && fila.dataset.id !== 'nuevo' ? fila.dataset.id : Utils.uid(),
             orden, descripcion: desc, maxPts, criterioIds,
-            peso: (isNaN(peso) || peso <= 0) ? 1 : peso
+            peso: (isNaN(peso) || peso <= 0) ? 1 : peso,
+            // [] = el ítem hereda la escala por defecto del instrumento.
+            niveles: (esRubrica && personalizada)
+              ? nvFila.map(n => ({
+                pct: n.pct,
+                descriptor: n.descriptor || (niveles.find(c => Math.abs(c.pct - n.pct) < 1e-9) || {}).descriptor || ''
+              }))
+              : []
           });
         }
         if (!apartados.length) { alert('Añade al menos un apartado'); return false; }
@@ -153,6 +192,61 @@ const InstrumentosView = (() => {
       body.querySelectorAll('.num-ap').forEach((n, i) => { n.textContent = i + 1 + '.'; });
     }
 
+    function nivelesDelFormulario() {
+      return Array.from(body.querySelectorAll('.nivel-fila')).map(f => ({
+        pct: parseFloat(f.querySelector('.nv-pct').value),
+        descriptor: f.querySelector('.nv-desc').value.trim()
+      })).filter(n => !isNaN(n.pct)).sort((a, b) => a.pct - b.pct);
+    }
+
+    // Columnas de la cuadrícula de rúbrica: la escala por defecto más cualquier %
+    // propio de un ítem (por si una rúbrica importada trae niveles distintos).
+    function columnasNivel(filas) {
+      const mapa = new Map();
+      nivelesDelFormulario().forEach(n => mapa.set(n.pct, n.descriptor));
+      (filas || []).forEach(f => (f.niveles || []).forEach(n => {
+        if (!mapa.has(n.pct)) mapa.set(n.pct, '');
+      }));
+      return [...mapa.entries()]
+        .map(([pct, descriptor]) => ({ pct, descriptor }))
+        .sort((a, b) => a.pct - b.pct);
+    }
+
+    function nivelActual() {
+      const s = body.querySelector('#f-nivel');
+      return s ? s.value : '';
+    }
+
+    function estadoFilas() {
+      const esRub = selTipo.value === 'Rúbrica';
+      return Array.from(listaAp.querySelectorAll('.apartado-fila')).map(fila => {
+        const zona = fila.querySelector('.zona-crit');
+        return {
+          id: fila.dataset.id,
+          descripcion: fila.querySelector('.ap-desc').value,
+          // En modo global el apartado no tiene zona de criterios propios.
+          criterioIds: zona ? UI.valoresChips(zona) : [],
+          maxPts: esRub ? 100 : parseFloat((fila.querySelector('.ap-max') || {}).value),
+          peso: fila.querySelector('.ap-peso') ? parseFloat(fila.querySelector('.ap-peso').value) : null,
+          niveles: Array.from(fila.querySelectorAll('.ap-nv')).map(i => ({ pct: Number(i.dataset.pct), descriptor: i.value }))
+        };
+      });
+    }
+
+    // Repinta la lista de ítems conservando lo escrito y, en rúbricas, la
+    // cabecera «criterio · peso · nivel 1 … nivel N».
+    function pintaFilas(filas, nivel) {
+      const esRub = selTipo.value === 'Rúbrica';
+      const cols = esRub ? columnasNivel(filas) : [];
+      listaAp.innerHTML = '';
+      if (esRub) listaAp.insertAdjacentHTML('beforeend', cabeceraRubrica(cols).trim());
+      (filas || []).forEach(f => addFilaApartado(f, nivel, cols));
+    }
+
+    function repintaGrid() {
+      pintaFilas(estadoFilas(), nivelActual());
+    }
+
     function addFilaNivel(n) {
       const div = document.createElement('div');
       div.className = 'nivel-fila';
@@ -160,7 +254,8 @@ const InstrumentosView = (() => {
         <input type="number" class="nv-pct" min="0" max="100" step="5" value="${n ? n.pct : ''}" placeholder="%">
         <input type="text" class="nv-desc" value="${n ? Utils.esc(n.descriptor) : ''}" placeholder="Descriptor del nivel">
         <button class="icon-btn quitar-nv" type="button">×</button>`;
-      div.querySelector('.quitar-nv').onclick = () => div.remove();
+      div.querySelector('.quitar-nv').onclick = () => { div.remove(); repintaGrid(); };
+      div.querySelector('.nv-pct').addEventListener('change', repintaGrid);
       listaNv.appendChild(div);
     }
 
@@ -171,12 +266,12 @@ const InstrumentosView = (() => {
       fila.querySelector('.toggle-crit').textContent = 'Criterios (' + n + ')';
     }
 
-    function addFilaApartado(ap, nivel) {
+    function addFilaApartado(ap, nivel, cols) {
       const esRubrica = selTipo.value === 'Rúbrica';
       const modoGlobal = !esRubrica && (body.querySelector('#f-critmodo') || {}).value === 'global';
-      const asigCrit = Calc.asignaturaDeNivel(claseId, nivel || (body.querySelector('#f-nivel') || {}).value || '');
+      const asigCrit = Calc.asignaturaDeNivel(claseId, nivel || nivelActual());
       const div = document.createElement('div');
-      div.innerHTML = filaApartado(ap || { id: 'nuevo', descripcion: '', maxPts: '', criterioIds: [] }, asigCrit ? asigCrit.id : asig.id, esRubrica, modoGlobal).trim();
+      div.innerHTML = filaApartado(ap || { id: 'nuevo', descripcion: '', maxPts: '', criterioIds: [] }, asigCrit ? asigCrit.id : asig.id, esRubrica, modoGlobal, cols).trim();
       const fila = div.firstElementChild;
       fila.querySelector('.quitar-ap').onclick = () => { fila.remove(); refrescaNumeros(); };
       if (fila.querySelector('.toggle-crit')) {
@@ -199,34 +294,20 @@ const InstrumentosView = (() => {
       body.querySelector('#bloque-niveles').style.display = esRubrica ? '' : 'none';
       body.querySelector('#bloque-criterios-global').style.display = (critmodo === 'global' && !esRubrica) ? '' : 'none';
       body.querySelector('#fila-critmodo').style.display = esRubrica ? 'none' : '';
-      const actuales = Array.from(listaAp.querySelectorAll('.apartado-fila')).map((fila, i) => ({
-        id: fila.dataset.id,
-        descripcion: fila.querySelector('.ap-desc').value,
-        criterioIds: UI.valoresChips(fila.querySelector('.zona-crit')),
-        maxPts: esRubrica ? 100 : parseFloat((fila.querySelector('.ap-max') || {}).value),
-        peso: fila.querySelector('.ap-peso') ? parseFloat(fila.querySelector('.ap-peso').value) : null
-      }));
-      listaAp.innerHTML = '';
-      actuales.forEach(a => addFilaApartado(a));
+      const lbl = body.querySelector('#lbl-apartados');
+      if (lbl) lbl.textContent = esRubrica ? 'Ítems de la rúbrica · criterio, peso y niveles' : 'Apartados y criterios que evalúan';
+      const btnAp = body.querySelector('#add-ap');
+      if (btnAp) btnAp.textContent = esRubrica ? 'Añadir ítem' : 'Añadir apartado';
+      pintaFilas(estadoFilas(), nivelActual());
     }
 
     function refrescaNivel() {
-      const selNivel = body.querySelector('#f-nivel');
-      const nivel = selNivel ? selNivel.value : '';
+      const nivel = nivelActual();
       const asigCrit = Calc.asignaturaDeNivel(claseId, nivel);
       const hint = body.querySelector('#hint-asig-crit');
       if (hint) hint.textContent = 'Criterios del currículo de ' + (asigCrit ? asigCrit.nombre : '') +
         (nivel && nivel !== 'BASE' ? ' (nivel ' + Calc.etiquetaNivel(claseId, nivel) + ')' : '');
-      const esRubrica = selTipo.value === 'Rúbrica';
-      const actuales = Array.from(listaAp.querySelectorAll('.apartado-fila')).map((fila, i) => ({
-        id: fila.dataset.id,
-        descripcion: fila.querySelector('.ap-desc').value,
-        criterioIds: UI.valoresChips(fila.querySelector('.zona-crit')),
-        maxPts: esRubrica ? 100 : parseFloat((fila.querySelector('.ap-max') || {}).value),
-        peso: fila.querySelector('.ap-peso') ? parseFloat(fila.querySelector('.ap-peso').value) : null
-      }));
-      listaAp.innerHTML = '';
-      actuales.forEach(a => addFilaApartado(a, nivel));
+      pintaFilas(estadoFilas(), nivel);
       chipsGlobal.innerHTML = UI.chipsCriterios(asigCrit ? asigCrit.id : asig.id, inst ? (inst.criterioIdsGlobal || []) : []);
       UI.wireChips(chipsGlobal);
     }
@@ -234,16 +315,21 @@ const InstrumentosView = (() => {
     if (body.querySelector('#f-critmodo')) body.querySelector('#f-critmodo').onchange = refrescaTipo;
     const selNivelEl = body.querySelector('#f-nivel');
     if (selNivelEl) selNivelEl.onchange = refrescaNivel;
-    body.querySelector('#add-ap').onclick = () => addFilaApartado(null);
-    body.querySelector('#add-nivel').onclick = () => addFilaNivel(null);
+    body.querySelector('#add-ap').onclick = () => addFilaApartado(null, null, selTipo.value === 'Rúbrica' ? columnasNivel(estadoFilas()) : []);
+    body.querySelector('#add-nivel').onclick = () => { addFilaNivel(null); repintaGrid(); };
 
     if (esNueva) {
       [100, 75, 50, 25].forEach(p => addFilaNivel({ pct: p, descriptor: '' }));
-      addFilaApartado(null);
+      addFilaApartado(null, null, selTipo.value === 'Rúbrica' ? columnasNivel([]) : []);
     } else {
-      (inst.niveles && inst.niveles.length ? inst.niveles.slice().sort((a, b) => b.pct - a.pct) : []).forEach(addFilaNivel);
-      inst.apartados.forEach(a => addFilaApartado(a, inst.nivel));
+      (inst.niveles && inst.niveles.length ? inst.niveles.slice().sort((a, b) => a.pct - b.pct) : []).forEach(addFilaNivel);
+      // La unión de la escala común y los niveles propios de cada ítem define las
+      // columnas: si no se calcula aquí, el primer repintado perdería los
+      // descriptores propios de los ítems ya guardados.
+      const cols = selTipo.value === 'Rúbrica' ? columnasNivel(inst.apartados) : [];
+      inst.apartados.forEach(a => addFilaApartado(a, inst.nivel, cols));
     }
+    refrescaTipo();
     refrescaNivel();
   }
 
@@ -260,7 +346,6 @@ const InstrumentosView = (() => {
     if (!inst) { render(el); return; }
     const alumnos = Calc.alumnosDeInstrumento(inst);
     const esRubrica = inst.tipo === 'Rúbrica';
-    const niveles = (inst.niveles || []).slice().sort((a, b) => b.pct - a.pct);
 
     el.innerHTML = `
       <section class="card no-print">
@@ -284,7 +369,7 @@ const InstrumentosView = (() => {
         <div class="scroll-x">
           <table class="tabla" id="tabla-corrige">
             <thead><tr><th>Alumno</th>${inst.apartados.map(ap =>
-              `<th title="${Utils.esc(ap.descripcion)}">${Utils.esc(ap.descripcion)}<br><small>${esRubrica ? '%' : 'sobre ' + Utils.fmt(ap.maxPts)}</small></th>`
+              `<th title="${Utils.esc(descripcionNiveles(inst, ap))}">${Utils.esc(ap.descripcion)}<br><small>${esRubrica ? 'niveles 1 a ' + Calc.nivelesDeApartado(inst, ap).length : 'sobre ' + Utils.fmt(ap.maxPts)}</small></th>`
             ).join('')}<th>Nota</th></tr></thead>
             <tbody>
               ${alumnos.map(a => {
@@ -294,9 +379,9 @@ const InstrumentosView = (() => {
                   ${inst.apartados.map(ap => `
                     <td data-apartado="${ap.id}">
                       ${esRubrica
-                        ? `<div class="segmentos">${niveles.map(nv => {
+                        ? `<div class="segmentos">${Calc.nivelesDeApartado(inst, ap).map(nv => {
                             const on = Number(reg[ap.id]) === nv.pct ? 'on' : '';
-                            return `<button type="button" class="${on}" data-val="${nv.pct}" title="${Utils.esc(nv.descriptor)}">${nv.pct}</button>`;
+                            return `<button type="button" class="${on}" data-val="${nv.pct}" title="${Utils.esc(nv.descriptor || '')}">${nv.pct}</button>`;
                           }).join('')}</div>`
                         : `<input type="number" class="inp-nota" min="0" max="${ap.maxPts}" step="any"
                             style="min-width:76px" value="${reg[ap.id] ?? ''}" placeholder="—">`}
@@ -307,6 +392,15 @@ const InstrumentosView = (() => {
             </tbody>
           </table>
         </div>
+        ${esRubrica ? `<details class="no-print leyenda-rubrica">
+          <summary>Ver los descriptores de cada nivel (útil en tableta, donde no hay tooltips)</summary>
+          ${inst.apartados.map(ap => `
+            <div class="leg-item">
+              <b>${Utils.esc(ap.descripcion)}</b>
+              <ul>${Calc.nivelesDeApartado(inst, ap).map((nv, k) =>
+                `<li><span class="badge info">Nivel ${k + 1} · ${nv.pct}%</span> ${Utils.esc(nv.descriptor || '—')}</li>`).join('')}</ul>
+            </div>`).join('')}
+        </details>` : ''}
       </section>
       <p class="no-print" style="color:var(--tinta-suave);font-size:13px">
         La nota mostrada es la del instrumento (informativa). Las ponderaciones por criterio se aplican en la Cuadrícula.
@@ -448,7 +542,8 @@ const InstrumentosView = (() => {
               descripcion: ap.descripcion,
               maxPts: ap.maxPts,
               criterioIds: (ap.criterioIds || []).slice(),
-              peso: ap.peso
+              peso: ap.peso,
+              niveles: (ap.niveles || []).map(n => ({ pct: n.pct, descriptor: n.descriptor }))
             }))
           };
           Storage.db.instrumentos.push(copia);
@@ -459,6 +554,134 @@ const InstrumentosView = (() => {
       }
     });
     UI.wireChips(mbody);
+  }
+
+  // Texto de ayuda con los descriptores de un ítem (para el title de la corrección).
+  function descripcionNiveles(inst, ap) {
+    return Calc.nivelesDeApartado(inst, ap)
+      .map((nv, k) => `Nivel ${k + 1} (${nv.pct}%): ${nv.descriptor || '—'}`)
+      .join(' · ');
+  }
+
+  // Instrucciones listas para pegar en cualquier chat de IA (plantillas/rubrica-para-ia.md).
+  // Los huecos (___) son para que cada docente los rellene a su gusto.
+  function promptIa(asignatura, criterios) {
+    const codigos = criterios.length
+      ? criterios.map(c => `  - ${c.codigo} — ${c.descripcion}`).join('\n')
+      : '  (Esta asignatura aún no tiene criterios: créalos en la vista Currículo.)';
+    return `Actúa como docente experto en evaluación por rúbricas conforme a la LOMLOE (Primaria, Cantabria). Genera una rúbrica a partir de mis datos.
+
+Devuelve EXCLUSIVAMENTE un objeto JSON válido, sin texto antes ni después y sin comentarios:
+
+{
+  "tipo": "rubrica-evalcrit",
+  "version": 1,
+  "titulo": "___",
+  "unidad": "___",
+  "nivel": "",
+  "items": [
+    {
+      "criterio": "___",
+      "peso": 1,
+      "criterios": ["CODIGO"],
+      "niveles": [
+        { "pct": 25, "descriptor": "___" },
+        { "pct": 50, "descriptor": "___" },
+        { "pct": 75, "descriptor": "___" },
+        { "pct": 100, "descriptor": "___" }
+      ]
+    }
+  ]
+}
+
+Reglas:
+- Cada ítem lleva exactamente 4 niveles (pct 25, 50, 75 y 100), de más bajo a más alto.
+- "criterio" es el nombre del ítem evaluado (texto breve, en español).
+- "peso" es un número mayor que 0: la importancia relativa del ítem.
+- "criterios" solo puede usar códigos de la lista de abajo.
+- Cada "descriptor" describe qué hace el alumno en ese nivel, con lenguaje observable.
+
+MIS DATOS
+- Asignatura: ${asignatura}   Curso: ___
+- Ítems que quiero evaluar: ___
+- Nivel ACI (déjalo vacío si es para todo el alumnado): ___
+- Criterios disponibles (usa SOLO estos códigos):
+${codigos}`;
+  }
+
+  function copiarAlPortapapeles(texto) {
+    if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(texto).then(() => true).catch(() => false);
+    }
+    return Promise.resolve(false);
+  }
+
+  // Importa una rúbrica pegada desde cualquier chat de IA (P-08).
+  function modalImportarRubrica() {
+    if (!claseSel || !Calc.clase(claseSel)) { alert('Primero selecciona una clase'); return; }
+    const asig = Calc.asignaturaDeClase(claseSel);
+    if (!asig) { alert('Error: esta clase no tiene asignatura asociada'); return; }
+    const criterios = Calc.criteriosDeClase(claseSel);
+    const prompt = promptIa(asig.nombre, criterios);
+    const mbody = UI.openModal({
+      titulo: 'Importar rúbrica creada con IA',
+      cuerpo: `
+        <div class="aviso">
+          Pide la rúbrica a un chat (ChatGPT, Claude, Gemini…): copia las <b>instrucciones</b> de
+          abajo, pégalas allí, rellena los huecos <code>___</code> y trae de vuelta su respuesta.
+        </div>
+        <label class="campo"><span>1 · Instrucciones para la IA (rellena los huecos)</span>
+          <textarea id="ia-prompt" rows="9" readonly></textarea></label>
+        <div style="display:flex;gap:8px;margin:-6px 0 12px;flex-wrap:wrap">
+          <button type="button" class="btn btn-mini btn-primario" id="btn-copiar-prompt">Copiar instrucciones</button>
+          <button type="button" class="btn btn-mini" id="btn-descargar-prompt">Descargar .txt</button>
+          ${criterios.length ? '' : '<small style="align-self:center;color:var(--ko)">No hay criterios en esta asignatura: impórtalos antes desde Currículo.</small>'}
+        </div>
+        <label class="campo"><span>2 · Respuesta de la IA (pégala aquí)</span>
+          <textarea id="ia-json" rows="9" placeholder='{ "tipo": "rubrica-evalcrit", ... }'></textarea></label>
+        <label class="campo"><span>Periodo</span>
+          <select id="ia-periodo">${PERIODOS.map(p => `<option>${p}</option>`).join('')}</select></label>
+        <div class="aviso" style="margin:0">
+          Se creará una rúbrica en <b>${Utils.esc(asig.nombre)}</b> con tantos ítems y niveles como traiga el texto.
+          Si algún código de criterio no existe, no se importará nada y te lo diremos.
+        </div>`,
+      textoGuardar: 'Importar rúbrica',
+      alGuardar(body) {
+        const texto = body.querySelector('#ia-json').value.trim();
+        if (!texto) { alert('Pega antes la respuesta de la IA.'); return false; }
+        let datos;
+        try { datos = JSON.parse(texto); }
+        catch (e) { alert('El texto pegado no es un JSON válido. Copia la respuesta COMPLETA de la IA, desde la primera llave { hasta la última }.'); return false; }
+        try {
+          const r = Storage.importarRubrica(datos, claseSel, body.querySelector('#ia-periodo').value);
+          UI.toast(`Rúbrica importada: ${r.titulo} (${r.items} ítems)`);
+        } catch (e) { alert(e.message); return false; }
+      }
+    });
+    mbody.querySelector('#ia-prompt').value = prompt;
+    mbody.querySelector('#btn-copiar-prompt').onclick = () => {
+      const ta = mbody.querySelector('#ia-prompt');
+      copiarAlPortapapeles(prompt).then(ok => {
+        if (ok) { UI.toast('Instrucciones copiadas: pégalas en el chat'); return; }
+        // Reserva sin permiso de portapapeles: seleccionamos el texto para Ctrl+C.
+        ta.removeAttribute('readonly');
+        ta.focus();
+        ta.select();
+        let copiado = false;
+        try { copiado = document.execCommand('copy'); } catch (e) { copiado = false; }
+        ta.setAttribute('readonly', '');
+        UI.toast(copiado ? 'Instrucciones copiadas' : 'Ya está seleccionado: pulsa Ctrl+C (o mantén pulsado y Copiar)');
+      });
+    };
+    mbody.querySelector('#btn-descargar-prompt').onclick = () => {
+      const blob = new Blob([prompt], { type: 'text/plain;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'instrucciones-rubrica.txt';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    };
   }
 
   function render(el) {
@@ -481,7 +704,10 @@ const InstrumentosView = (() => {
             id: c.id,
             nombre: `${Calc.asignaturaDeClase(c.id)?.nombre || '?'} · ${(Calc.byId(db.grupos, c.grupoId) || {}).nombre || '?'}`
           })), claseSel, 'id', 'nombre')}</select>
-          <button class="btn btn-primario" id="add-inst">Nuevo instrumento</button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn" id="btn-importar-rub" title="Pega aquí una rúbrica creada con una IA">Importar rúbrica (IA)</button>
+            <button class="btn btn-primario" id="add-inst">Nuevo instrumento</button>
+          </div>
         </div>
         <table class="tabla">
           <thead><tr><th>Título</th><th>Tipo</th><th>Nivel · Unidad</th><th>Periodo</th><th>Fecha</th><th>Apartados</th><th>Media</th><th></th></tr></thead>
@@ -514,6 +740,7 @@ const InstrumentosView = (() => {
 
     el.querySelector('#sel-clase').onchange = e => { claseSel = e.target.value; render(el); };
     el.querySelector('#add-inst').onclick = () => modalInstrumento(null);
+    el.querySelector('#btn-importar-rub').onclick = () => modalImportarRubrica();
 
     el.querySelectorAll('tr[data-inst]').forEach(tr => {
       const inst = Calc.instrumento(tr.dataset.inst);
@@ -524,5 +751,7 @@ const InstrumentosView = (() => {
     });
   }
 
-  return { render, renderCorreccion, modalInstrumento };
+  // Se exportan también los constructores de la cuadrícula para poder comprobar
+  // en los tests que cabecera y filas tienen el mismo número de columnas.
+  return { render, renderCorreccion, modalInstrumento, filaApartado, cabeceraRubrica, plantillaColumnas, promptIa };
 })();

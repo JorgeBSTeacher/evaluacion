@@ -146,6 +146,18 @@ const Calc = {
     return lista.filter(i => i.periodo === periodo);
   },
 
+  // Niveles aplicables a un ítem de rúbrica: los propios si los define, si no los
+  // de la escala común del instrumento. Siempre de menor a mayor
+  // (nivel 1 = más bajo … nivel N = más alto).
+  nivelesDeApartado(inst, ap) {
+    const comunes = (inst && inst.niveles) || [];
+    const propios = (ap && Array.isArray(ap.niveles))
+      ? ap.niveles.filter(n => n && !isNaN(Number(n.pct)))
+      : [];
+    const base = propios.length ? propios : comunes;
+    return base.slice().sort((a, b) => Number(a.pct) - Number(b.pct));
+  },
+
   // Etiquetas de unidad didáctica presentes en una lista de instrumentos, ordenadas alfabéticamente.
   unidadesDe(insts) {
     return [...new Set((insts || []).map(i => i.unidad).filter(Boolean))]
@@ -199,10 +211,10 @@ const Calc = {
     const esRubrica = inst.tipo === 'Rúbrica';
     if (esRubrica) {
       let suma = 0, pesos = 0;
-      const niveles = (inst.niveles || []).slice().sort((a, b) => b.pct - a.pct);
       for (const ap of inst.apartados) {
         const v = reg[ap.id];
         if (v == null || isNaN(v)) continue;
+        const niveles = this.nivelesDeApartado(inst, ap);
         const nv = niveles.find(n => Math.abs(Number(v) - Number(n.pct)) < 1e-9);
         const pct = nv ? Number(nv.pct) : Number(v);
         const p = ap.peso == null || isNaN(ap.peso) ? 1 : Number(ap.peso);

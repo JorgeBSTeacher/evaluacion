@@ -178,6 +178,7 @@ async function main() {
     check('backup antiguo importado (sin competenciasClave)', db.competenciasClave.length === 8);
     check('criterios antiguos ganan claveIds vacío', Array.isArray(db.criterios[0].claveIds) && db.criterios[0].claveIds.length === 0);
     check('instrumentos antiguos ganan nivel/unidad', db.instrumentos[0].nivel === '' && db.instrumentos[0].unidad === '');
+    check('apartados antiguos ganan niveles vacío', Array.isArray(db.instrumentos[0].apartados[0].niveles));
     check('clases antiguas ganan nivelesAci/adaptaciones', Array.isArray(db.clases[0].nivelesAci) && typeof db.clases[0].adaptaciones === 'object');
     check('nota legacy a1 T1 = 7,2', app.Utils.fmt(app.Calc.notaEvaluacion('c1', 'a1', 'T1')) === '7,2', app.Utils.fmt(app.Calc.notaEvaluacion('c1', 'a1', 'T1')));
     check('nota legacy a2 T1 = 4,6', app.Utils.fmt(app.Calc.notaEvaluacion('c1', 'a2', 'T1')) === '4,6', app.Utils.fmt(app.Calc.notaEvaluacion('c1', 'a2', 'T1')));
@@ -266,6 +267,120 @@ async function main() {
     let inval = false;
     try { app.Storage.importarCurriculo({ tipo: 'otro', version: 1 }); } catch (e) { inval = true; }
     check('rechaza plantilla no válida', inval);
+  }
+
+  console.log('\n== Rúbrica: niveles por ítem y herencia (D-40) ==');
+  {
+    const app = cargarApp();
+    app.Storage.load();
+    const est = estadoAci();
+    est.instrumentos.push({
+      id: 'iRub', claseId: 'c1', tipo: 'Rúbrica', titulo: 'Rúbrica de libreta', fecha: '2026-03-02',
+      periodo: 'T1', nivel: '', unidad: 'UD3', saberes: '',
+      niveles: [
+        { pct: 25, descriptor: 'común bajo' },
+        { pct: 50, descriptor: 'común medio' },
+        { pct: 75, descriptor: 'común alto' },
+        { pct: 100, descriptor: 'común excelente' }
+      ],
+      apartados: [
+        { id: 'rb1', orden: 1, descripcion: 'Ortografía', maxPts: 100, criterioIds: ['k1'], peso: 2,
+          niveles: [
+            { pct: 25, descriptor: 'propio bajo' },
+            { pct: 50, descriptor: 'propio medio' },
+            { pct: 75, descriptor: 'propio alto' },
+            { pct: 100, descriptor: 'propio excelente' }
+          ] },
+        { id: 'rb2', orden: 2, descripcion: 'Presentación', maxPts: 100, criterioIds: ['k2'], peso: 1, niveles: [] }
+      ],
+      criteriosModo: 'desglosado', criterioIdsGlobal: []
+    });
+    est.registros.iRub = { a1: { rb1: 75, rb2: 100 }, a2: { rb1: 100 } };
+    await importarJson(app, est);
+    const C = app.Calc;
+    const inst = C.instrumento('iRub');
+    check('los niveles del ítem salen de menor a mayor', C.nivelesDeApartado(inst, inst.apartados[0]).map(n => n.pct).join(',') === '25,50,75,100');
+    check('el ítem usa su descriptor propio', C.nivelesDeApartado(inst, inst.apartados[0])[0].descriptor === 'propio bajo');
+    check('un ítem sin propios hereda la escala común', C.nivelesDeApartado(inst, inst.apartados[1])[0].descriptor === 'común bajo');
+    check('nota de rúbrica a1 = 8,3 (media ponderada)', app.Utils.fmt(C.notaInstrumento(inst, 'a1')) === '8,3', app.Utils.fmt(C.notaInstrumento(inst, 'a1')));
+    check('nota de rúbrica a2 = 10,0', app.Utils.fmt(C.notaInstrumento(inst, 'a2')) === '10,0', app.Utils.fmt(C.notaInstrumento(inst, 'a2')));
+
+    const el = makeEl();
+    app.InstrumentosView.renderCorreccion(el, 'iRub');
+    const h = el.innerHTML;
+    check('la corrección muestra los niveles de menor a mayor', h.includes('data-val="25"') && h.indexOf('data-val="25"') < h.indexOf('data-val="100"'));
+    check('la corrección lleva la leyenda de descriptores', h.includes('leyenda-rubrica') && h.includes('propio bajo') && h.includes('común bajo'));
+  }
+
+  console.log('\n== Cuadrícula de rúbrica: cabecera y filas alineadas (D-40) ==');
+  {
+    const app = cargarApp();
+    app.Storage.load();
+    const IV = app.InstrumentosView;
+    const cuenta = (html, re) => (html.match(re) || []).length;
+    for (const cols of [
+      [{ pct: 25, descriptor: 'a' }, { pct: 50, descriptor: 'b' }, { pct: 75, descriptor: 'c' }, { pct: 100, descriptor: 'd' }],
+      [{ pct: 50, descriptor: 'x' }, { pct: 100, descriptor: 'y' }]
+    ]) {
+      const n = cols.length;
+      const plantilla = IV.plantillaColumnas(n);
+      const cab = IV.cabeceraRubrica(cols);
+      const fila = IV.filaApartado({ id: 'x', descripcion: 'Ortografía', criterioIds: [], peso: 3, niveles: [] }, 's1', true, false, cols);
+      const tokens = plantilla.trim().split(/\s+(?![^(]*\))/).length;
+      check(`plantilla de ${n} niveles = ${n + 5} columnas`, tokens === n + 5, 'tokens=' + tokens);
+      check(`la cabecera de ${n} niveles tiene ${n + 5} celdas`, cuenta(cab, /<span/g) === n + 5);
+      check(`la fila de ${n} niveles tiene ${n + 5} campos`, cuenta(fila, /<(input|button|span)/g) === n + 5);
+      check(`la fila crea ${n} entradas de nivel`, cuenta(fila, /class="ap-nv"/g) === n);
+      check(`la cabecera y la fila usan la misma plantilla`, cab.includes(plantilla) && fila.includes(plantilla));
+    }
+    const filaNormal = IV.filaApartado({ id: 'x', descripcion: 'P1', criterioIds: [], maxPts: 10 }, 's1', false, false, []);
+    check('un apartado normal no lleva niveles por ítem', !filaNormal.includes('ap-nv') && filaNormal.includes('ap-max'));
+    const p = IV.promptIa('Matemáticas', [{ codigo: 'MAT 1.1', descripcion: 'Resuelve problemas' }]);
+    check('el prompt de IA lleva huecos para personalizar', p.includes('___'));
+    check('el prompt de IA incluye los códigos del currículo', p.includes('MAT 1.1 — Resuelve problemas'));
+    check('el prompt de IA pide el formato JSON correcto', p.includes('"tipo": "rubrica-evalcrit"') && p.includes('"version": 1'));
+  }
+
+  console.log('\n== Importar rúbrica generada por IA (P-08) ==');
+  {
+    const app = cargarApp();
+    app.Storage.load();
+    await importarJson(app, estadoAci());
+    const rub = {
+      tipo: 'rubrica-evalcrit', version: 1, titulo: 'Rúbrica IA', unidad: 'UD9', nivel: '',
+      items: [
+        { criterio: 'Ortografía', peso: 3, criterios: ['C1'],
+          niveles: [{ pct: 25, descriptor: 'a' }, { pct: 50, descriptor: 'b' }, { pct: 75, descriptor: 'c' }, { pct: 100, descriptor: 'd' }] },
+        { criterio: 'Orden', peso: 1, criterios: ['C2'],
+          niveles: [{ pct: 25, descriptor: 'e' }, { pct: 100, descriptor: 'f' }] }
+      ]
+    };
+    const r = app.Storage.importarRubrica(rub, 'c1', 'T2');
+    const inst = app.Calc.instrumento(r.id);
+    check('se crea la rúbrica importada', !!inst && inst.tipo === 'Rúbrica' && inst.titulo === 'Rúbrica IA');
+    check('conserva unidad y periodo elegido', inst.unidad === 'UD9' && inst.periodo === 'T2');
+    check('conserva los descriptores de cada ítem', inst.apartados[0].niveles[3].descriptor === 'd');
+    check('resuelve los códigos a criterios de la asignatura', inst.apartados[0].criterioIds.join(',') === 'k1');
+    check('acepta ítems con distinto número de niveles', inst.apartados[1].niveles.length === 2);
+    check('la escala por defecto toma el primer ítem', inst.niveles.length === 4);
+
+    const clon = () => JSON.parse(JSON.stringify(rub));
+    const rechaza = (d, re) => {
+      try { app.Storage.importarRubrica(d, 'c1'); return false; }
+      catch (e) { return re ? re.test(e.message) : true; }
+    };
+    check('rechaza un texto que no es una rúbrica', rechaza({ tipo: 'otro', version: 1 }, /no es una rúbrica/));
+    check('rechaza peso no válido', rechaza((() => { const b = clon(); b.items[0].peso = 0; return b; })(), /peso/));
+    check('rechaza ítems repetidos', rechaza((() => { const b = clon(); b.items[1].criterio = 'Ortografía'; return b; })(), /repetido/));
+    check('rechaza niveles insuficientes', rechaza((() => { const b = clon(); b.items[0].niveles = [{ pct: 100, descriptor: 'x' }]; return b; })(), /al menos 2 niveles/));
+    check('rechaza ítems sin criterios', rechaza((() => { const b = clon(); b.items[0].criterios = []; return b; })(), /no indican ningún criterio/));
+    {
+      const antes = app.Storage.db.instrumentos.length;
+      const bad = clon();
+      bad.items[0].criterios = ['NO-EXISTE'];
+      const ok = rechaza(bad, /no existen/);
+      check('un criterio inexistente aborta sin importar nada', ok && app.Storage.db.instrumentos.length === antes);
+    }
   }
 
   console.log('\n' + (fallos ? 'FALLOS: ' + fallos + '/' + total : 'TODO OK: ' + total + ' comprobaciones'));

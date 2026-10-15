@@ -172,7 +172,10 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--acento-suav
 }
 .modal-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--linea); }
 .modal-head h3 { margin: 0; font-size: 16px; }
-.modal-body { padding: 18px; overflow-y: auto; }
+.modal-body { padding: 18px; overflow: auto; }
+/* La cuadrícula de rúbrica necesita más ancho para sus columnas de nivel */
+.modal:has(.rub-head) { width: min(1080px, 100%); }
+.modal:has(#ia-prompt) { width: min(860px, 100%); }
 .modal-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 18px; border-top: 1px solid var(--linea); }
 
 #toast-root { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 200; display: flex; flex-direction: column; gap: 8px; align-items: center; }
@@ -189,6 +192,22 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--acento-suav
 .zona-crit { grid-column: 1 / -1; padding: 8px 4px 2px; border-top: 1px dashed var(--linea); }
 .apartado-fila:last-child { border-bottom: none; }
 .nivel-fila { display: grid; grid-template-columns: 90px 1fr auto; gap: 8px; align-items: center; padding: 4px 0; }
+
+/* Rúbrica: cuadrícula «criterio · peso · nivel 1 … nivel N» (D-40) */
+.rub-head { display: grid; gap: 8px; align-items: end; padding: 2px 0 8px; border-bottom: 2px solid var(--linea); }
+.rub-head > span { font-size: 11px; font-weight: 700; color: var(--tinta-suave); text-transform: uppercase; letter-spacing: .04em; line-height: 1.3; }
+.rub-head > span small { text-transform: none; letter-spacing: 0; font-size: 11px; color: var(--acento); }
+.apartado-fila.rub { align-items: start; }
+.apartado-fila.rub .ap-nv { font-size: 13px; }
+.apartado-fila.rub .ap-nv::placeholder { color: #b6b2a6; font-style: italic; }
+
+.leyenda-rubrica { margin-top: 12px; font-size: 13px; }
+.leyenda-rubrica summary { cursor: pointer; color: var(--acento); font-weight: 600; }
+.leyenda-rubrica .leg-item { margin-top: 10px; }
+.leyenda-rubrica ul { margin: 4px 0 0; padding-left: 18px; color: var(--tinta-suave); }
+.leyenda-rubrica li { margin-bottom: 3px; }
+
+#ia-prompt, #ia-json { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; white-space: pre; }
 
 .segmentos { display: inline-flex; border: 1px solid var(--linea); border-radius: 999px; overflow: hidden; }
 .segmentos button {
