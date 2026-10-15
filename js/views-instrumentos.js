@@ -161,6 +161,10 @@ const InstrumentosView = (() => {
           <textarea id="f-saberes" rows="2" placeholder="Opcional">${Utils.esc(inst ? inst.saberes : '')}</textarea></label>
 
         <div id="bloque-niveles" style="display:none">
+          ${esNueva ? `<div class="aviso" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+            <span>¿Ya la tienes hecha (por ejemplo, con una IA)? No hace falta escribirla a mano.</span>
+            <button class="btn btn-mini" type="button" id="btn-importar-rub">Importar rúbrica (IA)</button>
+          </div>` : ''}
           <label class="campo"><span>Escala por defecto (% y descriptor)</span>
             <small class="hint">Son los descriptores que usan los ítems que no escriban el suyo. Cada ítem puede sobrescribirlos.</small>
             <div id="lista-niveles"></div></label>
@@ -242,6 +246,12 @@ const InstrumentosView = (() => {
     });
 
     const body = document.querySelector('.modal-body');
+    const btnImpRub = body.querySelector('#btn-importar-rub');
+    if (btnImpRub) {
+      // La rúbrica importada se crea como instrumento nuevo: cerramos este
+      // formulario y abrimos el importador con la clase y el periodo ya puestos.
+      btnImpRub.onclick = () => modalImportarRubrica(claseId, (body.querySelector('#f-periodo') || {}).value);
+    }
     const selTipo = body.querySelector('#f-tipo');
     const listaAp = body.querySelector('#lista-apartados');
     const listaNv = body.querySelector('#lista-niveles');
@@ -677,12 +687,15 @@ ${codigos}`;
     return Promise.resolve(false);
   }
 
-  // Importa una rúbrica pegada desde cualquier chat de IA (P-08).
-  function modalImportarRubrica() {
-    if (!claseSel || !Calc.clase(claseSel)) { alert('Primero selecciona una clase'); return; }
-    const asig = Calc.asignaturaDeClase(claseSel);
+  // Importa una rúbrica pegada desde cualquier chat de IA (P-08). Se puede abrir
+  // desde el listado o al crear un instrumento de tipo rúbrica (clase/periodo ya
+  // elegidos, para no volver a preguntarlos).
+  function modalImportarRubrica(claseIdIni, periodoIni) {
+    const claseId = claseIdIni || claseSel;
+    if (!claseId || !Calc.clase(claseId)) { alert('Primero selecciona una clase'); return; }
+    const asig = Calc.asignaturaDeClase(claseId);
     if (!asig) { alert('Error: esta clase no tiene asignatura asociada'); return; }
-    const criterios = Calc.criteriosDeClase(claseSel);
+    const criterios = Calc.criteriosDeClase(claseId);
     const prompt = promptIa(asig.nombre, criterios);
     const mbody = UI.openModal({
       titulo: 'Importar rúbrica creada con IA',
@@ -701,7 +714,7 @@ ${codigos}`;
         <label class="campo"><span>2 · Respuesta de la IA (pégala aquí)</span>
           <textarea id="ia-json" rows="9" placeholder='{ "tipo": "rubrica-evalcrit", ... }'></textarea></label>
         <label class="campo"><span>Periodo</span>
-          <select id="ia-periodo">${PERIODOS.map(p => `<option>${p}</option>`).join('')}</select></label>
+          <select id="ia-periodo">${PERIODOS.map(p => `<option ${p === periodoIni ? 'selected' : ''}>${p}</option>`).join('')}</select></label>
         <div class="aviso" style="margin:0">
           Se creará una rúbrica en <b>${Utils.esc(asig.nombre)}</b> con tantos ítems y niveles como traiga el texto.
           Si algún código de criterio no existe, no se importará nada y te lo diremos.
@@ -714,7 +727,7 @@ ${codigos}`;
         try { datos = JSON.parse(texto); }
         catch (e) { alert('El texto pegado no es un JSON válido. Copia la respuesta COMPLETA de la IA, desde la primera llave { hasta la última }.'); return false; }
         try {
-          const r = Storage.importarRubrica(datos, claseSel, body.querySelector('#ia-periodo').value);
+          const r = Storage.importarRubrica(datos, claseId, body.querySelector('#ia-periodo').value);
           UI.toast(`Rúbrica importada: ${r.titulo} (${r.items} ítems)`);
         } catch (e) { alert(e.message); return false; }
       }
@@ -792,7 +805,6 @@ ${codigos}`;
           })), claseSel, 'id', 'nombre')}</select>
           ${lista.length ? selPer : ''}
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn" id="btn-importar-rub" title="Pega aquí una rúbrica creada con una IA">Importar rúbrica (IA)</button>
             <button class="btn btn-primario" id="add-inst">Nuevo instrumento</button>
           </div>
         </div>
@@ -804,7 +816,6 @@ ${codigos}`;
       el.querySelector('#sel-per').onchange = e => { perSel = e.target.value; render(el); };
     }
     el.querySelector('#add-inst').onclick = () => modalInstrumento(null);
-    el.querySelector('#btn-importar-rub').onclick = () => modalImportarRubrica();
 
     el.querySelectorAll('[data-ud-clave]').forEach(b => {
       b.onclick = () => {

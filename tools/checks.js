@@ -223,8 +223,56 @@ async function main() {
     check('el desplegable de unidades y «Añadir calificación» viven en Instrumentos', h.includes('id="sel-ud"') && h.includes('id="add-inst"'));
     check('cabecera agrupada por UD1 y UD2', h.includes('ud-grupo') && h.includes('>UD1<small>') && h.includes('>UD2<small>'));
     check('las unidades se pueden plegar', h.includes('data-toggle-ud="UD1"') && h.includes('data-toggle-ud="UD2"'));
-    check('las columnas de las unidades empiezan plegadas', h.includes('col-plegada') && h.includes('ud-flecha">▸'));
-    check('la barra de unidad indica cuántos instrumentos tiene', h.includes('instrumentos</small>') || h.includes('instrumento</small>'));
+    check('las columnas de las unidades empiezan plegadas', h.includes('celda-plegada') && h.includes('ud-flecha">▸'));
+    check('la barra plegada indica cuántos instrumentos tiene', h.includes('>UD1<small>(1)</small>') && h.includes('>UD2<small>(1)</small>'));
+
+    // Regresión: al plegar una unidad sus columnas NO se borran; una celda con
+    // colspan las ocupa en cada fila. Si desaparecieran, las filas quedarían
+    // cortas y la nota final se iría de su columna (lo que se veía desplazado).
+    const anchoFila = f => (f.match(/<(?:th|td)\b[^>]*>/g) || []).reduce((n, tag) => {
+      const m = /colspan="(\d+)"/.exec(tag);
+      return n + (m ? parseInt(m[1], 10) : 1);
+    }, 0);
+    const filasDe = (html, seccion) => ((html.match(new RegExp('<' + seccion + '>[\\s\\S]*?</' + seccion + '>')) || [''])[0]
+      .match(/<tr[^>]*>[\s\S]*?<\/tr>/g) || []);
+    const cuadra = html => {
+      const cab = anchoFila(filasDe(html, 'thead')[0]);
+      const filas = filasDe(html, 'tbody');
+      return filas.length > 0 && filas.every(f => anchoFila(f) === cab);
+    };
+    check('todas las filas cuadran con la cabecera (la nota final no se desplaza)', cuadra(h));
+
+    const elAb = makeEl();
+    app.CuadriculaView.render(elAb, { unidadesAbiertas: ['UD1'] });
+    const hAb = elAb.innerHTML;
+    check('una unidad desplegada muestra sus instrumentos', hAb.includes('Control A (base)'));
+    check('la unidad desplegada abre su flecha y la otra sigue cerrada', hAb.includes('ud-flecha">▾') && hAb.includes('ud-flecha">▸'));
+    check('con una unidad a medias las filas siguen cuadrando', cuadra(hAb));
+
+    const elTod = makeEl();
+    app.CuadriculaView.render(elTod, { unidadesAbiertas: ['UD1', 'UD2'] });
+    const hTod = elTod.innerHTML;
+    check('con todo desplegado no quedan celdas de relleno', !hTod.includes('celda-plegada'));
+    check('la barra desplegada cuenta en palabras', hTod.includes('instrumento</small>'));
+    check('con todo desplegado las filas siguen cuadrando', cuadra(hTod));
+
+    // Y con varias columnas dentro de una unidad plegada: una sola celda de
+    // relleno debe ocupar exactamente esas columnas.
+    const estAncha = estadoAci();
+    estAncha.instrumentos.push({
+      id: 'iExtra', claseId: 'c1', tipo: 'Control', titulo: 'Control B (base)', fecha: '2026-01-20',
+      periodo: 'T1', nivel: 'BASE', unidad: 'UD1',
+      apartados: [{ id: 's1p', orden: 1, descripcion: 'e', maxPts: 10, criterioIds: ['k2'] }]
+    });
+    const app5 = cargarApp();
+    app5.Storage.load();
+    await importarJson(app5, estAncha);
+    const el6 = makeEl();
+    app5.CuadriculaView.render(el6);
+    const h6 = el6.innerHTML;
+    check('la unidad plegada con 2 instrumentos ocupa sus 2 columnas con una sola celda',
+      h6.includes('<th class="celda-plegada" colspan="2">') && h6.includes('<td class="celda-plegada" colspan="2">'));
+    check('la nota final sigue cuadrando con columnas plegadas de varias posiciones', cuadra(h6));
 
     // Con un grupo grande debe aparecer el buscador de alumnado, en todas las pestañas.
     const est = estadoAci();
@@ -257,7 +305,7 @@ async function main() {
     const el5 = makeEl();
     app4.CuadriculaView.render(el5);
     const h5 = el5.innerHTML;
-    check('con una sola unidad sigue habiendo barra para desplegarla', h5.includes('data-toggle-ud="UD1"') && h5.includes('col-plegada'));
+    check('con una sola unidad sigue habiendo barra para desplegarla', h5.includes('data-toggle-ud="UD1"') && h5.includes('celda-plegada'));
   }
 
   console.log('\n== Vista Corrección (guardar y siguiente alumno) ==');

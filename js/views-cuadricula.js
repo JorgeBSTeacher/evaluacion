@@ -25,14 +25,31 @@ const CuadriculaView = (() => {
     // agrupar: varias unidades, o una sola con nombre. Si todo va sin unidad no
     // hay barra, y sin barra no se pliega nada (las columnas se ven siempre).
     const conBarra = grupos.length > 1 || (grupos.length === 1 && grupos[0].ud !== '');
-    const plegada = ud => conBarra && !udsAbiertas.has(ud || '');
-    const cabeceraInst = i => `<th class="celda-nota${plegada(i.unidad) ? ' col-plegada' : ''}" data-ud="${Utils.esc(i.unidad || '')}" data-edit="${i.id}" title="Toca para editar el instrumento" style="max-width:130px">${Utils.esc(i.titulo)}<br><small>${Utils.esc(i.tipo)} · ${Utils.esc(i.periodo)}${i.unidad ? ' · ' + Utils.esc(i.unidad) : ''}</small></th>`;
-    const barraUd = g => `<th class="ud-grupo plegable" colspan="${g.insts.length}" data-toggle-ud="${Utils.esc(g.ud)}" title="Plegar o desplegar las columnas de esta unidad">` +
-      `<span class="ud-flecha">${plegada(g.ud) ? '▸' : '▾'}</span>${g.ud ? Utils.esc(g.ud) : 'Sin unidad'}` +
-      `<small>${g.insts.length} instrumento${g.insts.length === 1 ? '' : 's'}</small></th>`;
+    grupos.forEach(g => { g.plegada = conBarra && !udsAbiertas.has(g.ud); });
+    // Una unidad plegada NO borra sus celdas: deja UNA celda por fila que se
+    // estira con colspan sobre sus columnas. Si se ocultan de verdad, la fila se
+    // queda corta y todo lo que va detrás (cabeceras y la nota final) se desplaza
+    // de su columna. Con la celda de relleno la tabla siempre cuadra.
+    const cabeceraInst = i => `<th class="celda-nota" data-ud="${Utils.esc(i.unidad || '')}" data-edit="${i.id}" title="Toca para editar el instrumento" style="max-width:130px">${Utils.esc(i.titulo)}<br><small>${Utils.esc(i.tipo)} · ${Utils.esc(i.periodo)}${i.unidad ? ' · ' + Utils.esc(i.unidad) : ''}</small></th>`;
+    const barraUd = g => `<th class="ud-grupo plegable" colspan="${g.insts.length}" data-toggle-ud="${Utils.esc(g.ud)}" title="${g.insts.length} instrumento${g.insts.length === 1 ? '' : 's'} · toca para ${g.plegada ? 'ver' : 'ocultar'} sus columnas">` +
+      `<span class="ud-flecha">${g.plegada ? '▸' : '▾'}</span>${g.ud ? Utils.esc(g.ud) : 'Sin unidad'}` +
+      `<small>${g.plegada ? `(${g.insts.length})` : `${g.insts.length} instrumento${g.insts.length === 1 ? '' : 's'}`}</small></th>`;
+    const cabecerasGrupo = g => g.plegada
+      ? `<th class="celda-plegada" colspan="${g.insts.length}"></th>`
+      : g.insts.map(cabeceraInst).join('');
+    const celdasGrupo = (a, g) => g.plegada
+      ? `<td class="celda-plegada" colspan="${g.insts.length}"></td>`
+      : g.insts.map(i => {
+        const ud = `data-ud="${Utils.esc(i.unidad || '')}"`;
+        if (modoTodas && !Calc.instrumentoParaAlumno(i, claseSel, a.id)) {
+          return `<td class="celda-nota num" ${ud} style="color:var(--tinta-suave);opacity:.35" title="No aplica a este alumno">—</td>`;
+        }
+        const n = Calc.notaInstrumento(i, a.id);
+        return `<td class="celda-nota num" ${ud} data-inst="${i.id}">${n == null ? '<span class="badge na">—</span>' : Calc.badgeHtml(n)}</td>`;
+      }).join('');
     const thead = conBarra
       ? `<tr class="fila-ud"><th rowspan="2">Alumno</th>${grupos.map(barraUd).join('')}<th rowspan="2">Evaluación</th></tr>
-         <tr>${insts.map(cabeceraInst).join('')}</tr>`
+         <tr>${grupos.map(cabecerasGrupo).join('')}</tr>`
       : `<tr><th>Alumno</th>${insts.map(cabeceraInst).join('')}<th>Evaluación</th></tr>`;
     const sinUd = udSel !== TODAS ? ` de la unidad «${Utils.esc(udSel)}»` : '';
     return `
@@ -42,15 +59,7 @@ const CuadriculaView = (() => {
         <tbody>
           ${alumnos.map(a => `<tr>
             <td>${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}</td>
-            ${insts.map(i => {
-              const cls = 'celda-nota num' + (plegada(i.unidad) ? ' col-plegada' : '');
-              const ud = `data-ud="${Utils.esc(i.unidad || '')}"`;
-              if (modoTodas && !Calc.instrumentoParaAlumno(i, claseSel, a.id)) {
-                return `<td class="${cls}" ${ud} style="color:var(--tinta-suave);opacity:.35" title="No aplica a este alumno">—</td>`;
-              }
-              const n = Calc.notaInstrumento(i, a.id);
-              return `<td class="${cls}" ${ud} data-inst="${i.id}">${n == null ? '<span class="badge na">—</span>' : Calc.badgeHtml(n)}</td>`;
-            }).join('')}
+            ${grupos.map(g => celdasGrupo(a, g)).join('')}
             <td class="num">${Calc.badgeHtml(Calc.notaEvaluacion(claseSel, a.id, periodo))}</td>
           </tr>`).join('')}
         </tbody>
@@ -124,9 +133,14 @@ const CuadriculaView = (() => {
     return Calc.criteriosDeNivel(claseSel, nivelSel).some(c => (c.claveIds || []).length > 0);
   }
 
-  // `opciones.tab` permite fijar la pestaña activa (uso interno y pruebas).
+  // `opciones.tab` permite fijar la pestaña activa (uso interno y pruebas) y
+  // `opciones.unidadesAbiertas` las unidades que deben verse desplegadas.
   function render(el, opciones) {
     if (opciones && opciones.tab) tab = opciones.tab;
+    if (opciones && opciones.unidadesAbiertas) {
+      udsAbiertas.clear();
+      opciones.unidadesAbiertas.forEach(u => udsAbiertas.add(u));
+    }
     const db = Storage.db;
     if (!claseSel || !Calc.clase(claseSel)) claseSel = db.clases.length ? db.clases[0].id : null;
 
