@@ -132,6 +132,86 @@ const CuadriculaView = (() => {
     return Calc.criteriosDeNivel(claseSel, nivelSel).some(c => (c.claveIds || []).length > 0);
   }
 
+  // Informe de «Imprimir todo»: una sección por nivel —base y cada nivel ACI—
+  // con SOLO su alumnado y SU currículo, sin mezclar columnas (los currículos
+  // de cada nivel pueden no coincidir). Se compone aquí y no en el DOM para
+  // poder comprobarlo sin navegador.
+  function informeHtml(claseId, periodoId, tabId) {
+    const db = Storage.db;
+    const cl = Calc.clase(claseId);
+    if (!cl) return '';
+    const gru = Calc.byId(db.grupos, cl.grupoId);
+    const tituloTab = tabId === 'criterios' ? 'Criterios' : 'Competencias específicas y clave';
+    const nombreAsig = id => (Calc.asignatura(id) || {}).nombre || '¿?';
+    const niveles = [{ codigo: '', etiqueta: 'Base (sin adaptación)', asig: nombreAsig(cl.asignaturaId) }]
+      .concat(Calc.nivelesAciDeClase(claseId).map(n => ({
+        codigo: n.codigo,
+        etiqueta: n.etiqueta || n.codigo,
+        asig: nombreAsig(n.asignaturaId)
+      })));
+
+    // Las tablas leen clase, nivel y periodo del estado del módulo: se fija aquí
+    // y se restaura al final, para que el informe no dependa de lo que hubiera
+    // seleccionado en pantalla.
+    const antes = { claseSel, periodo, tab, nivelSel };
+    claseSel = claseId;
+    periodo = periodoId;
+    tab = tabId;
+    let secciones = '';
+    try {
+      secciones = niveles.map(nv => {
+        nivelSel = nv.codigo;
+        const alumnos = Calc.alumnosDeClase(claseId)
+          .filter(a => Calc.nivelDeAlumno(claseId, a.id) === nv.codigo);
+        if (!alumnos.length) return '';
+        const tabla = tabId === 'criterios'
+          ? tablaCriterios(alumnos, false, claseId, periodoId)
+          : tablaCompetencias(alumnos, false);
+        // El título lleva la asignatura del nivel (los ACI pueden venir de otro curso).
+        return `<section class="informe-seccion">
+        <h2 class="informe-titulo">${Utils.esc(nv.etiqueta)} · ${Utils.esc(nv.asig)}</h2>
+        ${tabla}
+      </section>`;
+      }).join('');
+    } finally {
+      claseSel = antes.claseSel;
+      periodo = antes.periodo;
+      tab = antes.tab;
+      nivelSel = antes.nivelSel;
+    }
+
+    const total = Calc.alumnosDeClase(claseId).length;
+    return `<div class="informe-cab">
+        <strong>Cuadrícula de alumnado · ${tituloTab}</strong>
+        <span>${Utils.esc(nombreAsig(cl.asignaturaId))} · ${Utils.esc(gru ? gru.nombre : '¿?')} · ${periodo} · ${total} alumno(s) · impreso el ${Utils.hoy().split('-').reverse().join('/')}</span>
+      </div>
+      ${secciones || '<p class="aviso">No hay alumnado para imprimir.</p>'}`;
+  }
+
+  // El informe vive fuera de la vista (en `#informe-impresion`), y solo se ve al
+  // imprimir: así la pantalla no cambia al generar el PDF.
+  function limpiarInforme() {
+    const cont = document.getElementById('informe-impresion');
+    if (cont) cont.innerHTML = '';
+    document.body.classList.remove('imprimiendo-informe');
+  }
+
+  function imprimirInforme(html) {
+    limpiarInforme();
+    let cont = document.getElementById('informe-impresion');
+    if (!cont) {
+      cont = document.createElement('div');
+      cont.id = 'informe-impresion';
+      document.body.appendChild(cont);
+    }
+    cont.innerHTML = html;
+    document.body.classList.add('imprimiendo-informe');
+    // Al cerrar el diálogo se retira el informe; la vista queda intacta.
+    const alCerrar = () => { limpiarInforme(); window.removeEventListener('afterprint', alCerrar); };
+    window.addEventListener('afterprint', alCerrar);
+    window.print();
+  }
+
   // `opciones.tab` permite fijar la pestaña activa (uso interno y pruebas) y
   // `opciones.unidadesAbiertas` las unidades que deben verse desplegadas.
   function render(el, opciones) {
@@ -265,9 +345,33 @@ const CuadriculaView = (() => {
       };
     }
 
-    // Al imprimir salen TODAS las columnas desplegadas: una unidad plegada deja
-    // su celda de relleno y CSS no puede recuperarla, así que se abren en JS.
     el.querySelector('#btn-imprimir').onclick = () => {
+      // Con alumnado adaptado (ACI), en las pestañas de currículo, se puede
+      // imprimir la vista actual o el informe completo por niveles.
+      const acis = Calc.nivelesAciDeClase(claseSel);
+      if (acis.length && (tab === 'criterios' || tab === 'competencias')) {
+        const mbody = UI.openModal({
+          titulo: 'Imprimir',
+          cuerpo: `<p class="hint">Elige qué quieres pasar a PDF.</p>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <button class="btn" id="imp-actual">Imprimir vista actual</button>
+              <button class="btn btn-primario" id="imp-todo">Imprimir todo (base + cada nivel ACI)</button>
+            </div>`
+        });
+        mbody.querySelector('#imp-actual').onclick = () => {
+          UI.closeModal();
+          limpiarInforme();
+          window.print();
+        };
+        mbody.querySelector('#imp-todo').onclick = () => {
+          UI.closeModal();
+          imprimirInforme(informeHtml(claseSel, periodo, tab));
+        };
+        return;
+      }
+      limpiarInforme();
+      // Al imprimir salen TODAS las columnas desplegadas: una unidad plegada deja
+      // su celda de relleno y CSS no puede recuperarla, así que se abren en JS.
       if (tab === 'notas') {
         udsAbiertas.clear();
         Calc.unidadesDe(insts).forEach(u => udsAbiertas.add(u));
@@ -304,5 +408,5 @@ const CuadriculaView = (() => {
     });
   }
 
-  return { render };
+  return { render, informeHtml };
 })();

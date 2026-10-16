@@ -325,6 +325,31 @@ async function main() {
     app2.CuadriculaView.render(el4, { tab: 'competencias' });
     check('en Competencias el buscador sigue disponible', el4.innerHTML.includes('id="busca-alumno"'));
 
+    // «Imprimir todo»: una sección por nivel, cada una con SU currículo y sus
+    // alumnos. Con currículos distintos mezclar columnas no tiene sentido.
+    const inf = app2.CuadriculaView.informeHtml('c1', 'T1', 'criterios');
+    const secs = inf.split('<section class="informe-seccion">').slice(1);
+    check('el informe de impresión separa base y cada nivel ACI', secs.length === 2, 'secciones=' + secs.length);
+    const secBase = secs[0] || '';
+    const secAci = secs[1] || '';
+    check('la sección base nombra su asignatura y lleva solo a los suyos',
+      secBase.includes('Base (sin adaptación) · Matemáticas 6º') && secBase.includes('Base, Ana') && secBase.includes('Base, Beto') && !secBase.includes('Aci, Carla'), secBase.slice(0, 120));
+    check('la sección ACI nombra su asignatura y lleva solo a los suyos',
+      secAci.includes('4º · Matemáticas 4º') && secAci.includes('Aci, Carla') && secAci.includes('Aci, Dani') && !secAci.includes('Base, Ana'), secAci.slice(0, 120));
+    check('cada sección muestra los criterios de su propio currículo',
+      secBase.includes('>C1<') && !secBase.includes('>A1<') && secAci.includes('>A1<') && !secAci.includes('>C1<'));
+    check('el informe lleva cabecera con asignatura, grupo y periodo',
+      inf.includes('Cuadrícula de alumnado · Criterios') && inf.includes('Matemáticas 6º') && inf.includes('6ºA') && inf.includes('T1'));
+    check('el informe también sirve para competencias',
+      app2.CuadriculaView.informeHtml('c1', 'T1', 'competencias').includes('Competencias específicas y clave'));
+    // El informe fija nivel/clase/periodo del módulo: al terminar debe restaurarlos
+    // (si no, tras imprimir la vista quedaría en el último nivel del informe).
+    app2.CuadriculaView.informeHtml('c1', 'T1', 'criterios');
+    const elImp = makeEl();
+    app2.CuadriculaView.render(elImp, { tab: 'criterios' });
+    check('el informe no deja cambiado el nivel seleccionado en la vista',
+      elImp.innerHTML.includes('<option value="" selected>'), elImp.innerHTML.slice(0, 120));
+
     // Trampa a evitar: con UNA sola unidad debe seguir habiendo barra, o las
     // columnas quedarían plegadas sin nada que tocar para abrirlas.
     const estUna = estadoAci();
@@ -553,6 +578,12 @@ async function main() {
     check('la cabecera de tabla se repite en cada página', css.includes('thead { display: table-header-group; }'));
     check('las filas no se parten entre páginas', css.includes('tr { page-break-inside: avoid; break-inside: avoid; }'));
     check('al imprimir la tabla ocupa todo el ancho', css.includes('.scroll-x { overflow: visible !important; }'));
+    check('el informe de impresión sustituye a la vista solo al imprimir',
+      css.includes('body.imprimiendo-informe main { display: none !important; }') &&
+      css.includes('body.imprimiendo-informe #informe-impresion { display: block !important; }'));
+    check('el título de cada sección del informe no se separa de su tabla',
+      css.includes('break-after: avoid; page-break-after: avoid;') &&
+      css.includes('.informe-seccion table { break-before: avoid; page-break-before: avoid; }'));
   }
 
   console.log('\n' + (fallos ? 'FALLOS: ' + fallos + '/' + total : 'TODO OK: ' + total + ' comprobaciones'));

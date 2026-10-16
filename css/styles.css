@@ -281,6 +281,10 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--acento-suav
   /* Salen solo los datos: los controles (selects, botones) se quedan en pantalla. */
   .solo-impresion { display: block !important; }
   .card-head select, .card-head input, .btn, .icon-btn { display: none !important; }
+
+  /* El informe de «Imprimir todo» sustituye a la vista mientras se imprime. */
+  body.imprimiendo-informe main { display: none !important; }
+  body.imprimiendo-informe #informe-impresion { display: block !important; }
   .cabecera-impresion { display: flex; flex-direction: column; gap: 2px; margin: 0 0 10px; }
   .cabecera-impresion strong { font-size: 15px; }
   .cabecera-impresion span { color: #555; font-size: 12px; }
@@ -296,3 +300,13 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--acento-suav
   @page { margin: 12mm; }
 }
 .aci-ast { font-size: 11px; vertical-align: text-top; margin-left: 1px; }
+
+/* Informe de «Imprimir todo»: solo existe al imprimir, nunca en pantalla. */
+#informe-impresion { display: none; }
+.informe-cab { margin: 0 0 12px; }
+.informe-cab strong { font-size: 16px; }
+.informe-cab span { display: block; color: var(--tinta-suave); font-size: 12px; }
+.informe-seccion { margin-bottom: 16px; }
+/* El título viaja siempre con su tabla: nunca solo al pie de una página. */
+.informe-titulo { font-size: 15px; margin: 0 0 6px; break-after: avoid; page-break-after: avoid; }
+.informe-seccion table { break-before: avoid; page-break-before: avoid; }
