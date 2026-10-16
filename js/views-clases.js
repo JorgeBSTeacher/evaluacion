@@ -79,9 +79,9 @@ const ClasesView = (() => {
       const previos = {};
       cont.querySelectorAll('.alu-nivel').forEach(s => { previos[s.dataset.alu] = s.value; });
       cont.innerHTML = alumnos.map(a => {
-        const actual = (a.id in previos) ? previos[a.id] : ((clase.adaptaciones || {})[a.id] || '');
+        const actual = Calc.nivelNorm((a.id in previos) ? previos[a.id] : ((clase.adaptaciones || {})[a.id] || ''));
         const ops = ['<option value="">Base</option>']
-          .concat(niveles.map(n => `<option value="${Utils.esc(n.codigo)}" ${actual === n.codigo ? 'selected' : ''}>${Utils.esc(n.etiqueta || n.codigo)}</option>`))
+          .concat(niveles.map(n => `<option value="${Utils.esc(Calc.nivelNorm(n.codigo))}" ${actual === Calc.nivelNorm(n.codigo) ? 'selected' : ''}>${Utils.esc(n.etiqueta || n.codigo)}</option>`))
           .join('');
         return `<div class="fila-campos">
           <span style="flex:1">${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}</span>
@@ -111,7 +111,10 @@ const ClasesView = (() => {
         }
         clase.nivelesAci = niveles;
         const adap = {};
-        body.querySelectorAll('.alu-nivel').forEach(sel => { if (sel.value) adap[sel.dataset.alu] = sel.value; });
+        body.querySelectorAll('.alu-nivel').forEach(sel => {
+          const v = Calc.nivelNorm(sel.value);
+          if (v) adap[sel.dataset.alu] = v;
+        });
         clase.adaptaciones = adap;
         Storage.save();
       }

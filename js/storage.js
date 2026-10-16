@@ -222,13 +222,27 @@ const Storage = {
     }
     if (!db.meta || typeof db.meta !== 'object') db.meta = { ultimaExportacion: null };
     db.grupos.forEach(g => { if (g.etapa == null) g.etapa = ''; });
+    // Códigos de nivel ACI y asignaciones de alumnado: se guardan siempre
+    // normalizados (sin espacios, en mayúsculas) para que un «b» tecleado por
+    // el docente no deje al alumnado fuera de su nivel (y de todas las vistas).
+    const normNivel = v => String(v == null ? '' : v).trim().toUpperCase();
     db.clases.forEach(c => {
       if (!Array.isArray(c.nivelesAci)) c.nivelesAci = [];
+      c.nivelesAci = c.nivelesAci
+        .map(n => Object.assign({}, n, { codigo: normNivel(n.codigo) }))
+        .filter(n => n.codigo);
       if (!c.adaptaciones || typeof c.adaptaciones !== 'object') c.adaptaciones = {};
+      const adap = {};
+      Object.keys(c.adaptaciones).forEach(k => {
+        const v = normNivel(c.adaptaciones[k]);
+        if (v && v !== 'BASE') adap[k] = v;
+      });
+      c.adaptaciones = adap;
     });
     db.criterios.forEach(c => { if (!Array.isArray(c.claveIds)) c.claveIds = []; });
     db.instrumentos.forEach(i => {
       if (i.nivel == null) i.nivel = '';
+      i.nivel = normNivel(i.nivel); // '' = común, 'BASE' = solo base, resto = nivel
       if (i.unidad == null) i.unidad = '';
       if (!Array.isArray(i.apartados)) i.apartados = [];
       if (!Array.isArray(i.niveles)) i.niveles = [];

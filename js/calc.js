@@ -52,25 +52,47 @@ const Calc = {
 
   // --- Adaptaciones curriculares (ACI) ---
   // Cada nivel ACI de una clase apunta a la asignatura (currículo) de otro curso.
+
+  // Unifica la forma de un código de nivel: sin espacios y en mayúsculas, y
+  // «BASE» se trata como base interna (''). Es la ÚNICA forma de comparar
+  // códigos en todo el programa: si no se normaliza, un «b» tecleado por el
+  // docente no casaría con el nivel «B» guardado y el alumnado desaparecería.
+  nivelNorm(codigo) {
+    const v = String(codigo == null ? '' : codigo).trim().toUpperCase();
+    return v === 'BASE' ? '' : v;
+  },
+
   nivelesAciDeClase(claseId) {
     const cl = this.clase(claseId);
-    return (cl && Array.isArray(cl.nivelesAci)) ? cl.nivelesAci : [];
+    const arr = (cl && Array.isArray(cl.nivelesAci)) ? cl.nivelesAci : [];
+    // Se devuelven con el código normalizado (y sin códigos vacíos) para que
+    // todas las vistas y comparaciones usen la misma forma.
+    return arr
+      .map(n => Object.assign({}, n, { codigo: this.nivelNorm(n.codigo) }))
+      .filter(n => n.codigo);
   },
 
   nivelDeAlumno(claseId, alumnoId) {
     const cl = this.clase(claseId);
-    return (cl && cl.adaptaciones && cl.adaptaciones[alumnoId]) || '';
+    const c = this.nivelNorm((cl && cl.adaptaciones && cl.adaptaciones[alumnoId]) || '');
+    if (!c) return '';
+    // Si el código no corresponde a ningún nivel definido (p. ej. un nivel
+    // borrado), el alumnado cae a base: mejor corregido contra el currículo de
+    // su clase que desaparecido de la cuadrícula y del informe.
+    return this.nivelesAciDeClase(claseId).some(n => n.codigo === c) ? c : '';
   },
 
   etiquetaNivel(claseId, codigo) {
-    if (!codigo || codigo === 'BASE') return 'Base';
-    const n = this.nivelesAciDeClase(claseId).find(x => x.codigo === codigo);
-    return n ? (n.etiqueta || n.codigo) : codigo;
+    const c = this.nivelNorm(codigo);
+    if (!c) return 'Base';
+    const n = this.nivelesAciDeClase(claseId).find(x => x.codigo === c);
+    return n ? (n.etiqueta || n.codigo) : c;
   },
 
   asignaturaDeNivel(claseId, codigo) {
-    if (codigo) {
-      const n = this.nivelesAciDeClase(claseId).find(x => x.codigo === codigo);
+    const c = this.nivelNorm(codigo);
+    if (c) {
+      const n = this.nivelesAciDeClase(claseId).find(x => x.codigo === c);
       if (n && n.asignaturaId && this.asignatura(n.asignaturaId)) return this.asignatura(n.asignaturaId);
     }
     return this.asignaturaDeClase(claseId);
@@ -93,10 +115,10 @@ const Calc = {
   },
 
   // Un instrumento sin nivel es común a todos; con nivel, solo para ese nivel
-  // ('' = base, es decir, alumnado sin adaptación).
+  // ('' o 'BASE' = base, es decir, alumnado sin adaptación).
   instrumentoParaNivel(inst, codigo) {
     if (!inst || !inst.nivel) return true;
-    return inst.nivel === (codigo || 'BASE');
+    return this.nivelNorm(inst.nivel) === this.nivelNorm(codigo);
   },
 
   instrumentoParaAlumno(inst, claseId, alumnoId) {

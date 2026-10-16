@@ -4,6 +4,9 @@
 /backups/
 descargas/
 datos/
+# Carpeta de pruebas del docente (contiene datos reales de alumnado)
+/json prueba no online/
+/json prueba no online
 
 # Sistema
 .DS_Store

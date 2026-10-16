@@ -363,6 +363,51 @@ async function main() {
     check('con una sola unidad sigue habiendo barra para desplegarla', h5.includes('data-toggle-ud="UD1"') && h5.includes('celda-plegada'));
   }
 
+  console.log('\n== Niveles ACI: normalización de códigos (el alumnado no puede desaparecer) ==');
+  {
+    // Un código tecleado en minúscula o con espacios (p. ej. « 4 ») debe casar
+    // con el nivel guardado. Antes, el alumnado quedaba apuntando a un nivel
+    // inexistente y desaparecía de la cuadrícula y del informe.
+    const estN = estadoAci();
+    estN.clases[0].nivelesAci = [{ codigo: ' 4 ', etiqueta: '4º', asignaturaId: 's2' }];
+    estN.clases[0].adaptaciones = { c1al: '4', c2al: '4' };
+    const appN = cargarApp();
+    const Cn = appN.Calc;
+    check('nivelNorm recorta y sube a mayúsculas', Cn.nivelNorm(' b ') === 'B');
+    check('nivelNorm unifica la base (base/BASE)', Cn.nivelNorm('BASE') === '' && Cn.nivelNorm('') === '');
+    appN.Storage.load();
+    await importarJson(appN, estN);
+    check('al guardar, el código de nivel queda normalizado (« 4 » → «4»)', appN.Calc.nivelesAciDeClase('c1')[0].codigo === '4');
+    check('la adaptación del alumnado sigue casando con su nivel', appN.Calc.nivelDeAlumno('c1', 'c1al') === '4');
+
+    // Código huérfano (nivel borrado): el alumnado cae a base, nunca desaparece.
+    const estH = estadoAci();
+    estH.clases[0].adaptaciones = { c1al: 'Z', c2al: '4' };
+    const appH = cargarApp();
+    appH.Storage.load();
+    await importarJson(appH, estH);
+    check('un código huérfano cae a base (nivel efectivo)', appH.Calc.nivelDeAlumno('c1', 'c1al') === '');
+    const infH = appH.CuadriculaView.informeHtml('c1', 'T1', 'criterios');
+    const secsH = infH.split('<section class="informe-seccion">').slice(1);
+    const filasH = secsH.reduce((n, s) => n + (s.match(/<td>[^<]*, [^<]*<\/td>/g) || []).length, 0);
+    check('el informe conserva a TODO el alumnado aunque falte un nivel', filasH === 4, 'filas=' + filasH);
+    check('el alumno huérfano sale en la sección base', (secsH[0] || '').includes('Aci, Carla'));
+
+    // La migración sanea datos ya guardados (minúsculas/espacios) al importar.
+    const estM = estadoAci();
+    estM.clases[0].nivelesAci = [{ codigo: ' 4 ', etiqueta: '4º', asignaturaId: 's2' }];
+    estM.clases[0].adaptaciones = { c1al: ' 4 ', c2al: '4' };
+    estM.instrumentos.forEach(i => { if (i.nivel === '4') i.nivel = ' 4 '; });
+    const appM = cargarApp();
+    appM.Storage.load();
+    await importarJson(appM, estM);
+    check('al importar se sanean niveles y adaptaciones',
+      appM.Storage.db.clases[0].nivelesAci[0].codigo === '4'
+      && Object.values(appM.Storage.db.clases[0].adaptaciones).every(v => v === '4'));
+    check('un instrumento con nivel saneado casa con su alumnado',
+      appM.Calc.instrumentoParaAlumno(appM.Storage.db.instrumentos.find(i => i.titulo === 'Control 4º'), 'c1', 'c1al') === true);
+  }
+
   console.log('\n== Vista Corrección (guardar y siguiente alumno) ==');
   {
     const app = cargarApp();
