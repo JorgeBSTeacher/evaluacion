@@ -114,6 +114,102 @@ const Calc = {
     return this.criteriosDeNivel(claseId, this.nivelDeAlumno(claseId, alumnoId));
   },
 
+  // --- Criterios de un instrumento frente al currículo de su nivel ACI ---
+  // Un instrumento con nivel solo debe evaluar criterios de SU currículo; si
+  // apunta a otro (p. ej. una copia de examen paralelo), sus notas no salen en
+  // el informe. Estas helpers lo detectan y lo corrigen.
+
+  // Clave numérica de un criterio: «MAT.TC.2.2» → «2.2». La numeración es la
+  // misma en todos los ciclos (es el criterio oficial adaptado), así que sirve
+  // para reconocer el criterio equivalente de otro currículo.
+  claveCriterio(codigo) {
+    const m = String(codigo == null ? '' : codigo).match(/(\d+(?:\.\d+)+)\s*$/);
+    return m ? m[1] : '';
+  },
+
+  // Nivel ACI (con su currículo) dentro de un `db` concreto. Devuelve null si el
+  // código es vacío/BASE, si el nivel no existe o si su asignatura ya no está.
+  nivelAciEn(db, claseId, codigo) {
+    const c = this.nivelNorm(codigo);
+    if (!c) return null;
+    const cl = (db.clases || []).find(x => x.id === claseId);
+    if (!cl) return null;
+    const n = (cl.nivelesAci || [])
+      .map(x => Object.assign({}, x, { codigo: this.nivelNorm(x.codigo) }))
+      .find(x => x.codigo === c);
+    if (!n || !n.asignaturaId) return null;
+    return (db.asignaturas || []).some(a => a.id === n.asignaturaId) ? n : null;
+  },
+
+  // Ids de criterio de un instrumento que NO pertenecen al currículo de su
+  // nivel ACI. Los instrumentos comunes (sin nivel) no tienen currículo propio.
+  criteriosFueraDeNivel(db, inst) {
+    if (!inst) return [];
+    const nv = this.nivelAciEn(db, inst.claseId, inst.nivel);
+    if (!nv) return [];
+    const porId = {};
+    (db.criterios || []).forEach(c => { porId[c.id] = c; });
+    const fuera = [];
+    const mirar = ids => (ids || []).forEach(id => {
+      const c = porId[id];
+      if (c && c.asignaturaId !== nv.asignaturaId) fuera.push(id);
+    });
+    mirar(inst.criterioIdsGlobal);
+    (inst.apartados || []).forEach(ap => mirar(ap.criterioIds));
+    return [...new Set(fuera)];
+  },
+
+  // Reapunta los criterios de un instrumento al currículo de su nivel ACI,
+  // emparejando por número de criterio («MAT.TC.2.2» ↔ «MAT.SC.2.2»). Las notas
+  // cuelgan del apartado, no del criterio, así que no se pierde ninguna.
+  // Devuelve true si cambió algo. Si un criterio no tiene equivalente, se deja
+  // el bloque tal cual (mejor visible que reapuntado a medias).
+  repararCriteriosDeInstrumento(db, inst) {
+    if (!inst) return false;
+    if (!this.criteriosFueraDeNivel(db, inst).length) return false;
+    const nv = this.nivelAciEn(db, inst.claseId, inst.nivel);
+    const porId = {};
+    (db.criterios || []).forEach(c => { porId[c.id] = c; });
+    const destino = {};   // clave de criterio → id dentro del currículo del nivel
+    (db.criterios || []).filter(c => c.asignaturaId === nv.asignaturaId).forEach(c => {
+      const k = this.claveCriterio(c.codigo);
+      if (k && destino[k] == null) destino[k] = c.id;
+    });
+    const remapear = ids => {
+      const salida = [];
+      let cambio = false;
+      for (const id of (ids || [])) {
+        const c = porId[id];
+        if (!c || c.asignaturaId === nv.asignaturaId) {
+          if (salida.indexOf(id) === -1) salida.push(id);
+          continue;
+        }
+        const k = this.claveCriterio(c.codigo);
+        const nuevo = k ? destino[k] : null;
+        if (!nuevo) return { ok: false };
+        if (salida.indexOf(nuevo) === -1) salida.push(nuevo);
+        cambio = true;
+      }
+      return { ok: true, ids: salida, cambio };
+    };
+    let cambio = false;
+    const g = remapear(inst.criterioIdsGlobal);
+    if (g.ok && g.cambio) { inst.criterioIdsGlobal = g.ids; cambio = true; }
+    (inst.apartados || []).forEach(ap => {
+      const a = remapear(ap.criterioIds);
+      if (a.ok && a.cambio) { ap.criterioIds = a.ids; cambio = true; }
+    });
+    return cambio;
+  },
+
+  // Repasa todos los instrumentos de un `db` (al cargar o importar un backup).
+  // Devuelve cuántos ha corregido.
+  repararCriteriosDeInstrumentos(db) {
+    let n = 0;
+    (db.instrumentos || []).forEach(inst => { if (this.repararCriteriosDeInstrumento(db, inst)) n++; });
+    return n;
+  },
+
   // Un instrumento sin nivel es común a todos; con nivel, solo para ese nivel
   // ('' o 'BASE' = base, es decir, alumnado sin adaptación).
   instrumentoParaNivel(inst, codigo) {

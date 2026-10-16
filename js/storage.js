@@ -256,6 +256,14 @@ const Storage = {
         if (!Array.isArray(ap.niveles)) ap.niveles = [];
       });
     });
+    // Un instrumento con nivel ACI debe evaluar los criterios de SU currículo.
+    // Los creados con «Duplicar» antes de esta versión copiaban los del original
+    // (otro ciclo) y sus notas no salían en el informe; aquí se reapuntan por
+    // número de criterio, sin tocar ninguna nota.
+    this.reparadosCriterios = 0;
+    if (typeof Calc !== 'undefined' && Calc.repararCriteriosDeInstrumentos) {
+      this.reparadosCriterios = Calc.repararCriteriosDeInstrumentos(db);
+    }
     return db;
   },
 

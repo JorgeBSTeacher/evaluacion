@@ -233,8 +233,15 @@ const InstrumentosView = (() => {
           });
         }
         if (!apartados.length) { alert('Añade al menos un apartado'); return false; }
-        const criterioIdsGlobal = UI.valoresChips(body.querySelector('[data-campo="criterios-global"]') || body);
+        const criterioIdsGlobal = UI.valoresChips(body.querySelector('#chips-criterios-global') || body);
         if (esModoGlobal && !criterioIdsGlobal.length) { alert('Selecciona al menos un criterio global en el bloque superior'); return false; }
+        // Blindaje: un instrumento con nivel ACI solo puede evaluar criterios de
+        // SU currículo. Si la selección no encaja (p. ej. se cambió el nivel a
+        // última hora), no se guarda y se avisa.
+        if (Calc.criteriosFueraDeNivel(Storage.db, { claseId, nivel, criterioIdsGlobal, apartados }).length) {
+          alert('Los criterios seleccionados no son del currículo del nivel elegido. Revisa el nivel y los criterios antes de guardar.');
+          return false;
+        }
 
         if (esNueva) {
           Storage.db.instrumentos.push({ id: Utils.uid(), claseId, tipo, titulo, fecha, periodo, saberes, unidad, nivel, niveles, apartados, criteriosModo, criterioIdsGlobal });
@@ -256,6 +263,7 @@ const InstrumentosView = (() => {
     const listaAp = body.querySelector('#lista-apartados');
     const listaNv = body.querySelector('#lista-niveles');
     const chipsGlobal = body.querySelector('#chips-criterios-global');
+    chipsGlobal.dataset.asig = asig.id;
     chipsGlobal.innerHTML = UI.chipsCriterios(asig.id, inst ? (inst.criterioIdsGlobal || []) : []);
     UI.wireChips(chipsGlobal);
 
@@ -375,17 +383,46 @@ const InstrumentosView = (() => {
     function refrescaNivel() {
       const nivel = nivelActual();
       const asigCrit = Calc.asignaturaDeNivel(claseId, nivel);
+      const idNuevo = String(asigCrit ? asigCrit.id : asig.id);
+      // Si ya estábamos pintando este mismo currículo, respetamos lo que el
+      // docente tenga marcado; si venimos de otro (o es la primera pintada),
+      // partimos de los criterios guardados del instrumento. Así, al editar un
+      // control ya hecho, sus criterios salen marcados.
+      const seleccion = (chipsGlobal.dataset.asig === idNuevo)
+        ? UI.valoresChips(chipsGlobal)
+        : (inst ? (inst.criterioIdsGlobal || []) : []);
+      chipsGlobal.dataset.asig = idNuevo;
       const hint = body.querySelector('#hint-asig-crit');
       if (hint) hint.textContent = 'Criterios del currículo de ' + (asigCrit ? asigCrit.nombre : '') +
         (nivel && nivel !== 'BASE' ? ' (nivel ' + Calc.etiquetaNivel(claseId, nivel) + ')' : '');
       pintaFilas(estadoFilas(), nivel);
-      chipsGlobal.innerHTML = UI.chipsCriterios(asigCrit ? asigCrit.id : asig.id, inst ? (inst.criterioIdsGlobal || []) : []);
+      chipsGlobal.innerHTML = UI.chipsCriterios(asigCrit ? asigCrit.id : asig.id, seleccion);
       UI.wireChips(chipsGlobal);
     }
     selTipo.onchange = refrescaTipo;
     if (body.querySelector('#f-critmodo')) body.querySelector('#f-critmodo').onchange = refrescaTipo;
     const selNivelEl = body.querySelector('#f-nivel');
-    if (selNivelEl) selNivelEl.onchange = refrescaNivel;
+    let nivelSel = nivelIni;
+    if (selNivelEl) selNivelEl.onchange = () => {
+      const nivel = nivelActual();
+      const idNuevo = String((Calc.asignaturaDeNivel(claseId, nivel) || asig).id);
+      // Cambiar de nivel cambia el currículo: los criterios marcados dejan de
+      // encajar. Avisamos antes de descartar la selección (no se pierde ninguna
+      // nota: solo qué criterios tenía marcados el formulario).
+      if (chipsGlobal.dataset.asig && chipsGlobal.dataset.asig !== idNuevo &&
+          (UI.valoresChips(chipsGlobal).length ||
+           Array.from(listaAp.querySelectorAll('.zona-crit')).some(z => UI.valoresChips(z).length))) {
+        const destino = Calc.asignaturaDeNivel(claseId, nivel);
+        if (!confirm('Vas a cambiar a «' + (destino ? destino.nombre : 'otro currículo') +
+          '». Los criterios que tienes marcados son del currículo actual y dejarán de estar marcados ' +
+          '(no se pierde ninguna nota). ¿Continuar?')) {
+          selNivelEl.value = nivelSel;
+          return;
+        }
+      }
+      nivelSel = nivel;
+      refrescaNivel();
+    };
     body.querySelector('#add-ap').onclick = () => addFilaApartado(null, null, selTipo.value === 'Rúbrica' ? columnasNivel(estadoFilas()) : []);
     body.querySelector('#add-nivel').onclick = () => { addFilaNivel(null); repintaGrid(); };
 
@@ -628,7 +665,7 @@ const InstrumentosView = (() => {
         if (!niveles.length) return;
         const elegidos = UI.valoresChips(body.querySelector('[data-campo=niveles-dup]'));
         if (!elegidos.length) { alert('Marca al menos un nivel'); return false; }
-        const titulos = elegidos.map(codigo => {
+        const copias = elegidos.map(codigo => {
           const copia = {
             id: Utils.uid(),
             claseId: inst.claseId,
@@ -640,6 +677,8 @@ const InstrumentosView = (() => {
             unidad: inst.unidad,
             nivel: codigo,
             niveles: (inst.niveles || []).map(n => ({ pct: n.pct, descriptor: n.descriptor })),
+            criteriosModo: inst.criteriosModo || 'desglosado',
+            criterioIdsGlobal: (inst.criterioIdsGlobal || []).slice(),
             apartados: (inst.apartados || []).map(ap => ({
               id: Utils.uid(),
               orden: ap.orden,
@@ -650,11 +689,23 @@ const InstrumentosView = (() => {
               niveles: (ap.niveles || []).map(n => ({ pct: n.pct, descriptor: n.descriptor }))
             }))
           };
-          Storage.db.instrumentos.push(copia);
-          return copia.titulo;
+          // La copia cambia de nivel: sus criterios deben ser los del currículo
+          // de ese nivel, no los del original (puede ser de otro ciclo). Se
+          // reapuntan por número de criterio; las notas nacen en blanco.
+          Calc.repararCriteriosDeInstrumento(Storage.db, copia);
+          return copia;
         });
+        const sinPar = copias.filter(c => Calc.criteriosFueraDeNivel(Storage.db, c).length);
+        if (sinPar.length) {
+          alert('No se puede crear el examen paralelo de: ' +
+            sinPar.map(c => Calc.etiquetaNivel(inst.claseId, c.nivel)).join(', ') +
+            '.\n\nAlguno de los criterios del original no tiene equivalente en ese currículo. ' +
+            'Crea esos criterios en «Currículo» (o duplica a un nivel con la misma estructura) y vuelve a intentarlo.');
+          return false;
+        }
+        copias.forEach(c => Storage.db.instrumentos.push(c));
         Storage.save();
-        UI.toast('Creado(s): ' + titulos.join(', '));
+        UI.toast('Creado(s): ' + copias.map(c => c.titulo).join(', '));
       }
     });
     UI.wireChips(mbody);

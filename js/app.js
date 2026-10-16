@@ -138,6 +138,12 @@ const App = (() => {
 
   function arrancar() {
     Storage.load();
+    if (Storage.reparadosCriterios) {
+      Storage.save();
+      UI.toast(Storage.reparadosCriterios === 1
+        ? 'Se han corregido los criterios de 1 instrumento para que coincidan con su nivel.'
+        : 'Se han corregido los criterios de ' + Storage.reparadosCriterios + ' instrumentos para que coincidan con su nivel.');
+    }
     document.getElementById('btn-guardar').onclick = () => Storage.guardar().catch(e => alert('Error al guardar: ' + e.message));
     document.getElementById('btn-exportar').onclick = () => Storage.exportar().catch(e => alert('Error al exportar: ' + e.message));
 

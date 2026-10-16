@@ -158,6 +158,55 @@ function estadoAci() {
   };
 }
 
+// Escenario del fallo real: el control de un nivel ACI se creó copiando los
+// criterios del control base (otro ciclo). Los códigos usan la numeración
+// LOMLOE (MAT.TC/SC/PC) para probar el reajuste por número de criterio.
+function estadoAciNumeros() {
+  return {
+    schemaVersion: 1,
+    cursoEscolar: '2025/2026',
+    grupos: [{ id: 'g1', nombre: '6ºA', etapa: 'Primaria' }],
+    alumnos: [
+      { id: 'a1', nombre: 'Ana', apellidos: 'Base', grupoId: 'g1' },
+      { id: 'a4', nombre: 'Carla', apellidos: 'Aci', grupoId: 'g1' }
+    ],
+    asignaturas: [
+      { id: 's1', nombre: 'Matemáticas 6º', etapa: 'Primaria' },
+      { id: 's2', nombre: 'Matemáticas 4º', etapa: 'Primaria' }
+    ],
+    clases: [{
+      id: 'c1', asignaturaId: 's1', grupoId: 'g1',
+      nivelesAci: [{ codigo: 'B', etiqueta: '4º', asignaturaId: 's2' }],
+      adaptaciones: { a4: 'B' }
+    }],
+    competenciasEspecificas: [],
+    criterios: [
+      { id: 'k11', asignaturaId: 's1', codigo: 'MAT.TC.1.1', descripcion: 'c11', peso: 50, espIds: [], claveIds: [] },
+      { id: 'k12', asignaturaId: 's1', codigo: 'MAT.TC.2.1', descripcion: 'c12', peso: 50, espIds: [], claveIds: [] },
+      { id: 'm11', asignaturaId: 's2', codigo: 'MAT.SC.1.1', descripcion: 'm11', peso: 50, espIds: [], claveIds: [] },
+      { id: 'm12', asignaturaId: 's2', codigo: 'MAT.SC.2.1', descripcion: 'm12', peso: 50, espIds: [], claveIds: [] }
+    ],
+    instrumentos: [
+      { id: 'iBase', claseId: 'c1', tipo: 'Control', titulo: 'Control base', fecha: '2026-01-10', periodo: 'T1', nivel: 'BASE', unidad: 'UD1',
+        apartados: [{ id: 'p1', orden: 1, descripcion: 'a', maxPts: 10, criterioIds: ['k11'] }] },
+      // El control del nivel B quedó con los criterios de 6º (k11): el fallo.
+      { id: 'iMal', claseId: 'c1', tipo: 'Control', titulo: 'Control 4º', fecha: '2026-01-10', periodo: 'T1', nivel: 'B', unidad: 'UD1',
+        apartados: [{ id: 'q1', orden: 1, descripcion: 'b', maxPts: 10, criterioIds: ['k11'] }] },
+      // Variante global: el criterio vive en criterioIdsGlobal.
+      { id: 'iMalGlobal', claseId: 'c1', tipo: 'Control', titulo: 'Control 4º global', fecha: '2026-01-10', periodo: 'T1', nivel: 'B', unidad: 'UD1',
+        criteriosModo: 'global', criterioIdsGlobal: ['k12'], apartados: [{ id: 'z1', orden: 1, descripcion: 'c', maxPts: 10, criterioIds: [] }] },
+      { id: 'iComun', claseId: 'c1', tipo: 'Prueba', titulo: 'Prueba común', fecha: '2026-02-01', periodo: 'T1', nivel: '', unidad: 'UD2',
+        apartados: [{ id: 'r1', orden: 1, descripcion: 'd', maxPts: 10, criterioIds: ['k11'] }] }
+    ],
+    registros: {
+      iBase: { a1: { p1: 8 } },
+      iMal: { a4: { q1: 8 } },
+      iMalGlobal: { a4: { z1: 6 } },
+      iComun: { a1: { r1: 6 } }
+    }
+  };
+}
+
 async function main() {
   console.log('\n== Carga y estado por defecto ==');
   {
@@ -629,6 +678,56 @@ async function main() {
     check('el título de cada sección del informe no se separa de su tabla',
       css.includes('break-after: avoid; page-break-after: avoid;') &&
       css.includes('.informe-seccion table { break-before: avoid; page-break-before: avoid; }'));
+  }
+
+  console.log('\n== Nivel ACI: los criterios del instrumento deben ser de su currículo ==');
+  {
+    const app = cargarApp();
+    app.Storage.load();
+    await importarJson(app, estadoAciNumeros());
+    const C = app.Calc;
+    const db = app.Storage.db;
+
+    // La migración reapunta al cargar: los dos instrumentos del nivel B que
+    // traían criterios de 6º pasan a los de 4º, emparejando por número.
+    const mal = C.instrumento('iMal');
+    const malG = C.instrumento('iMalGlobal');
+    check('al importar se corrige el instrumento de nivel con criterios de otro ciclo',
+      mal.apartados[0].criterioIds.join(',') === 'm11', mal.apartados[0].criterioIds.join(','));
+    check('también se corrige la variante global', malG.criterioIdsGlobal.join(',') === 'm12', malG.criterioIdsGlobal.join(','));
+    check('el número de corregidos se expone para poder avisar', app.Storage.reparadosCriterios === 2, String(app.Storage.reparadosCriterios));
+    check('no quedan criterios fuera de nivel', C.criteriosFueraDeNivel(db, mal).length === 0 && C.criteriosFueraDeNivel(db, malG).length === 0);
+    check('las notas siguen intactas tras reapuntar', db.registros.iMal.a4.q1 === 8 && db.registros.iMalGlobal.a4.z1 === 6);
+
+    // Efecto buscado: los criterios y la nota de la alumna ACI ya salen.
+    check('el criterio de 4º ya puntúa para la alumna ACI', Math.abs(C.logroCriterio('m11', 'c1', 'a4', 'T1') - 0.8) < 1e-9, String(C.logroCriterio('m11', 'c1', 'a4', 'T1')));
+    check('la nota de la alumna ACI deja de estar vacía', app.Utils.fmt(C.notaEvaluacion('c1', 'a4', 'T1')) === '7,0', app.Utils.fmt(C.notaEvaluacion('c1', 'a4', 'T1')));
+
+    // Los instrumentos base y común no se tocan.
+    check('el control base conserva sus criterios', C.instrumento('iBase').apartados[0].criterioIds.join(',') === 'k11');
+    check('la prueba común (sin nivel) no se toca', C.instrumento('iComun').apartados[0].criterioIds.join(',') === 'k11');
+
+    // Idempotencia: volver a migrar no cambia nada más.
+    app.Storage.migrar(JSON.parse(JSON.stringify(db)));
+    check('la corrección es idempotente', app.Storage.reparadosCriterios === 0, String(app.Storage.reparadosCriterios));
+
+    // La clave empareja por número entre ciclos.
+    check('claveCriterio empareja entre ciclos (TC/SC/PC)',
+      C.claveCriterio('MAT.TC.2.2') === '2.2' && C.claveCriterio('MAT.SC.2.2') === '2.2' && C.claveCriterio('MAT.PC.2.2') === '2.2');
+    check('claveCriterio ignora códigos sin número con punto', C.claveCriterio('C1') === '' && C.claveCriterio('') === '');
+
+    // Lo que usa «Duplicar» para crear un examen paralelo.
+    const copia = { claseId: 'c1', nivel: 'B', apartados: [{ id: 'x', criterioIds: ['k11', 'k12'] }] };
+    check('criteriosFueraDeNivel detecta los criterios del original', C.criteriosFueraDeNivel(db, copia).length === 2);
+    C.repararCriteriosDeInstrumento(db, copia);
+    check('duplicar a 4º reapunta los criterios por número', copia.apartados[0].criterioIds.join(',') === 'm11,m12', copia.apartados[0].criterioIds.join(','));
+    check('tras reapuntar ya no hay criterios fuera de nivel', C.criteriosFueraDeNivel(db, copia).length === 0);
+
+    // Blindaje: sin equivalente no se reapunta a medias (se deja visible).
+    db.criterios.push({ id: 'k99', asignaturaId: 's1', codigo: 'MAT.TC.9.9', descripcion: 'x', peso: 0, espIds: [], claveIds: [] });
+    const sinPar = { claseId: 'c1', nivel: 'B', apartados: [{ id: 'z', criterioIds: ['k99'] }] };
+    check('sin criterio equivalente no se toca nada',
+      !C.repararCriteriosDeInstrumento(db, sinPar) && sinPar.apartados[0].criterioIds[0] === 'k99');
   }
 
   console.log('\n' + (fallos ? 'FALLOS: ' + fallos + '/' + total : 'TODO OK: ' + total + ' comprobaciones'));
