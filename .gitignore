@@ -18,6 +18,8 @@ usb/
 tools/__pycache__/
 *.pyc
 *:Zone.Identifier
+# Índice local de CodeGraph (herramienta del agente, no se versiona)
+.codegraph/
 
 # Referencias internas de diseño (no se publican)
 /sources/rubrica_evaluacion.png
