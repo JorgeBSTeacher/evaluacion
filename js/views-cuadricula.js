@@ -69,20 +69,6 @@ const CuadriculaView = (() => {
 
   function tablaCriterios(alumnos, modoTodas, claseSel, periodo) {
     let criterios = Calc.criteriosDeNivel(claseSel, nivelSel);
-    if (modoTodas) {
-      const vistos = new Set();
-      criterios = [];
-      // nivel base
-      (Calc.criteriosDeNivel(claseSel, '') || []).forEach(c => {
-        if (!vistos.has(c.id)) { vistos.add(c.id); criterios.push(c); }
-      });
-      // niveles ACI
-      (Calc.nivelesAciDeClase(claseSel) || []).forEach(n => {
-        (Calc.criteriosDeNivel(claseSel, n.codigo) || []).forEach(c => {
-          if (!vistos.has(c.id)) { vistos.add(c.id); criterios.push(c); }
-        });
-      });
-    }
     if (!alumnos.length) return '<div class="aviso">El grupo de esta clase no tiene alumnado en este nivel.</div>';
     if (!criterios.length) return '<div class="vacio-grande">Este nivel no tiene criterios definidos.</div>';
     return `
@@ -91,36 +77,22 @@ const CuadriculaView = (() => {
           `<th title="${Utils.esc(c.descripcion)}">${Utils.esc(c.codigo)}<br><small>${Utils.fmt(c.peso)}%</small></th>`
         ).join('')}</tr></thead>
         <tbody>
-          ${alumnos.map(a => {
-            const esAci = modoTodas ? !!Calc.nivelDeAlumno(claseSel, a.id) : false;
-            return `<tr>
-              <td>${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}</td>
-              ${criterios.map(c => {
-                const l = Calc.logroCriterio(c.id, claseSel, a.id, periodo);
-                const n = (l == null ? null : l * 10);
-                const ast = esAci && n != null ? '<span class="aci-ast">*</span>' : '';
-                return `<td class="num">${n == null ? '<span class="badge na">—</span>' : '<span class="badge ' + Calc.clasif(n) + '">' + Utils.fmt(n) + ast + '</span>'}</td>`;
-              }).join('')}
-            </tr>`;
-          }).join('')}
+          ${alumnos.map(a => `<tr>
+            <td>${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}</td>
+            ${criterios.map(c => {
+              const l = Calc.logroCriterio(c.id, claseSel, a.id, periodo);
+              const n = (l == null ? null : l * 10);
+              return `<td class="num">${n == null ? '<span class="badge na">—</span>' : '<span class="badge ' + Calc.clasif(n) + '">' + Utils.fmt(n) + '</span>'}</td>`;
+            }).join('')}
+          </tr>`).join('')}
         </tbody>
       </table>
-      <p class="no-print" style="color:var(--tinta-suave);font-size:13px">% de logro acumulado por criterio del nivel${periodo === 'Final' ? ' (todo el curso)' : ' en ' + periodo}. «—» = sin evidencias todavía. ${modoTodas ? 'Los asteriscos (*) señalan alumnos con adaptación curricular (ACI).' : ''}</p>`;
+      <p class="no-print" style="color:var(--tinta-suave);font-size:13px">% de logro acumulado por criterio del nivel${periodo === 'Final' ? ' (todo el curso)' : ' en ' + periodo}. «—» = sin evidencias todavía.</p>`;
   }
 
   function tablaCompetencias(alumnos, modoTodas) {
     let esps = Calc.competenciasEspecificasDeNivel(claseSel, nivelSel);
     let claves = Calc.clavesDeNivel(claseSel, nivelSel);
-    if (modoTodas) {
-      const vistosEsp = new Set(), vistosCla = new Set();
-      esps = []; claves = [];
-      (Calc.competenciasEspecificasDeNivel(claseSel, '') || []).forEach(x => { if (!vistosEsp.has(x.id)) { vistosEsp.add(x.id); esps.push(x); }});
-      (Calc.clavesDeNivel(claseSel, '') || []).forEach(x => { if (!vistosCla.has(x.id)) { vistosCla.add(x.id); claves.push(x); }});
-      (Calc.nivelesAciDeClase(claseSel) || []).forEach(n => {
-        (Calc.competenciasEspecificasDeNivel(claseSel, n.codigo) || []).forEach(x => { if (!vistosEsp.has(x.id)) { vistosEsp.add(x.id); esps.push(x); }});
-        (Calc.clavesDeNivel(claseSel, n.codigo) || []).forEach(x => { if (!vistosCla.has(x.id)) { vistosCla.add(x.id); claves.push(x); }});
-      });
-    }
     if (!alumnos.length) return '<div class="aviso">El grupo de esta clase no tiene alumnado en este nivel.</div>';
 
     const tabla = (lista, titulo, fnNota, notaPie) => {
@@ -132,20 +104,16 @@ const CuadriculaView = (() => {
             `<th title="${Utils.esc(x.descripcion || x.nombre || '')}">${Utils.esc(x.codigo)}</th>`
           ).join('')}</tr></thead>
           <tbody>
-            ${alumnos.map(a => {
-              const esAci = modoTodas ? !!Calc.nivelDeAlumno(claseSel, a.id) : false;
-              return `<tr>
-                <td>${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}</td>
-                ${lista.map(x => {
-                  const n = fnNota(a, x);
-                  const ast = esAci && n != null ? '<span class="aci-ast">*</span>' : '';
-                  return `<td class="num">${n == null ? '<span class="badge na">—</span>' : `<span class="badge ${Calc.clasif(n)}">${Utils.fmt(n)}${ast}</span>`}</td>`;
-                }).join('')}
-              </tr>`;
-            }).join('')}
+            ${alumnos.map(a => `<tr>
+              <td>${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}</td>
+              ${lista.map(x => {
+                const n = fnNota(a, x);
+                return `<td class="num">${Calc.badgeHtml(n)}</td>`;
+              }).join('')}
+            </tr>`).join('')}
           </tbody>
         </table>
-        <p class="no-print" style="color:var(--tinta-suave);font-size:13px">${notaPie}${modoTodas ? ' Los asteriscos (*) señalan alumnos con adaptación curricular (ACI).' : ''}</p>`;
+        <p class="no-print" style="color:var(--tinta-suave);font-size:13px">${notaPie}</p>`;
     };
 
     const hayClaves = criteriosConClaves();
@@ -262,6 +230,8 @@ const CuadriculaView = (() => {
         </div>` : ''}
         <div class="scroll-x" id="contenido">
           ${tab === 'notas' ? tablaNotas(alumnos, insts, modoTodas)
+            : modoTodas && (tab === 'criterios' || tab === 'competencias')
+              ? '<div class="aviso">En la vista «Todos los niveles» solo se muestran los instrumentos y la nota armonizada de cada alumno. Elige un nivel concreto para ver criterios y competencias.</div>'
             : tab === 'criterios' ? tablaCriterios(alumnos, modoTodas, claseSel, periodo)
             : tablaCompetencias(alumnos, modoTodas)}
         </div>
