@@ -5,6 +5,24 @@ const Utils = {
   esc(s) {
     return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   },
+
+  // Enlace de un instrumento (al examen, al proyecto, a los materiales…).
+  // Al guardar se limpia: se descartan los esquemas peligrosos y, si falta el
+  // esquema, se asume https://. Al pintar se vuelve a comprobar, de modo que un
+  // backup manipulado no pueda inyectar código por el atributo href.
+  urlLimpia(u) {
+    let s = String(u == null ? '' : u).trim();
+    if (!s || this.esquemaPeligroso(s)) return '';
+    if (!/^[a-z][a-z0-9+.-]*:/i.test(s)) s = 'https://' + s;
+    return s;
+  },
+  urlPintable(u) {
+    const s = String(u == null ? '' : u).trim();
+    return (s && !this.esquemaPeligroso(s)) ? s : '';
+  },
+  esquemaPeligroso(s) {
+    return /^(javascript|data|vbscript):/i.test(String(s).trim());
+  },
   fmt(n) {
     if (n == null || isNaN(n)) return '—';
     return (Math.round(n * 10) / 10).toFixed(1).replace('.', ',');

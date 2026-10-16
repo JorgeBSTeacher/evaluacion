@@ -32,8 +32,9 @@ const InstrumentosView = (() => {
       .filter(n => n != null);
     const media = notas.length ? notas.reduce((x, y) => x + y, 0) / notas.length : null;
     const nivelTxt = i.nivel ? Calc.etiquetaNivel(i.claseId, i.nivel) : '';
+    const url = Utils.urlPintable(i.url);
     return `<tr data-inst="${i.id}">
-      <td><b>${Utils.esc(i.titulo)}</b></td>
+      <td>${url ? `<a href="${Utils.esc(url)}" target="_blank" rel="noopener" title="Enlace del instrumento: ${Utils.esc(url)}"><b>${Utils.esc(i.titulo)}</b></a>` : `<b>${Utils.esc(i.titulo)}</b>`}</td>
       <td><span class="badge info">${Utils.esc(i.tipo)}</span></td>
       <td>${nivelTxt ? `<span class="badge info">${Utils.esc(nivelTxt)}</span> ` : ''}${i.unidad ? `<span class="badge na">${Utils.esc(i.unidad)}</span>` : ''}${!nivelTxt && !i.unidad ? '<span style="color:var(--tinta-suave)">—</span>' : ''}</td>
       <td>${Utils.esc(i.fecha)}</td>
@@ -182,7 +183,10 @@ const InstrumentosView = (() => {
           <small id="hint-asig-crit" style="display:block;color:var(--tinta-suave)"></small>
           <div id="lista-apartados"></div>
         </label>
-        <button class="btn btn-mini" type="button" id="add-ap">Añadir apartado</button>`,
+        <button class="btn btn-mini" type="button" id="add-ap">Añadir apartado</button>
+        <label class="campo" style="margin-top:14px"><span>Enlace (opcional)</span>
+          <input type="url" id="f-url" value="${Utils.esc(inst ? (inst.url || '') : '')}" placeholder="https://… (examen, proyecto, materiales)">
+          <small class="hint">Dirección del examen, del proyecto o de los materiales. Quedará a mano en el listado y al corregir.</small></label>`,
       textoGuardar: esNueva ? 'Crear' : 'Guardar cambios',
       alGuardar(body) {
         const titulo = body.querySelector('#f-titulo').value.trim();
@@ -192,6 +196,8 @@ const InstrumentosView = (() => {
         const saberes = body.querySelector('#f-saberes').value.trim();
         const unidad = body.querySelector('#f-unidad').value.trim();
         const nivel = (body.querySelector('#f-nivel') || {}).value || '';
+        const urlCampo = body.querySelector('#f-url');
+        const url = urlCampo ? Utils.urlLimpia(urlCampo.value) : (inst ? (inst.url || '') : '');
         const esRubrica = tipo === 'Rúbrica';
         const niveles = Array.from(body.querySelectorAll('.nivel-fila')).map(f => ({
           pct: parseFloat(f.querySelector('.nv-pct').value),
@@ -245,9 +251,9 @@ const InstrumentosView = (() => {
         }
 
         if (esNueva) {
-          Storage.db.instrumentos.push({ id: Utils.uid(), claseId, tipo, titulo, fecha, periodo, saberes, unidad, nivel, niveles, apartados, criteriosModo, criterioIdsGlobal });
+          Storage.db.instrumentos.push({ id: Utils.uid(), claseId, tipo, titulo, fecha, periodo, saberes, unidad, nivel, niveles, apartados, criteriosModo, criterioIdsGlobal, url });
         } else {
-          Object.assign(inst, { tipo, titulo, fecha, periodo, saberes, unidad, nivel, niveles, apartados, criteriosModo, criterioIdsGlobal });
+          Object.assign(inst, { tipo, titulo, fecha, periodo, saberes, unidad, nivel, niveles, apartados, criteriosModo, criterioIdsGlobal, url });
         }
         Storage.save();
       }
@@ -556,12 +562,16 @@ const InstrumentosView = (() => {
     if (!inst) { render(el); return; }
     const alumnos = Calc.alumnosDeInstrumento(inst);
     const esRubrica = inst.tipo === 'Rúbrica';
+    const url = Utils.urlPintable(inst.url);
 
     el.innerHTML = `
       <section class="card no-print">
         <div class="card-head">
           <h2>${Utils.esc(inst.titulo)}</h2>
-          <button class="btn" id="volver">Volver</button>
+          <div style="display:flex;gap:8px;align-items:center">
+            ${url ? `<a class="btn" href="${Utils.esc(url)}" target="_blank" rel="noopener" title="${Utils.esc(url)}">Abrir enlace</a>` : ''}
+            <button class="btn" id="volver">Volver</button>
+          </div>
         </div>
         <div class="chips" style="margin-bottom:10px">
           <span class="badge info">${Utils.esc(inst.tipo)}</span>

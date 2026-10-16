@@ -510,6 +510,13 @@ async function main() {
     const h = el.innerHTML;
     check('la corrección incluye la barra de navegación', h.includes('id="barra-nav"') && h.includes('id="nav-info"'));
     check('el botón «Guardar y siguiente» existe', h.includes('id="btn-siguiente"') && h.includes('Guardar y siguiente'));
+
+    // Un instrumento con enlace ofrece abrirlo mientras se corrige.
+    app.Storage.db.instrumentos.find(i => i.id === 'iBase').url = 'https://ejemplo.test/control';
+    const el2 = makeEl();
+    app.InstrumentosView.renderCorreccion(el2, 'iBase');
+    check('la corrección ofrece abrir el enlace del instrumento',
+      el2.innerHTML.includes('Abrir enlace') && el2.innerHTML.includes('href="https://ejemplo.test/control"'), el2.innerHTML.slice(0, 80));
   }
 
   console.log('\n== Importador de currículo ==');
@@ -656,9 +663,9 @@ async function main() {
     app.Storage.load();
     const est = estadoAci();
     est.instrumentos.push(
-      { id: 'i1', claseId: 'c1', tipo: 'Control', titulo: 'UD1 control', fecha: '2026-01-10', periodo: 'T1', nivel: '', unidad: 'UD1', saberes: '', niveles: [{ pct: 100, descriptor: '' }], apartados: [{ id: 'p1', orden: 1, descripcion: 'a', maxPts: 10, criterioIds: ['k1'] }], criteriosModo: 'desglosado', criterioIdsGlobal: [] },
+      { id: 'i1', claseId: 'c1', tipo: 'Control', titulo: 'UD1 control', fecha: '2026-01-10', periodo: 'T1', nivel: '', unidad: 'UD1', saberes: '', url: 'https://ejemplo.test/ud1', niveles: [{ pct: 100, descriptor: '' }], apartados: [{ id: 'p1', orden: 1, descripcion: 'a', maxPts: 10, criterioIds: ['k1'] }], criteriosModo: 'desglosado', criterioIdsGlobal: [] },
       { id: 'i2', claseId: 'c1', tipo: 'Control', titulo: 'UD2 control', fecha: '2026-02-10', periodo: 'T2', nivel: '', unidad: 'UD2', saberes: '', niveles: [{ pct: 100, descriptor: '' }], apartados: [{ id: 'p2', orden: 1, descripcion: 'a', maxPts: 10, criterioIds: ['k2'] }], criteriosModo: 'desglosado', criterioIdsGlobal: [] },
-      { id: 'i3', claseId: 'c1', tipo: 'Proyecto', titulo: 'Proyecto suelto', fecha: '2026-03-10', periodo: 'T1', nivel: '', unidad: '', saberes: '', niveles: [{ pct: 100, descriptor: '' }], apartados: [{ id: 'p3', orden: 1, descripcion: 'a', maxPts: 10, criterioIds: ['k1'] }], criteriosModo: 'desglosado', criterioIdsGlobal: [] }
+      { id: 'i3', claseId: 'c1', tipo: 'Proyecto', titulo: 'Proyecto suelto', fecha: '2026-03-10', periodo: 'T1', nivel: '', unidad: '', saberes: '', url: 'javascript:alert(1)', niveles: [{ pct: 100, descriptor: '' }], apartados: [{ id: 'p3', orden: 1, descripcion: 'a', maxPts: 10, criterioIds: ['k1'] }], criteriosModo: 'desglosado', criterioIdsGlobal: [] }
     );
     await importarJson(app, est);
     const C = app.Calc;
@@ -680,6 +687,8 @@ async function main() {
     check('por defecto todos los bloques están cerrados', h.includes('ud-bloque') && !h.includes('ud-bloque abierta'));
     check('cada bloque lleva su tabla de instrumentos', h.includes('ud-cuerpo'));
     check('los instrumentos siguen estando en el listado', h.includes('UD1 control') && h.includes('UD2 control') && h.includes('Proyecto suelto'));
+    check('un instrumento con enlace lo pinta como enlace', h.includes('href="https://ejemplo.test/ud1"'));
+    check('un enlace peligroso (javascript:) no se pinta', !h.includes('href="javascript:'));
     check('la vista ya no tiene el desplegable de unidades', !h.includes('id="sel-ud-inst"'));
   }
 
@@ -773,6 +782,17 @@ async function main() {
       !C.repararCriteriosDeInstrumento(db, sinPar) && sinPar.apartados[0].criterioIds[0] === 'k99');
   }
 
+  console.log('\n== Enlaces de instrumento: normalización y seguridad ==');
+  {
+    const app = cargarApp();
+    const U = app.Utils;
+    check('un enlace sin esquema recibe https://', U.urlLimpia('drive.google.com/x') === 'https://drive.google.com/x', U.urlLimpia('drive.google.com/x'));
+    check('un enlace con esquema se respeta', U.urlLimpia('http://a.test/b') === 'http://a.test/b' && U.urlLimpia('mailto:x@y.test') === 'mailto:x@y.test');
+    check('se descartan los esquemas peligrosos al guardar', U.urlLimpia('javascript:alert(1)') === '' && U.urlLimpia('  DATA:text/html,x') === '');
+    check('urlPintable bloquea javascript: aunque venga de un backup', U.urlPintable('javascript:alert(1)') === '' && U.urlPintable('https://a.test') === 'https://a.test');
+    check('urlPintable vacío con cadena vacía o nula', U.urlPintable('') === '' && U.urlPintable(null) === '');
+  }
+
   console.log('\n== Banco de instrumentos: reutilizar en otra clase o curso (D-48) ==');
   {
     const app = cargarApp();
@@ -785,10 +805,12 @@ async function main() {
       Array.isArray(S.db.bancoInstrumentos) && S.db.bancoInstrumentos.length === 0);
 
     const inst = C.instrumento('i1');
+    inst.url = 'https://ejemplo.test/examen';
     const molde = S.guardarEnBanco(inst);
     check('el molde guarda los criterios por CÓDIGO (no por id)',
       molde.apartados[0].criterioCodes.join(',') === 'MAT.TC.1.1' && molde.apartados[1].criterioCodes.join(',') === 'MAT.TC.2.1',
       JSON.stringify(molde.apartados.map(a => a.criterioCodes)));
+    check('el molde conserva el enlace del instrumento', molde.url === 'https://ejemplo.test/examen', molde.url);
     check('el molde recuerda su asignatura de origen', molde.origen.asignatura === 'Matemáticas 6º', molde.origen.asignatura);
     check('guardar en el banco no duplica el instrumento del curso', S.db.instrumentos.length === 1);
     check('guardar en el banco no toca las notas del original', S.db.registros.i1.a1.p1 === 8);
@@ -802,6 +824,7 @@ async function main() {
       JSON.stringify(r.inst.apartados.map(a => a.criterioIds)));
     check('la copia nace sin notas', S.db.registros[r.inst.id] === undefined);
     check('la copia recibe ids de apartado nuevos', r.inst.apartados[0].id !== 'p1');
+    check('la copia conserva el enlace del molde', r.inst.url === 'https://ejemplo.test/examen', r.inst.url);
 
     // Otro currículo: si un código no existe en el destino no se crea nada.
     const antes = S.db.instrumentos.length;
