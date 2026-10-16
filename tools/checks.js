@@ -730,6 +730,13 @@ async function main() {
     check('el título de cada sección del informe no se separa de su tabla',
       css.includes('break-after: avoid; page-break-after: avoid;') &&
       css.includes('.informe-seccion table { break-before: avoid; page-break-before: avoid; }'));
+
+    // La fila de apartado (Control/Proyecto) pinta 6 controles: nº, descripción,
+    // máximo, «peso», «Criterios» y «Quitar». Si el grid declara menos columnas,
+    // «Quitar» se va a una segunda fila (la columna de 28px) y no cabe su texto.
+    const apCols = (css.match(/\.apartado-fila\s*\{[^}]*grid-template-columns:\s*([^;]+);/) || [])[1];
+    check('la fila de apartado (no rúbrica) declara una columna por control: «Quitar» no salta de fila',
+      !!apCols && apCols.trim().split(/\s+/).length === 6, apCols);
   }
 
   console.log('\n== Nivel ACI: los criterios del instrumento deben ser de su currículo ==');
