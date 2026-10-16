@@ -277,6 +277,16 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--acento-suav
 .fila-corrige-txt b { font-size: 14px; }
 .fila-corrige-txt small { color: var(--tinta-suave); font-size: 12px; }
 
+/* Filas del banco de instrumentos (modal «Banco de instrumentos», D-48). */
+.fila-banco {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  background: #fff; border: 1px solid var(--linea); border-radius: 10px;
+  padding: 10px 12px; margin-bottom: 8px;
+}
+.fila-banco-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.fila-banco-txt b { font-size: 14px; }
+.fila-banco-txt small { color: var(--tinta-suave); font-size: 12px; }
+
 @media print {
   .topbar, #modal-root, #toast-root, .no-print { display: none !important; }
   /* Al imprimir, los bloques plegables de Instrumentos salen abiertos. */
@@ -413,6 +423,9 @@ const Storage = {
       competenciasEspecificas: [],
       criterios: [],
       instrumentos: [],
+      // Moldes de instrumentos guardados para reutilizarlos en otra clase o en
+      // el curso siguiente (D-48).
+      bancoInstrumentos: [],
       registros: {}
     };
   },
@@ -643,6 +656,21 @@ const Storage = {
         if (!Array.isArray(ap.niveles)) ap.niveles = [];
       });
     });
+    // Moldes guardados en el banco: se sanean al cargar para que un backup
+    // antiguo (o editado a mano) no rompa la vista del banco.
+    if (!Array.isArray(db.bancoInstrumentos)) db.bancoInstrumentos = [];
+    db.bancoInstrumentos.forEach(m => {
+      if (m.unidad == null) m.unidad = '';
+      if (m.criteriosModo == null) m.criteriosModo = 'desglosado';
+      if (!Array.isArray(m.niveles)) m.niveles = [];
+      if (!Array.isArray(m.criterioCodesGlobal)) m.criterioCodesGlobal = [];
+      if (!m.origen || typeof m.origen !== 'object') m.origen = {};
+      if (!Array.isArray(m.apartados)) m.apartados = [];
+      m.apartados.forEach(ap => {
+        if (!Array.isArray(ap.criterioCodes)) ap.criterioCodes = [];
+        if (!Array.isArray(ap.niveles)) ap.niveles = [];
+      });
+    });
     // Un instrumento con nivel ACI debe evaluar los criterios de SU currículo.
     // Los creados con «Duplicar» antes de esta versión copiaban los del original
     // (otro ciclo) y sus notas no salían en el informe; aquí se reapuntan por
@@ -672,6 +700,34 @@ const Storage = {
     try { localStorage.removeItem(this.KEY); } catch (e) {}
     this.db = this.defaults();
     this.save();
+  },
+
+  // --- Banco de instrumentos (D-48) ---
+  // Guarda un instrumento del curso como molde reutilizable. Devuelve el molde.
+  guardarEnBanco(inst) {
+    if (!Array.isArray(this.db.bancoInstrumentos)) this.db.bancoInstrumentos = [];
+    const molde = Calc.moldeDeInstrumento(this.db, inst);
+    this.db.bancoInstrumentos.push(molde);
+    this.save();
+    return molde;
+  },
+
+  borrarDelBanco(moldeId) {
+    this.db.bancoInstrumentos = (this.db.bancoInstrumentos || []).filter(m => m.id !== moldeId);
+    this.save();
+  },
+
+  // Crea un instrumento nuevo en `claseId` a partir de un molde del banco. Si
+  // algún criterio del molde no existe en el currículo de destino, no crea nada
+  // y devuelve esa lista en `faltan`.
+  anadirDesdeBanco(moldeId, claseId, nivel, periodo) {
+    const molde = (this.db.bancoInstrumentos || []).find(m => m.id === moldeId);
+    if (!molde) return { faltan: ['(el molde ya no está en el banco)'] };
+    const r = Calc.instrumentoDesdeMolde(molde, claseId, nivel, periodo);
+    if (r.faltan.length) return { faltan: r.faltan, molde };
+    this.db.instrumentos.push(r.inst);
+    this.save();
+    return { inst: r.inst, faltan: [], molde };
   },
 
   importarCurriculo(datos) {
@@ -1106,6 +1162,98 @@ const Calc = {
     let n = 0;
     (db.instrumentos || []).forEach(inst => { if (this.repararCriteriosDeInstrumento(db, inst)) n++; });
     return n;
+  },
+
+  // --- Banco de instrumentos (D-48) ---
+  // Un «molde» es la plantilla de un instrumento (título, tipo, apartados y
+  // criterios) guardada para reutilizarla en otra clase o en el curso siguiente.
+  // Guarda los criterios por CÓDIGO, no por id: así el molde sigue siendo válido
+  // aunque su asignatura de origen desaparezca, y los ids reales los pone el
+  // currículo de la clase de destino al añadirlo.
+
+  // Molde a partir de un instrumento ya guardado. `db` explícito para poder
+  // probarlo sin depender del estado global.
+  moldeDeInstrumento(db, inst) {
+    const porId = {};
+    (db.criterios || []).forEach(c => { porId[c.id] = c; });
+    const codigos = ids => [...new Set((ids || [])
+      .map(id => (porId[id] || {}).codigo)
+      .filter(Boolean))];
+    const clase = (db.clases || []).find(c => c.id === inst.claseId);
+    const asig = clase ? (db.asignaturas || []).find(a => a.id === clase.asignaturaId) : null;
+    return {
+      id: Utils.uid(),
+      titulo: inst.titulo || '',
+      tipo: inst.tipo || 'Control',
+      unidad: inst.unidad || '',
+      saberes: inst.saberes || '',
+      niveles: (inst.niveles || []).map(n => ({ pct: n.pct, descriptor: n.descriptor })),
+      criteriosModo: inst.criteriosModo || 'desglosado',
+      criterioCodesGlobal: codigos(inst.criterioIdsGlobal),
+      apartados: (inst.apartados || []).map(ap => ({
+        descripcion: ap.descripcion || '',
+        maxPts: ap.maxPts,
+        peso: ap.peso,
+        niveles: (ap.niveles || []).map(n => ({ pct: n.pct, descriptor: n.descriptor })),
+        criterioCodes: codigos(ap.criterioIds)
+      })),
+      origen: {
+        asignaturaId: asig ? asig.id : '',
+        asignatura: asig ? asig.nombre : '',
+        etapa: asig ? (asig.etapa || '') : '',
+        guardadoEn: Utils.hoy()
+      }
+    };
+  },
+
+  // Instrumento nuevo a partir de un molde del banco, para la clase y el nivel
+  // indicados. Los códigos se resuelven contra el currículo de destino por
+  // código EXACTO (la numeración cambia entre ciclos; para reapuntar entre
+  // ciclos está «Duplicar» con el nivel). Devuelve { inst, faltan }: si `faltan`
+  // no está vacío, NO debe crearse el instrumento.
+  instrumentoDesdeMolde(molde, claseId, nivel, periodo) {
+    const asig = this.asignaturaDeNivel(claseId, nivel || '');
+    const faltan = [];
+    const porCodigo = {};
+    if (asig) {
+      Storage.db.criterios
+        .filter(c => c.asignaturaId === asig.id)
+        .forEach(c => { porCodigo[String(c.codigo).trim().toLowerCase()] = c.id; });
+    }
+    const resolver = codigos => {
+      const ids = [];
+      (codigos || []).forEach(cod => {
+        const id = porCodigo[String(cod).trim().toLowerCase()];
+        if (id) { if (ids.indexOf(id) === -1) ids.push(id); }
+        else if (faltan.indexOf(cod) === -1) faltan.push(cod);
+      });
+      return ids;
+    };
+    const apartados = (molde.apartados || []).map((ap, i) => ({
+      id: Utils.uid(),
+      orden: i + 1,
+      descripcion: ap.descripcion || '',
+      maxPts: ap.maxPts,
+      peso: ap.peso,
+      niveles: (ap.niveles || []).map(n => ({ pct: n.pct, descriptor: n.descriptor })),
+      criterioIds: resolver(ap.criterioCodes)
+    }));
+    const inst = {
+      id: Utils.uid(),
+      claseId,
+      tipo: molde.tipo || 'Control',
+      titulo: molde.titulo || '',
+      fecha: Utils.hoy(),
+      periodo: periodo || 'T1',
+      saberes: molde.saberes || '',
+      unidad: molde.unidad || '',
+      nivel: this.nivelNorm(nivel || ''),
+      niveles: (molde.niveles || []).map(n => ({ pct: n.pct, descriptor: n.descriptor })),
+      apartados,
+      criteriosModo: molde.criteriosModo || 'desglosado',
+      criterioIdsGlobal: resolver(molde.criterioCodesGlobal)
+    };
+    return { inst, faltan };
   },
 
   // Un instrumento sin nivel es común a todos; con nivel, solo para ese nivel
@@ -2025,6 +2173,7 @@ const InstrumentosView = (() => {
         <button class="btn btn-mini btn-primario corregir">Corregir</button>
         <button class="btn btn-mini editar">Editar</button>
         <button class="btn btn-mini duplicar" title="Crear examen paralelo para un nivel ACI">Duplicar</button>
+        <button class="btn btn-mini al-banco" title="Guardar una copia en el banco para reutilizarla en otra clase o el curso siguiente">Al banco</button>
         <button class="icon-btn borrar-inst" title="Eliminar">×</button>
       </td>
     </tr>`;
@@ -2429,6 +2578,74 @@ const InstrumentosView = (() => {
     Storage.db.instrumentos = Storage.db.instrumentos.filter(i => i.id !== inst.id);
     Storage.save();
     render(el);
+  }
+
+  // --- Banco de instrumentos (D-48) ---
+  // Guarda una copia del instrumento (título, apartados y criterios) para
+  // reutilizarla en otra clase o el curso siguiente. No toca el original.
+  function guardarAlBanco(el, inst) {
+    Storage.guardarEnBanco(inst);
+    UI.toast('Guardado en el banco: ' + inst.titulo);
+    render(el);
+  }
+
+  // Lista del banco para añadir una copia a la clase activa, con las notas en
+  // blanco y los criterios reapuntados al currículo de esa clase.
+  function modalBanco(el) {
+    const banco = (Storage.db.bancoInstrumentos || []).slice().reverse(); // los últimos, primero
+    const asig = Calc.asignaturaDeClase(claseSel);
+    const clase = Calc.clase(claseSel);
+    const grupo = clase ? (Calc.byId(Storage.db.grupos, clase.grupoId) || {}) : {};
+    const destino = asig ? `${asig.nombre} · ${grupo.nombre || '?'}` : 'la clase elegida';
+    if (!banco.length) {
+      UI.openModal({
+        titulo: 'Banco de instrumentos',
+        cuerpo: `<div class="aviso">Todavía no has guardado ningún instrumento en el banco.
+          Para guardar uno, tócalo en la lista con <b>«Al banco»</b> y quedará disponible aquí.</div>`
+      });
+      return;
+    }
+    const cuerpo = `
+      <p class="hint">Instrumentos guardados para reutilizar. Al pulsar «Usar» se añade una copia a
+        <b>${Utils.esc(destino)}</b>, con las notas en blanco y los mismos apartados y criterios.</p>
+      <label class="campo"><span>Periodo del instrumento que se añada</span>
+        <select id="banco-periodo">${PERIODOS.map(p => `<option ${p === 'T1' ? 'selected' : ''}>${p}</option>`).join('')}</select></label>
+      ${banco.map(m => `
+        <div class="fila-banco" data-molde="${Utils.esc(m.id)}">
+          <span class="fila-banco-txt">
+            <b>${Utils.esc(m.titulo || '(sin título)')}</b>
+            <small>${Utils.esc(m.tipo || '')}${m.unidad ? ' · ' + Utils.esc(m.unidad) : ''}${m.origen && m.origen.asignatura ? ' · de ' + Utils.esc(m.origen.asignatura) : ''} · ${(m.apartados || []).length} apartado${(m.apartados || []).length === 1 ? '' : 's'}</small>
+          </span>
+          <button type="button" class="btn btn-mini btn-primario banco-usar">Usar</button>
+          <button type="button" class="icon-btn banco-quitar" title="Quitar del banco (no borra ningún instrumento del curso)">×</button>
+        </div>`).join('')}`;
+    const mbody = UI.openModal({ titulo: 'Banco de instrumentos', cuerpo });
+    mbody.querySelectorAll('.banco-usar').forEach(b => {
+      b.onclick = () => {
+        const moldeId = b.closest('[data-molde]').dataset.molde;
+        const periodo = (mbody.querySelector('#banco-periodo') || {}).value || 'T1';
+        const r = Storage.anadirDesdeBanco(moldeId, claseSel, '', periodo);
+        if (r.faltan.length) {
+          const nombre = (r.molde && r.molde.titulo) || '';
+          alert('No se puede añadir «' + nombre + '» a ' + (asig ? asig.nombre : 'esta clase') +
+            '.\n\nEstos criterios del instrumento no existen en esa asignatura:\n' + r.faltan.join(', ') +
+            '\n\nSe guardó desde un currículo distinto. Créalos en «Currículo», o guárdalo desde una clase que use esa asignatura.');
+          return;
+        }
+        UI.closeModal();
+        UI.toast('Añadido: ' + r.inst.titulo);
+        render(el);
+      };
+    });
+    mbody.querySelectorAll('.banco-quitar').forEach(b => {
+      b.onclick = () => {
+        const fila = b.closest('[data-molde]');
+        const m = (Storage.db.bancoInstrumentos || []).find(x => x.id === fila.dataset.molde);
+        if (!confirm('¿Quitar «' + ((m && m.titulo) || '') + '» del banco?\n\nNo se borra ningún instrumento del curso.')) return;
+        Storage.borrarDelBanco(fila.dataset.molde);
+        modalBanco(el);
+      };
+    });
   }
 
   // «¿Qué quieres corregir?»: listado de la clase ordenado por lo que falta.
@@ -2872,6 +3089,7 @@ ${codigos}`;
           ${lista.length ? selPer : ''}
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-primario" id="add-inst">Nuevo instrumento</button>
+            <button class="btn" id="btn-banco" title="Reutilizar un instrumento guardado (otra clase o el curso siguiente)">Añadir desde el banco${(db.bancoInstrumentos || []).length ? ' (' + db.bancoInstrumentos.length + ')' : ''}</button>
           </div>
         </div>
         ${lista.length ? secciones : '<div class="aviso">Sin instrumentos en esta clase.</div>'}
@@ -2882,6 +3100,7 @@ ${codigos}`;
       el.querySelector('#sel-per').onchange = e => { perSel = e.target.value; render(el); };
     }
     el.querySelector('#add-inst').onclick = () => modalInstrumento(null);
+    el.querySelector('#btn-banco').onclick = () => modalBanco(el);
 
     el.querySelectorAll('[data-ud-clave]').forEach(b => {
       b.onclick = () => {
@@ -2896,12 +3115,13 @@ ${codigos}`;
       tr.querySelector('.corregir').onclick = () => renderCorreccion(el, inst.id);
       tr.querySelector('.editar').onclick = () => modalInstrumento(inst);
       tr.querySelector('.duplicar').onclick = () => duplicarInstrumento(inst);
+      tr.querySelector('.al-banco').onclick = () => guardarAlBanco(el, inst);
       tr.querySelector('.borrar-inst').onclick = () => borrarInstrumento(el, inst);
     });
   }
 
   // API pública de la vista: las demás vistas solo deben usar esto (D-29).
-  return { render, renderCorreccion, modalInstrumento, modalCalificar, filasCorregirHtml, filaApartado, cabeceraRubrica, plantillaColumnas, promptIa, datalistUnidades };
+  return { render, renderCorreccion, modalInstrumento, modalCalificar, filasCorregirHtml, filaApartado, cabeceraRubrica, plantillaColumnas, promptIa, datalistUnidades, modalBanco };
 })();
 
 </script>

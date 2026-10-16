@@ -43,6 +43,7 @@ const InstrumentosView = (() => {
         <button class="btn btn-mini btn-primario corregir">Corregir</button>
         <button class="btn btn-mini editar">Editar</button>
         <button class="btn btn-mini duplicar" title="Crear examen paralelo para un nivel ACI">Duplicar</button>
+        <button class="btn btn-mini al-banco" title="Guardar una copia en el banco para reutilizarla en otra clase o el curso siguiente">Al banco</button>
         <button class="icon-btn borrar-inst" title="Eliminar">×</button>
       </td>
     </tr>`;
@@ -447,6 +448,74 @@ const InstrumentosView = (() => {
     Storage.db.instrumentos = Storage.db.instrumentos.filter(i => i.id !== inst.id);
     Storage.save();
     render(el);
+  }
+
+  // --- Banco de instrumentos (D-48) ---
+  // Guarda una copia del instrumento (título, apartados y criterios) para
+  // reutilizarla en otra clase o el curso siguiente. No toca el original.
+  function guardarAlBanco(el, inst) {
+    Storage.guardarEnBanco(inst);
+    UI.toast('Guardado en el banco: ' + inst.titulo);
+    render(el);
+  }
+
+  // Lista del banco para añadir una copia a la clase activa, con las notas en
+  // blanco y los criterios reapuntados al currículo de esa clase.
+  function modalBanco(el) {
+    const banco = (Storage.db.bancoInstrumentos || []).slice().reverse(); // los últimos, primero
+    const asig = Calc.asignaturaDeClase(claseSel);
+    const clase = Calc.clase(claseSel);
+    const grupo = clase ? (Calc.byId(Storage.db.grupos, clase.grupoId) || {}) : {};
+    const destino = asig ? `${asig.nombre} · ${grupo.nombre || '?'}` : 'la clase elegida';
+    if (!banco.length) {
+      UI.openModal({
+        titulo: 'Banco de instrumentos',
+        cuerpo: `<div class="aviso">Todavía no has guardado ningún instrumento en el banco.
+          Para guardar uno, tócalo en la lista con <b>«Al banco»</b> y quedará disponible aquí.</div>`
+      });
+      return;
+    }
+    const cuerpo = `
+      <p class="hint">Instrumentos guardados para reutilizar. Al pulsar «Usar» se añade una copia a
+        <b>${Utils.esc(destino)}</b>, con las notas en blanco y los mismos apartados y criterios.</p>
+      <label class="campo"><span>Periodo del instrumento que se añada</span>
+        <select id="banco-periodo">${PERIODOS.map(p => `<option ${p === 'T1' ? 'selected' : ''}>${p}</option>`).join('')}</select></label>
+      ${banco.map(m => `
+        <div class="fila-banco" data-molde="${Utils.esc(m.id)}">
+          <span class="fila-banco-txt">
+            <b>${Utils.esc(m.titulo || '(sin título)')}</b>
+            <small>${Utils.esc(m.tipo || '')}${m.unidad ? ' · ' + Utils.esc(m.unidad) : ''}${m.origen && m.origen.asignatura ? ' · de ' + Utils.esc(m.origen.asignatura) : ''} · ${(m.apartados || []).length} apartado${(m.apartados || []).length === 1 ? '' : 's'}</small>
+          </span>
+          <button type="button" class="btn btn-mini btn-primario banco-usar">Usar</button>
+          <button type="button" class="icon-btn banco-quitar" title="Quitar del banco (no borra ningún instrumento del curso)">×</button>
+        </div>`).join('')}`;
+    const mbody = UI.openModal({ titulo: 'Banco de instrumentos', cuerpo });
+    mbody.querySelectorAll('.banco-usar').forEach(b => {
+      b.onclick = () => {
+        const moldeId = b.closest('[data-molde]').dataset.molde;
+        const periodo = (mbody.querySelector('#banco-periodo') || {}).value || 'T1';
+        const r = Storage.anadirDesdeBanco(moldeId, claseSel, '', periodo);
+        if (r.faltan.length) {
+          const nombre = (r.molde && r.molde.titulo) || '';
+          alert('No se puede añadir «' + nombre + '» a ' + (asig ? asig.nombre : 'esta clase') +
+            '.\n\nEstos criterios del instrumento no existen en esa asignatura:\n' + r.faltan.join(', ') +
+            '\n\nSe guardó desde un currículo distinto. Créalos en «Currículo», o guárdalo desde una clase que use esa asignatura.');
+          return;
+        }
+        UI.closeModal();
+        UI.toast('Añadido: ' + r.inst.titulo);
+        render(el);
+      };
+    });
+    mbody.querySelectorAll('.banco-quitar').forEach(b => {
+      b.onclick = () => {
+        const fila = b.closest('[data-molde]');
+        const m = (Storage.db.bancoInstrumentos || []).find(x => x.id === fila.dataset.molde);
+        if (!confirm('¿Quitar «' + ((m && m.titulo) || '') + '» del banco?\n\nNo se borra ningún instrumento del curso.')) return;
+        Storage.borrarDelBanco(fila.dataset.molde);
+        modalBanco(el);
+      };
+    });
   }
 
   // «¿Qué quieres corregir?»: listado de la clase ordenado por lo que falta.
@@ -890,6 +959,7 @@ ${codigos}`;
           ${lista.length ? selPer : ''}
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-primario" id="add-inst">Nuevo instrumento</button>
+            <button class="btn" id="btn-banco" title="Reutilizar un instrumento guardado (otra clase o el curso siguiente)">Añadir desde el banco${(db.bancoInstrumentos || []).length ? ' (' + db.bancoInstrumentos.length + ')' : ''}</button>
           </div>
         </div>
         ${lista.length ? secciones : '<div class="aviso">Sin instrumentos en esta clase.</div>'}
@@ -900,6 +970,7 @@ ${codigos}`;
       el.querySelector('#sel-per').onchange = e => { perSel = e.target.value; render(el); };
     }
     el.querySelector('#add-inst').onclick = () => modalInstrumento(null);
+    el.querySelector('#btn-banco').onclick = () => modalBanco(el);
 
     el.querySelectorAll('[data-ud-clave]').forEach(b => {
       b.onclick = () => {
@@ -914,10 +985,11 @@ ${codigos}`;
       tr.querySelector('.corregir').onclick = () => renderCorreccion(el, inst.id);
       tr.querySelector('.editar').onclick = () => modalInstrumento(inst);
       tr.querySelector('.duplicar').onclick = () => duplicarInstrumento(inst);
+      tr.querySelector('.al-banco').onclick = () => guardarAlBanco(el, inst);
       tr.querySelector('.borrar-inst').onclick = () => borrarInstrumento(el, inst);
     });
   }
 
   // API pública de la vista: las demás vistas solo deben usar esto (D-29).
-  return { render, renderCorreccion, modalInstrumento, modalCalificar, filasCorregirHtml, filaApartado, cabeceraRubrica, plantillaColumnas, promptIa, datalistUnidades };
+  return { render, renderCorreccion, modalInstrumento, modalCalificar, filasCorregirHtml, filaApartado, cabeceraRubrica, plantillaColumnas, promptIa, datalistUnidades, modalBanco };
 })();

@@ -210,6 +210,98 @@ const Calc = {
     return n;
   },
 
+  // --- Banco de instrumentos (D-48) ---
+  // Un «molde» es la plantilla de un instrumento (título, tipo, apartados y
+  // criterios) guardada para reutilizarla en otra clase o en el curso siguiente.
+  // Guarda los criterios por CÓDIGO, no por id: así el molde sigue siendo válido
+  // aunque su asignatura de origen desaparezca, y los ids reales los pone el
+  // currículo de la clase de destino al añadirlo.
+
+  // Molde a partir de un instrumento ya guardado. `db` explícito para poder
+  // probarlo sin depender del estado global.
+  moldeDeInstrumento(db, inst) {
+    const porId = {};
+    (db.criterios || []).forEach(c => { porId[c.id] = c; });
+    const codigos = ids => [...new Set((ids || [])
+      .map(id => (porId[id] || {}).codigo)
+      .filter(Boolean))];
+    const clase = (db.clases || []).find(c => c.id === inst.claseId);
+    const asig = clase ? (db.asignaturas || []).find(a => a.id === clase.asignaturaId) : null;
+    return {
+      id: Utils.uid(),
+      titulo: inst.titulo || '',
+      tipo: inst.tipo || 'Control',
+      unidad: inst.unidad || '',
+      saberes: inst.saberes || '',
+      niveles: (inst.niveles || []).map(n => ({ pct: n.pct, descriptor: n.descriptor })),
+      criteriosModo: inst.criteriosModo || 'desglosado',
+      criterioCodesGlobal: codigos(inst.criterioIdsGlobal),
+      apartados: (inst.apartados || []).map(ap => ({
+        descripcion: ap.descripcion || '',
+        maxPts: ap.maxPts,
+        peso: ap.peso,
+        niveles: (ap.niveles || []).map(n => ({ pct: n.pct, descriptor: n.descriptor })),
+        criterioCodes: codigos(ap.criterioIds)
+      })),
+      origen: {
+        asignaturaId: asig ? asig.id : '',
+        asignatura: asig ? asig.nombre : '',
+        etapa: asig ? (asig.etapa || '') : '',
+        guardadoEn: Utils.hoy()
+      }
+    };
+  },
+
+  // Instrumento nuevo a partir de un molde del banco, para la clase y el nivel
+  // indicados. Los códigos se resuelven contra el currículo de destino por
+  // código EXACTO (la numeración cambia entre ciclos; para reapuntar entre
+  // ciclos está «Duplicar» con el nivel). Devuelve { inst, faltan }: si `faltan`
+  // no está vacío, NO debe crearse el instrumento.
+  instrumentoDesdeMolde(molde, claseId, nivel, periodo) {
+    const asig = this.asignaturaDeNivel(claseId, nivel || '');
+    const faltan = [];
+    const porCodigo = {};
+    if (asig) {
+      Storage.db.criterios
+        .filter(c => c.asignaturaId === asig.id)
+        .forEach(c => { porCodigo[String(c.codigo).trim().toLowerCase()] = c.id; });
+    }
+    const resolver = codigos => {
+      const ids = [];
+      (codigos || []).forEach(cod => {
+        const id = porCodigo[String(cod).trim().toLowerCase()];
+        if (id) { if (ids.indexOf(id) === -1) ids.push(id); }
+        else if (faltan.indexOf(cod) === -1) faltan.push(cod);
+      });
+      return ids;
+    };
+    const apartados = (molde.apartados || []).map((ap, i) => ({
+      id: Utils.uid(),
+      orden: i + 1,
+      descripcion: ap.descripcion || '',
+      maxPts: ap.maxPts,
+      peso: ap.peso,
+      niveles: (ap.niveles || []).map(n => ({ pct: n.pct, descriptor: n.descriptor })),
+      criterioIds: resolver(ap.criterioCodes)
+    }));
+    const inst = {
+      id: Utils.uid(),
+      claseId,
+      tipo: molde.tipo || 'Control',
+      titulo: molde.titulo || '',
+      fecha: Utils.hoy(),
+      periodo: periodo || 'T1',
+      saberes: molde.saberes || '',
+      unidad: molde.unidad || '',
+      nivel: this.nivelNorm(nivel || ''),
+      niveles: (molde.niveles || []).map(n => ({ pct: n.pct, descriptor: n.descriptor })),
+      apartados,
+      criteriosModo: molde.criteriosModo || 'desglosado',
+      criterioIdsGlobal: resolver(molde.criterioCodesGlobal)
+    };
+    return { inst, faltan };
+  },
+
   // Un instrumento sin nivel es común a todos; con nivel, solo para ese nivel
   // ('' o 'BASE' = base, es decir, alumnado sin adaptación).
   instrumentoParaNivel(inst, codigo) {

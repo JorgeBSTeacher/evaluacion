@@ -207,6 +207,49 @@ function estadoAciNumeros() {
   };
 }
 
+// Escenario del banco de instrumentos (D-48): dos grupos con la misma
+// asignatura (6ºA/6ºB) para reutilizar dentro del curso, y una clase de otro
+// currículo (4º) para comprobar que un código inexistente aborta la copia.
+function estadoBanco() {
+  return {
+    schemaVersion: 1,
+    cursoEscolar: '2025/2026',
+    grupos: [
+      { id: 'g1', nombre: '6ºA', etapa: 'Primaria' },
+      { id: 'g2', nombre: '6ºB', etapa: 'Primaria' }
+    ],
+    alumnos: [
+      { id: 'a1', nombre: 'Ana', apellidos: 'Uno', grupoId: 'g1' },
+      { id: 'a2', nombre: 'Beto', apellidos: 'Dos', grupoId: 'g2' }
+    ],
+    asignaturas: [
+      { id: 's1', nombre: 'Matemáticas 6º', etapa: 'Primaria' },
+      { id: 's2', nombre: 'Matemáticas 4º', etapa: 'Primaria' }
+    ],
+    clases: [
+      { id: 'c1', asignaturaId: 's1', grupoId: 'g1' },
+      { id: 'c2', asignaturaId: 's1', grupoId: 'g2' },
+      { id: 'c4', asignaturaId: 's2', grupoId: 'g1' },
+      { id: 'c3', asignaturaId: 's1', grupoId: 'g1', nivelesAci: [{ codigo: 'B', etiqueta: '4º', asignaturaId: 's2' }] }
+    ],
+    competenciasEspecificas: [],
+    criterios: [
+      { id: 'k1', asignaturaId: 's1', codigo: 'MAT.TC.1.1', descripcion: 'c1', peso: 60, espIds: [], claveIds: [] },
+      { id: 'k2', asignaturaId: 's1', codigo: 'MAT.TC.2.1', descripcion: 'c2', peso: 40, espIds: [], claveIds: [] },
+      { id: 'm1', asignaturaId: 's2', codigo: 'MAT.SC.1.1', descripcion: 'a1', peso: 100, espIds: [], claveIds: [] }
+    ],
+    instrumentos: [
+      { id: 'i1', claseId: 'c1', tipo: 'Control', titulo: 'Control 1', fecha: '2026-01-10', periodo: 'T1', nivel: '', unidad: 'UD1',
+        niveles: [], criteriosModo: 'desglosado', criterioIdsGlobal: [],
+        apartados: [
+          { id: 'p1', orden: 1, descripcion: 'a', maxPts: 10, criterioIds: ['k1'] },
+          { id: 'p2', orden: 2, descripcion: 'b', maxPts: 10, criterioIds: ['k2'] }
+        ] }
+    ],
+    registros: { i1: { a1: { p1: 8, p2: 6 } } }
+  };
+}
+
 async function main() {
   console.log('\n== Carga y estado por defecto ==');
   {
@@ -728,6 +771,79 @@ async function main() {
     const sinPar = { claseId: 'c1', nivel: 'B', apartados: [{ id: 'z', criterioIds: ['k99'] }] };
     check('sin criterio equivalente no se toca nada',
       !C.repararCriteriosDeInstrumento(db, sinPar) && sinPar.apartados[0].criterioIds[0] === 'k99');
+  }
+
+  console.log('\n== Banco de instrumentos: reutilizar en otra clase o curso (D-48) ==');
+  {
+    const app = cargarApp();
+    app.Storage.load();
+    await importarJson(app, estadoBanco());
+    const C = app.Calc;
+    const S = app.Storage;
+
+    check('un backup antiguo (sin banco) se migra con bancoInstrumentos vacío',
+      Array.isArray(S.db.bancoInstrumentos) && S.db.bancoInstrumentos.length === 0);
+
+    const inst = C.instrumento('i1');
+    const molde = S.guardarEnBanco(inst);
+    check('el molde guarda los criterios por CÓDIGO (no por id)',
+      molde.apartados[0].criterioCodes.join(',') === 'MAT.TC.1.1' && molde.apartados[1].criterioCodes.join(',') === 'MAT.TC.2.1',
+      JSON.stringify(molde.apartados.map(a => a.criterioCodes)));
+    check('el molde recuerda su asignatura de origen', molde.origen.asignatura === 'Matemáticas 6º', molde.origen.asignatura);
+    check('guardar en el banco no duplica el instrumento del curso', S.db.instrumentos.length === 1);
+    check('guardar en el banco no toca las notas del original', S.db.registros.i1.a1.p1 === 8);
+
+    // Reutilizar en otra clase de la MISMA asignatura: los criterios se resuelven por código.
+    const r = S.anadirDesdeBanco(molde.id, 'c2', '', 'T2');
+    check('se añade a otra clase sin fallar', r.faltan.length === 0 && !!r.inst);
+    check('el instrumento añadido queda en la clase y periodo elegidos', r.inst.claseId === 'c2' && r.inst.periodo === 'T2');
+    check('los criterios del molde se resuelven a los ids de la clase destino',
+      r.inst.apartados[0].criterioIds.join(',') === 'k1' && r.inst.apartados[1].criterioIds.join(',') === 'k2',
+      JSON.stringify(r.inst.apartados.map(a => a.criterioIds)));
+    check('la copia nace sin notas', S.db.registros[r.inst.id] === undefined);
+    check('la copia recibe ids de apartado nuevos', r.inst.apartados[0].id !== 'p1');
+
+    // Otro currículo: si un código no existe en el destino no se crea nada.
+    const antes = S.db.instrumentos.length;
+    const r2 = S.anadirDesdeBanco(molde.id, 'c4', '', 'T1');
+    check('si falta un código en el destino no se crea nada y se avisan los que faltan',
+      S.db.instrumentos.length === antes && r2.faltan.length === 2, JSON.stringify(r2.faltan));
+
+    // Modo global y rúbrica: el molde conserva lo que define el motor.
+    const instG = Object.assign({}, inst, {
+      id: 'iG', criteriosModo: 'global', criterioIdsGlobal: ['k1', 'k2'],
+      apartados: [{ id: 'pG', orden: 1, descripcion: 'x', maxPts: 10, criterioIds: [] }]
+    });
+    const moldeG = C.moldeDeInstrumento(S.db, instG);
+    check('el molde conserva el modo global',
+      moldeG.criteriosModo === 'global' && moldeG.criterioCodesGlobal.join(',') === 'MAT.TC.1.1,MAT.TC.2.1',
+      moldeG.criterioCodesGlobal.join(','));
+    const rub = Object.assign({}, inst, {
+      id: 'iR', tipo: 'Rúbrica', niveles: [{ pct: 50, descriptor: 'a' }, { pct: 100, descriptor: 'b' }],
+      apartados: [{ id: 'pR', orden: 1, descripcion: 'it', maxPts: 100, peso: 3, niveles: [{ pct: 100, descriptor: 'b' }], criterioIds: ['k1'] }]
+    });
+    const desdeR = C.instrumentoDesdeMolde(C.moldeDeInstrumento(S.db, rub), 'c2', '', 'T1');
+    check('el molde de rúbrica conserva escala común, peso y descriptores por ítem',
+      desdeR.inst.niveles.length === 2 && desdeR.inst.apartados[0].peso === 3 &&
+      desdeR.inst.apartados[0].niveles[0].descriptor === 'b' && desdeR.faltan.length === 0);
+
+    // Un molde de 4º añadido al NIVEL ACI de una clase de 6º: usa el currículo del nivel.
+    const inst4 = { id: 'i4', claseId: 'c4', tipo: 'Control', titulo: 'Control 4º',
+      apartados: [{ id: 'q1', orden: 1, descripcion: 'a', maxPts: 10, criterioIds: ['m1'] }] };
+    const molde4 = C.moldeDeInstrumento(S.db, inst4);
+    S.db.bancoInstrumentos.push(molde4);
+    const r4 = S.anadirDesdeBanco(molde4.id, 'c3', 'B', 'T1');
+    check('un molde de otro curso se resuelve contra el currículo de su nivel ACI',
+      r4.faltan.length === 0 && r4.inst.nivel === 'B' && r4.inst.apartados[0].criterioIds.join(',') === 'm1',
+      JSON.stringify(r4.faltan));
+    check('el instrumento ACI añadido no queda con criterios fuera de su nivel',
+      C.criteriosFueraDeNivel(S.db, r4.inst).length === 0);
+
+    // Quitar del banco no toca nada del curso.
+    const nInst = S.db.instrumentos.length;
+    S.borrarDelBanco(molde.id);
+    check('quitar del banco no borra instrumentos del curso',
+      !S.db.bancoInstrumentos.some(m => m.id === molde.id) && S.db.instrumentos.length === nInst);
   }
 
   console.log('\n' + (fallos ? 'FALLOS: ' + fallos + '/' + total : 'TODO OK: ' + total + ' comprobaciones'));

@@ -26,6 +26,9 @@ const Storage = {
       competenciasEspecificas: [],
       criterios: [],
       instrumentos: [],
+      // Moldes de instrumentos guardados para reutilizarlos en otra clase o en
+      // el curso siguiente (D-48).
+      bancoInstrumentos: [],
       registros: {}
     };
   },
@@ -256,6 +259,21 @@ const Storage = {
         if (!Array.isArray(ap.niveles)) ap.niveles = [];
       });
     });
+    // Moldes guardados en el banco: se sanean al cargar para que un backup
+    // antiguo (o editado a mano) no rompa la vista del banco.
+    if (!Array.isArray(db.bancoInstrumentos)) db.bancoInstrumentos = [];
+    db.bancoInstrumentos.forEach(m => {
+      if (m.unidad == null) m.unidad = '';
+      if (m.criteriosModo == null) m.criteriosModo = 'desglosado';
+      if (!Array.isArray(m.niveles)) m.niveles = [];
+      if (!Array.isArray(m.criterioCodesGlobal)) m.criterioCodesGlobal = [];
+      if (!m.origen || typeof m.origen !== 'object') m.origen = {};
+      if (!Array.isArray(m.apartados)) m.apartados = [];
+      m.apartados.forEach(ap => {
+        if (!Array.isArray(ap.criterioCodes)) ap.criterioCodes = [];
+        if (!Array.isArray(ap.niveles)) ap.niveles = [];
+      });
+    });
     // Un instrumento con nivel ACI debe evaluar los criterios de SU currículo.
     // Los creados con «Duplicar» antes de esta versión copiaban los del original
     // (otro ciclo) y sus notas no salían en el informe; aquí se reapuntan por
@@ -285,6 +303,34 @@ const Storage = {
     try { localStorage.removeItem(this.KEY); } catch (e) {}
     this.db = this.defaults();
     this.save();
+  },
+
+  // --- Banco de instrumentos (D-48) ---
+  // Guarda un instrumento del curso como molde reutilizable. Devuelve el molde.
+  guardarEnBanco(inst) {
+    if (!Array.isArray(this.db.bancoInstrumentos)) this.db.bancoInstrumentos = [];
+    const molde = Calc.moldeDeInstrumento(this.db, inst);
+    this.db.bancoInstrumentos.push(molde);
+    this.save();
+    return molde;
+  },
+
+  borrarDelBanco(moldeId) {
+    this.db.bancoInstrumentos = (this.db.bancoInstrumentos || []).filter(m => m.id !== moldeId);
+    this.save();
+  },
+
+  // Crea un instrumento nuevo en `claseId` a partir de un molde del banco. Si
+  // algún criterio del molde no existe en el currículo de destino, no crea nada
+  // y devuelve esa lista en `faltan`.
+  anadirDesdeBanco(moldeId, claseId, nivel, periodo) {
+    const molde = (this.db.bancoInstrumentos || []).find(m => m.id === moldeId);
+    if (!molde) return { faltan: ['(el molde ya no está en el banco)'] };
+    const r = Calc.instrumentoDesdeMolde(molde, claseId, nivel, periodo);
+    if (r.faltan.length) return { faltan: r.faltan, molde };
+    this.db.instrumentos.push(r.inst);
+    this.save();
+    return { inst: r.inst, faltan: [], molde };
   },
 
   importarCurriculo(datos) {
