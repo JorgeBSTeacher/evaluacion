@@ -2027,24 +2027,30 @@ const ClasesView = (() => {
     }
   }
 
-  // Edición de una asignatura ya creada: cambiar el nombre (y la etapa). No
-  // toca el currículo ni las notas (los criterios van ligados por id). Antes,
-  // una asignatura con currículo no tenía forma de renombrarse: había que
-  // borrarla —perdiendo currículo y notas— y volver a crearla.
+  // Edición de una asignatura ya creada: nombre, nivel (curso) y etapa. Son
+  // ETIQUETAS: el currículo va ligado al id de la asignatura, así que desde
+  // aquí no se toca NUNCA ni el currículo ni las notas. La regla del docente:
+  // «si es Lengua, es Lengua» — se corrige una errata («Legua» → «Lengua»),
+  // no se cambia la sustancia.
   function modalAsignaturaEditar(a) {
     UI.openModal({
       titulo: 'Editar asignatura',
       cuerpo: `
+        <datalist id="lista-cursos">${ORDEN_CURSOS.map(c => `<option value="${c}"></option>`).join('')}</datalist>
         <label class="campo"><span>Nombre</span>
           <input type="text" id="f-nombre" value="${Utils.esc(a.nombre)}" placeholder="Ej. Matemáticas 6º"></label>
+        <label class="campo"><span>Nivel (curso)</span>
+          <input type="text" id="f-curso" list="lista-cursos" value="${Utils.esc(a.curso || '')}" placeholder="Ej. 6º"></label>
         <label class="campo"><span>Etapa</span>
           <select id="f-etapa">
             <option ${a.etapa === 'Primaria' ? 'selected' : ''}>Primaria</option>
             <option ${a.etapa === 'Infantil' ? 'selected' : ''}>Infantil</option>
-          </select></label>`,
+          </select></label>
+        <div class="aviso">Cambiar el nombre o el nivel solo cambia cómo se <b>muestra</b> la asignatura. Su <b>currículo</b> y sus <b>notas</b> no se tocan.</div>`,
       alGuardar(body) {
         const guardada = Storage.guardarAsignatura({
           nombre: body.querySelector('#f-nombre').value,
+          curso: body.querySelector('#f-curso').value,
           etapa: body.querySelector('#f-etapa').value
         }, a.id);
         if (!guardada) { alert('Escribe un nombre para la asignatura.'); return false; }
