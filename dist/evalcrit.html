@@ -2189,7 +2189,7 @@ const CurriculoView = (() => {
         <div class="aviso">
           ${asig.fuente
             ? '<b>Legislación:</b> ' + Utils.esc(asig.fuente)
-            : '<b>Currículo propio.</b> Sin fuente oficial registrada. Los currículos oficiales de Cantabria proceden del Decreto 66/2022, de 7 de julio (BOC nº 135, 13-07-2022), Anexo II-A.'}
+            : '<b>Fuente no registrada.</b> Las plantillas oficiales de Cantabria proceden del Decreto 66/2022, de 7 de julio (BOC nº 135, 13-07-2022), Anexo II-A.'}
         </div>
         <div class="aviso ${Math.round(sumaPesos) === 100 ? '' : ''}" style="${Math.round(sumaPesos) === 100 ? 'background:#f0fdf4;border-color:#bbf7d0;color:#166534' : ''}">
           Suma de ponderaciones: <b>${Utils.fmt(sumaPesos)}%</b>${Math.round(sumaPesos) === 100 ? ' · correcta' : ' · debería sumar 100%'}
