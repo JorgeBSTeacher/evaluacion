@@ -1123,6 +1123,16 @@ async function main() {
       S.db.criterios.some(c => c.id === 'k1'));
     check('renombrar una asignatura NO toca las notas',
       S.db.registros.i1.a1.p1 === 8 && S.db.registros.i1.a2.p1 === 6);
+
+    // Cambiar el nivel (curso): es una etiqueta, no el currículo.
+    const critAntes = S.db.criterios.filter(c => c.asignaturaId === 's1').map(c => c.id).join(',');
+    S.guardarAsignatura({ nombre: 'Matemáticas 6º', curso: '5º', etapa: 'Primaria' }, 's1');
+    check('cambiar el nivel (curso) NO toca el currículo',
+      S.db.asignaturas.find(a => a.id === 's1').curso === '5º' && critAntes !== '' &&
+      S.db.criterios.filter(c => c.asignaturaId === 's1').map(c => c.id).join(',') === critAntes);
+    check('cambiar el nivel (curso) NO toca las notas',
+      S.db.registros.i1.a1.p1 === 8 && S.db.registros.i1.a2.p1 === 6);
+
     check('guardarAsignatura con id inexistente no crea nada',
       S.guardarAsignatura({ nombre: 'X' }, 'no-existe') === null && S.db.asignaturas.length === nAsig + 1);
   }
