@@ -320,14 +320,7 @@ const ClasesView = (() => {
         const nCrit = db.criterios.filter(x => x.asignaturaId === id).length;
         const nClas = db.clases.filter(x => x.asignaturaId === id).length;
         if (confirm(`¿Eliminar la asignatura y TODO su currículo? (${nCrit} criterios, ${nClas} clases)`)) {
-          const instIds = db.instrumentos.filter(i => nClas && db.clases.some(c => c.id === i.claseId && c.asignaturaId === id)).map(i => i.id);
-          instIds.forEach(i => delete db.registros[i]);
-          db.instrumentos = db.instrumentos.filter(i => !instIds.includes(i.id));
-          db.criterios = db.criterios.filter(x => x.asignaturaId !== id);
-          db.competenciasEspecificas = db.competenciasEspecificas.filter(x => x.asignaturaId !== id);
-          db.clases = db.clases.filter(x => x.asignaturaId !== id);
-          db.asignaturas = db.asignaturas.filter(x => x.id !== id);
-          Storage.save();
+          Storage.borrarAsignatura(id);
           render(el);
         }
       };
@@ -337,10 +330,7 @@ const ClasesView = (() => {
       b.onclick = () => {
         const id = b.dataset.id;
         if (!confirm('¿Eliminar esta clase? Sus instrumentos y notas también se eliminarán.')) return;
-        delete db.registros[id];
-        db.instrumentos = db.instrumentos.filter(i => i.claseId !== id);
-        db.clases = db.clases.filter(c => c.id !== id);
-        Storage.save();
+        Storage.borrarClase(id);
         render(el);
       };
     });

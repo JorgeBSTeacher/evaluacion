@@ -311,6 +311,104 @@ const Storage = {
     this.save();
   },
 
+  // --- Borrado en cascada (punto único) ---
+  // Antes cada vista reimplementaba su cascada a mano y dos de ellas dejaban
+  // datos huérfanos: notas de instrumentos que ya no existían y notas de
+  // alumnado borrado. Aquí vive la ÚNICA cascada, de modo que borrar una clase,
+  // un grupo o una asignatura nunca deja registros colgando.
+
+  // Quita los instrumentos de una lista de clases y sus notas. Suma el número
+  // de instrumentos eliminados en `resp.instrumentos`.
+  _purgarInstrumentosDeClases(claseIds, resp) {
+    const ids = new Set(claseIds);
+    const instIds = this.db.instrumentos.filter(i => ids.has(i.claseId)).map(i => i.id);
+    instIds.forEach(id => delete this.db.registros[id]);
+    if (instIds.length) {
+      const set = new Set(instIds);
+      this.db.instrumentos = this.db.instrumentos.filter(i => !set.has(i.id));
+    }
+    resp.instrumentos += instIds.length;
+  },
+
+  // Quita las notas de una lista de alumnado en TODOS los instrumentos.
+  _purgarRegistrosDeAlumnos(alumnoIds) {
+    const ids = new Set(alumnoIds);
+    Object.keys(this.db.registros).forEach(instId => {
+      const reg = this.db.registros[instId] || {};
+      Object.keys(reg).forEach(al => { if (ids.has(al)) delete reg[al]; });
+    });
+  },
+
+  // Quita referencias ACI cuyo currículo ya no existe (p. ej. al borrar la
+  // asignatura que daba criterios a un nivel). Sin esto, el alumnado de ese
+  // nivel caería en silencio al currículo base.
+  _purgarAciHuerfano() {
+    const vivas = new Set(this.db.asignaturas.map(a => a.id));
+    this.db.clases.forEach(c => {
+      if (Array.isArray(c.nivelesAci)) {
+        c.nivelesAci = c.nivelesAci.filter(n => !n.asignaturaId || vivas.has(n.asignaturaId));
+      }
+      if (c.adaptaciones && typeof c.adaptaciones === 'object') {
+        const codigos = new Set((c.nivelesAci || []).map(n => Calc.nivelNorm(n.codigo)));
+        const adap = {};
+        Object.keys(c.adaptaciones).forEach(k => {
+          const v = Calc.nivelNorm(c.adaptaciones[k]);
+          if (v && codigos.has(v)) adap[k] = c.adaptaciones[k];
+        });
+        c.adaptaciones = adap;
+      }
+    });
+  },
+
+  // Borra una clase con sus instrumentos y sus notas.
+  borrarClase(claseId) {
+    const resp = { instrumentos: 0 };
+    this._purgarInstrumentosDeClases([claseId], resp);
+    this.db.clases = this.db.clases.filter(c => c.id !== claseId);
+    this.save();
+    return resp;
+  },
+
+  // Borra un alumno y sus notas en todos los instrumentos.
+  borrarAlumno(alumnoId) {
+    this.db.alumnos = this.db.alumnos.filter(a => a.id !== alumnoId);
+    this._purgarRegistrosDeAlumnos([alumnoId]);
+    this.save();
+  },
+
+  // Borra un grupo con su alumnado, sus clases, sus instrumentos y sus notas.
+  borrarGrupo(grupoId) {
+    const resp = { alumnos: 0, clases: 0, instrumentos: 0 };
+    const claseIds = this.db.clases.filter(c => c.grupoId === grupoId).map(c => c.id);
+    resp.clases = claseIds.length;
+    this._purgarInstrumentosDeClases(claseIds, resp);
+    this.db.clases = this.db.clases.filter(c => c.grupoId !== grupoId);
+    const alumnoIds = this.db.alumnos.filter(a => a.grupoId === grupoId).map(a => a.id);
+    resp.alumnos = alumnoIds.length;
+    this.db.alumnos = this.db.alumnos.filter(a => a.grupoId !== grupoId);
+    this._purgarRegistrosDeAlumnos(alumnoIds);
+    this.db.grupos = this.db.grupos.filter(g => g.id !== grupoId);
+    this.save();
+    return resp;
+  },
+
+  // Borra una asignatura con su currículo, sus clases, sus instrumentos y sus
+  // notas, y limpia las referencias ACI que apuntaban a ella.
+  borrarAsignatura(asignaturaId) {
+    const resp = { criterios: 0, clases: 0, instrumentos: 0 };
+    const claseIds = this.db.clases.filter(c => c.asignaturaId === asignaturaId).map(c => c.id);
+    resp.clases = claseIds.length;
+    this._purgarInstrumentosDeClases(claseIds, resp);
+    resp.criterios = this.db.criterios.filter(x => x.asignaturaId === asignaturaId).length;
+    this.db.criterios = this.db.criterios.filter(x => x.asignaturaId !== asignaturaId);
+    this.db.competenciasEspecificas = this.db.competenciasEspecificas.filter(x => x.asignaturaId !== asignaturaId);
+    this.db.clases = this.db.clases.filter(x => x.asignaturaId !== asignaturaId);
+    this.db.asignaturas = this.db.asignaturas.filter(x => x.id !== asignaturaId);
+    this._purgarAciHuerfano();
+    this.save();
+    return resp;
+  },
+
   // --- Banco de instrumentos (D-48) ---
   // Guarda un instrumento del curso como molde reutilizable. Devuelve el molde.
   guardarEnBanco(inst) {

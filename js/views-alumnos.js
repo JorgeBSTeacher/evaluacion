@@ -104,11 +104,8 @@ const AlumnosView = (() => {
         const nAlu = db.alumnos.filter(a => a.grupoId === id).length;
         const extra = nAlu ? ` También se eliminarán ${nAlu} alumno(s).` : '';
         if (confirm('¿Eliminar este grupo?' + extra)) {
-          db.alumnos = db.alumnos.filter(a => a.grupoId !== id);
-          db.clases = db.clases.filter(c => c.grupoId !== id);
-          db.grupos = db.grupos.filter(g => g.id !== id);
+          Storage.borrarGrupo(id);
           if (grupoSel === id) grupoSel = null;
-          Storage.save();
           render(el);
         }
       };
@@ -116,10 +113,7 @@ const AlumnosView = (() => {
     el.querySelectorAll('.borrar-alumno').forEach(b => {
       b.onclick = () => {
         if (confirm('¿Eliminar este alumno y todas sus notas?')) {
-          const id = b.dataset.id;
-          db.alumnos = db.alumnos.filter(a => a.id !== id);
-          for (const instId of Object.keys(db.registros)) delete db.registros[instId][id];
-          Storage.save();
+          Storage.borrarAlumno(b.dataset.id);
           render(el);
         }
       };

@@ -250,6 +250,59 @@ function estadoBanco() {
   };
 }
 
+// Escenario de borrado en cascada: dos grupos, dos asignaturas (una base y otra
+// que sirve de currículo ACI), clases en ambos grupos e instrumentos con notas.
+// Comprueba que ninguna cascada deja instrumentos ni registros huérfanos y que
+// las referencias ACI sin currículo se limpian.
+function estadoCascada() {
+  return {
+    schemaVersion: 1,
+    cursoEscolar: '2025/2026',
+    grupos: [
+      { id: 'g1', nombre: '6ºA', etapa: 'Primaria' },
+      { id: 'g2', nombre: '6ºB', etapa: 'Primaria' }
+    ],
+    alumnos: [
+      { id: 'a1', nombre: 'Ana', apellidos: 'Uno', grupoId: 'g1' },
+      { id: 'a2', nombre: 'Beto', apellidos: 'Dos', grupoId: 'g1' },
+      { id: 'a3', nombre: 'Carla', apellidos: 'Tres', grupoId: 'g2' }
+    ],
+    asignaturas: [
+      { id: 's1', nombre: 'Matemáticas 6º', etapa: 'Primaria' },
+      { id: 's2', nombre: 'Matemáticas 4º', etapa: 'Primaria' }
+    ],
+    clases: [
+      { id: 'c1', asignaturaId: 's1', grupoId: 'g1',
+        nivelesAci: [{ codigo: '4', etiqueta: '4º', asignaturaId: 's2' }], adaptaciones: { a2: '4' } },
+      { id: 'c2', asignaturaId: 's1', grupoId: 'g2' },
+      { id: 'c3', asignaturaId: 's2', grupoId: 'g1' },
+      { id: 'c4', asignaturaId: 's2', grupoId: 'g2',
+        nivelesAci: [{ codigo: '6', etiqueta: '6º', asignaturaId: 's1' }], adaptaciones: { a3: '6' } }
+    ],
+    competenciasEspecificas: [{ id: 'e1', asignaturaId: 's1', codigo: 'CE1', descripcion: 'x' }],
+    criterios: [
+      { id: 'k1', asignaturaId: 's1', codigo: 'C1', descripcion: 'c1', peso: 100, espIds: ['e1'], claveIds: [] },
+      { id: 'm1', asignaturaId: 's2', codigo: 'A1', descripcion: 'a1', peso: 100, espIds: [], claveIds: [] }
+    ],
+    instrumentos: [
+      { id: 'i1', claseId: 'c1', tipo: 'Control', titulo: 'Base 6º (c1)', fecha: '2026-01-10', periodo: 'T1', nivel: 'BASE', unidad: 'UD1',
+        apartados: [{ id: 'p1', orden: 1, descripcion: 'a', maxPts: 10, criterioIds: ['k1'] }] },
+      { id: 'i2', claseId: 'c2', tipo: 'Control', titulo: 'Base 6º (c2)', fecha: '2026-01-10', periodo: 'T1', nivel: '', unidad: 'UD1',
+        apartados: [{ id: 'p2', orden: 1, descripcion: 'a', maxPts: 10, criterioIds: ['k1'] }] },
+      { id: 'i3', claseId: 'c3', tipo: 'Control', titulo: 'ACI 4º (c3)', fecha: '2026-01-10', periodo: 'T1', nivel: '', unidad: 'UD1',
+        apartados: [{ id: 'p3', orden: 1, descripcion: 'a', maxPts: 10, criterioIds: ['m1'] }] },
+      { id: 'i4', claseId: 'c4', tipo: 'Control', titulo: 'ACI 6º (c4)', fecha: '2026-01-10', periodo: 'T1', nivel: '6', unidad: 'UD1',
+        apartados: [{ id: 'p4', orden: 1, descripcion: 'a', maxPts: 10, criterioIds: ['k1'] }] }
+    ],
+    registros: {
+      i1: { a1: { p1: 8 }, a2: { p1: 6 } },
+      i2: { a3: { p2: 7 } },
+      i3: { a1: { p3: 5 } },
+      i4: { a1: { p4: 9 }, a3: { p4: 4 } }
+    }
+  };
+}
+
 async function main() {
   console.log('\n== Carga y estado por defecto ==');
   {
@@ -916,6 +969,94 @@ async function main() {
     S.borrarDelBanco(molde.id);
     check('quitar del banco no borra instrumentos del curso',
       !S.db.bancoInstrumentos.some(m => m.id === molde.id) && S.db.instrumentos.length === nInst);
+  }
+
+  console.log('\n== Borrado en cascada sin datos huérfanos ==');
+  {
+    const estado = async () => {
+      const app = cargarApp();
+      app.Storage.load();
+      await importarJson(app, estadoCascada());
+      return app;
+    };
+    // Invariante: ningún instrumento apunta a una clase inexistente y ningún
+    // registro apunta a un instrumento inexistente.
+    const huerfanos = S => {
+      const instIds = new Set(S.db.instrumentos.map(i => i.id));
+      const claseIds = new Set(S.db.clases.map(c => c.id));
+      return {
+        instSinClase: S.db.instrumentos.filter(i => !claseIds.has(i.claseId)).map(i => i.id).join(','),
+        regSinInst: Object.keys(S.db.registros).filter(id => !instIds.has(id)).join(',')
+      };
+    };
+    const sinHuerfanos = S => { const h = huerfanos(S); return !h.instSinClase && !h.regSinInst; };
+
+    // 1) Borrar una clase: se lleva sus instrumentos Y sus notas.
+    {
+      const app = await estado();
+      const S = app.Storage;
+      const r = S.borrarClase('c2');
+      check('borrarClase elimina el instrumento de esa clase',
+        r.instrumentos === 1 && !S.db.instrumentos.some(i => i.id === 'i2'));
+      check('borrarClase NO deja las notas del instrumento huérfanas', S.db.registros.i2 === undefined);
+      check('borrarClase conserva los demás instrumentos y sus notas',
+        S.db.instrumentos.some(i => i.id === 'i1') && S.db.registros.i1.a1.p1 === 8);
+      check('tras borrar una clase no quedan huérfanos', sinHuerfanos(S), JSON.stringify(huerfanos(S)));
+    }
+
+    // 2) Borrar un grupo: se lleva alumnado, clases, instrumentos y notas.
+    {
+      const app = await estado();
+      const S = app.Storage;
+      const r = S.borrarGrupo('g1');
+      check('borrarGrupo elimina alumnado, clases e instrumentos del grupo',
+        r.alumnos === 2 && r.clases === 2 && r.instrumentos === 2, JSON.stringify(r));
+      check('borrarGrupo conserva el otro grupo y su alumnado',
+        S.db.grupos.some(g => g.id === 'g2') && S.db.alumnos.some(a => a.id === 'a3') && !S.db.alumnos.some(a => a.id === 'a1'));
+      check('borrarGrupo elimina las clases y los instrumentos de ese grupo',
+        !S.db.clases.some(c => c.id === 'c1') && !S.db.clases.some(c => c.id === 'c3') &&
+        !S.db.instrumentos.some(i => i.id === 'i1') && !S.db.instrumentos.some(i => i.id === 'i3'));
+      check('borrarGrupo borra las notas de los instrumentos eliminados',
+        S.db.registros.i1 === undefined && S.db.registros.i3 === undefined);
+      check('borrarGrupo quita las notas del alumnado en instrumentos que sobreviven',
+        !(S.db.registros.i4 && S.db.registros.i4.a1) && S.db.registros.i4.a3.p4 === 4);
+      check('tras borrar un grupo no quedan huérfanos', sinHuerfanos(S), JSON.stringify(huerfanos(S)));
+    }
+
+    // 3) Borrar una asignatura: currículo, clases, instrumentos, notas y ACI.
+    {
+      const app = await estado();
+      const S = app.Storage;
+      const r = S.borrarAsignatura('s1');
+      check('borrarAsignatura elimina criterios, clases e instrumentos',
+        r.criterios === 1 && r.clases === 2 && r.instrumentos === 2, JSON.stringify(r));
+      check('borrarAsignatura quita la asignatura y su currículo',
+        !S.db.asignaturas.some(a => a.id === 's1') && !S.db.criterios.some(c => c.id === 'k1') &&
+        !S.db.competenciasEspecificas.some(e => e.id === 'e1') && S.db.asignaturas.some(a => a.id === 's2'));
+      check('borrarAsignatura elimina sus clases, instrumentos y notas',
+        !S.db.clases.some(c => c.id === 'c1') && !S.db.clases.some(c => c.id === 'c2') &&
+        !S.db.instrumentos.some(i => i.id === 'i1') && !S.db.instrumentos.some(i => i.id === 'i2') &&
+        S.db.registros.i1 === undefined && S.db.registros.i2 === undefined);
+      const c4 = S.db.clases.find(c => c.id === 'c4');
+      check('borrarAsignatura limpia el nivel ACI que apuntaba a ella',
+        (c4.nivelesAci || []).length === 0, JSON.stringify(c4.nivelesAci));
+      check('borrarAsignatura limpia la adaptación del alumnado de ese nivel',
+        !(c4.adaptaciones && 'a3' in c4.adaptaciones), JSON.stringify(c4.adaptaciones));
+      check('tras borrar una asignatura no quedan huérfanos', sinHuerfanos(S), JSON.stringify(huerfanos(S)));
+    }
+
+    // 4) Borrar un alumno: sus notas en todos los instrumentos.
+    {
+      const app = await estado();
+      const S = app.Storage;
+      S.borrarAlumno('a1');
+      check('borrarAlumno quita al alumno', !S.db.alumnos.some(a => a.id === 'a1'));
+      check('borrarAlumno borra sus notas en todos los instrumentos',
+        !S.db.registros.i1.a1 && !S.db.registros.i3.a1 && !S.db.registros.i4.a1);
+      check('borrarAlumno conserva las notas del resto',
+        S.db.registros.i1.a2.p1 === 6 && S.db.registros.i2.a3.p2 === 7);
+      check('tras borrar un alumno no quedan huérfanos', sinHuerfanos(S), JSON.stringify(huerfanos(S)));
+    }
   }
 
   console.log('\n' + (fallos ? 'FALLOS: ' + fallos + '/' + total : 'TODO OK: ' + total + ' comprobaciones'));
