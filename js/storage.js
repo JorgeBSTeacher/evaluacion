@@ -286,6 +286,19 @@ const Storage = {
         if (!Array.isArray(ap.niveles)) ap.niveles = [];
       });
     });
+    // Las rúbricas antiguas guardaban los descriptores en la escala común del
+    // instrumento y dejaban los ítems vacíos (heredaban). Ahora cada ítem lleva
+    // los suyos: se materializan antes de que queden sin escala.
+    db.instrumentos.forEach(i => {
+      if (i.tipo !== 'Rúbrica') return;
+      const comunes = (Array.isArray(i.niveles) ? i.niveles : []).map(n => ({ pct: n.pct, descriptor: n.descriptor }));
+      if (!comunes.length) return;
+      i.apartados.forEach(ap => {
+        if (!(Array.isArray(ap.niveles) && ap.niveles.length)) {
+          ap.niveles = comunes.map(n => ({ pct: n.pct, descriptor: n.descriptor }));
+        }
+      });
+    });
     // Moldes guardados en el banco: se sanean al cargar para que un backup
     // antiguo (o editado a mano) no rompa la vista del banco.
     if (!Array.isArray(db.bancoInstrumentos)) db.bancoInstrumentos = [];

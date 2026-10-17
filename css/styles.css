@@ -188,7 +188,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--acento-suav
 }
 .zona-crit { grid-column: 1 / -1; padding: 8px 4px 2px; border-top: 1px dashed var(--linea); }
 .apartado-fila:last-child { border-bottom: none; }
-.nivel-fila { display: grid; grid-template-columns: 90px 1fr auto; gap: 8px; align-items: center; padding: 4px 0; }
+
 
 /* Rúbrica: cuadrícula «criterio · peso · nivel 1 … nivel N» (D-40) */
 .rub-head { display: grid; gap: 8px; align-items: end; padding: 2px 0 8px; border-bottom: 2px solid var(--linea); }

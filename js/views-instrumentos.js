@@ -6,6 +6,7 @@ const InstrumentosView = (() => {
   const udsAbiertas = new Set();
   const TIPOS = ['Control', 'Rúbrica', 'Proyecto', 'Otro'];
   const PERIODOS = ['T1', 'T2', 'T3'];
+  const NIVELES_ESTANDAR = [{ pct: 25 }, { pct: 50 }, { pct: 75 }, { pct: 100 }];
 
   // Sugerencias para el campo «Unidad»: un <datalist> editable (sugiere, no
   // obliga). Recoge las unidades ya usadas en toda la asignatura; si todavía no
@@ -78,6 +79,13 @@ const InstrumentosView = (() => {
     return n ? (n.descriptor || '') : '';
   }
 
+function columnasNivel(filas) {
+      const pcts = new Set();
+      (filas || []).forEach(f => (f.niveles || []).forEach(n => pcts.add(Number(n.pct))));
+      const lista = pcts.size ? [...pcts] : NIVELES_ESTANDAR.map(n => n.pct);
+      return lista.sort((a, b) => a - b).map(pct => ({ pct, descriptor: '' }));
+    }
+
   function plantillaColumnas(nColsNivel) {
     return `28px minmax(150px,1.5fr) 82px ${'minmax(130px,1fr) '.repeat(nColsNivel)}auto auto`;
   }
@@ -96,8 +104,8 @@ const InstrumentosView = (() => {
         ${cols.map((nv, k) => `
           <input type="text" class="ap-nv" data-pct="${nv.pct}"
             value="${Utils.esc(descriptorPropio(ap, nv.pct))}"
-            placeholder="${Utils.esc(nv.descriptor || '')}"
-            title="Nivel ${k + 1} · ${nv.pct}%. Déjalo vacío para usar el descriptor por defecto">`).join('')}
+            placeholder="Descriptor del nivel"
+            title="Nivel ${k + 1} · ${nv.pct}%">`).join('')}
         ${modoGlobal
           ? '<small style="color:var(--tinta-suave)">aplica criterios globales</small>'
           : `<button type="button" class="btn btn-mini toggle-crit" title="Elegir criterios evaluados">Criterios</button>`}
@@ -167,10 +175,6 @@ const InstrumentosView = (() => {
             <span>¿Ya la tienes hecha (por ejemplo, con una IA)? No hace falta escribirla a mano.</span>
             <button class="btn btn-mini" type="button" id="btn-importar-rub">Importar rúbrica (IA)</button>
           </div>` : ''}
-          <label class="campo"><span>Escala por defecto (% y descriptor)</span>
-            <small class="hint">Son los descriptores que usan los ítems que no escriban el suyo. Cada ítem puede sobrescribirlos.</small>
-            <div id="lista-niveles"></div></label>
-          <button class="btn btn-mini" type="button" id="add-nivel">Añadir nivel</button>
         </div>
 
         <div id="bloque-criterios-global" style="display:none">
@@ -199,11 +203,6 @@ const InstrumentosView = (() => {
         const urlCampo = body.querySelector('#f-url');
         const url = urlCampo ? Utils.urlLimpia(urlCampo.value) : (inst ? (inst.url || '') : '');
         const esRubrica = tipo === 'Rúbrica';
-        const niveles = Array.from(body.querySelectorAll('.nivel-fila')).map(f => ({
-          pct: parseFloat(f.querySelector('.nv-pct').value),
-          descriptor: f.querySelector('.nv-desc').value.trim()
-        })).filter(n => !isNaN(n.pct)).sort((a, b) => a.pct - b.pct);
-        if (esRubrica && niveles.length < 2) { alert('La rúbrica necesita al menos dos niveles'); return false; }
 
         const apartados = [];
         let orden = 0;
@@ -221,22 +220,18 @@ const InstrumentosView = (() => {
             if (isNaN(maxPts) || maxPts <= 0) { alert('Cada apartado necesita puntos máximos'); return false; }
           }
           const peso = fila.querySelector('.ap-peso') ? parseFloat(fila.querySelector('.ap-peso').value) : (esRubrica ? 1 : maxPts);
-          const nvFila = Array.from(fila.querySelectorAll('.ap-nv')).map(i => ({
-            pct: Number(i.dataset.pct),
-            descriptor: i.value.trim()
-          }));
-          const personalizada = nvFila.some(n => n.descriptor);
+          const nivelesItem = Array.from(fila.querySelectorAll('.ap-nv'))
+            .map(i => ({ pct: Number(i.dataset.pct), descriptor: i.value.trim() }))
+            .filter(n => n.descriptor);
+          if (esRubrica && nivelesItem.length < 2) {
+            alert('El ítem «' + (desc || 'sin nombre') + '» necesita al menos dos descriptores de nivel.');
+            return false;
+          }
           apartados.push({
             id: fila.dataset.id && fila.dataset.id !== 'nuevo' ? fila.dataset.id : Utils.uid(),
             orden, descripcion: desc, maxPts, criterioIds,
             peso: (isNaN(peso) || peso <= 0) ? 1 : peso,
-            // [] = el ítem hereda la escala por defecto del instrumento.
-            niveles: (esRubrica && personalizada)
-              ? nvFila.map(n => ({
-                pct: n.pct,
-                descriptor: n.descriptor || (niveles.find(c => Math.abs(c.pct - n.pct) < 1e-9) || {}).descriptor || ''
-              }))
-              : []
+            niveles: esRubrica ? nivelesItem : []
           });
         }
         if (!apartados.length) { alert('Añade al menos un apartado'); return false; }
@@ -250,10 +245,14 @@ const InstrumentosView = (() => {
           return false;
         }
 
+        const nivelesInst = esRubrica
+          ? (apartados[0].niveles || [])
+          : (inst ? (inst.niveles || []) : NIVELES_ESTANDAR.map(n => ({ pct: n.pct, descriptor: '' })));
+
         if (esNueva) {
-          Storage.db.instrumentos.push({ id: Utils.uid(), claseId, tipo, titulo, fecha, periodo, saberes, unidad, nivel, niveles, apartados, criteriosModo, criterioIdsGlobal, url });
+          Storage.db.instrumentos.push({ id: Utils.uid(), claseId, tipo, titulo, fecha, periodo, saberes, unidad, nivel, niveles: nivelesInst, apartados, criteriosModo, criterioIdsGlobal, url });
         } else {
-          Object.assign(inst, { tipo, titulo, fecha, periodo, saberes, unidad, nivel, niveles, apartados, criteriosModo, criterioIdsGlobal, url });
+          Object.assign(inst, { tipo, titulo, fecha, periodo, saberes, unidad, nivel, niveles: nivelesInst, apartados, criteriosModo, criterioIdsGlobal, url });
         }
         Storage.save();
       }
@@ -268,7 +267,6 @@ const InstrumentosView = (() => {
     }
     const selTipo = body.querySelector('#f-tipo');
     const listaAp = body.querySelector('#lista-apartados');
-    const listaNv = body.querySelector('#lista-niveles');
     const chipsGlobal = body.querySelector('#chips-criterios-global');
     chipsGlobal.dataset.asig = asig.id;
     chipsGlobal.innerHTML = UI.chipsCriterios(asig.id, inst ? (inst.criterioIdsGlobal || []) : []);
@@ -278,25 +276,9 @@ const InstrumentosView = (() => {
       body.querySelectorAll('.num-ap').forEach((n, i) => { n.textContent = i + 1 + '.'; });
     }
 
-    function nivelesDelFormulario() {
-      return Array.from(body.querySelectorAll('.nivel-fila')).map(f => ({
-        pct: parseFloat(f.querySelector('.nv-pct').value),
-        descriptor: f.querySelector('.nv-desc').value.trim()
-      })).filter(n => !isNaN(n.pct)).sort((a, b) => a.pct - b.pct);
-    }
-
-    // Columnas de la cuadrícula de rúbrica: la escala por defecto más cualquier %
-    // propio de un ítem (por si una rúbrica importada trae niveles distintos).
-    function columnasNivel(filas) {
-      const mapa = new Map();
-      nivelesDelFormulario().forEach(n => mapa.set(n.pct, n.descriptor));
-      (filas || []).forEach(f => (f.niveles || []).forEach(n => {
-        if (!mapa.has(n.pct)) mapa.set(n.pct, '');
-      }));
-      return [...mapa.entries()]
-        .map(([pct, descriptor]) => ({ pct, descriptor }))
-        .sort((a, b) => a.pct - b.pct);
-    }
+    // Columnas de la cuadrícula de rúbrica: la unión de los niveles propios de
+    // los ítems. Si todavía no hay ninguno (rúbrica nueva), la escala estándar.
+    
 
     function nivelActual() {
       const s = body.querySelector('#f-nivel');
@@ -329,21 +311,8 @@ const InstrumentosView = (() => {
       (filas || []).forEach(f => addFilaApartado(f, nivel, cols));
     }
 
-    function repintaGrid() {
-      pintaFilas(estadoFilas(), nivelActual());
-    }
-
-    function addFilaNivel(n) {
-      const div = document.createElement('div');
-      div.className = 'nivel-fila';
-      div.innerHTML = `
-        <input type="number" class="nv-pct" min="0" max="100" step="5" value="${n ? n.pct : ''}" placeholder="%">
-        <input type="text" class="nv-desc" value="${n ? Utils.esc(n.descriptor) : ''}" placeholder="Descriptor del nivel">
-        <button class="icon-btn quitar-nv" type="button">×</button>`;
-      div.querySelector('.quitar-nv').onclick = () => { div.remove(); repintaGrid(); };
-      div.querySelector('.nv-pct').addEventListener('change', repintaGrid);
-      listaNv.appendChild(div);
-    }
+    // La cuadrícula se repinta siempre desde el estado de los ítems; no hay
+    // editor de escala común, por lo que no es necesario repintarla por ese lado.
 
     function actualizaEtiquetaCrit(fila) {
       const zona = fila.querySelector('.zona-crit');
@@ -431,16 +400,10 @@ const InstrumentosView = (() => {
       refrescaNivel();
     };
     body.querySelector('#add-ap').onclick = () => addFilaApartado(null, null, selTipo.value === 'Rúbrica' ? columnasNivel(estadoFilas()) : []);
-    body.querySelector('#add-nivel').onclick = () => { addFilaNivel(null); repintaGrid(); };
 
     if (esNueva) {
-      [100, 75, 50, 25].forEach(p => addFilaNivel({ pct: p, descriptor: '' }));
       addFilaApartado(null, null, selTipo.value === 'Rúbrica' ? columnasNivel([]) : []);
     } else {
-      (inst.niveles && inst.niveles.length ? inst.niveles.slice().sort((a, b) => a.pct - b.pct) : []).forEach(addFilaNivel);
-      // La unión de la escala común y los niveles propios de cada ítem define las
-      // columnas: si no se calcula aquí, el primer repintado perdería los
-      // descriptores propios de los ítems ya guardados.
       const cols = selTipo.value === 'Rúbrica' ? columnasNivel(inst.apartados) : [];
       inst.apartados.forEach(a => addFilaApartado(a, inst.nivel, cols));
     }
@@ -1001,5 +964,5 @@ ${codigos}`;
   }
 
   // API pública de la vista: las demás vistas solo deben usar esto (D-29).
-  return { render, renderCorreccion, modalInstrumento, modalCalificar, filasCorregirHtml, filaApartado, cabeceraRubrica, plantillaColumnas, promptIa, datalistUnidades, modalBanco };
+  return { render, renderCorreccion, modalInstrumento, modalCalificar, filasCorregirHtml, filaApartado, cabeceraRubrica, plantillaColumnas, columnasNivel, promptIa, datalistUnidades, modalBanco };
 })();

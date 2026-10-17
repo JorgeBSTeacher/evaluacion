@@ -709,6 +709,14 @@ async function main() {
     check('el prompt de IA incluye los códigos del currículo', p.includes('MAT 1.1 — Resuelve problemas'));
     check('el prompt de IA pide el formato JSON correcto', p.includes('"tipo": "rubrica-evalcrit"') && p.includes('"version": 1'));
   }
+  {
+    const app = cargarApp();
+    const IV = app.InstrumentosView;
+    const SC = IV.columnasNivel([]);
+    check('sin ítems, columnasNivel usa la escala estándar', SC.map(n => n.pct).join(',') === '25,50,75,100');
+    const SU = IV.columnasNivel([{ niveles: [{ pct: 50, descriptor: 'x' }, { pct: 100, descriptor: 'y' }] }, { niveles: [{ pct: 25, descriptor: 'z' }] }]);
+    check('columnasNivel devuelve la unión de los niveles de los ítems', SU.map(n => n.pct).join(',') === '25,50,100');
+  }
 
   console.log('\n== Importar rúbrica generada por IA (P-08) ==');
   {
@@ -731,7 +739,7 @@ async function main() {
     check('conserva los descriptores de cada ítem', inst.apartados[0].niveles[3].descriptor === 'd');
     check('resuelve los códigos a criterios de la asignatura', inst.apartados[0].criterioIds.join(',') === 'k1');
     check('acepta ítems con distinto número de niveles', inst.apartados[1].niveles.length === 2);
-    check('la escala por defecto toma el primer ítem', inst.niveles.length === 4);
+    check('la escala del instrumento refleja el primer ítem', inst.niveles.length === 4);
 
     const clon = () => JSON.parse(JSON.stringify(rub));
     const rechaza = (d, re) => {
