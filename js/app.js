@@ -19,6 +19,21 @@ const App = (() => {
     return lista.map(v => `<option ${v === valorActual ? 'selected' : ''}>${Utils.esc(v)}</option>`).join('');
   }
 
+  // Mensaje de aviso según el estado de la copia de seguridad (R-01).
+  function avisoCopiaHtml(est) {
+    if (!est.hayDatos) return '';
+    if (est.nivel === 'nunca') {
+      return '<div class="aviso" style="margin:8px 0 0;background:#fef2f2;border-color:#fecaca;color:#991b1b"><b>Todavía no has hecho ninguna copia de seguridad.</b> Tus notas solo están en este navegador: expórtalas al USB.</div>';
+    }
+    if (est.nivel === 'pendiente') {
+      return '<div class="aviso" style="margin:8px 0 0"><b>Hay cambios desde tu última copia.</b> Exporta el backup al USB para no perderlos.</div>';
+    }
+    if (est.nivel === 'antigua') {
+      return `<div class="aviso" style="margin:8px 0 0">Tu última copia es de hace ${est.dias} días. Conviene exportarla otra vez.</div>`;
+    }
+    return '';
+  }
+
   function renderInicio(el) {
     const db = Storage.db;
     const stats = [
@@ -44,11 +59,13 @@ const App = (() => {
         <div class="aviso" style="background:#eff6ff;border-color:#bfdbfe;color:#1e40af">
           <b>Copias de seguridad</b> · <span id="info-backup">…</span><br>
           <small>Con Chrome/Edge en Windows puedes guardar directamente en la carpeta <code>backups/</code> del proyecto; en Android irán a Descargas.</small>
+          <div id="aviso-copia" class="no-print"></div>
           <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap" class="no-print">
             <button class="btn btn-primario btn-mini" id="btn-guardar-ini">Guardar (evalcrit.json)</button>
             <button class="btn btn-mini" id="btn-exportar-ini">Exportar backup ahora</button>
             ${Storage.puedeCarpeta() ? '<button class="btn btn-mini" id="btn-carpeta">Elegir carpeta de backups…</button>' : ''}
           </div>
+          ${Storage.copiaPrevia() ? '<div class="no-print" style="margin-top:8px"><button class="btn btn-mini" id="btn-restaurar-previa">↩ Recuperar los datos anteriores a la última importación</button></div>' : ''}
         </div>
         ${Storage.vacio() ? `
           <div class="aviso">Tu aplicación está vacía. Puedes cargar datos de ejemplo para probarla.</div>
@@ -77,17 +94,25 @@ const App = (() => {
     }
 
     const info = el.querySelector('#info-backup');
+    const avisoCopia = el.querySelector('#aviso-copia');
+    let dirActual = null;
     const pintaInfo = dir => {
+      if (dir) dirActual = dir;
       const ultima = db.meta && db.meta.ultimaExportacion ? Utils.fechaLegible(new Date(db.meta.ultimaExportacion)) + ' a las ' + new Date(db.meta.ultimaExportacion).toTimeString().slice(0, 5) : 'nunca';
-      info.innerHTML = `última copia <b>${ultima}</b>${dir ? ` · destino: carpeta «${Utils.esc(dir.name)}»` : ''}`;
+      info.innerHTML = `última copia <b>${ultima}</b>${dirActual ? ` · destino: carpeta «${Utils.esc(dirActual.name)}»` : ''}`;
+      if (avisoCopia) avisoCopia.innerHTML = avisoCopiaHtml(Storage.estadoCopia());
     };
     pintaInfo(null);
     Storage.idbLeer('dir').then(pintaInfo).catch(() => {});
 
     const btnExpIni = el.querySelector('#btn-exportar-ini');
-    btnExpIni.onclick = () => Storage.exportar().catch(e => alert('Error al exportar: ' + e.message));
+    btnExpIni.onclick = () => Storage.exportar()
+      .then(ok => { if (ok) pintaInfo(); })
+      .catch(e => alert('Error al exportar: ' + e.message));
     const btnGuardarIni = el.querySelector('#btn-guardar-ini');
-    btnGuardarIni.onclick = () => Storage.guardar().catch(e => alert('Error al guardar: ' + e.message));
+    btnGuardarIni.onclick = () => Storage.guardar()
+      .then(ok => { if (ok) pintaInfo(); })
+      .catch(e => alert('Error al guardar: ' + e.message));
     const btnCarpeta = el.querySelector('#btn-carpeta');
     if (btnCarpeta) {
       btnCarpeta.onclick = async () => {
@@ -95,6 +120,19 @@ const App = (() => {
         if (h) { pintaInfo(h); }
       };
     }
+    const btnPrevia = el.querySelector('#btn-restaurar-previa');
+    if (btnPrevia) btnPrevia.onclick = () => {
+      const o = Storage.copiaPrevia();
+      if (!o) return;
+      const fecha = Utils.fechaLegible(new Date(o.fecha));
+      if (!confirm('Se reemplazarán los datos ACTUALES por los que tenías antes de importar (del ' + fecha + '). ¿Continuar?')) return;
+      if (Storage.restaurarCopiaPrevia()) {
+        UI.toast('Datos anteriores restaurados');
+        App.ir('inicio');
+      } else {
+        alert('No se pudieron restaurar los datos anteriores.');
+      }
+    };
     const demo = el.querySelector('#btn-demo');
     if (demo) demo.onclick = () => {
       Storage.demoSeed();
@@ -155,9 +193,22 @@ const App = (() => {
       if (!archivo) return;
       if (!confirm('Importar reemplazará TODOS los datos actuales. ¿Continuar?')) return;
       Storage.importar(archivo)
-        .then(() => { UI.toast('Backup importado'); ir(actual); })
+        .then(copiada => {
+          UI.toast(copiada
+            ? 'Backup importado. Guardé una copia de tus datos anteriores por si quieres deshacerlo.'
+            : 'Backup importado');
+          ir(actual);
+        })
         .catch(() => alert('El archivo no es un backup válido de EvalCrit'));
     };
+
+    // Red de seguridad (R-01): vuelca el estado al ocultar o cerrar la pestaña
+    // por si alguna escritura anterior no llegó a completarse.
+    const volcadoSeguro = () => { if (Storage.db) Storage.volcar(); };
+    window.addEventListener('beforeunload', volcadoSeguro);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') volcadoSeguro();
+    });
 
     const hash = location.hash.slice(1);
     ir(VISTAS.some(v => v.id === hash) ? hash : 'inicio');

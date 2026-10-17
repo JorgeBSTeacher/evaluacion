@@ -1137,6 +1137,96 @@ async function main() {
       S.guardarAsignatura({ nombre: 'X' }, 'no-existe') === null && S.db.asignaturas.length === nAsig + 1);
   }
 
+  console.log('\n== Alta masiva de alumnado ==');
+  {
+    const app = cargarApp();
+    app.Storage.load();
+    const S = app.Storage;
+    await importarJson(app, estadoCascada());
+    const antes = S.db.alumnos.length;
+
+    const r = S.guardarAlumnosDesdeTexto('g2', [
+      'García Pérez, José Luis',
+      'Martínez Ruiz, Ana',
+      '',
+      '   ',
+      'SoloNombre'
+    ].join('\n'));
+    check('alta masiva crea un alumno por línea (ignora vacías)',
+      r.creados === 3 && S.db.alumnos.length === antes + 3);
+    const jose = S.db.alumnos.find(a => a.apellidos === 'García Pérez');
+    check('alta masiva interpreta «Apellidos, Nombre»',
+      !!jose && jose.nombre === 'José Luis' && jose.grupoId === 'g2');
+    const solo = S.db.alumnos.find(a => a.nombre === 'SoloNombre');
+    check('sin coma, toda la línea es el nombre', !!solo && solo.apellidos === '' && solo.grupoId === 'g2');
+
+    const r2 = S.guardarAlumnosDesdeTexto('g2', 'García Pérez, José Luis\nNuevo Alumno\nNuevo Alumno');
+    check('alta masiva evita duplicados (ya existentes y repetidos)',
+      r2.creados === 1 && r2.duplicados === 2 &&
+      S.db.alumnos.filter(a => a.nombre === 'Nuevo Alumno').length === 1);
+
+    const r3 = S.guardarAlumnosDesdeTexto('g2', '\n  \n');
+    check('alta masiva con texto vacío no crea nada',
+      r3.creados === 0 && r3.duplicados === 0 && S.db.alumnos.length === antes + 4);
+  }
+
+  console.log('\n== Seguridad de datos (copias) ==');
+  {
+    const app = cargarApp();
+    app.Storage.load();
+    const S = app.Storage;
+    await importarJson(app, estadoCascada());
+
+    check('importar deja el estado como «cambios sin copiar»', S.db.meta.cambiosSinCopia === true);
+    check('estadoCopia: datos sin copia previa → «nunca»', S.estadoCopia().nivel === 'nunca');
+
+    S.marcarCopia();
+    check('marcarCopia sella la fecha y quita «cambios sin copiar»',
+      !!S.db.meta.ultimaExportacion && S.db.meta.cambiosSinCopia === false);
+    check('estadoCopia tras copiar → «ok»', S.estadoCopia().nivel === 'ok');
+
+    S.guardarGrupo({ nombre: '6ºC', etapa: 'Primaria' });
+    check('un cambio nuevo vuelve a marcar «pendiente»', S.estadoCopia().nivel === 'pendiente');
+
+    S.marcarCopia();
+    S.volcar();
+    check('volcar() NO marca «cambios sin copiar»', S.db.meta.cambiosSinCopia === false);
+
+    S.db.meta.ultimaExportacion = new Date(Date.now() - 10 * 86400000).toISOString();
+    S.db.meta.cambiosSinCopia = false;
+    check('una copia de hace 10 días sale «antigua»',
+      S.estadoCopia().nivel === 'antigua' && S.estadoCopia().dias >= 10);
+
+    const vacio = cargarApp();
+    vacio.Storage.load();
+    check('sin datos no hay aviso de copia',
+      vacio.Storage.estadoCopia().nivel === 'ok' && vacio.Storage.estadoCopia().hayDatos === false);
+  }
+
+  console.log('\n== Deshacer una importación ==');
+  {
+    const app = cargarApp();
+    app.Storage.load();
+    const S = app.Storage;
+    const propio = S.guardarGrupo({ nombre: 'Propio', etapa: 'Primaria' });
+    const idPropio = propio.id;
+
+    const copiada = await importarJson(app, estadoCascada());
+    check('importar guarda una copia previa y lo indica', copiada === true && !!S.copiaPrevia());
+    check('tras importar, los datos son los importados',
+      S.db.grupos.some(g => g.id === 'g1') && !S.db.grupos.some(g => g.id === idPropio));
+
+    check('restaurarCopiaPrevia recupera los datos anteriores',
+      S.restaurarCopiaPrevia() === true && S.db.grupos.some(g => g.id === idPropio) && !S.copiaPrevia());
+    check('sin copia previa, restaurar no hace nada', S.restaurarCopiaPrevia() === false);
+
+    const vacio2 = cargarApp();
+    vacio2.Storage.load();
+    const copiada2 = await importarJson(vacio2, estadoCascada());
+    check('importar sobre una app vacía no genera copia previa',
+      copiada2 === false && !vacio2.Storage.copiaPrevia());
+  }
+
   console.log('\n' + (fallos ? 'FALLOS: ' + fallos + '/' + total : 'TODO OK: ' + total + ' comprobaciones'));
   process.exitCode = fallos ? 1 : 0;
 }

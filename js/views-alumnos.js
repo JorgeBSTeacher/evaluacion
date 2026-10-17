@@ -56,6 +56,29 @@ const AlumnosView = (() => {
     });
   }
 
+  function modalAlumnosVarios() {
+    UI.openModal({
+      titulo: 'Añadir varios alumnos a ' + nombreGrupo(),
+      cuerpo: `
+        <label class="campo"><span>Un alumno por línea</span>
+          <textarea id="f-lista" rows="10" placeholder="García Pérez, José Luis&#10;Martínez Ruiz, Ana"></textarea></label>
+        <div class="aviso">Escribe <b>Apellidos, Nombre</b> (con coma). Si una línea no lleva coma, se toma entera como <b>nombre</b>. Se ignoran las líneas vacías y los alumnos que ya estén en el grupo.</div>`,
+      textoGuardar: 'Añadir',
+      alGuardar(body) {
+        const r = Storage.guardarAlumnosDesdeTexto(grupoSel, body.querySelector('#f-lista').value);
+        if (!r.creados) {
+          alert(r.duplicados
+            ? 'No se añadió ninguno: los ' + r.duplicados + ' ya estaban en el grupo.'
+            : 'No se encontró ningún alumno en la lista.');
+          return false;
+        }
+        UI.toast((r.creados === 1 ? 'Añadido 1 alumno' : 'Añadidos ' + r.creados + ' alumnos') +
+          (r.duplicados ? ' (' + r.duplicados + ' ya estaban)' : ''));
+        return true;
+      }
+    });
+  }
+
   function render(el) {
     const db = Storage.db;
     el.innerHTML = `
@@ -77,7 +100,10 @@ const AlumnosView = (() => {
         <section class="card">
           <div class="card-head">
             <h2>Alumnos${grupoSel ? ' · ' + Utils.esc(nombreGrupo()) : ''}</h2>
-            <button class="btn btn-primario" id="add-alumno" ${grupoSel ? '' : 'disabled'}>Nuevo alumno</button>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-mini" id="add-varios" ${grupoSel ? '' : 'disabled'}>Añadir varios</button>
+              <button class="btn btn-primario" id="add-alumno" ${grupoSel ? '' : 'disabled'}>Nuevo alumno</button>
+            </div>
           </div>
           <table class="tabla">
             <thead><tr><th>Apellidos</th><th>Nombre</th><th></th></tr></thead>
@@ -98,6 +124,7 @@ const AlumnosView = (() => {
 
     el.querySelector('#add-grupo').onclick = () => modalGrupo(null);
     el.querySelector('#add-alumno').onclick = () => modalAlumno(null);
+    el.querySelector('#add-varios').onclick = () => modalAlumnosVarios();
     el.querySelectorAll('#lista-grupos li[data-id]').forEach(li => {
       li.addEventListener('click', e => {
         if (e.target.closest('.borrar-grupo') || e.target.closest('.editar-grupo')) return;
