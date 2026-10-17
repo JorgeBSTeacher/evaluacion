@@ -204,7 +204,7 @@ Nota asignatura (D-49): `asignatura.curso` guarda el curso del que se recuperó 
 
 Nota borrado (D-50, v0.6.1): `db.registros` está **indexado por id de instrumento** (`db.registros[instrumentoId][alumnoId][apartadoId]`), nunca por clase. Todas las bajas pasan por `Storage.borrarClase` / `borrarGrupo` / `borrarAsignatura` / `borrarAlumno`, que borran **en cascada** instrumentos, notas y —al borrar una asignatura— los **niveles ACI** que la referenciaban (más la adaptación del alumnado de ese nivel). Ninguna vista borra colecciones a mano.
 
-Nota: en rúbricas cada apartado usa `maxPts: 100` implícito y el valor registrado es el % del nivel elegido; así el motor de cálculo es único para todos los tipos. En rúbricas, `apartado.peso` pondera la media y `apartado.niveles` (D-40, v0.4.7) permite descriptores propios por ítem; si está vacío (`[]`) el ítem **hereda** `instrumento.niveles`. `Calc.nivelesDeApartado(inst, ap)` resuelve la escala efectiva de un ítem (siempre de menor a mayor).
+Nota: en rúbricas cada apartado usa `maxPts: 100` implícito y el valor registrado es el % del nivel elegido; así el motor de cálculo es único para todos los tipos. En rúbricas, `apartado.peso` pondera la media y `apartado.niveles` (D-40, v0.4.7) guarda los descriptores **propios de cada ítem**. Tras D-55 (v0.6.6), **ya no existe la escala común de la rúbrica**: cada ítem debe tener sus propios descriptores (≥ 2). La migración de `Storage.migrar` copia la antigua `instrumento.niveles` a los ítems que no las tenían. `Calc.nivelesDeApartado(inst, ap)` devuelve los niveles de un ítem (o, por retrocompatibilidad, los comunes si el ítem está vacío).
 
 Nota ACI (adaptación curricular): `clase.nivelesAci` define niveles (p. ej. un aula de 6º con alumnado que trabaja el currículo de 4º); cada nivel apunta a la `asignaturaId` (currículo de otro curso) con la que se corrige. `clase.adaptaciones` asigna alumno→código de nivel (ausente = base). Semántica de instrumentos: `nivel: ""` = común a todo el alumnado; `nivel: "BASE"` = solo base; `nivel: "<codigo>"` = solo ese nivel. El motor usa el currículo del nivel del alumno para criterios y nota (D-37). `unidad` es solo una etiqueta informativa para agrupar exámenes del mismo tema.
 
@@ -235,12 +235,12 @@ Reglas de robustez (lecciones de la v0.1):
 | Fase | Contenido | Estado |
 |---|---|---|
 | F0 | Este documento | Hecho |
-| F1 | Esqueleto app + persistencia + export/import | En curso (v0.1) |
-| F2 | Alumnos/grupos/asignaturas/clases | v0.1 |
-| F3 | Editor currículo + plantilla Decreto Cantabria | v0.1 editor + v0.2 importador y plantilla Matemáticas 3.er ciclo |
-| F4 | Instrumentos + corrección + cuadrícula | v0.1 |
-| F5 | Motor cálculo + paneles competencia | v0.1 |
-| F6 | Informes impresión | Básico v0.1; pulido después |
+| F1 | Esqueleto app + persistencia + export/import | Hecho (v0.1) |
+| F2 | Alumnos/grupos/asignaturas/clases | Hecho (v0.1) |
+| F3 | Editor currículo + plantilla Decreto Cantabria | Hecho (v0.2) |
+| F4 | Instrumentos + corrección + cuadrícula | Hecho (v0.1) |
+| F5 | Motor cálculo + paneles competencia | Hecho (v0.1) |
+| F6 | Informes impresión | Básico hecho (v0.1) |
 | F7 | Pruebas en dispositivos reales (USB Windows + Android) | Pendiente |
 
 Futuras: arrastre de cursos (D-07), escala cualitativa Infantil completa, plantilla currículo oficial, nube.
@@ -248,7 +248,7 @@ Futuras: arrastre de cursos (D-07), escala cualitativa Infantil completa, planti
 ## 14. Pendientes abiertas
 
 - P-01: ~~verificar decreto y extraer currículo a JSON~~ **RESUELTA (v0.2)**: Decreto 66/2022 (BOC nº 135, 13-07-2022) verificado; importador + plantilla Matemáticas 3.er ciclo. Queda replicar el método para Conocimiento del Medio Natural, Social y Cultural.
-- P-04: ~~decidir rediseño de rúbricas~~ **RESUELTA (D-40, v0.4.7)**: el usuario fija la cabecera **criterio · peso · nivel 1 (más bajo) … nivel 4 (más alto)**; la fila es un **ítem de texto libre** (el «apartado» actual) y **la gradación de cada nivel se edita por ítem**. Los ítems heredan la escala común del instrumento si no definen la suya.
+- P-04: ~~decidir rediseño de rúbricas~~ **RESUELTA (D-40, v0.4.7)** y **D-55 (v0.6.6)**: cada ítem define sus propios descriptores. Se elimina la escala común «Escala por defecto» para evitar confusiones (el graduado del primer criterio ya no aparece como plantilla en blanco); cada ítem escribe su propia graduación y se exige que defina al menos dos descriptores.
 - P-05: ~~plantilla CDU 3.er ciclo~~ **HECHA (v0.2.1)**. Quedan fases siguientes: Lengua, Plástica (Ed. Artística) y Educación en Valores (5º), y los cursos 1º–4º si se amplía el piloto.
 - P-06: ~~generar las plantillas de todas las áreas y ciclos de Primaria~~ **RESUELTA (v0.4.1)**: `tools/extract-decreto.py` extrae el Anexo II-A del Decreto 66/2022 (modo `layout` de `pypdf`) y escribe 19 plantillas (7 áreas × ciclos; 130 CE · 294 criterios) en `plantillas/*.json`, validado contra la plantilla Matemáticas 3.er ciclo hecha a mano (coincidencia exacta). `tools/check-plantillas.js` valida estructura, códigos únicos, vínculos criterio→CE y duplicados; `tools/build-plantillas.js` embebe las 19 en `js/plantillas.js` (~156 KB). Los niveles ACI ya pueden apuntar a cualquier área y curso de 1º a 6º.
 - P-07 (licencia y distribución, D-35): se contempla proponer el uso de la app a otros profesores y a la consejería (no el hosting, sino el código/app). **Decisión provisional: mantener todo privado por ahora.** Si se abre, decidir licencia — recomendación **EUPL-1.2** para administración pública (versión oficial en castellano, copyleft) o **MIT/Apache-2.0** si se prioriza máxima adopción. Mantener el modo local/offline como postura por defecto (minimización RGPD de datos de menores); la nube (OneDrive/backend) queda siempre opcional y apagada por defecto. Kit de distribución pendiente: `LICENSE`, `README`, nota de seguridad «cero red, datos en el dispositivo», entregable `dist/evalcrit.html`.
