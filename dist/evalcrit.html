@@ -723,10 +723,37 @@ const Storage = {
     this.save();
   },
 
-  // --- Alta y edición de grupos y alumnado ---
+  // --- Alta y edición de grupos, alumnado y asignaturas ---
   // La escritura vive aquí (no en el modal) para que sea la misma al crear y
   // al editar, y para poder comprobarla sin navegador. `id` ausente = crear;
   // `id` presente = editar en sitio, conservando el id (y con él las notas).
+  // Renombrar una asignatura NO toca sus criterios (van ligados por id), así
+  // que ni el currículo ni las notas se pierden.
+
+  guardarAsignatura(datos, id) {
+    const nombre = String(datos.nombre || '').trim();
+    if (!nombre) return null;
+    if (id) {
+      const a = this.db.asignaturas.find(x => x.id === id);
+      if (!a) return null;
+      a.nombre = nombre;
+      a.etapa = datos.etapa || a.etapa;
+      if (datos.curso != null) a.curso = String(datos.curso);
+      if (datos.fuente != null) a.fuente = String(datos.fuente);
+      this.save();
+      return a;
+    }
+    const nueva = {
+      id: Utils.uid(),
+      nombre,
+      etapa: datos.etapa || 'Primaria',
+      curso: datos.curso != null ? String(datos.curso) : '',
+      fuente: datos.fuente != null ? String(datos.fuente) : ''
+    };
+    this.db.asignaturas.push(nueva);
+    this.save();
+    return nueva;
+  },
 
   guardarGrupo(datos, id) {
     const nombre = String(datos.nombre || '').trim();
@@ -1955,12 +1982,7 @@ const ClasesView = (() => {
         }
         const nombre = body.querySelector('#f-nombre').value.trim();
         if (!nombre) { alert('Escribe un nombre para la asignatura.'); return false; }
-        Storage.db.asignaturas.push({
-          id: Utils.uid(), nombre,
-          etapa: body.querySelector('#f-etapa').value,
-          curso: '', fuente: ''
-        });
-        Storage.save();
+        Storage.guardarAsignatura({ nombre, etapa: body.querySelector('#f-etapa').value });
       }
     });
 
@@ -2003,6 +2025,31 @@ const ClasesView = (() => {
       selModo.onchange = pintaModo;
       pintaModo();
     }
+  }
+
+  // Edición de una asignatura ya creada: cambiar el nombre (y la etapa). No
+  // toca el currículo ni las notas (los criterios van ligados por id). Antes,
+  // una asignatura con currículo no tenía forma de renombrarse: había que
+  // borrarla —perdiendo currículo y notas— y volver a crearla.
+  function modalAsignaturaEditar(a) {
+    UI.openModal({
+      titulo: 'Editar asignatura',
+      cuerpo: `
+        <label class="campo"><span>Nombre</span>
+          <input type="text" id="f-nombre" value="${Utils.esc(a.nombre)}" placeholder="Ej. Matemáticas 6º"></label>
+        <label class="campo"><span>Etapa</span>
+          <select id="f-etapa">
+            <option ${a.etapa === 'Primaria' ? 'selected' : ''}>Primaria</option>
+            <option ${a.etapa === 'Infantil' ? 'selected' : ''}>Infantil</option>
+          </select></label>`,
+      alGuardar(body) {
+        const guardada = Storage.guardarAsignatura({
+          nombre: body.querySelector('#f-nombre').value,
+          etapa: body.querySelector('#f-etapa').value
+        }, a.id);
+        if (!guardada) { alert('Escribe un nombre para la asignatura.'); return false; }
+      }
+    });
   }
 
   function modalClase() {
@@ -2137,6 +2184,7 @@ const ClasesView = (() => {
               return `
               <li data-id="${a.id}">
                 <span>${Utils.esc(a.nombre)}</span><small>${Utils.esc(det)}</small>
+                <button class="btn btn-mini editar-asig" data-id="${a.id}">Editar</button>
                 ${conCurriculo || !hayOficiales ? '' : `<button class="btn btn-mini recuperar-asig" data-id="${a.id}" title="Cargar el currículo oficial de este curso">Recuperar</button>`}
                 <button class="icon-btn borrar-asig" data-id="${a.id}" title="Eliminar">×</button>
               </li>`;
@@ -2170,6 +2218,14 @@ const ClasesView = (() => {
 
     el.querySelector('#add-asig').onclick = () => modalAsignatura();
     el.querySelector('#add-clase').onclick = () => modalClase();
+
+    el.querySelectorAll('.editar-asig').forEach(b => {
+      b.onclick = e => {
+        e.stopPropagation();
+        try { modalAsignaturaEditar(Calc.asignatura(b.dataset.id)); }
+        catch (err) { console.error(err); alert('Error al editar la asignatura: ' + err.message); }
+      };
+    });
 
     el.querySelectorAll('.recuperar-asig').forEach(b => {
       b.onclick = e => {
