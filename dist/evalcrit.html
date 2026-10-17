@@ -412,6 +412,11 @@ const Utils = {
 <script>
 const Storage = {
   KEY: 'evalcrit:data',
+  // Copia del estado anterior a una importación, para poder deshacerla:
+  // importar reemplaza TODOS los datos (ver «Copia de seguridad» más abajo).
+  KEY_PREVIA: 'evalcrit:preimport',
+  // Días sin copia de seguridad a partir de los cuales se avisa en Inicio.
+  DIAS_COPIA: 7,
   db: null,
 
   defaults() {
@@ -420,7 +425,7 @@ const Storage = {
     return {
       schemaVersion: 1,
       cursoEscolar: `${inicio}/${inicio + 1}`,
-      meta: { ultimaExportacion: null },
+      meta: { ultimaExportacion: null, cambiosSinCopia: false },
       grupos: [],
       alumnos: [],
       asignaturas: [],
@@ -455,16 +460,30 @@ const Storage = {
     return this.db;
   },
 
-  save() {
+  // Guarda en el navegador y marca que hay cambios sin copiar (salvo cuando el
+  // propio guardado forma parte de una exportación: ahí no hay nada nuevo que
+  // respaldar). `esCopia` lo usan exportar/guardar vía `marcarCopia`.
+  save(esCopia) {
     const dot = document.getElementById('estado-guardado');
     if (dot) {
       dot.classList.add('guardando');
       setTimeout(() => dot.classList.remove('guardando'), 400);
     }
+    if (!esCopia) {
+      this.db.meta = this.db.meta || {};
+      this.db.meta.cambiosSinCopia = true;
+    }
+    this.volcar();
+  },
+
+  // Vuelca el estado actual al navegador sin efectos colaterales (no marca
+  // «cambios sin copiar» ni anima el indicador). Es la red de seguridad al
+  // cerrar u ocultar la pestaña (R-01): el último estado siempre queda escrito.
+  volcar() {
     try {
       localStorage.setItem(this.KEY, JSON.stringify(this.db));
     } catch (e) {
-      UI.toast('Error al guardar: exporta tu backup ahora');
+      if (typeof UI !== 'undefined' && UI.toast) UI.toast('Error al guardar: exporta tu backup ahora');
     }
   },
 
@@ -529,7 +548,7 @@ const Storage = {
     if (!this.puedeCarpeta()) return this.exportar();
     let dir = await this.idbLeer('dir');
     if (!dir) dir = await this.elegirCarpetaBackup();
-    if (!dir) return; // el usuario canceló
+    if (!dir) return false; // el usuario canceló
     let perm = 'granted';
     if (dir.queryPermission) perm = await dir.queryPermission({ mode: 'readwrite' });
     if (perm !== 'granted' && dir.requestPermission) {
@@ -544,12 +563,11 @@ const Storage = {
       const w = await fh.createWritable();
       await w.write(contenido);
       await w.close();
-      this.db.meta = this.db.meta || {};
-      this.db.meta.ultimaExportacion = new Date().toISOString();
-      this.save();
+      this.marcarCopia();
       UI.toast('Guardado en «' + dir.name + '/evalcrit.json»');
+      return true;
     } catch (e) {
-      if (e && e.name === 'AbortError') return;
+      if (e && e.name === 'AbortError') return false;
       console.error(e);
       return this.exportar();
     }
@@ -586,7 +604,7 @@ const Storage = {
         destino = `«${fh.name}»`;
       }
     } catch (e) {
-      if (e && e.name === 'AbortError') return;
+      if (e && e.name === 'AbortError') return false;
       console.error(e);
     }
     if (!destino) {
@@ -599,12 +617,11 @@ const Storage = {
       a.remove();
       destino = 'Descargas';
     }
-    this.db.meta = this.db.meta || {};
-    this.db.meta.ultimaExportacion = new Date().toISOString();
-    this.save();
+    this.marcarCopia();
     UI.toast(destino === 'Descargas'
       ? 'Backup en Descargas: cópialo a la carpeta backups/ del proyecto'
       : `Backup guardado en ${destino}`);
+    return true;
   },
 
   importar(archivo) {
@@ -616,9 +633,12 @@ const Storage = {
           if (!datos || datos.schemaVersion !== 1 || !Array.isArray(datos.grupos) || !Array.isArray(datos.alumnos)) {
             throw new Error('Formato no válido');
           }
+          // Antes de reemplazar nada, guarda el estado actual para poder
+          // deshacerlo (solo si había algo que perder).
+          const copiada = this.vacio() ? false : this.copiarAntesDeImportar();
           this.db = this.migrar(datos);
           this.save();
-          resolve(true);
+          resolve(copiada);
         } catch (e) {
           reject(e);
         }
@@ -636,6 +656,7 @@ const Storage = {
       if (db[k] == null) db[k] = d[k];
     }
     if (!db.meta || typeof db.meta !== 'object') db.meta = { ultimaExportacion: null };
+    if (db.meta.cambiosSinCopia == null) db.meta.cambiosSinCopia = false;
     db.grupos.forEach(g => { if (g.etapa == null) g.etapa = ''; });
     // La asignatura recuerda de qué curso es su currículo (p. ej. «6º») y su
     // fuente legal (la cita del decreto). Backups antiguos no los traen.
@@ -717,8 +738,72 @@ const Storage = {
     return [...ids];
   },
 
+  // --- Copia de seguridad: estado, sellado y copia previa a importar ---
+
+  // Estado de la copia para avisar en Inicio (R-01). Puro: recibe el «ahora»
+  // para poder comprobarlo sin depender del reloj.
+  estadoCopia(ahora) {
+    const meta = this.db.meta || {};
+    const ultima = meta.ultimaExportacion || null;
+    const hayDatos = !this.vacio();
+    const dias = ultima ? Math.floor(((ahora || Date.now()) - new Date(ultima).getTime()) / 86400000) : null;
+    let nivel = 'ok';
+    if (hayDatos && !ultima) nivel = 'nunca';
+    else if (hayDatos && meta.cambiosSinCopia) nivel = 'pendiente';
+    else if (hayDatos && dias >= this.DIAS_COPIA) nivel = 'antigua';
+    return { ultima, dias, nivel, hayDatos };
+  },
+
+  // Sella una exportación correcta: fija la fecha y quita «cambios sin copiar».
+  marcarCopia() {
+    this.db.meta = this.db.meta || {};
+    this.db.meta.ultimaExportacion = new Date().toISOString();
+    this.db.meta.cambiosSinCopia = false;
+    this.save(true);
+  },
+
+  // Copia del estado actual justo antes de una importación (que reemplaza
+  // todo). Permite deshacerla desde Inicio.
+  copiarAntesDeImportar() {
+    try {
+      localStorage.setItem(this.KEY_PREVIA, JSON.stringify({ fecha: new Date().toISOString(), db: this.db }));
+      return true;
+    } catch (e) {
+      return false;
+    }
+  },
+
+  copiaPrevia() {
+    try {
+      const raw = localStorage.getItem(this.KEY_PREVIA);
+      if (!raw) return null;
+      const o = JSON.parse(raw);
+      return o && o.db ? o : null;
+    } catch (e) {
+      return null;
+    }
+  },
+
+  limpiarCopiaPrevia() {
+    try { localStorage.removeItem(this.KEY_PREVIA); } catch (e) { /* noop */ }
+  },
+
+  restaurarCopiaPrevia() {
+    const o = this.copiaPrevia();
+    if (!o) return false;
+    try {
+      this.db = this.migrar(o.db);
+      this.limpiarCopiaPrevia();
+      this.save();
+      return true;
+    } catch (e) {
+      return false;
+    }
+  },
+
   reiniciar() {
     try { localStorage.removeItem(this.KEY); } catch (e) {}
+    this.limpiarCopiaPrevia();
     this.db = this.defaults();
     this.save();
   },
@@ -790,6 +875,33 @@ const Storage = {
     this.db.alumnos.push(nuevo);
     this.save();
     return nuevo;
+  },
+
+  // Alta masiva: añade alumnado a un grupo desde un texto (un alumno por línea).
+  // Formato «Apellidos, Nombre»; si una línea no lleva coma, se toma entera como
+  // nombre. Ignora líneas vacías y evita duplicados ya presentes en el grupo.
+  // Devuelve un resumen para informar al docente. La escritura vive aquí (no en
+  // el modal) para poder comprobarla sin navegador.
+  guardarAlumnosDesdeTexto(grupoId, texto) {
+    const resp = { creados: 0, duplicados: 0 };
+    const clave = a => (String(a.apellidos || '') + '\u0000' + String(a.nombre || '')).toLowerCase();
+    const existentes = new Set(this.db.alumnos.filter(a => a.grupoId === grupoId).map(clave));
+    const vistos = new Set();
+    for (const linea of String(texto || '').split(/\r?\n/)) {
+      const limpia = linea.trim();
+      if (!limpia) continue;
+      const coma = limpia.indexOf(',');
+      const apellidos = coma >= 0 ? limpia.slice(0, coma).trim() : '';
+      const nombre = coma >= 0 ? limpia.slice(coma + 1).trim() : limpia;
+      if (!nombre && !apellidos) continue;
+      const c = clave({ apellidos, nombre });
+      if (existentes.has(c) || vistos.has(c)) { resp.duplicados++; continue; }
+      vistos.add(c);
+      this.db.alumnos.push({ id: Utils.uid(), nombre, apellidos, grupoId: grupoId || null });
+      resp.creados++;
+    }
+    if (resp.creados) this.save();
+    return resp;
   },
 
   // --- Borrado en cascada (punto único) ---
@@ -1812,6 +1924,29 @@ const AlumnosView = (() => {
     });
   }
 
+  function modalAlumnosVarios() {
+    UI.openModal({
+      titulo: 'Añadir varios alumnos a ' + nombreGrupo(),
+      cuerpo: `
+        <label class="campo"><span>Un alumno por línea</span>
+          <textarea id="f-lista" rows="10" placeholder="García Pérez, José Luis&#10;Martínez Ruiz, Ana"></textarea></label>
+        <div class="aviso">Escribe <b>Apellidos, Nombre</b> (con coma). Si una línea no lleva coma, se toma entera como <b>nombre</b>. Se ignoran las líneas vacías y los alumnos que ya estén en el grupo.</div>`,
+      textoGuardar: 'Añadir',
+      alGuardar(body) {
+        const r = Storage.guardarAlumnosDesdeTexto(grupoSel, body.querySelector('#f-lista').value);
+        if (!r.creados) {
+          alert(r.duplicados
+            ? 'No se añadió ninguno: los ' + r.duplicados + ' ya estaban en el grupo.'
+            : 'No se encontró ningún alumno en la lista.');
+          return false;
+        }
+        UI.toast((r.creados === 1 ? 'Añadido 1 alumno' : 'Añadidos ' + r.creados + ' alumnos') +
+          (r.duplicados ? ' (' + r.duplicados + ' ya estaban)' : ''));
+        return true;
+      }
+    });
+  }
+
   function render(el) {
     const db = Storage.db;
     el.innerHTML = `
@@ -1833,7 +1968,10 @@ const AlumnosView = (() => {
         <section class="card">
           <div class="card-head">
             <h2>Alumnos${grupoSel ? ' · ' + Utils.esc(nombreGrupo()) : ''}</h2>
-            <button class="btn btn-primario" id="add-alumno" ${grupoSel ? '' : 'disabled'}>Nuevo alumno</button>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-mini" id="add-varios" ${grupoSel ? '' : 'disabled'}>Añadir varios</button>
+              <button class="btn btn-primario" id="add-alumno" ${grupoSel ? '' : 'disabled'}>Nuevo alumno</button>
+            </div>
           </div>
           <table class="tabla">
             <thead><tr><th>Apellidos</th><th>Nombre</th><th></th></tr></thead>
@@ -1854,6 +1992,7 @@ const AlumnosView = (() => {
 
     el.querySelector('#add-grupo').onclick = () => modalGrupo(null);
     el.querySelector('#add-alumno').onclick = () => modalAlumno(null);
+    el.querySelector('#add-varios').onclick = () => modalAlumnosVarios();
     el.querySelectorAll('#lista-grupos li[data-id]').forEach(li => {
       li.addEventListener('click', e => {
         if (e.target.closest('.borrar-grupo') || e.target.closest('.editar-grupo')) return;
@@ -3906,6 +4045,21 @@ const App = (() => {
     return lista.map(v => `<option ${v === valorActual ? 'selected' : ''}>${Utils.esc(v)}</option>`).join('');
   }
 
+  // Mensaje de aviso según el estado de la copia de seguridad (R-01).
+  function avisoCopiaHtml(est) {
+    if (!est.hayDatos) return '';
+    if (est.nivel === 'nunca') {
+      return '<div class="aviso" style="margin:8px 0 0;background:#fef2f2;border-color:#fecaca;color:#991b1b"><b>Todavía no has hecho ninguna copia de seguridad.</b> Tus notas solo están en este navegador: expórtalas al USB.</div>';
+    }
+    if (est.nivel === 'pendiente') {
+      return '<div class="aviso" style="margin:8px 0 0"><b>Hay cambios desde tu última copia.</b> Exporta el backup al USB para no perderlos.</div>';
+    }
+    if (est.nivel === 'antigua') {
+      return `<div class="aviso" style="margin:8px 0 0">Tu última copia es de hace ${est.dias} días. Conviene exportarla otra vez.</div>`;
+    }
+    return '';
+  }
+
   function renderInicio(el) {
     const db = Storage.db;
     const stats = [
@@ -3931,11 +4085,13 @@ const App = (() => {
         <div class="aviso" style="background:#eff6ff;border-color:#bfdbfe;color:#1e40af">
           <b>Copias de seguridad</b> · <span id="info-backup">…</span><br>
           <small>Con Chrome/Edge en Windows puedes guardar directamente en la carpeta <code>backups/</code> del proyecto; en Android irán a Descargas.</small>
+          <div id="aviso-copia" class="no-print"></div>
           <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap" class="no-print">
             <button class="btn btn-primario btn-mini" id="btn-guardar-ini">Guardar (evalcrit.json)</button>
             <button class="btn btn-mini" id="btn-exportar-ini">Exportar backup ahora</button>
             ${Storage.puedeCarpeta() ? '<button class="btn btn-mini" id="btn-carpeta">Elegir carpeta de backups…</button>' : ''}
           </div>
+          ${Storage.copiaPrevia() ? '<div class="no-print" style="margin-top:8px"><button class="btn btn-mini" id="btn-restaurar-previa">↩ Recuperar los datos anteriores a la última importación</button></div>' : ''}
         </div>
         ${Storage.vacio() ? `
           <div class="aviso">Tu aplicación está vacía. Puedes cargar datos de ejemplo para probarla.</div>
@@ -3964,17 +4120,25 @@ const App = (() => {
     }
 
     const info = el.querySelector('#info-backup');
+    const avisoCopia = el.querySelector('#aviso-copia');
+    let dirActual = null;
     const pintaInfo = dir => {
+      if (dir) dirActual = dir;
       const ultima = db.meta && db.meta.ultimaExportacion ? Utils.fechaLegible(new Date(db.meta.ultimaExportacion)) + ' a las ' + new Date(db.meta.ultimaExportacion).toTimeString().slice(0, 5) : 'nunca';
-      info.innerHTML = `última copia <b>${ultima}</b>${dir ? ` · destino: carpeta «${Utils.esc(dir.name)}»` : ''}`;
+      info.innerHTML = `última copia <b>${ultima}</b>${dirActual ? ` · destino: carpeta «${Utils.esc(dirActual.name)}»` : ''}`;
+      if (avisoCopia) avisoCopia.innerHTML = avisoCopiaHtml(Storage.estadoCopia());
     };
     pintaInfo(null);
     Storage.idbLeer('dir').then(pintaInfo).catch(() => {});
 
     const btnExpIni = el.querySelector('#btn-exportar-ini');
-    btnExpIni.onclick = () => Storage.exportar().catch(e => alert('Error al exportar: ' + e.message));
+    btnExpIni.onclick = () => Storage.exportar()
+      .then(ok => { if (ok) pintaInfo(); })
+      .catch(e => alert('Error al exportar: ' + e.message));
     const btnGuardarIni = el.querySelector('#btn-guardar-ini');
-    btnGuardarIni.onclick = () => Storage.guardar().catch(e => alert('Error al guardar: ' + e.message));
+    btnGuardarIni.onclick = () => Storage.guardar()
+      .then(ok => { if (ok) pintaInfo(); })
+      .catch(e => alert('Error al guardar: ' + e.message));
     const btnCarpeta = el.querySelector('#btn-carpeta');
     if (btnCarpeta) {
       btnCarpeta.onclick = async () => {
@@ -3982,6 +4146,19 @@ const App = (() => {
         if (h) { pintaInfo(h); }
       };
     }
+    const btnPrevia = el.querySelector('#btn-restaurar-previa');
+    if (btnPrevia) btnPrevia.onclick = () => {
+      const o = Storage.copiaPrevia();
+      if (!o) return;
+      const fecha = Utils.fechaLegible(new Date(o.fecha));
+      if (!confirm('Se reemplazarán los datos ACTUALES por los que tenías antes de importar (del ' + fecha + '). ¿Continuar?')) return;
+      if (Storage.restaurarCopiaPrevia()) {
+        UI.toast('Datos anteriores restaurados');
+        App.ir('inicio');
+      } else {
+        alert('No se pudieron restaurar los datos anteriores.');
+      }
+    };
     const demo = el.querySelector('#btn-demo');
     if (demo) demo.onclick = () => {
       Storage.demoSeed();
@@ -4042,9 +4219,22 @@ const App = (() => {
       if (!archivo) return;
       if (!confirm('Importar reemplazará TODOS los datos actuales. ¿Continuar?')) return;
       Storage.importar(archivo)
-        .then(() => { UI.toast('Backup importado'); ir(actual); })
+        .then(copiada => {
+          UI.toast(copiada
+            ? 'Backup importado. Guardé una copia de tus datos anteriores por si quieres deshacerlo.'
+            : 'Backup importado');
+          ir(actual);
+        })
         .catch(() => alert('El archivo no es un backup válido de EvalCrit'));
     };
+
+    // Red de seguridad (R-01): vuelca el estado al ocultar o cerrar la pestaña
+    // por si alguna escritura anterior no llegó a completarse.
+    const volcadoSeguro = () => { if (Storage.db) Storage.volcar(); };
+    window.addEventListener('beforeunload', volcadoSeguro);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') volcadoSeguro();
+    });
 
     const hash = location.hash.slice(1);
     ir(VISTAS.some(v => v.id === hash) ? hash : 'inicio');
