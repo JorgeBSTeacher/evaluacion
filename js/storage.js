@@ -225,6 +225,12 @@ const Storage = {
     }
     if (!db.meta || typeof db.meta !== 'object') db.meta = { ultimaExportacion: null };
     db.grupos.forEach(g => { if (g.etapa == null) g.etapa = ''; });
+    // La asignatura recuerda de qué curso es su currículo (p. ej. «6º») y su
+    // fuente legal (la cita del decreto). Backups antiguos no los traen.
+    db.asignaturas.forEach(a => {
+      if (a.curso == null) a.curso = '';
+      if (a.fuente == null) a.fuente = '';
+    });
     // Códigos de nivel ACI y asignaciones de alumnado: se guardan siempre
     // normalizados (sin espacios, en mayúsculas) para que un «b» tecleado por
     // el docente no deje al alumnado fuera de su nivel (y de todas las vistas).
@@ -333,7 +339,7 @@ const Storage = {
     return { inst: r.inst, faltan: [], molde };
   },
 
-  importarCurriculo(datos) {
+  importarCurriculo(datos, opciones) {
     if (!datos || datos.tipo !== 'curriculo-evalcrit' || datos.version !== 1) {
       throw new Error('El archivo no es una plantilla de currículo EvalCrit válida');
     }
@@ -361,25 +367,35 @@ const Storage = {
       }
     }
 
-    const cursos = Array.isArray(asig.cursos) && asig.cursos.length
+    const opts = opciones || {};
+    const cursosPlantilla = Array.isArray(asig.cursos) && asig.cursos.length
       ? asig.cursos.map(c => String(c).trim()).filter(Boolean)
       : [''];
+    // Sin `opciones.cursos` se comporta como antes (una asignatura por curso de
+    // la plantilla). Con `opciones.cursos` solo se crea el curso pedido.
+    let cursos = cursosPlantilla;
+    if (Array.isArray(opts.cursos) && opts.cursos.length) {
+      const pedidos = opts.cursos.map(c => String(c).trim()).filter(Boolean);
+      cursos = cursosPlantilla.filter(c => pedidos.indexOf(c) !== -1);
+      if (!cursos.length) {
+        throw new Error(`La plantilla de ${nombre} no cubre el curso ${pedidos.join(', ')}`);
+      }
+    }
     const n = datos.criterios.length;
     const pesoIgual = Math.round((100 / n) * 10000) / 10000;
+    const fuente = typeof datos.fuente === 'string' ? datos.fuente.trim() : '';
     const creadas = [];
     const ids = [];
 
-    for (const curso of cursos) {
-      const nombreCompleto = curso ? `${nombre} ${curso}` : nombre;
-      let target = this.db.asignaturas.find(a =>
-        a.nombre.toLowerCase() === nombreCompleto.toLowerCase() && (a.etapa || '') === etapa);
-      if (target && this.db.competenciasEspecificas.some(e => e.asignaturaId === target.id)) {
-        throw new Error(`La asignatura «${nombreCompleto}» ya tiene currículo. Elimínalo primero o renombra la asignatura en la plantilla.`);
+    // Rellena una asignatura (nueva o ya existente) con las competencias
+    // específicas, los criterios y los saberes de la plantilla. Aborta si esa
+    // asignatura ya tiene currículo: nunca se pisa lo que ya hay.
+    const rellenar = (target, curso) => {
+      if (this.db.competenciasEspecificas.some(e => e.asignaturaId === target.id)) {
+        throw new Error(`La asignatura «${target.nombre}» ya tiene currículo. Elimínalo primero o renombra la asignatura en la plantilla.`);
       }
-      if (!target) {
-        target = { id: Utils.uid(), nombre: nombreCompleto, etapa };
-        this.db.asignaturas.push(target);
-      }
+      target.curso = curso;
+      if (fuente) target.fuente = fuente;
 
       const idEsp = {};
       for (const ce of datos.competenciasEspecificas) {
@@ -414,8 +430,29 @@ const Storage = {
       if (Array.isArray(datos.saberesBasicos)) {
         target.saberesBasicos = datos.saberesBasicos;
       }
-      creadas.push(nombreCompleto);
+    };
+
+    if (opts.asignaturaId) {
+      // Recuperar el currículo en una asignatura ya creada (una sola), sin
+      // duplicarla. Sirve para arreglar las creadas a mano sin currículo.
+      const target = this.db.asignaturas.find(a => a.id === opts.asignaturaId);
+      if (!target) throw new Error('La asignatura indicada ya no existe');
+      rellenar(target, String(opts.curso || target.curso || cursos[0] || '').trim());
+      creadas.push(target.nombre);
       ids.push(target.id);
+    } else {
+      for (const curso of cursos) {
+        const nombreCompleto = curso ? `${nombre} ${curso}` : nombre;
+        let target = this.db.asignaturas.find(a =>
+          a.nombre.toLowerCase() === nombreCompleto.toLowerCase() && (a.etapa || '') === etapa);
+        if (!target) {
+          target = { id: Utils.uid(), nombre: nombreCompleto, etapa, curso, fuente };
+          this.db.asignaturas.push(target);
+        }
+        rellenar(target, curso);
+        creadas.push(nombreCompleto);
+        ids.push(target.id);
+      }
     }
 
     this.save();

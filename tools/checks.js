@@ -543,6 +543,48 @@ async function main() {
     check('rechaza plantilla no válida', inval);
   }
 
+  console.log('');
+  console.log('== Alta de asignatura por curso y recuperación de currículo (D-49) ==');
+  {
+    const app = cargarApp();
+    app.Storage.load();
+    const pl = app.PLANTILLAS_CURRICULO.find(p => (p.asignatura.cursos || []).length >= 2);
+    check('hay una plantilla de varios cursos', !!pl, pl ? pl.asignatura.nombre : '');
+    const cursos = pl.asignatura.cursos.map(String);
+    const curso = cursos[cursos.length - 1];
+    const otro = ['1º', '2º', '3º', '4º', '5º', '6º'].find(c => cursos.indexOf(c) === -1) || '9º';
+
+    const r = app.Storage.importarCurriculo(pl, { cursos: [curso] });
+    check('importa solo el curso pedido',
+      r.asignaturas.length === 1 && r.asignaturas[0] === pl.asignatura.nombre + ' ' + curso, r.asignaturas.join(','));
+    const a = app.Storage.db.asignaturas.find(x => x.id === r.ids[0]);
+    check('la asignatura recuerda su curso', a.curso === curso, String(a.curso));
+    check('la asignatura recuerda la fuente legal',
+      typeof a.fuente === 'string' && a.fuente.indexOf('Decreto') !== -1, a.fuente);
+    check('no crea el resto de cursos del ciclo',
+      !app.Storage.db.asignaturas.some(x => x.id !== a.id && x.nombre === pl.asignatura.nombre + ' ' + cursos[0]),
+      app.Storage.db.asignaturas.map(x => x.nombre).join(' | '));
+
+    let fuera = false;
+    try { app.Storage.importarCurriculo(pl, { cursos: [otro] }); } catch (e) { fuera = /no cubre/.test(e.message); }
+    check('rechaza un curso que la plantilla no cubre', fuera);
+
+    app.Storage.db.asignaturas.push({ id: 'v1', nombre: pl.asignatura.nombre, etapa: pl.asignatura.etapa, curso: '', fuente: '' });
+    const r2 = app.Storage.importarCurriculo(pl, { cursos: [curso], asignaturaId: 'v1' });
+    check('recupera el currículo en una asignatura existente en vez de duplicarla',
+      r2.ids.length === 1 && r2.ids[0] === 'v1' && app.Storage.db.criterios.filter(c => c.asignaturaId === 'v1').length > 0);
+    check('la asignatura recuperada recuerda su curso',
+      app.Storage.db.asignaturas.find(x => x.id === 'v1').curso === curso);
+    let dup2 = false;
+    try { app.Storage.importarCurriculo(pl, { cursos: [curso], asignaturaId: 'v1' }); } catch (e) { dup2 = /ya tiene curr/.test(e.message); }
+    check('no rellena dos veces la misma asignatura', dup2);
+
+    await importarJson(app, estadoAci());
+    const leg = app.Storage.db.asignaturas.find(x => x.id === 's1');
+    check('backup antiguo: la asignatura gana curso y fuente vacíos', leg.curso === '' && leg.fuente === '',
+      'curso=' + JSON.stringify(leg.curso) + ' fuente=' + JSON.stringify(leg.fuente));
+  }
+
   console.log('\n== Rúbrica: niveles por ítem y herencia (D-40) ==');
   {
     const app = cargarApp();

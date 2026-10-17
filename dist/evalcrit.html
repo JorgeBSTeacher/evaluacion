@@ -151,9 +151,6 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--acento-suav
 
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .hint { display: block; color: var(--tinta-suave); font-size: 12px; margin-bottom: 6px; }
-.importa-areas { display: flex; flex-direction: column; gap: 8px; }
-.importa-area { border: 1px solid var(--linea); border-radius: 10px; padding: 8px 10px; }
-.importa-area > strong { display: block; font-size: 13px; color: var(--tinta); margin-bottom: 6px; }
 .chip {
   display: inline-flex; align-items: center; gap: 6px;
   border: 1px solid var(--linea); border-radius: 999px;
@@ -640,6 +637,12 @@ const Storage = {
     }
     if (!db.meta || typeof db.meta !== 'object') db.meta = { ultimaExportacion: null };
     db.grupos.forEach(g => { if (g.etapa == null) g.etapa = ''; });
+    // La asignatura recuerda de qué curso es su currículo (p. ej. «6º») y su
+    // fuente legal (la cita del decreto). Backups antiguos no los traen.
+    db.asignaturas.forEach(a => {
+      if (a.curso == null) a.curso = '';
+      if (a.fuente == null) a.fuente = '';
+    });
     // Códigos de nivel ACI y asignaciones de alumnado: se guardan siempre
     // normalizados (sin espacios, en mayúsculas) para que un «b» tecleado por
     // el docente no deje al alumnado fuera de su nivel (y de todas las vistas).
@@ -748,7 +751,7 @@ const Storage = {
     return { inst: r.inst, faltan: [], molde };
   },
 
-  importarCurriculo(datos) {
+  importarCurriculo(datos, opciones) {
     if (!datos || datos.tipo !== 'curriculo-evalcrit' || datos.version !== 1) {
       throw new Error('El archivo no es una plantilla de currículo EvalCrit válida');
     }
@@ -776,25 +779,35 @@ const Storage = {
       }
     }
 
-    const cursos = Array.isArray(asig.cursos) && asig.cursos.length
+    const opts = opciones || {};
+    const cursosPlantilla = Array.isArray(asig.cursos) && asig.cursos.length
       ? asig.cursos.map(c => String(c).trim()).filter(Boolean)
       : [''];
+    // Sin `opciones.cursos` se comporta como antes (una asignatura por curso de
+    // la plantilla). Con `opciones.cursos` solo se crea el curso pedido.
+    let cursos = cursosPlantilla;
+    if (Array.isArray(opts.cursos) && opts.cursos.length) {
+      const pedidos = opts.cursos.map(c => String(c).trim()).filter(Boolean);
+      cursos = cursosPlantilla.filter(c => pedidos.indexOf(c) !== -1);
+      if (!cursos.length) {
+        throw new Error(`La plantilla de ${nombre} no cubre el curso ${pedidos.join(', ')}`);
+      }
+    }
     const n = datos.criterios.length;
     const pesoIgual = Math.round((100 / n) * 10000) / 10000;
+    const fuente = typeof datos.fuente === 'string' ? datos.fuente.trim() : '';
     const creadas = [];
     const ids = [];
 
-    for (const curso of cursos) {
-      const nombreCompleto = curso ? `${nombre} ${curso}` : nombre;
-      let target = this.db.asignaturas.find(a =>
-        a.nombre.toLowerCase() === nombreCompleto.toLowerCase() && (a.etapa || '') === etapa);
-      if (target && this.db.competenciasEspecificas.some(e => e.asignaturaId === target.id)) {
-        throw new Error(`La asignatura «${nombreCompleto}» ya tiene currículo. Elimínalo primero o renombra la asignatura en la plantilla.`);
+    // Rellena una asignatura (nueva o ya existente) con las competencias
+    // específicas, los criterios y los saberes de la plantilla. Aborta si esa
+    // asignatura ya tiene currículo: nunca se pisa lo que ya hay.
+    const rellenar = (target, curso) => {
+      if (this.db.competenciasEspecificas.some(e => e.asignaturaId === target.id)) {
+        throw new Error(`La asignatura «${target.nombre}» ya tiene currículo. Elimínalo primero o renombra la asignatura en la plantilla.`);
       }
-      if (!target) {
-        target = { id: Utils.uid(), nombre: nombreCompleto, etapa };
-        this.db.asignaturas.push(target);
-      }
+      target.curso = curso;
+      if (fuente) target.fuente = fuente;
 
       const idEsp = {};
       for (const ce of datos.competenciasEspecificas) {
@@ -829,8 +842,29 @@ const Storage = {
       if (Array.isArray(datos.saberesBasicos)) {
         target.saberesBasicos = datos.saberesBasicos;
       }
-      creadas.push(nombreCompleto);
+    };
+
+    if (opts.asignaturaId) {
+      // Recuperar el currículo en una asignatura ya creada (una sola), sin
+      // duplicarla. Sirve para arreglar las creadas a mano sin currículo.
+      const target = this.db.asignaturas.find(a => a.id === opts.asignaturaId);
+      if (!target) throw new Error('La asignatura indicada ya no existe');
+      rellenar(target, String(opts.curso || target.curso || cursos[0] || '').trim());
+      creadas.push(target.nombre);
       ids.push(target.id);
+    } else {
+      for (const curso of cursos) {
+        const nombreCompleto = curso ? `${nombre} ${curso}` : nombre;
+        let target = this.db.asignaturas.find(a =>
+          a.nombre.toLowerCase() === nombreCompleto.toLowerCase() && (a.etapa || '') === etapa);
+        if (!target) {
+          target = { id: Utils.uid(), nombre: nombreCompleto, etapa, curso, fuente };
+          this.db.asignaturas.push(target);
+        }
+        rellenar(target, curso);
+        creadas.push(nombreCompleto);
+        ids.push(target.id);
+      }
     }
 
     this.save();
@@ -1687,21 +1721,137 @@ const AlumnosView = (() => {
 </script>
 <script>
 const ClasesView = (() => {
-  function modalAsignatura() {
-    UI.openModal({
-      titulo: 'Nueva asignatura / área',
-      cuerpo: `
+  const ORDEN_CURSOS = ['1º', '2º', '3º', '4º', '5º', '6º'];
+
+  // Las plantillas oficiales embebidas (una por área y ciclo) son la única
+  // fuente de currículo. La asignatura se ancla a un curso concreto.
+  function plantillasOficiales() {
+    return (typeof PLANTILLAS_CURRICULO !== 'undefined' && Array.isArray(PLANTILLAS_CURRICULO))
+      ? PLANTILLAS_CURRICULO : [];
+  }
+
+  function areasOficiales() {
+    return [...new Set(plantillasOficiales().map(p => (p.asignatura || {}).nombre).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, 'es'));
+  }
+
+  function cursosDeArea(area) {
+    const set = new Set();
+    plantillasOficiales()
+      .filter(p => (p.asignatura || {}).nombre === area)
+      .forEach(p => ((p.asignatura || {}).cursos || []).forEach(c => set.add(String(c))));
+    return [...set].sort((a, b) => {
+      const ia = ORDEN_CURSOS.indexOf(a), ib = ORDEN_CURSOS.indexOf(b);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+    });
+  }
+
+  function plantillaDe(area, curso) {
+    return plantillasOficiales().find(p =>
+      (p.asignatura || {}).nombre === area &&
+      ((p.asignatura || {}).cursos || []).map(String).includes(String(curso)));
+  }
+
+  // Alta de asignatura. Sin argumentos deja elegir entre recuperar el currículo
+  // oficial de un curso o crearla en blanco. Si recibe una asignatura existente
+  // (creada a mano), solo ofrece recuperar el currículo sobre ella.
+  function modalAsignatura(asigExistente) {
+    const recuperar = asigExistente || null;
+    const areas = areasOficiales();
+    const hayOficiales = areas.length > 0;
+    const cuerpo = `
+      ${recuperar ? '' : `<label class="campo"><span>Origen del currículo</span>
+        <select id="f-modo">
+          ${hayOficiales ? '<option value="oficial">Currículo oficial (plantillas del decreto)</option>' : ''}
+          <option value="blanco"${hayOficiales ? '' : ' selected'}>En blanco (añadiré los criterios a mano)</option>
+        </select></label>`}
+      <div id="bloque-oficial">
+        <label class="campo"><span>Área / asignatura</span>
+          <select id="f-area">${areas.map(a => `<option>${Utils.esc(a)}</option>`).join('')}</select></label>
+        <label class="campo"><span>Curso</span>
+          <select id="f-curso"></select></label>
+        <div class="aviso" id="f-resumen"></div>
+      </div>
+      <div id="bloque-blanco">
         <label class="campo"><span>Nombre</span>
-          <input type="text" id="f-nombre" placeholder="Ej. Matemáticas"></label>
+          <input type="text" id="f-nombre" placeholder="Ej. Taller de ajedrez"></label>
         <label class="campo"><span>Etapa</span>
-          <select id="f-etapa"><option>Primaria</option><option>Infantil</option></select></label>`,
+          <select id="f-etapa"><option>Primaria</option><option>Infantil</option></select></label>
+      </div>`;
+
+    const mbody = UI.openModal({
+      titulo: recuperar ? 'Recuperar currículo oficial' : 'Nueva asignatura / área',
+      textoGuardar: 'Guardar',
+      cuerpo,
       alGuardar(body) {
+        const modo = recuperar ? 'oficial' : ((body.querySelector('#f-modo') || {}).value || 'blanco');
+        if (modo === 'oficial') {
+          const area = body.querySelector('#f-area').value;
+          const curso = body.querySelector('#f-curso').value;
+          const pl = plantillaDe(area, curso);
+          if (!pl) { alert(`No hay currículo oficial para «${area}» en ${curso}.`); return false; }
+          try {
+            const r = Storage.importarCurriculo(pl, {
+              cursos: [curso],
+              asignaturaId: recuperar ? recuperar.id : null
+            });
+            UI.toast('Currículo cargado: ' + r.asignaturas.join(', '));
+          } catch (e) {
+            alert(e.message);
+            return false;
+          }
+          return;
+        }
         const nombre = body.querySelector('#f-nombre').value.trim();
-        if (!nombre) return false;
-        Storage.db.asignaturas.push({ id: Utils.uid(), nombre, etapa: body.querySelector('#f-etapa').value });
+        if (!nombre) { alert('Escribe un nombre para la asignatura.'); return false; }
+        Storage.db.asignaturas.push({
+          id: Utils.uid(), nombre,
+          etapa: body.querySelector('#f-etapa').value,
+          curso: '', fuente: ''
+        });
         Storage.save();
       }
     });
+
+    const selModo = mbody.querySelector('#f-modo');
+    const selArea = mbody.querySelector('#f-area');
+    const selCurso = mbody.querySelector('#f-curso');
+    const bloqueOficial = mbody.querySelector('#bloque-oficial');
+    const bloqueBlanco = mbody.querySelector('#bloque-blanco');
+    const resumen = mbody.querySelector('#f-resumen');
+
+    function pintaResumen() {
+      const pl = plantillaDe(selArea.value, selCurso.value);
+      resumen.innerHTML = pl
+        ? `Se creará <b>${Utils.esc(selArea.value)} ${Utils.esc(selCurso.value)}</b> con `
+          + `${(pl.competenciasEspecificas || []).length} competencias y ${(pl.criterios || []).length} criterios`
+          + `${pl.asignatura.ciclo ? ' (' + Utils.esc(pl.asignatura.ciclo) + ')' : ''}.`
+        : 'No hay currículo oficial para esa combinación.';
+    }
+    function pintaCursos() {
+      selCurso.innerHTML = cursosDeArea(selArea.value).map(c => `<option>${Utils.esc(c)}</option>`).join('');
+      pintaResumen();
+    }
+    function pintaModo() {
+      const oficial = !selModo || selModo.value === 'oficial';
+      bloqueOficial.style.display = oficial ? '' : 'none';
+      bloqueBlanco.style.display = oficial ? 'none' : '';
+    }
+    if (selArea) selArea.onchange = pintaCursos;
+    if (selCurso) selCurso.onchange = pintaResumen;
+    if (recuperar) {
+      bloqueBlanco.style.display = 'none';
+      const area = areas.find(a => recuperar.nombre.toLowerCase().indexOf(a.toLowerCase()) === 0);
+      if (area) selArea.value = area;
+      pintaCursos();
+      if (recuperar.curso && Array.from(selCurso.options).some(o => o.value === recuperar.curso)) {
+        selCurso.value = recuperar.curso;
+      }
+      pintaResumen();
+    } else if (selModo) {
+      selModo.onchange = pintaModo;
+      pintaModo();
+    }
   }
 
   function modalClase() {
@@ -1821,6 +1971,7 @@ const ClasesView = (() => {
 
   function render(el) {
     const db = Storage.db;
+    const hayOficiales = areasOficiales().length > 0;
     el.innerHTML = `
       <div class="grid-2">
         <section class="card">
@@ -1829,11 +1980,16 @@ const ClasesView = (() => {
             <button class="btn btn-primario" id="add-asig">Nueva asignatura</button>
           </div>
           <ul class="lista" id="lista-asig">
-            ${db.asignaturas.map(a => `
+            ${db.asignaturas.map(a => {
+              const conCurriculo = db.criterios.some(c => c.asignaturaId === a.id);
+              const det = [a.etapa, a.curso, conCurriculo ? '' : 'sin currículo'].filter(Boolean).join(' · ');
+              return `
               <li data-id="${a.id}">
-                <span>${Utils.esc(a.nombre)}</span><small>${Utils.esc(a.etapa)}</small>
+                <span>${Utils.esc(a.nombre)}</span><small>${Utils.esc(det)}</small>
+                ${conCurriculo || !hayOficiales ? '' : `<button class="btn btn-mini recuperar-asig" data-id="${a.id}" title="Cargar el currículo oficial de este curso">Recuperar</button>`}
                 <button class="icon-btn borrar-asig" data-id="${a.id}" title="Eliminar">×</button>
-              </li>`).join('') || '<li class="vacio">Sin asignaturas. Crea la primera.</li>'}
+              </li>`;
+            }).join('') || '<li class="vacio">Sin asignaturas. Crea la primera.</li>'}
           </ul>
         </section>
         <section class="card">
@@ -1863,6 +2019,14 @@ const ClasesView = (() => {
 
     el.querySelector('#add-asig').onclick = () => modalAsignatura();
     el.querySelector('#add-clase').onclick = () => modalClase();
+
+    el.querySelectorAll('.recuperar-asig').forEach(b => {
+      b.onclick = e => {
+        e.stopPropagation();
+        try { modalAsignatura(Calc.asignatura(b.dataset.id)); }
+        catch (err) { console.error(err); alert('Error al recuperar el currículo: ' + err.message); }
+      };
+    });
 
     el.querySelectorAll('.aci-clase').forEach(b => {
       b.onclick = () => {
@@ -1918,8 +2082,6 @@ const PLANTILLAS_CURRICULO = [{"version":1,"tipo":"curriculo-evalcrit","fuente":
 <script>
 const CurriculoView = (() => {
   let asigSel = null;
-
-  const seleccionar = id => { asigSel = id; };
 
   const criteriosDe = () => Storage.db.criterios
     .filter(c => c.asignaturaId === asigSel)
@@ -1999,61 +2161,6 @@ const CurriculoView = (() => {
     });
   }
 
-  function modalImportar() {
-    const incluidas = (typeof PLANTILLAS_CURRICULO !== 'undefined') ? PLANTILLAS_CURRICULO : [];
-    const porArea = [];
-    for (const p of incluidas) {
-      const ult = porArea[porArea.length - 1];
-      if (ult && ult.nombre === p.asignatura.nombre) ult.items.push(p);
-      else porArea.push({ nombre: p.asignatura.nombre, items: [p] });
-    }
-    let idx = 0;
-    const areasHtml = porArea.map(a => `
-      <div class="importa-area">
-        <strong>${Utils.esc(a.nombre)}</strong>
-        <div class="chips">${a.items.map(p => {
-          const etiqueta = `${Utils.esc(p.asignatura.ciclo || '')} (${Utils.esc((p.asignatura.cursos || []).join(' y '))})`;
-          return `<label class="chip"><input type="checkbox" value="${idx++}">${etiqueta}</label>`;
-        }).join('')}</div>
-      </div>`).join('');
-    const mbody = UI.openModal({
-      titulo: 'Importar currículo oficial',
-      cuerpo: incluidas.length ? `
-        <div class="campo">
-          <span>Plantillas oficiales · Decreto 66/2022 (Cantabria)</span>
-          <small class="hint">Cada plantilla crea una asignatura por curso con su currículo completo y pesos equitativos.</small>
-          <div class="importa-areas" data-campo="plantillas">${areasHtml}</div>
-        </div>` : '<div class="aviso">No hay plantillas embebidas en esta versión.</div>',
-      textoGuardar: 'Importar',
-      alGuardar(mbody2) {
-        const sel = UI.valoresChips(mbody2.querySelector('[data-campo=plantillas]'));
-        if (!sel.length) {
-          alert('Selecciona al menos una plantilla');
-          return false;
-        }
-        const nombres = [];
-        const errores = [];
-        const ids = [];
-        for (const v of sel) {
-          try {
-            const r = Storage.importarCurriculo(incluidas[Number(v)]);
-            nombres.push(...r.asignaturas);
-            ids.push(...r.ids);
-          } catch (e) { errores.push(e.message); }
-        }
-        if (nombres.length) {
-          if (ids.length) seleccionar(ids[0]);
-          UI.toast(`Currículo cargado: ${nombres.join(', ')}`);
-          if (errores.length) alert(errores.join('\n'));
-          return;
-        }
-        alert(errores.join('\n'));
-        return false;
-      }
-    });
-    UI.wireChips(mbody);
-  }
-
   function render(el) {
     const db = Storage.db;
     if (!asigSel || !Calc.asignatura(asigSel)) {
@@ -2064,20 +2171,25 @@ const CurriculoView = (() => {
     if (!db.asignaturas.length) {
       el.innerHTML = `<section class="card"><div class="vacio-grande">
         <strong>Aún no hay asignaturas</strong>
-        Crea una asignatura en «Asignaturas y clases» para definir su currículo.
+        Crea una asignatura en «Asignaturas y clases» y recupera su currículo oficial, o edítalo a mano.
       </div></section>`;
       return;
     }
 
     const sumaPesos = criteriosDe().reduce((s, c) => s + (Number(c.peso) || 0), 0);
+    const asig = Calc.asignatura(asigSel) || {};
     el.innerHTML = `
       <section class="card">
         <div class="card-head">
           <h2>Currículo</h2>
           <div style="display:flex;gap:8px;align-items:center">
             <select id="sel-asig" style="max-width:280px">${UI.selectHtml(db.asignaturas, asigSel, 'id', 'nombre')}</select>
-            <button class="btn btn-mini" id="btn-importar">Importar currículo</button>
           </div>
+        </div>
+        <div class="aviso">
+          ${asig.fuente
+            ? '<b>Legislación:</b> ' + Utils.esc(asig.fuente)
+            : '<b>Currículo propio.</b> Sin fuente oficial registrada. Los currículos oficiales de Cantabria proceden del Decreto 66/2022, de 7 de julio (BOC nº 135, 13-07-2022), Anexo II-A.'}
         </div>
         <div class="aviso ${Math.round(sumaPesos) === 100 ? '' : ''}" style="${Math.round(sumaPesos) === 100 ? 'background:#f0fdf4;border-color:#bbf7d0;color:#166534' : ''}">
           Suma de ponderaciones: <b>${Utils.fmt(sumaPesos)}%</b>${Math.round(sumaPesos) === 100 ? ' · correcta' : ' · debería sumar 100%'}
@@ -2118,7 +2230,6 @@ const CurriculoView = (() => {
       </section>`;
 
     el.querySelector('#sel-asig').onchange = e => { asigSel = e.target.value; render(el); };
-    el.querySelector('#btn-importar').onclick = () => modalImportar();
     el.querySelector('#add-esp').onclick = () => modalEsp();
     el.querySelector('#add-crit').onclick = () => modalCriterio(null);
 
@@ -2143,7 +2254,7 @@ const CurriculoView = (() => {
     });
   }
 
-  return { render, seleccionar };
+  return { render };
 })();
 
 </script>

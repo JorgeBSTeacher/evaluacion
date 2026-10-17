@@ -1,8 +1,6 @@
 const CurriculoView = (() => {
   let asigSel = null;
 
-  const seleccionar = id => { asigSel = id; };
-
   const criteriosDe = () => Storage.db.criterios
     .filter(c => c.asignaturaId === asigSel)
     .sort((a, b) => String(a.codigo).localeCompare(String(b.codigo), 'es'));
@@ -81,61 +79,6 @@ const CurriculoView = (() => {
     });
   }
 
-  function modalImportar() {
-    const incluidas = (typeof PLANTILLAS_CURRICULO !== 'undefined') ? PLANTILLAS_CURRICULO : [];
-    const porArea = [];
-    for (const p of incluidas) {
-      const ult = porArea[porArea.length - 1];
-      if (ult && ult.nombre === p.asignatura.nombre) ult.items.push(p);
-      else porArea.push({ nombre: p.asignatura.nombre, items: [p] });
-    }
-    let idx = 0;
-    const areasHtml = porArea.map(a => `
-      <div class="importa-area">
-        <strong>${Utils.esc(a.nombre)}</strong>
-        <div class="chips">${a.items.map(p => {
-          const etiqueta = `${Utils.esc(p.asignatura.ciclo || '')} (${Utils.esc((p.asignatura.cursos || []).join(' y '))})`;
-          return `<label class="chip"><input type="checkbox" value="${idx++}">${etiqueta}</label>`;
-        }).join('')}</div>
-      </div>`).join('');
-    const mbody = UI.openModal({
-      titulo: 'Importar currículo oficial',
-      cuerpo: incluidas.length ? `
-        <div class="campo">
-          <span>Plantillas oficiales · Decreto 66/2022 (Cantabria)</span>
-          <small class="hint">Cada plantilla crea una asignatura por curso con su currículo completo y pesos equitativos.</small>
-          <div class="importa-areas" data-campo="plantillas">${areasHtml}</div>
-        </div>` : '<div class="aviso">No hay plantillas embebidas en esta versión.</div>',
-      textoGuardar: 'Importar',
-      alGuardar(mbody2) {
-        const sel = UI.valoresChips(mbody2.querySelector('[data-campo=plantillas]'));
-        if (!sel.length) {
-          alert('Selecciona al menos una plantilla');
-          return false;
-        }
-        const nombres = [];
-        const errores = [];
-        const ids = [];
-        for (const v of sel) {
-          try {
-            const r = Storage.importarCurriculo(incluidas[Number(v)]);
-            nombres.push(...r.asignaturas);
-            ids.push(...r.ids);
-          } catch (e) { errores.push(e.message); }
-        }
-        if (nombres.length) {
-          if (ids.length) seleccionar(ids[0]);
-          UI.toast(`Currículo cargado: ${nombres.join(', ')}`);
-          if (errores.length) alert(errores.join('\n'));
-          return;
-        }
-        alert(errores.join('\n'));
-        return false;
-      }
-    });
-    UI.wireChips(mbody);
-  }
-
   function render(el) {
     const db = Storage.db;
     if (!asigSel || !Calc.asignatura(asigSel)) {
@@ -146,20 +89,25 @@ const CurriculoView = (() => {
     if (!db.asignaturas.length) {
       el.innerHTML = `<section class="card"><div class="vacio-grande">
         <strong>Aún no hay asignaturas</strong>
-        Crea una asignatura en «Asignaturas y clases» para definir su currículo.
+        Crea una asignatura en «Asignaturas y clases» y recupera su currículo oficial, o edítalo a mano.
       </div></section>`;
       return;
     }
 
     const sumaPesos = criteriosDe().reduce((s, c) => s + (Number(c.peso) || 0), 0);
+    const asig = Calc.asignatura(asigSel) || {};
     el.innerHTML = `
       <section class="card">
         <div class="card-head">
           <h2>Currículo</h2>
           <div style="display:flex;gap:8px;align-items:center">
             <select id="sel-asig" style="max-width:280px">${UI.selectHtml(db.asignaturas, asigSel, 'id', 'nombre')}</select>
-            <button class="btn btn-mini" id="btn-importar">Importar currículo</button>
           </div>
+        </div>
+        <div class="aviso">
+          ${asig.fuente
+            ? '<b>Legislación:</b> ' + Utils.esc(asig.fuente)
+            : '<b>Currículo propio.</b> Sin fuente oficial registrada. Los currículos oficiales de Cantabria proceden del Decreto 66/2022, de 7 de julio (BOC nº 135, 13-07-2022), Anexo II-A.'}
         </div>
         <div class="aviso ${Math.round(sumaPesos) === 100 ? '' : ''}" style="${Math.round(sumaPesos) === 100 ? 'background:#f0fdf4;border-color:#bbf7d0;color:#166534' : ''}">
           Suma de ponderaciones: <b>${Utils.fmt(sumaPesos)}%</b>${Math.round(sumaPesos) === 100 ? ' · correcta' : ' · debería sumar 100%'}
@@ -200,7 +148,6 @@ const CurriculoView = (() => {
       </section>`;
 
     el.querySelector('#sel-asig').onchange = e => { asigSel = e.target.value; render(el); };
-    el.querySelector('#btn-importar').onclick = () => modalImportar();
     el.querySelector('#add-esp').onclick = () => modalEsp();
     el.querySelector('#add-crit').onclick = () => modalCriterio(null);
 
@@ -225,5 +172,5 @@ const CurriculoView = (() => {
     });
   }
 
-  return { render, seleccionar };
+  return { render };
 })();
