@@ -1096,6 +1096,37 @@ async function main() {
       !!nuevoAl && nuevoAl.grupoId === 'g2' && S.db.alumnos.length === nA + 1);
   }
 
+  console.log('\n== Alta y edición de asignaturas ==');
+  {
+    const app = cargarApp();
+    app.Storage.load();
+    await importarJson(app, estadoCascada());
+    const S = app.Storage;
+
+    // Crear en blanco.
+    const nAsig = S.db.asignaturas.length;
+    const nueva = S.guardarAsignatura({ nombre: '  Taller de ajedrez  ', etapa: 'Primaria' });
+    check('guardarAsignatura crea en blanco y recorta el nombre',
+      !!nueva && nueva.nombre === 'Taller de ajedrez' && nueva.curso === '' && nueva.fuente === '' &&
+      S.db.asignaturas.length === nAsig + 1);
+    check('guardarAsignatura sin nombre devuelve null',
+      S.guardarAsignatura({ nombre: '   ' }) === null && S.db.asignaturas.length === nAsig + 1);
+
+    // Renombrar una asignatura con currículo: conserva id, criterios y notas.
+    const nCrit = S.db.criterios.filter(c => c.asignaturaId === 's1').length;
+    const renombrada = S.guardarAsignatura({ nombre: 'Matemáticas 6º (nuevo)', etapa: 'Primaria', curso: '6º' }, 's1');
+    check('guardarAsignatura renombra en sitio (mismo id, sin duplicar)',
+      renombrada.id === 's1' && renombrada.nombre === 'Matemáticas 6º (nuevo)' &&
+      S.db.asignaturas.filter(a => a.id === 's1').length === 1);
+    check('renombrar una asignatura NO toca su currículo',
+      S.db.criterios.filter(c => c.asignaturaId === 's1').length === nCrit &&
+      S.db.criterios.some(c => c.id === 'k1'));
+    check('renombrar una asignatura NO toca las notas',
+      S.db.registros.i1.a1.p1 === 8 && S.db.registros.i1.a2.p1 === 6);
+    check('guardarAsignatura con id inexistente no crea nada',
+      S.guardarAsignatura({ nombre: 'X' }, 'no-existe') === null && S.db.asignaturas.length === nAsig + 1);
+  }
+
   console.log('\n' + (fallos ? 'FALLOS: ' + fallos + '/' + total : 'TODO OK: ' + total + ' comprobaciones'));
   process.exitCode = fallos ? 1 : 0;
 }

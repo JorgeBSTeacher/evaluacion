@@ -311,10 +311,37 @@ const Storage = {
     this.save();
   },
 
-  // --- Alta y edición de grupos y alumnado ---
+  // --- Alta y edición de grupos, alumnado y asignaturas ---
   // La escritura vive aquí (no en el modal) para que sea la misma al crear y
   // al editar, y para poder comprobarla sin navegador. `id` ausente = crear;
   // `id` presente = editar en sitio, conservando el id (y con él las notas).
+  // Renombrar una asignatura NO toca sus criterios (van ligados por id), así
+  // que ni el currículo ni las notas se pierden.
+
+  guardarAsignatura(datos, id) {
+    const nombre = String(datos.nombre || '').trim();
+    if (!nombre) return null;
+    if (id) {
+      const a = this.db.asignaturas.find(x => x.id === id);
+      if (!a) return null;
+      a.nombre = nombre;
+      a.etapa = datos.etapa || a.etapa;
+      if (datos.curso != null) a.curso = String(datos.curso);
+      if (datos.fuente != null) a.fuente = String(datos.fuente);
+      this.save();
+      return a;
+    }
+    const nueva = {
+      id: Utils.uid(),
+      nombre,
+      etapa: datos.etapa || 'Primaria',
+      curso: datos.curso != null ? String(datos.curso) : '',
+      fuente: datos.fuente != null ? String(datos.fuente) : ''
+    };
+    this.db.asignaturas.push(nueva);
+    this.save();
+    return nueva;
+  },
 
   guardarGrupo(datos, id) {
     const nombre = String(datos.nombre || '').trim();

@@ -82,12 +82,7 @@ const ClasesView = (() => {
         }
         const nombre = body.querySelector('#f-nombre').value.trim();
         if (!nombre) { alert('Escribe un nombre para la asignatura.'); return false; }
-        Storage.db.asignaturas.push({
-          id: Utils.uid(), nombre,
-          etapa: body.querySelector('#f-etapa').value,
-          curso: '', fuente: ''
-        });
-        Storage.save();
+        Storage.guardarAsignatura({ nombre, etapa: body.querySelector('#f-etapa').value });
       }
     });
 
@@ -130,6 +125,31 @@ const ClasesView = (() => {
       selModo.onchange = pintaModo;
       pintaModo();
     }
+  }
+
+  // Edición de una asignatura ya creada: cambiar el nombre (y la etapa). No
+  // toca el currículo ni las notas (los criterios van ligados por id). Antes,
+  // una asignatura con currículo no tenía forma de renombrarse: había que
+  // borrarla —perdiendo currículo y notas— y volver a crearla.
+  function modalAsignaturaEditar(a) {
+    UI.openModal({
+      titulo: 'Editar asignatura',
+      cuerpo: `
+        <label class="campo"><span>Nombre</span>
+          <input type="text" id="f-nombre" value="${Utils.esc(a.nombre)}" placeholder="Ej. Matemáticas 6º"></label>
+        <label class="campo"><span>Etapa</span>
+          <select id="f-etapa">
+            <option ${a.etapa === 'Primaria' ? 'selected' : ''}>Primaria</option>
+            <option ${a.etapa === 'Infantil' ? 'selected' : ''}>Infantil</option>
+          </select></label>`,
+      alGuardar(body) {
+        const guardada = Storage.guardarAsignatura({
+          nombre: body.querySelector('#f-nombre').value,
+          etapa: body.querySelector('#f-etapa').value
+        }, a.id);
+        if (!guardada) { alert('Escribe un nombre para la asignatura.'); return false; }
+      }
+    });
   }
 
   function modalClase() {
@@ -264,6 +284,7 @@ const ClasesView = (() => {
               return `
               <li data-id="${a.id}">
                 <span>${Utils.esc(a.nombre)}</span><small>${Utils.esc(det)}</small>
+                <button class="btn btn-mini editar-asig" data-id="${a.id}">Editar</button>
                 ${conCurriculo || !hayOficiales ? '' : `<button class="btn btn-mini recuperar-asig" data-id="${a.id}" title="Cargar el currículo oficial de este curso">Recuperar</button>`}
                 <button class="icon-btn borrar-asig" data-id="${a.id}" title="Eliminar">×</button>
               </li>`;
@@ -297,6 +318,14 @@ const ClasesView = (() => {
 
     el.querySelector('#add-asig').onclick = () => modalAsignatura();
     el.querySelector('#add-clase').onclick = () => modalClase();
+
+    el.querySelectorAll('.editar-asig').forEach(b => {
+      b.onclick = e => {
+        e.stopPropagation();
+        try { modalAsignaturaEditar(Calc.asignatura(b.dataset.id)); }
+        catch (err) { console.error(err); alert('Error al editar la asignatura: ' + err.message); }
+      };
+    });
 
     el.querySelectorAll('.recuperar-asig').forEach(b => {
       b.onclick = e => {
