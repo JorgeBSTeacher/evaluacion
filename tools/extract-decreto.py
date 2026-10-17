@@ -40,6 +40,8 @@ AREAS = [
 CICLOS = ["Primer ciclo", "Segundo ciclo", "Tercer ciclo"]
 CICLO_COD = {"Primer ciclo": "PC", "Segundo ciclo": "SC", "Tercer ciclo": "TC"}
 CICLO_CURSOS = {"Primer ciclo": ["1º", "2º"], "Segundo ciclo": ["3º", "4º"], "Tercer ciclo": ["5º", "6º"]}
+# EVC solo se imparte en 5.º (Decreto 66/2022, art. 17.2)
+CICLO_CURSOS_ESPECIAL = {"Educación en Valores Cívicos y Éticos": ["5º"]}
 
 RUIDO = re.compile(
     r"(boc\.cantabria\.es|CVE-2022-5545|MI[EÉ]RCOLES|^\s*P[aá]g\.|^\s*\d+/\d+\s*$|ANEXO\s)",
@@ -237,7 +239,7 @@ def main():
                     "nombre": nombre,
                     "etapa": "Primaria",
                     "ciclo": ciclo,
-                    "cursos": CICLO_CURSOS[ciclo],
+                    "cursos": CICLO_CURSOS_ESPECIAL.get(nombre, CICLO_CURSOS[ciclo]),
                 },
                 "saberesBasicos": parse_saberes(sab_lineas),
                 "competenciasEspecificas": comps,
