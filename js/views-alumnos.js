@@ -22,31 +22,36 @@ const AlumnosView = (() => {
             <option ${g && g.etapa === 'Infantil' ? 'selected' : ''}>Infantil</option>
           </select></label>`,
       alGuardar(body) {
-        const nombre = body.querySelector('#f-nombre').value.trim();
-        if (!nombre) return false;
-        if (g) { g.nombre = nombre; g.etapa = body.querySelector('#f-etapa').value; }
-        else {
-          const nuevo = { id: Utils.uid(), nombre, etapa: body.querySelector('#f-etapa').value };
-          Storage.db.grupos.push(nuevo);
-          grupoSel = nuevo.id;
-        }
-        Storage.save();
+        const guardado = Storage.guardarGrupo({
+          nombre: body.querySelector('#f-nombre').value,
+          etapa: body.querySelector('#f-etapa').value
+        }, g ? g.id : null);
+        if (!guardado) return false;
+        if (!g) grupoSel = guardado.id;
       }
     });
   }
 
-  function modalAlumno() {
+  function modalAlumno(a) {
+    const grupos = Storage.db.grupos;
+    const grupoId = a ? a.grupoId : grupoSel;
+    // El grupo solo se puede cambiar si hay más de uno; con un único grupo no
+    // tiene sentido pedirlo.
+    const varios = grupos.length > 1;
     UI.openModal({
-      titulo: 'Nuevo alumno en ' + nombreGrupo(),
+      titulo: a ? 'Editar alumno' : 'Nuevo alumno en ' + nombreGrupo(),
       cuerpo: `
-        <label class="campo"><span>Nombre</span><input type="text" id="f-nombre" placeholder="Nombre"></label>
-        <label class="campo"><span>Apellidos</span><input type="text" id="f-apellidos" placeholder="Apellidos"></label>`,
+        <label class="campo"><span>Nombre</span><input type="text" id="f-nombre" placeholder="Nombre" value="${Utils.esc(a ? a.nombre : '')}"></label>
+        <label class="campo"><span>Apellidos</span><input type="text" id="f-apellidos" placeholder="Apellidos" value="${Utils.esc(a ? a.apellidos : '')}"></label>
+        ${varios ? `<label class="campo"><span>Grupo</span><select id="f-grupo">${UI.selectHtml(grupos, grupoId, 'id', 'nombre')}</select></label>` : ''}`,
       alGuardar(body) {
-        const nombre = body.querySelector('#f-nombre').value.trim();
-        const apellidos = body.querySelector('#f-apellidos').value.trim();
-        if (!nombre && !apellidos) return false;
-        Storage.db.alumnos.push({ id: Utils.uid(), nombre, apellidos, grupoId: grupoSel });
-        Storage.save();
+        const sel = body.querySelector('#f-grupo');
+        const guardado = Storage.guardarAlumno({
+          nombre: body.querySelector('#f-nombre').value,
+          apellidos: body.querySelector('#f-apellidos').value,
+          grupoId: sel ? sel.value : grupoId
+        }, a ? a.id : null);
+        return guardado !== null;
       }
     });
   }
@@ -64,6 +69,7 @@ const AlumnosView = (() => {
             ${db.grupos.map(g => `
               <li data-id="${g.id}" class="${g.id === grupoSel ? 'activo' : ''}">
                 <span>${Utils.esc(g.nombre)}</span><small>${Utils.esc(g.etapa)}</small>
+                <button class="btn btn-mini editar-grupo" data-id="${g.id}">Editar</button>
                 <button class="icon-btn borrar-grupo" data-id="${g.id}" title="Eliminar grupo">×</button>
               </li>`).join('') || '<li class="vacio">Sin grupos todavía. Crea el primero.</li>'}
           </ul>
@@ -80,7 +86,9 @@ const AlumnosView = (() => {
                 <tr>
                   <td>${Utils.esc(a.apellidos)}</td>
                   <td>${Utils.esc(a.nombre)}</td>
-                  <td style="width:36px"><button class="icon-btn borrar-alumno" data-id="${a.id}" title="Eliminar">×</button></td>
+                  <td style="width:36px;white-space:nowrap">
+                    <button class="btn btn-mini editar-alumno" data-id="${a.id}">Editar</button>
+                    <button class="icon-btn borrar-alumno" data-id="${a.id}" title="Eliminar">×</button></td>
                 </tr>`).join('') || '<tr><td colspan="3" class="vacio">Este grupo no tiene alumnos aún.</td></tr>'
                 : '<tr><td colspan="3" class="vacio">Selecciona un grupo para ver sus alumnos.</td></tr>'}
             </tbody>
@@ -89,13 +97,22 @@ const AlumnosView = (() => {
       </div>`;
 
     el.querySelector('#add-grupo').onclick = () => modalGrupo(null);
-    el.querySelector('#add-alumno').onclick = () => modalAlumno();
+    el.querySelector('#add-alumno').onclick = () => modalAlumno(null);
     el.querySelectorAll('#lista-grupos li[data-id]').forEach(li => {
       li.addEventListener('click', e => {
-        if (e.target.closest('.borrar-grupo')) return;
+        if (e.target.closest('.borrar-grupo') || e.target.closest('.editar-grupo')) return;
         grupoSel = li.dataset.id;
         render(el);
       });
+    });
+    el.querySelectorAll('.editar-grupo').forEach(b => {
+      b.onclick = e => {
+        e.stopPropagation();
+        modalGrupo(Calc.byId(db.grupos, b.dataset.id));
+      };
+    });
+    el.querySelectorAll('.editar-alumno').forEach(b => {
+      b.onclick = () => modalAlumno(Calc.byId(db.alumnos, b.dataset.id));
     });
     el.querySelectorAll('.borrar-grupo').forEach(b => {
       b.onclick = e => {

@@ -1059,6 +1059,43 @@ async function main() {
     }
   }
 
+  console.log('\n== Alta y edición de grupos y alumnado ==');
+  {
+    const app = cargarApp();
+    app.Storage.load();
+    await importarJson(app, estadoCascada());
+    const S = app.Storage;
+
+    // Grupo: crear y editar en sitio.
+    const nG = S.db.grupos.length;
+    const nuevo = S.guardarGrupo({ nombre: '  3ºA  ', etapa: 'Primaria' });
+    check('guardarGrupo crea un grupo y recorta el nombre',
+      !!nuevo && nuevo.nombre === '3ºA' && S.db.grupos.length === nG + 1);
+    const editado = S.guardarGrupo({ nombre: '6ºA (mañana)', etapa: 'Infantil' }, 'g1');
+    check('guardarGrupo edita el grupo en sitio (mismo id, sin duplicar)',
+      editado.id === 'g1' && editado.nombre === '6ºA (mañana)' && editado.etapa === 'Infantil' &&
+      S.db.grupos.length === nG + 1 && S.db.grupos.filter(g => g.id === 'g1').length === 1);
+    check('guardarGrupo sin nombre devuelve null y no cambia nada',
+      S.guardarGrupo({ nombre: '   ' }, 'g1') === null && S.db.grupos.find(g => g.id === 'g1').nombre === '6ºA (mañana)');
+    check('guardarGrupo con id inexistente no crea nada',
+      S.guardarGrupo({ nombre: 'X' }, 'no-existe') === null && S.db.grupos.length === nG + 1);
+
+    // Alumno: al editar se conserva el id (y con él las notas).
+    const editadoAl = S.guardarAlumno({ nombre: 'Ana', apellidos: 'Uno Editada', grupoId: 'g1' }, 'a1');
+    check('guardarAlumno edita en sitio y conserva el id (y sus notas)',
+      editadoAl.id === 'a1' && editadoAl.apellidos === 'Uno Editada' &&
+      S.db.alumnos.filter(a => a.id === 'a1').length === 1 && S.db.registros.i1.a1.p1 === 8);
+    const movido = S.guardarAlumno({ nombre: 'Ana', apellidos: 'Uno Editada', grupoId: 'g2' }, 'a1');
+    check('guardarAlumno puede cambiar de grupo sin perder las notas',
+      movido.grupoId === 'g2' && movido.id === 'a1' && S.db.registros.i3.a1.p3 === 5);
+    check('guardarAlumno sin nombre ni apellidos devuelve null',
+      S.guardarAlumno({ nombre: '  ', apellidos: '' }, 'a1') === null);
+    const nA = S.db.alumnos.length;
+    const nuevoAl = S.guardarAlumno({ nombre: 'Nuevo', apellidos: 'Alumno', grupoId: 'g2' });
+    check('guardarAlumno crea un alumno nuevo con su grupo',
+      !!nuevoAl && nuevoAl.grupoId === 'g2' && S.db.alumnos.length === nA + 1);
+  }
+
   console.log('\n' + (fallos ? 'FALLOS: ' + fallos + '/' + total : 'TODO OK: ' + total + ' comprobaciones'));
   process.exitCode = fallos ? 1 : 0;
 }

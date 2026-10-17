@@ -311,6 +311,48 @@ const Storage = {
     this.save();
   },
 
+  // --- Alta y edición de grupos y alumnado ---
+  // La escritura vive aquí (no en el modal) para que sea la misma al crear y
+  // al editar, y para poder comprobarla sin navegador. `id` ausente = crear;
+  // `id` presente = editar en sitio, conservando el id (y con él las notas).
+
+  guardarGrupo(datos, id) {
+    const nombre = String(datos.nombre || '').trim();
+    if (!nombre) return null;
+    const etapa = datos.etapa || 'Primaria';
+    if (id) {
+      const g = this.db.grupos.find(x => x.id === id);
+      if (!g) return null;
+      g.nombre = nombre;
+      g.etapa = etapa;
+      this.save();
+      return g;
+    }
+    const nuevo = { id: Utils.uid(), nombre, etapa };
+    this.db.grupos.push(nuevo);
+    this.save();
+    return nuevo;
+  },
+
+  guardarAlumno(datos, id) {
+    const nombre = String(datos.nombre || '').trim();
+    const apellidos = String(datos.apellidos || '').trim();
+    if (!nombre && !apellidos) return null;
+    if (id) {
+      const a = this.db.alumnos.find(x => x.id === id);
+      if (!a) return null;
+      a.nombre = nombre;
+      a.apellidos = apellidos;
+      if (datos.grupoId) a.grupoId = datos.grupoId;
+      this.save();
+      return a;
+    }
+    const nuevo = { id: Utils.uid(), nombre, apellidos, grupoId: datos.grupoId || null };
+    this.db.alumnos.push(nuevo);
+    this.save();
+    return nuevo;
+  },
+
   // --- Borrado en cascada (punto único) ---
   // Antes cada vista reimplementaba su cascada a mano y dos de ellas dejaban
   // datos huérfanos: notas de instrumentos que ya no existían y notas de
