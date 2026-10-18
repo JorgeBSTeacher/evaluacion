@@ -303,6 +303,44 @@ function estadoCascada() {
   };
 }
 
+// Escenario para la pestaña Informe (D-59): 4 alumnos con niveles distintos,
+// 3 instrumentos en 2 trimestres y 2 unidades, para probar alcance, hallazgos,
+// tabla 2×2 y distribución.
+function estadoInforme() {
+  return {
+    schemaVersion: 1,
+    cursoEscolar: '2025/2026',
+    grupos: [{ id: 'g1', nombre: '6ºA', etapa: 'Primaria' }],
+    alumnos: [
+      { id: 'a1', nombre: 'Ana', apellidos: 'Alta', grupoId: 'g1' },
+      { id: 'a2', nombre: 'Benito', apellidos: 'Bajo', grupoId: 'g1' },
+      { id: 'a3', nombre: 'Carla', apellidos: 'Regular', grupoId: 'g1' },
+      { id: 'a4', nombre: 'Diego', apellidos: 'Muybajo', grupoId: 'g1' }
+    ],
+    asignaturas: [{ id: 's1', nombre: 'Matemáticas 6º', etapa: 'Primaria' }],
+    clases: [{ id: 'c1', asignaturaId: 's1', grupoId: 'g1', nivelesAci: [], adaptaciones: {} }],
+    competenciasClave: [],
+    competenciasEspecificas: [],
+    criterios: [
+      { id: 'k1', asignaturaId: 's1', codigo: 'MAT.TC.1.1', descripcion: 'Operaciones', peso: 50, espIds: [], claveIds: [] },
+      { id: 'k2', asignaturaId: 's1', codigo: 'MAT.TC.2.1', descripcion: 'Resolución', peso: 50, espIds: [], claveIds: [] }
+    ],
+    instrumentos: [
+      { id: 'i1', claseId: 'c1', tipo: 'Control', titulo: 'Control T1', fecha: '2025-10-15', periodo: 'T1', unidad: 'UD1', nivel: '',
+        apartados: [{ id: 'p1', orden: 1, descripcion: 'Sumas', maxPts: 10, criterioIds: ['k1'] }] },
+      { id: 'i2', claseId: 'c1', tipo: 'Control', titulo: 'Control T1b', fecha: '2025-11-15', periodo: 'T1', unidad: 'UD1', nivel: '',
+        apartados: [{ id: 'p2', orden: 1, descripcion: 'Restas', maxPts: 10, criterioIds: ['k1', 'k2'] }] },
+      { id: 'i3', claseId: 'c1', tipo: 'Prueba', titulo: 'Prueba T2', fecha: '2026-01-15', periodo: 'T2', unidad: 'UD2', nivel: '',
+        apartados: [{ id: 'p3', orden: 1, descripcion: 'Problemas', maxPts: 10, criterioIds: ['k2'] }] }
+    ],
+    registros: {
+      i1: { a1: { p1: 8 }, a2: { p1: 4 }, a3: { p1: 3 }, a4: { p1: 2 } },
+      i2: { a1: { p2: 7 }, a2: { p2: 3 }, a3: { p2: 4 }, a4: { p2: 1 } },
+      i3: { a1: { p3: 5 }, a2: { p3: 2 }, a3: { p3: 8 }, a4: { p3: 6 } }
+    }
+  };
+}
+
 async function main() {
   console.log('\n== Carga y estado por defecto ==');
   {
@@ -1233,6 +1271,75 @@ async function main() {
     const copiada2 = await importarJson(vacio2, estadoCascada());
     check('importar sobre una app vacía no genera copia previa',
       copiada2 === false && !vacio2.Storage.copiaPrevia());
+  }
+
+  console.log('\n== Informe: análisis de criterios y distribución (D-59) ==');
+  {
+    const app = cargarApp();
+    app.Storage.load();
+    await importarJson(app, estadoInforme());
+    const C = app.Calc;
+    const criterios = C.criteriosDeClase('c1');
+
+    // Alcance
+    const t1 = C.instrumentosAlcance('c1', { periodo: 'T1' });
+    check('alcance T1 = 2 instrumentos', t1.length === 2 && t1.map(i => i.id).join(',') === 'i1,i2');
+    const ud1 = C.instrumentosAlcance('c1', { unidad: 'UD1' });
+    check('alcance UD1 = 2 instrumentos', ud1.length === 2);
+    const inst3 = C.instrumentosAlcance('c1', { instrumentoId: 'i3' });
+    check('alcance instrumento i3 = 1', inst3.length === 1 && inst3[0].id === 'i3');
+    const todo = C.instrumentosAlcance('c1', {});
+    check('alcance sin filtros = todos', todo.length === 3);
+
+    // logroCriterioEnInsts
+    const l1a1 = C.logroCriterioEnInsts('k1', 'c1', 'a1', t1);
+    check('logro k1 a1 en T1 = 0,75', Math.abs(l1a1 - 0.75) < 1e-9, String(l1a1));
+    const l1a2 = C.logroCriterioEnInsts('k1', 'c1', 'a2', t1);
+    check('logro k1 a2 en T1 = 0,35', Math.abs(l1a2 - 0.35) < 1e-9, String(l1a2));
+
+    // logroCriterio sigue funcionando igual (refactor sin regresión)
+    check('logroCriterio k1 a1 T1 = 0,75', Math.abs(C.logroCriterio('k1', 'c1', 'a1', 'T1') - 0.75) < 1e-9);
+
+    // mediaClaseCriterio
+    const mediaK1 = C.mediaClaseCriterio('k1', 'c1', t1);
+    check('media clase k1 en T1 = 0,4', Math.abs(mediaK1 - 0.4) < 1e-9, String(mediaK1));
+
+    // notaEnInsts
+    const n1 = C.notaEnInsts('c1', 'a1', t1);
+    check('nota a1 en T1 = 7,25', Math.abs(n1 - 7.25) < 1e-9, String(n1));
+    const n4 = C.notaEnInsts('c1', 'a4', t1);
+    check('nota a4 en T1 = 1,25', Math.abs(n4 - 1.25) < 1e-9, String(n4));
+
+    // tablaCriteriosInforme (2×2 absoluto × relativo)
+    const tabla = C.tablaCriteriosInforme('c1', t1, criterios);
+    check('tabla tiene 2 criterios', tabla.length === 2);
+    const crit1 = tabla[0];
+    check('criterio k1: media = 0,4', Math.abs(crit1.media - 0.4) < 1e-9, String(crit1.media));
+    check('criterio k1: 4 filas (1 por alumno)', crit1.filas.length === 4);
+    const filaA1 = crit1.filas.find(f => f.alumno.id === 'a1');
+    check('k1 a1: absoluto true (0,75 >= 0,5)', filaA1.absoluto === true);
+    check('k1 a1: relativo true (0,75 >= 0,4)', filaA1.relativo === true);
+    const filaA2 = crit1.filas.find(f => f.alumno.id === 'a2');
+    check('k1 a2: absoluto false (0,35 < 0,5)', filaA2.absoluto === false);
+    check('k1 a2: relativo false (0,35 < 0,4)', filaA2.relativo === false);
+
+    // hallazgos
+    const hall = C.hallazgos('c1', t1, criterios);
+    check('hay hallazgos', hall.length > 0);
+    const hCrit = hall.filter(h => h.tipo === 'criterio');
+    check('k1 crítico (75% < 50%)', hCrit.some(h => h.criterioId === 'k1' && h.nivel === 'critico' && h.pct === 75));
+    check('k2 crítico (75% < 50%)', hCrit.some(h => h.criterioId === 'k2' && h.nivel === 'critico' && h.pct === 75));
+    const hPreg = hall.filter(h => h.tipo === 'pregunta');
+    check('pregunta i1/p1 con 75% de fallos', hPreg.some(h => h.instrumentoId === 'i1' && h.pct === 75));
+    check('los críticos van primero', hall[0].nivel === 'critico');
+
+    // distribucionNotas
+    const dist = C.distribucionNotas('c1', t1);
+    check('distribución tiene 4 notas', dist.notas.length === 4);
+    check('media de la distribución = 3,875', Math.abs(dist.media - 3.875) < 1e-9, String(dist.media));
+    check('buckets: 10 rangos', dist.buckets.length === 10);
+    const totalBuckets = dist.buckets.reduce((s, b) => s + b.cantidad, 0);
+    check('suma de buckets = 4', totalBuckets === 4);
   }
 
   console.log('\n' + (fallos ? 'FALLOS: ' + fallos + '/' + total : 'TODO OK: ' + total + ' comprobaciones'));

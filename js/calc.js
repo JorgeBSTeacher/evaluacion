@@ -420,20 +420,29 @@ const Calc = {
     return this.unidadesDe(Storage.db.instrumentos.filter(i => clases.indexOf(i.claseId) !== -1));
   },
 
-  logroCriterio(criterioId, claseId, alumnoId, periodo) {
-    const insts = this.instrumentosDeAlumno(claseId, alumnoId, periodo).filter(i => {
-      if ((i.criteriosModo || 'desglosado') === 'global') {
-        return (i.criterioIdsGlobal || []).includes(criterioId);
-      }
-      return i.apartados.some(ap => ap.criterioIds.includes(criterioId));
-    });
+  // Logro de un criterio en una lista explícita de instrumentos. Extraído de
+  // logroCriterio para poder analizar un alcance arbitrario (D-59): filtrar por
+  // unidad, por instrumento concreto o por todo el curso.
+  logroCriterioEnInsts(criterioId, claseId, alumnoId, insts) {
+    const aplicables = (insts || []).filter(i =>
+      this.instrumentoParaAlumno(i, claseId, alumnoId) && (
+        (i.criteriosModo || 'desglosado') === 'global'
+          ? (i.criterioIdsGlobal || []).includes(criterioId)
+          : i.apartados.some(ap => ap.criterioIds.includes(criterioId))
+      )
+    );
     const logros = [];
-    for (const inst of insts) {
+    for (const inst of aplicables) {
       const l = this.logroCriterioEnInstrumento(inst, alumnoId, criterioId);
       if (l != null) logros.push(l);
     }
     if (!logros.length) return null;
     return logros.reduce((a, b) => a + b, 0) / logros.length;
+  },
+
+  logroCriterio(criterioId, claseId, alumnoId, periodo) {
+    return this.logroCriterioEnInsts(criterioId, claseId, alumnoId,
+      this.instrumentosDeClase(claseId, periodo));
   },
 
   notaPonderada(claseId, alumnoId, periodo, filtroCriterios) {
@@ -487,6 +496,138 @@ const Calc = {
       if (v != null && !isNaN(v)) obt += Number(v);
     }
     return max > 0 ? (obt / max) * 10 : null;
+  },
+
+  // === Análisis para la pestaña Informe (D-59) ===
+  // Solo lectura sobre datos existentes. No modifican db ni Storage.
+
+  // Instrumentos de una clase filtrados por alcance.
+  // `filtros` = { periodo, unidad, instrumentoId } — todos opcionales.
+  instrumentosAlcance(claseId, filtros) {
+    const f = filtros || {};
+    let insts = this.instrumentosDeClase(claseId, f.periodo);
+    if (f.unidad) insts = insts.filter(i => i.unidad === f.unidad);
+    if (f.instrumentoId) insts = insts.filter(i => i.id === f.instrumentoId);
+    return insts;
+  },
+
+  // Media de la clase para un criterio en un alcance. Devuelve 0–1 o null.
+  mediaClaseCriterio(criterioId, claseId, insts) {
+    const alumnos = this.alumnosDeClase(claseId);
+    const valores = alumnos
+      .map(a => this.logroCriterioEnInsts(criterioId, claseId, a.id, insts))
+      .filter(v => v != null);
+    if (!valores.length) return null;
+    return valores.reduce((s, v) => s + v, 0) / valores.length;
+  },
+
+  // Nota global (0–10) de un alumno en un alcance de instrumentos.
+  notaEnInsts(claseId, alumnoId, insts) {
+    const criterios = this.criteriosDeAlumno(claseId, alumnoId);
+    let suma = 0, pesos = 0;
+    for (const c of criterios) {
+      const l = this.logroCriterioEnInsts(c.id, claseId, alumnoId, insts);
+      if (l == null) continue;
+      suma += l * c.peso;
+      pesos += c.peso;
+    }
+    if (pesos <= 0) return null;
+    return (suma / pesos) * 10;
+  },
+
+  // Datos para la tabla de criterios (absoluto × relativo) de la pestaña Informe.
+  // Para cada criterio: media de la clase y, por alumno, logro + estado absoluto
+  // (≥50%) y relativo (≥ media de clase). `criterios` los decide la vista.
+  tablaCriteriosInforme(claseId, insts, criterios) {
+    const alumnos = this.alumnosDeClase(claseId);
+    return (criterios || []).map(c => {
+      const media = this.mediaClaseCriterio(c.id, claseId, insts);
+      const filas = alumnos.map(a => {
+        const logro = this.logroCriterioEnInsts(c.id, claseId, a.id, insts);
+        return {
+          alumno: a,
+          logro,
+          absoluto: logro == null ? null : logro >= 0.5,
+          relativo: (logro == null || media == null) ? null : logro >= media
+        };
+      });
+      return { criterio: c, media, filas };
+    });
+  },
+
+  // Reglas de detección para la pestaña Informe. `criterios` los decide la vista
+  // (según el nivel ACI seleccionado). Devuelve hallazgos ordenados por
+  // severidad: críticos primero, luego atención, por porcentaje descendente.
+  hallazgos(claseId, insts, criterios) {
+    const alumnos = this.alumnosDeClase(claseId);
+    const UMB = { critico: 50, atencion: 30, fallosPregunta: 70 };
+    const salida = [];
+
+    // Regla 1: criterios con alto porcentaje de alumnos por debajo del 50%.
+    for (const c of criterios || []) {
+      const logros = alumnos
+        .map(a => this.logroCriterioEnInsts(c.id, claseId, a.id, insts))
+        .filter(v => v != null);
+      if (logros.length < 2) continue;
+      const pct = Math.round(logros.filter(v => v < 0.5).length / logros.length * 100);
+      if (pct >= UMB.critico) {
+        salida.push({
+          nivel: 'critico', tipo: 'criterio', criterioId: c.id,
+          codigo: c.codigo, pct,
+          texto: `${pct}% de la clase por debajo del 50% en «${c.codigo}»`
+        });
+      } else if (pct >= UMB.atencion) {
+        salida.push({
+          nivel: 'atencion', tipo: 'criterio', criterioId: c.id,
+          codigo: c.codigo, pct,
+          texto: `${pct}% de la clase por debajo del 50% en «${c.codigo}»`
+        });
+      }
+    }
+
+    // Regla 2: preguntas (apartados) con alto índice de fallos.
+    for (const inst of insts || []) {
+      const alumnosAp = this.alumnosDeInstrumento(inst);
+      for (const ap of inst.apartados || []) {
+        const notas = alumnosAp
+          .map(a => ((Storage.db.registros[inst.id] || {})[a.id] || {})[ap.id])
+          .filter(v => v != null && v !== '' && !isNaN(v))
+          .map(Number);
+        if (notas.length < 2) continue;
+        const max = inst.tipo === 'Rúbrica' ? 100 : Number(ap.maxPts) || 1;
+        const pct = Math.round(notas.filter(v => v / max < 0.5).length / notas.length * 100);
+        if (pct >= UMB.fallosPregunta) {
+          salida.push({
+            nivel: pct >= 80 ? 'critico' : 'atencion', tipo: 'pregunta',
+            instrumentoId: inst.id, apartadoId: ap.id,
+            titulo: inst.titulo, pregunta: ap.descripcion, pct,
+            texto: `«${ap.descripcion}» en ${inst.titulo}: ${pct}% de fallos`
+          });
+        }
+      }
+    }
+
+    const orden = { critico: 0, atencion: 1, bien: 2 };
+    salida.sort((a, b) => (orden[a.nivel] - orden[b.nivel]) || (b.pct - a.pct));
+    return salida;
+  },
+
+  // Distribución de notas (0–10) en un alcance. Devuelve buckets para el
+  // histograma, la media y las notas sueltas.
+  distribucionNotas(claseId, insts) {
+    const alumnos = this.alumnosDeClase(claseId);
+    const notas = alumnos
+      .map(a => this.notaEnInsts(claseId, a.id, insts))
+      .filter(n => n != null);
+    if (!notas.length) return { notas: [], buckets: [], media: null };
+    const buckets = Array.from({ length: 10 }, (_, i) => ({
+      rango: `${i}–${i + 1}`, cantidad: 0
+    }));
+    for (const n of notas) {
+      buckets[Math.min(9, Math.floor(n))].cantidad++;
+    }
+    const media = notas.reduce((s, n) => s + n, 0) / notas.length;
+    return { notas, buckets, media };
   },
 
   clasif(n) {
