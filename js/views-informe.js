@@ -62,7 +62,10 @@ const InformeView = (function () {
 
   // ------------------------------------------------------------ hallazgos
   // Se analiza cada nivel (base + cada ACI) por separado para etiquetar cada
-  // hallazgo con su nivel, y se separan en dos secciones: criterios y preguntas.
+  // hallazgo con su nivel. Se agrupa en dos secciones —criterios y preguntas—
+  // y dentro de cada una los bloques por nivel/instrumento son colapsables.
+  let abiertos = new Set(); // claves de bloques expandidos
+
   function htmlHallazgos(claseId, insts) {
     const nivelesAci = Calc.nivelesAciDeClase(claseId);
     const niveles = [
@@ -72,7 +75,6 @@ const InformeView = (function () {
       criterios: Calc.criteriosDeNivel(claseId, nv.codigo)
     })));
 
-    // Recoger hallazgos de todos los niveles con su etiqueta.
     const todos = [];
     for (const nv of niveles) {
       Calc.hallazgos(claseId, insts, nv.criterios).forEach(h => {
@@ -85,7 +87,6 @@ const InformeView = (function () {
       return '<div class="aviso">No se han detectado problemas significativos en este alcance.</div>';
     }
 
-    // Tarjeta individual con badge de nivel.
     const tarjeta = h => `
       <div style="border-left:4px solid ${h.nivel === 'critico' ? '#dc3545' : '#ffc107'};
                   padding:10px 14px;margin-bottom:8px;
@@ -99,21 +100,58 @@ const InformeView = (function () {
         <span style="margin-left:10px">${Utils.esc(h.texto)}</span>
       </div>`;
 
-    const seccion = (titulo, items) => items.length
-      ? `<h3 style="margin:18px 0 8px;font-size:14px">${titulo} <small style="color:var(--tinta-suave);font-weight:400">(${items.length})</small></h3>
-         ${items.map(tarjeta).join('')}`
-      : '';
+    // Bloque colapsable: cabecera con flecha + cuerpo que se oculta.
+    const bloque = (clave, titulo, items) => {
+      const abierto = abiertos.has(clave);
+      return `
+        <div class="bloque-hall" data-clave="${Utils.esc(clave)}" style="margin-bottom:6px">
+          <div class="bloque-cab" data-toggle-bloque="${Utils.esc(clave)}"
+               style="cursor:pointer;display:flex;align-items:center;gap:8px;
+                      padding:7px 12px;background:var(--fondo, #f0f0f0);
+                      border-radius:4px;font-weight:600;font-size:13px">
+            <span style="font-size:11px;transition:transform 0.15s;
+                         transform:rotate(${abierto ? '90' : '0'}deg)">▶</span>
+            ${titulo}
+            <span class="badge" style="margin-left:auto">${items.length}</span>
+          </div>
+          <div class="bloque-cuerpo" style="display:${abierto ? 'block' : 'none'};
+               padding:8px 0 4px 16px">
+            ${items.map(tarjeta).join('')}
+          </div>
+        </div>`;
+    };
 
     const porCriterio = todos.filter(h => h.tipo === 'criterio');
     const porPregunta = todos.filter(h => h.tipo === 'pregunta');
 
-    return seccion('Criterios con dificultades', porCriterio)
-         + seccion('Preguntas con fallos', porPregunta);
+    // Criterios: un bloque por nivel.
+    const bloquesCriterios = [];
+    for (const nv of niveles) {
+      const items = porCriterio.filter(h => h.nivelEtiqueta === nv.etiqueta);
+      if (items.length) bloquesCriterios.push(bloque('crit-' + nv.etiqueta, nv.etiqueta, items));
+    }
+
+    // Preguntas: un bloque por instrumento (agrupando por su nivel).
+    const bloquesPreguntas = [];
+    const porInst = {};
+    porPregunta.forEach(h => { (porInst[h.instrumentoId] = porInst[h.instrumentoId] || []).push(h); });
+    for (const instId of Object.keys(porInst)) {
+      const inst = Calc.instrumento(instId);
+      const titulo = `${inst ? inst.titulo : instId} <small style="color:var(--tinta-suave);font-weight:400">· ${Utils.esc(porInst[instId][0].nivelEtiqueta)}</small>`;
+      bloquesPreguntas.push(bloque('preg-' + instId, titulo, porInst[instId]));
+    }
+
+    const seccion = (titulo, bloques) => bloques.length
+      ? `<h3 style="margin:18px 0 8px;font-size:14px">${titulo}</h3>${bloques.join('')}`
+      : '';
+
+    return seccion('Criterios con dificultades', bloquesCriterios)
+         + seccion('Preguntas con fallos', bloquesPreguntas);
   }
 
   // -------------------------------------------------------------- criterios
-  // Matriz alumnos × criterios. Dos modos: Absoluto (logro vs 50%) y Relativo
-  // (diferencia contra la media de la clase). Cabeceras con texto vertical.
+  // Matriz alumnos × criterios agrupada por niveles (Base y cada ACI).
+  // Dos modos: Absoluto (logro vs 50%) y Relativo (vs media de la clase).
   let modoCriterios = 'absoluto'; // 'absoluto' | 'relativo'
 
   function htmlCriterios(claseId, insts, criterios) {
@@ -122,10 +160,17 @@ const InformeView = (function () {
       return '<div class="aviso">No hay criterios para analizar en este alcance.</div>';
     }
 
-    // Datos por alumno (filas) y por criterio (columnas).
-    const alumnos = tabla.length ? tabla[0].filas.map(fl => fl.alumno) : [];
-    const mediaCriterio = tabla.map(f => f.media);
-    const logroDe = (fila, col) => fila[col] == null ? null : fila[col].logro;
+    // Filas de la primera tabla (todos los alumnos de la clase).
+    const filasBase = tabla[0].filas;
+
+    // Agrupar alumnos por nivel: Base primero, luego cada ACI.
+    const grupos = [];
+    const sinNivel = filasBase.filter(fl => !Calc.nivelDeAlumno(claseId, fl.alumno.id));
+    if (sinNivel.length) grupos.push({ etiqueta: 'Base', filas: sinNivel });
+    for (const nv of Calc.nivelesAciDeClase(claseId)) {
+      const delNivel = filasBase.filter(fl => Calc.nivelDeAlumno(claseId, fl.alumno.id) === nv.codigo);
+      if (delNivel.length) grupos.push({ etiqueta: nv.etiqueta || nv.codigo, filas: delNivel });
+    }
 
     const toggle = `
       <div class="chips no-print" style="margin-bottom:12px">
@@ -133,7 +178,6 @@ const InformeView = (function () {
         <label class="chip ${modoCriterios === 'relativo' ? 'on' : ''}" data-modocrit="relativo">Relativo (vs media)</label>
       </div>`;
 
-    // Cabecera: código en vertical + descripción corta debajo.
     const thCriterio = f => `
       <th style="writing-mode:vertical-rl;text-orientation:mixed;
                  transform:rotate(180deg);height:130px;padding:6px 4px;
@@ -142,39 +186,34 @@ const InformeView = (function () {
         ${Utils.esc(f.criterio.codigo)}
       </th>`;
 
-    // Celda según modo.
-    const celda = (fl, col) => {
-      const logro = fl[col] == null ? null : fl[col].logro;
-      const media = mediaCriterio[col];
-      if (logro == null) return '<td class="num"><span class="badge na">—</span></td>';
+    // Celda para una fila concreta dentro de un criterio.
+    const celda = (f, fl) => {
+      if (fl.logro == null) return '<td class="num"><span class="badge na">—</span></td>';
       if (modoCriterios === 'absoluto') {
-        const pct = Math.round(logro * 100);
-        const cls = logro >= 0.5 ? 'ok' : logro >= 0.4 ? 'info' : 'ko';
+        const pct = Math.round(fl.logro * 100);
+        const cls = fl.logro >= 0.5 ? 'ok' : fl.logro >= 0.4 ? 'info' : 'ko';
         return `<td class="num"><span class="badge ${cls}">${pct}%</span></td>`;
       }
-      // Relativo
-      if (media == null) return '<td class="num"><span class="badge na">—</span></td>';
-      const dif = Math.round((logro - media) * 100);
+      if (f.media == null) return '<td class="num"><span class="badge na">—</span></td>';
+      const dif = Math.round((fl.logro - f.media) * 100);
       const cls = dif >= 0 ? 'ok' : 'ko';
       return `<td class="num"><span class="badge ${cls}">${dif >= 0 ? '+' : ''}${dif}%</span></td>`;
     };
 
-    // Fila de media al pie.
+    // Fila de media global de la clase.
     const filaMedia = `
       <tr style="font-weight:700;border-top:2px solid #ccc">
         <td>Media clase</td>
-        ${mediaCriterio.map(m => {
-          if (m == null) return '<td class="num">—</td>';
-          if (modoCriterios === 'absoluto') {
-            const pct = Math.round(m * 100);
-            const cls = m >= 0.5 ? 'ok' : m >= 0.4 ? 'info' : 'ko';
-            return `<td class="num"><span class="badge ${cls}">${pct}%</span></td>`;
-          }
-          return '<td class="num">—</td>'; // la media contra sí misma es 0
+        ${tabla.map(f => {
+          if (f.media == null) return '<td class="num">—</td>';
+          const pct = Math.round(f.media * 100);
+          const cls = f.media >= 0.5 ? 'ok' : f.media >= 0.4 ? 'info' : 'ko';
+          return modoCriterios === 'absoluto'
+            ? `<td class="num"><span class="badge ${cls}">${pct}%</span></td>`
+            : '<td class="num">—</td>';
         }).join('')}
       </tr>`;
 
-    // Leyenda de la descripción de cada criterio debajo de la tabla.
     const leyenda = `
       <p style="color:var(--tinta-suave);font-size:12px;margin-top:10px;line-height:1.6">
         ${tabla.map(f => `<b>${Utils.esc(f.criterio.codigo)}</b> ${Utils.esc(f.criterio.descripcion)}`).join(' · ')}
@@ -186,11 +225,20 @@ const InformeView = (function () {
         <table class="tabla tabla-cuadricula">
           <thead><tr><th>Alumno</th>${tabla.map(thCriterio).join('')}</tr></thead>
           <tbody>
-            ${alumnos.map((a, i) => `
-              <tr>
-                <td>${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}</td>
-                ${tabla.map((f, col) => celda(f.filas[i], col)).join('')}
-              </tr>`).join('')}
+            ${grupos.map(g => `
+              <tr style="background:var(--fondo, #f0f0f0)">
+                <td colspan="${tabla.length + 1}" style="font-weight:700;font-size:13px;padding:6px 10px">
+                  ${Utils.esc(g.etiqueta)}
+                </td>
+              </tr>
+              ${g.filas.map(fl => `
+                <tr>
+                  <td>${Utils.esc(fl.alumno.apellidos)}, ${Utils.esc(fl.alumno.nombre)}</td>
+                  ${tabla.map(f => {
+                    const fila = f.filas.find(x => x.alumno.id === fl.alumno.id);
+                    return fila ? celda(f, fila) : '<td class="num">—</td>';
+                  }).join('')}
+                </tr>`).join('')}`).join('')}
             ${filaMedia}
           </tbody>
         </table>
@@ -303,6 +351,13 @@ const InformeView = (function () {
     });
     el.querySelectorAll('[data-modocrit]').forEach(ch => {
       ch.onclick = () => { modoCriterios = ch.dataset.modocrit; render(el, opciones); };
+    });
+    el.querySelectorAll('[data-toggle-bloque]').forEach(ch => {
+      ch.onclick = () => {
+        const clave = ch.dataset.toggleBloque;
+        if (abiertos.has(clave)) abiertos.delete(clave); else abiertos.add(clave);
+        render(el, opciones);
+      };
     });
   }
 
