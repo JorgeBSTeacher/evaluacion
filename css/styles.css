@@ -229,11 +229,6 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--acento-suav
 .barra-correccion #nav-info { flex: 1; color: var(--tinta-suave); font-size: 13px; }
 .tabla tbody tr.fila-actual { background: var(--acento-suave); }
 
-.resumen-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 14px 0; }
-.stat { background: #fff; border: 1px solid var(--linea); border-radius: var(--radio); padding: 14px; text-align: center; }
-.stat b { display: block; font-size: 26px; }
-.stat span { font-size: 12px; color: var(--tinta-suave); text-transform: uppercase; letter-spacing: .05em; }
-
 /* Instrumentos: secciones por trimestre y bloques plegables por unidad didáctica */
 .per-titulo { font-size: 15px; margin: 18px 0 8px; }
 .per-titulo:first-child { margin-top: 0; }

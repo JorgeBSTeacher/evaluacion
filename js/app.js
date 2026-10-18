@@ -137,14 +137,6 @@ const App = (() => {
 
   function renderInicio(el) {
     const db = Storage.db;
-    const stats = [
-      ['Grupos', db.grupos.length],
-      ['Alumnos', db.alumnos.length],
-      ['Asignaturas', db.asignaturas.length],
-      ['Clases', db.clases.length],
-      ['Criterios', db.criterios.length],
-      ['Instrumentos', db.instrumentos.length]
-    ];
     el.innerHTML = `
       <section class="card">
         <div class="card-head">
@@ -154,9 +146,6 @@ const App = (() => {
         </div>
         <p style="color:var(--tinta-suave)">Califica con criterios ponderados según la LOMLOE. Los datos se guardan en este navegador:
           <b>exporta tu backup al USB con frecuencia</b>.</p>
-        <div class="resumen-stats">
-          ${stats.map(([k, v]) => `<div class="stat"><b>${v}</b><span>${k}</span></div>`).join('')}
-        </div>
         <div class="aviso" style="background:#eff6ff;border-color:#bfdbfe;color:#1e40af">
           <b>Copias de seguridad</b> · <span id="info-backup">…</span><br>
           <small>Con Chrome/Edge en Windows puedes guardar directamente en la carpeta <code>backups/</code> del proyecto; en Android irán a Descargas.</small>
@@ -178,8 +167,8 @@ const App = (() => {
         <ol style="color:var(--tinta-suave);line-height:1.9;margin:0;padding-left:20px">
           <li>Crea <b>grupos</b> e inscribe <b>alumnos</b>.</li>
           <li>Crea <b>asignaturas</b> y sus <b>clases</b> (asignatura · grupo). Si vas a trabajar con adaptaciones, crea en la clase sus <b>niveles ACI</b>.</li>
-          <li>Define en <b>Currículo</b> las competencias específicas, los criterios y sus ponderaciones (suman 100%). Puedes pedirle a una IA la instrucción y pegar el JSON resultante.</li>
-          <li>Crea <b>instrumentos</b>: control, rúbrica, proyecto u otro, mapeando cada apartado a criterios.</li>
+          <li>Define en <b>Currículo</b> las competencias específicas, los criterios y sus ponderaciones (suman 100%).</li>
+          <li>Crea <b>instrumentos</b>: control, rúbrica, proyecto u otro, mapeando cada apartado a criterios. Si ya tienes una rúbrica hecha (por ejemplo, con una IA), impórtala con «Importar rúbrica».</li>
           <li><b>Corrige</b> desde «Calificaciones» (botón «Corregir») o desde el propio instrumento.</li>
           <li>Revisa el <b>Informe</b>: hallazgos, criterios con dificultades, distribución de notas y alumnos en riesgo. Imprime o exporta a PDF el informe que necesites.</li>
           <li>Exporta el <b>backup</b> al terminar cada sesión.</li>
