@@ -163,7 +163,12 @@ const App = (() => {
           <div style="margin-top:14px">
             <button class="btn btn-peligro" id="btn-reiniciar">Restablecer y vaciar todos los datos</button>
           </div>`}
-        <h2 style="font-size:15px;margin:18px 0 8px">Flujo recomendado</h2>
+      </section>
+      ${panelesEstadoHtml()}
+      ${panelesCoberturaHtml()}
+      ${panelesAciHtml()}
+      <section class="card">
+        <h2 style="font-size:15px;margin:0 0 8px">Flujo recomendado</h2>
         <ol style="color:var(--tinta-suave);line-height:1.9;margin:0;padding-left:20px">
           <li>Crea <b>grupos</b> e inscribe <b>alumnos</b>.</li>
           <li>Crea <b>asignaturas</b> y sus <b>clases</b> (asignatura · grupo). Si vas a trabajar con adaptaciones, crea en la clase sus <b>niveles ACI</b>.</li>
@@ -173,10 +178,7 @@ const App = (() => {
           <li>Revisa el <b>Informe</b>: hallazgos, criterios con dificultades, distribución de notas y alumnos en riesgo. Imprime o exporta a PDF el informe que necesites.</li>
           <li>Exporta el <b>backup</b> al terminar cada sesión.</li>
         </ol>
-      </section>
-      ${panelesEstadoHtml()}
-      ${panelesCoberturaHtml()}
-      ${panelesAciHtml()}`;
+      </section>`;
 
     const curso = el.querySelector('#sel-curso');
     if (curso) {
