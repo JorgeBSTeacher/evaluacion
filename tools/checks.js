@@ -893,6 +893,10 @@ async function main() {
       css.includes('break-after: avoid; page-break-after: avoid;') &&
       (css.includes('.informe-seccion table { break-before: avoid; page-break-before: avoid;') ||
        css.includes('break-before: avoid; page-break-before: avoid;')));
+    check('las tablas del informe pueden partirse entre páginas (sin página en blanco)',
+      /\.informe-seccion table \{[^}]*page-break-inside: auto/.test(css));
+    check('cada sección del informe (nivel) empieza en una hoja nueva',
+      css.includes('.informe-seccion + .informe-seccion { break-before: page; page-break-before: always; }'));
 
     // La fila de apartado (Control/Proyecto) pinta 6 controles: nº, descripción,
     // máximo, «peso», «Criterios» y «Quitar». Si el grid declara menos columnas,

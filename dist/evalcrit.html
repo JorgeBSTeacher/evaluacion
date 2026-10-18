@@ -344,14 +344,17 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--acento-suav
 .informe-cab { margin: 0 0 12px; }
 .informe-cab strong { font-size: 16px; }
 .informe-cab span { display: block; color: var(--tinta-suave); font-size: 12px; }
-.informe-seccion { margin-bottom: 16px; break-inside: avoid; page-break-inside: avoid; }
-/* El título viaja siempre con su tabla: nunca solo al pie de una página. */
+.informe-seccion { margin-bottom: 16px; }
+/* El título viaja siempre con lo que le sigue: nunca solo al pie de una página. */
 .informe-titulo { font-size: 15px; margin: 0 0 6px; break-after: avoid; page-break-after: avoid; }
-.informe-seccion h3 { break-after: avoid; page-break-after: avoid; page-break-before: auto; }
-.informe-seccion .scroll-x + .scroll-x { break-before: page; page-break-before: always; }
-.informe-seccion .scroll-x:first-of-type { break-before: auto; page-break-before: auto; }
-.informe-seccion table { break-before: avoid; page-break-before: avoid; break-inside: avoid; page-break-inside: avoid; }
-.informe-seccion .scroll-x { break-inside: avoid; page-break-inside: avoid; }
+/* Los subrótulos (Criterios / Competencias) también quedan pegados a su tabla. */
+.informe-seccion h3 { break-after: avoid; page-break-after: avoid; page-break-before: avoid; }
+/* Las tablas del informe son más altas que la página: si no pueden partirse,
+   el navegador las empuja a la hoja siguiente y deja una página EN BLANCO
+   entre el título y la tabla. Cada fila ya se protege sola (tr, arriba). */
+.informe-seccion table { break-before: avoid; page-break-before: avoid; break-inside: auto; page-break-inside: auto; }
+/* Cada nivel (Base, ACI 1, ACI 2…) empieza en una hoja nueva. */
+.informe-seccion + .informe-seccion { break-before: page; page-break-before: always; }
 
 </style>
 </head>
