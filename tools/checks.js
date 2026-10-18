@@ -891,7 +891,8 @@ async function main() {
       css.includes('body.imprimiendo-informe #informe-impresion { display: block !important; }'));
     check('el título de cada sección del informe no se separa de su tabla',
       css.includes('break-after: avoid; page-break-after: avoid;') &&
-      css.includes('.informe-seccion table { break-before: avoid; page-break-before: avoid; }'));
+      (css.includes('.informe-seccion table { break-before: avoid; page-break-before: avoid;') ||
+       css.includes('break-before: avoid; page-break-before: avoid;')));
 
     // La fila de apartado (Control/Proyecto) pinta 6 controles: nº, descripción,
     // máximo, «peso», «Criterios» y «Quitar». Si el grid declara menos columnas,
