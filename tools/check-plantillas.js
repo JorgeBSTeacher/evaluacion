@@ -17,6 +17,15 @@ function check(nombre, cond, detalle) {
   else { fallos++; console.log('  FAIL ' + nombre + (detalle ? '  → ' + detalle : '')); }
 }
 
+// Un «aviso» documenta un hueco conocido de los datos oficiales (no un fallo de
+// estructura): se imprime y se cuenta, pero no tumba la batería. Si alguien
+// completa la plantilla, el aviso desaparece solo.
+let avisos = 0;
+function aviso(nombre, hay, detalle) {
+  if (hay) { avisos++; console.log('  AVISO  ' + nombre + (detalle ? '  → ' + detalle : '')); }
+  else console.log('  ok   ' + nombre);
+}
+
 function plantillas() {
   return fs.readdirSync(dir)
     .filter(f => f.endsWith('.json'))
@@ -55,6 +64,14 @@ function validar({ archivo, datos: d }) {
     ces.every(c => typeof c.descripcion === 'string' && c.descripcion.trim()));
   check(pre + 'toda CE tiene perfilSalida (array)',
     ces.every(c => Array.isArray(c.perfilSalida)));
+  // Dos huecos de datos que la app acusa: una CE sin criterios de evaluación no
+  // puede puntuar nunca, y una CE sin descriptores de perfil de salida deja sus
+  // criterios sin competencias clave (aviso de Cobertura). Se vigilan aquí para
+  // que no pasen desapercibidos.
+  const ceSinCrit = ces.filter(e => !crit.some(c => c.ceCodigo === e.codigo)).map(e => e.codigo);
+  aviso(pre + 'toda CE tiene al menos un criterio', ceSinCrit.length > 0, ceSinCrit.join(','));
+  const ceSinPerfil = ces.filter(e => !Array.isArray(e.perfilSalida) || !e.perfilSalida.length).map(e => e.codigo);
+  aviso(pre + 'toda CE tiene descriptores de perfil de salida', ceSinPerfil.length > 0, ceSinPerfil.join(','));
 
   const numericos = crit.map(c => c.peso).filter(p => typeof p === 'number' && !isNaN(p));
   if (numericos.length === crit.length && crit.length) {
@@ -95,7 +112,8 @@ function main() {
     vistas.size + '/' + pls.length);
 
   console.log('\n  plantillas: ' + pls.length + ' · competencias: ' + ceTotal + ' · criterios: ' + crTotal);
-  console.log('\n' + (fallos ? 'FALLOS: ' + fallos + '/' + total : 'TODO OK: ' + total + ' comprobaciones'));
+  console.log('\n' + (fallos ? 'FALLOS: ' + fallos + '/' + total : 'TODO OK: ' + total + ' comprobaciones')
+    + (avisos ? ' · ' + avisos + ' aviso(s)' : ''));
   process.exitCode = fallos ? 1 : 0;
 }
 

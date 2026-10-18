@@ -3,25 +3,10 @@
 // verifica importador de curriculo, retrocompatibilidad de backups y motor ACI.
 // Uso: node tools/checks.js
 'use strict';
-const vm = require('vm');
 const fs = require('fs');
 const path = require('path');
-
-const raiz = path.join(__dirname, '..');
-const ARCHIVOS = [
-  'js/utils.js',
-  'js/storage.js',
-  'js/plantillas.js',
-  'js/calc.js',
-  'js/ui.js',
-  'js/views-alumnos.js',
-  'js/views-clases.js',
-  'js/views-curriculo.js',
-  'js/views-instrumentos.js',
-  'js/views-informe.js',
-  'js/views-cuadricula.js',
-  'js/app.js'
-];
+const { raiz, makeEl, cargarApp } = require('./arnes');
+const { estadoPrueba, resumen } = require('./datos-prueba');
 
 let total = 0;
 let fallos = 0;
@@ -31,63 +16,17 @@ function check(nombre, cond, detalle) {
   else { fallos++; console.log('  FAIL ' + nombre + (detalle ? '  → ' + detalle : '')); }
 }
 
-// Elemento falso para el arnés sin navegador. `over` permite sustituir algún
-// método (p. ej. querySelectorAll para devolver chips con los que interactuar).
-function makeEl(over) {
-  const el = {
-    _html: '',
-    classList: { add() {}, remove() {}, toggle() {} },
-    addEventListener() {},
-    appendChild() {},
-    remove() {},
-    querySelector() { return makeEl(); },
-    querySelectorAll() { return []; },
-    set innerHTML(v) { this._html = v; },
-    get innerHTML() { return this._html; }
-  };
-  return Object.assign(el, over || {});
+// Un «aviso» documenta una inconsistencia conocida: se imprime y se cuenta,
+// pero no tumba la batería (no es un contrato del código, sino un defecto de
+// datos o una decisión de diseño pendiente). Si desaparece, saldrá «ok».
+let avisos = 0;
+function aviso(nombre, hay, detalle) {
+  if (hay) { avisos++; console.log('  AVISO  ' + nombre + (detalle ? '  → ' + detalle : '')); }
+  else console.log('  ok   ' + nombre);
 }
 
-function cargarApp() {
-  const s = {};
-  s.global = s;
-  s.window = s;
-  s.console = console;
-  s.setTimeout = fn => { try { fn(); } catch (e) { /* noop */ } };
-  s.clearTimeout = () => {};
-  const store = {};
-  s.localStorage = {
-    getItem: k => (k in store ? store[k] : null),
-    setItem: (k, v) => { store[k] = String(v); },
-    removeItem: k => { delete store[k]; }
-  };
-  s.document = {
-    getElementById: () => makeEl(),
-    createElement: () => makeEl(),
-    addEventListener() {},
-    querySelector: () => makeEl(),
-    body: makeEl()
-  };
-  s.UI = {
-    toast() {}, closeModal() {},
-    openModal: () => makeEl(),
-    selectHtml() { return ''; },
-    valoresChips() { return []; },
-    wireChips() {},
-    chipsCriterios() { return ''; }
-  };
-  s.FileReader = function () {
-    this.readAsText = f => {
-      this.result = f._text;
-      if (this.onload) this.onload();
-    };
-  };
-  vm.createContext(s);
-  const code = ARCHIVOS.map(f => fs.readFileSync(path.join(raiz, f), 'utf8')).join('\n')
-    + '\nthis.__app = { Utils, Storage, Calc, PLANTILLAS_CURRICULO, CurriculoView, InstrumentosView, CuadriculaView, ClasesView, InformeView, App };';
-  vm.runInContext(code, s, { filename: 'app.bundle.js' });
-  return s.__app;
-}
+// El cargador de la app (makeEl, cargarApp) vive en tools/arnes.js para poder
+// reutilizarlo desde tools/datos-prueba.js.
 
 function estadoLegacy() {
   return {
@@ -1536,7 +1475,378 @@ async function main() {
     check('sin clases no se muestra el panel ACI', P.aci() === '');
   }
 
-  console.log('\n' + (fallos ? 'FALLOS: ' + fallos + '/' + total : 'TODO OK: ' + total + ' comprobaciones'));
+  console.log('\n== Auditoría del curso de prueba (3 grupos · 6 clases · ACI · 9 UD) ==');
+  {
+    const estado = estadoPrueba();
+    const r = resumen(estado);
+    const app = cargarApp();
+    app.Storage.load();
+    await importarJson(app, estado);
+    const { Calc, Storage } = app;
+    const db = Storage.db;
+    const clases = db.clases;
+    const instsDe = c => Calc.instrumentosDeClase(c.id);
+
+    // Currículos implicados: los de cada clase y los de cada nivel ACI.
+    const enUso = [];
+    clases.forEach(c => {
+      if (enUso.indexOf(c.asignaturaId) === -1) enUso.push(c.asignaturaId);
+      Calc.nivelesAciDeClase(c.id).forEach(n => {
+        if (n.asignaturaId && enUso.indexOf(n.asignaturaId) === -1) enUso.push(n.asignaturaId);
+      });
+    });
+
+    // ¿Las notas de este alumnado en este instrumento pueden puntuar? Depende del
+    // currículo (no de si hay notas): sus criterios deben aparecer en algún
+    // apartado del instrumento (o en los criterios globales, en modo global).
+    const puede = (inst, aluId) => {
+      const ids = new Set(Calc.criteriosDeAlumno(inst.claseId, aluId).map(cr => cr.id));
+      if (inst.criteriosModo === 'global') return (inst.criterioIdsGlobal || []).some(id => ids.has(id));
+      return (inst.apartados || []).some(ap => (ap.criterioIds || []).some(id => ids.has(id)));
+    };
+
+    console.log('  escenario: ' + r.grupos + ' grupos · ' + r.alumnos + ' alumnos · ' + r.clases + ' clases · '
+      + r.asignaturas + ' currículos · ' + r.instrumentos + ' instrumentos (' + r.tipos.join(', ') + ') · '
+      + r.unidades + ' unidades · ' + r.alumnadoAdaptado + ' ACI');
+
+    // --- A. El escenario es el que se pidió ---
+    check('A1 · 3 grupos (6ºA, 6ºB, 4ºA)', r.grupos === 3 && db.grupos.map(g => g.nombre).join(',') === '6ºA,6ºB,4ºA');
+    check('A2 · 6 clases (asignatura · grupo)', r.clases === 6);
+    check('A3 · 21 alumnos repartidos en los 3 grupos', r.alumnos === 21);
+    check('A4 · 8 currículos importados de las plantillas oficiales', r.asignaturas === 8);
+    check('A5 · al menos 9 unidades didácticas distintas', r.unidades >= 9, 'UD=' + r.unidades);
+    check('A6 · instrumentos de los 4 tipos', r.tipos.length === 4, r.tipos.join(','));
+    check('A7 · hay instrumentos con unidad y sin unidad', db.instrumentos.some(i => i.unidad) && db.instrumentos.some(i => !i.unidad));
+    check('A8 · hay un instrumento en modo «global»', db.instrumentos.some(i => i.criteriosModo === 'global'));
+    check('A9 · TODAS las clases tienen alumnado con ACI', clases.every(c => Object.keys(c.adaptaciones || {}).length > 0));
+    check('A10 · hay una clase con dos niveles ACI', clases.some(c => Calc.nivelesAciDeClase(c.id).length > 1));
+    check('A11 · el currículo de cada nivel ACI es de otro curso',
+      clases.every(c => Calc.nivelesAciDeClase(c.id).every(n => {
+        const base = Calc.asignaturaDeClase(c.id);
+        const aci = Calc.asignatura(n.asignaturaId);
+        return aci && base && aci.curso !== base.curso;
+      })));
+
+    // --- B. La importación es limpia y estable ---
+    check('B1 · importar el volcado no exige reparaciones', Storage.reparadosCriterios === 0,
+      'reparados=' + Storage.reparadosCriterios);
+    const idsClase = new Set(clases.map(c => c.id));
+    check('B2 · ningún instrumento huérfano de clase', db.instrumentos.every(i => idsClase.has(i.claseId)));
+    const idsInst = new Set(db.instrumentos.map(i => i.id));
+    check('B3 · ningún registro cuelga de un instrumento inexistente', Object.keys(db.registros).every(k => idsInst.has(k)));
+    const idsGrupo = new Set(db.grupos.map(g => g.id));
+    check('B4 · ningún alumno huérfano de grupo', db.alumnos.every(a => idsGrupo.has(a.grupoId)));
+    const idsAlum = new Set(db.alumnos.map(a => a.id));
+    check('B5 · ningún registro de alumnado inexistente', Object.keys(db.registros).every(k =>
+      Object.keys(db.registros[k]).every(a => idsAlum.has(a))));
+
+    const app2 = cargarApp();
+    app2.Storage.load();
+    await importarJson(app2, estado);
+    const db2 = app2.Storage.db;
+    check('B6 · reimportar el mismo JSON da los mismos recuentos',
+      db2.criterios.length === db.criterios.length && db2.instrumentos.length === db.instrumentos.length
+      && Object.keys(db2.registros).length === Object.keys(db.registros).length);
+    const notasDe = (a, claseId) => a.Calc.alumnosDeClase(claseId).map(al => a.Calc.notaEvaluacion(claseId, al.id, 'Final'));
+    check('B7 · las notas sobreviven a exportar/importar',
+      JSON.stringify(notasDe(app2, 'cl-m6a')) === JSON.stringify(notasDe(app, 'cl-m6a')));
+
+    // --- C. Currículo ---
+    check('C1 · todos los currículos en uso tienen criterios',
+      enUso.every(id => db.criterios.some(c => c.asignaturaId === id)));
+    check('C2 · en cada currículo los pesos suman 100%', enUso.every(id => {
+      const s = db.criterios.filter(c => c.asignaturaId === id).reduce((t, c) => t + (Number(c.peso) || 0), 0);
+      return Math.abs(s - 100) < 0.01;
+    }), enUso.map(id => (Calc.asignatura(id) || {}).nombre).join(', '));
+    const idsAsig = new Set(db.asignaturas.map(a => a.id));
+    check('C3 · ningún criterio huérfano de asignatura', db.criterios.every(c => idsAsig.has(c.asignaturaId)));
+    const idsEsp = new Set(db.competenciasEspecificas.map(e => e.id));
+    check('C4 · cada criterio cuelga de competencias específicas existentes',
+      db.criterios.every(c => (c.espIds || []).length && c.espIds.every(id => idsEsp.has(id))));
+    check('C5 · cada competencia específica pertenece a su asignatura',
+      db.competenciasEspecificas.every(e => idsAsig.has(e.asignaturaId)));
+    const ceVacias = [];
+    enUso.forEach(id => {
+      const a = Calc.asignatura(id);
+      db.competenciasEspecificas.filter(e => e.asignaturaId === id
+        && !db.criterios.some(c => c.espIds.includes(e.id))).forEach(e => ceVacias.push(a.nombre + ' ' + e.codigo));
+    });
+    aviso('C6 · ninguna competencia específica se queda sin criterios', ceVacias.length > 0,
+      ceVacias.length + ' sin criterios: ' + ceVacias.join(', '));
+    const sinClaves = [];
+    enUso.forEach(id => {
+      const a = Calc.asignatura(id);
+      db.criterios.filter(c => c.asignaturaId === id && !(c.claveIds || []).length)
+        .forEach(c => sinClaves.push(a.nombre + ' ' + c.codigo));
+    });
+    aviso('C7 · todos los criterios traen competencias clave', sinClaves.length > 0,
+      sinClaves.length + ' sin ninguna: ' + sinClaves.join(', '));
+    check('C8 · los criterios de cada nivel salen de un único currículo', clases.every(c =>
+      [''].concat(Calc.nivelesAciDeClase(c.id).map(n => n.codigo)).every(nv =>
+        new Set(Calc.criteriosDeNivel(c.id, nv).map(cr => cr.asignaturaId)).size <= 1)));
+    check('C9 · el nivel ACI usa exactamente el currículo al que apunta', clases.every(c =>
+      Calc.nivelesAciDeClase(c.id).every(n =>
+        Calc.criteriosDeNivel(c.id, n.codigo).every(cr => cr.asignaturaId === n.asignaturaId))));
+
+    // --- D. Instrumentos ---
+    check('D1 · ningún instrumento evalúa criterios fuera de su nivel',
+      db.instrumentos.every(i => Calc.criteriosFueraDeNivel(db, i).length === 0));
+    check('D2 · el nivel de cada instrumento existe en su clase', db.instrumentos.every(i =>
+      !Calc.nivelNorm(i.nivel) || Calc.nivelesAciDeClase(i.claseId).some(n => n.codigo === Calc.nivelNorm(i.nivel))));
+    check('D3 · cada apartado (no global) evalúa al menos un criterio',
+      db.instrumentos.filter(i => i.criteriosModo !== 'global')
+        .every(i => i.apartados.every(ap => (ap.criterioIds || []).length)));
+    check('D4 · el modo global declara criterios y del currículo del nivel', db.instrumentos
+      .filter(i => i.criteriosModo === 'global')
+      .every(i => (i.criterioIdsGlobal || []).length > 0
+        && Calc.criteriosFueraDeNivel(db, i).length === 0));
+    check('D5 · toda rúbrica tiene escala sobre 100 y ≥2 niveles con descriptor',
+      db.instrumentos.filter(i => i.tipo === 'Rúbrica').every(i => i.apartados.every(ap => {
+        const nv = Calc.nivelesDeApartado(i, ap);
+        return Number(ap.maxPts) === 100 && nv.length >= 2 && nv.every(n => n.descriptor);
+      })));
+    check('D6 · todo apartado no-rúbrica tiene puntos máximos',
+      db.instrumentos.filter(i => i.tipo !== 'Rúbrica')
+        .every(i => i.apartados.every(ap => Number(ap.maxPts) > 0)));
+    check('D7 · periodo y fecha válidos en todos los instrumentos',
+      db.instrumentos.every(i => ['T1', 'T2', 'T3'].includes(i.periodo) && /^\d{4}-\d{2}-\d{2}$/.test(i.fecha)));
+    check('D8 · los apartados van numerados 1..n', db.instrumentos.every(i =>
+      i.apartados.every((ap, k) => ap.orden === k + 1)));
+
+    // --- E. Registros ---
+    const malas = [];
+    db.instrumentos.forEach(i => {
+      const fila = db.registros[i.id] || {};
+      const aplicables = Calc.alumnosDeInstrumento(i).map(a => a.id);
+      Object.keys(fila).forEach(aluId => {
+        if (aplicables.indexOf(aluId) === -1) malas.push(i.titulo + ': alumnado no aplicable');
+        i.apartados.forEach(ap => {
+          const v = fila[aluId][ap.id];
+          if (v == null || v === '') return;
+          const n = Number(v);
+          if (isNaN(n)) malas.push(i.titulo + ': valor no numérico');
+          else if (i.tipo === 'Rúbrica') {
+            if (!Calc.nivelesDeApartado(i, ap).some(nv => Math.abs(Number(nv.pct) - n) < 1e-9)) {
+              malas.push(i.titulo + ': nivel ' + n + ' inexistente');
+            }
+          } else if (n < 0 || n > Number(ap.maxPts)) malas.push(i.titulo + ': ' + n + ' fuera de 0..' + ap.maxPts);
+        });
+      });
+    });
+    check('E1 · toda nota está en rango, con apartado real y alumnado aplicable', malas.length === 0, malas.slice(0, 3).join(' | '));
+    check('E2 · ningún registro apunta a un apartado inexistente', db.instrumentos.every(i =>
+      Object.keys(db.registros[i.id] || {}).every(aluId =>
+        Object.keys(db.registros[i.id][aluId]).every(apId => i.apartados.some(ap => ap.id === apId)))));
+    check('E3 · el avance cuadra (corregidos + pendientes = alumnado aplicable)',
+      db.instrumentos.every(i => {
+        const p = Calc.progresoInstrumento(i);
+        return p.hechos + p.pendientes === p.total;
+      }));
+    check('E4 · el escenario deja instrumentos sin corregir',
+      db.instrumentos.filter(i => !Object.keys(db.registros[i.id] || {}).length).length >= 1);
+    check('E5 · el alumnado ACI tiene notas en sus instrumentos de nivel',
+      db.instrumentos.filter(i => i.nivel && i.nivel !== 'BASE' && Object.keys(db.registros[i.id] || {}).length)
+        .every(i => Calc.alumnosDeInstrumento(i).every(a =>
+          !puede(i, a.id) || !!((db.registros[i.id] || {})[a.id]))));
+    const muertas = [];
+    db.instrumentos.forEach(i => Calc.alumnosDeInstrumento(i).forEach(a => {
+      if (!puede(i, a.id)) muertas.push(i.titulo + ' → ' + a.apellidos + ', ' + a.nombre);
+    }));
+    aviso('E6 · la app no pide corregir celdas que no pueden puntuar', muertas.length > 0,
+      muertas.length + ' celda(s): ' + muertas.join(' · '));
+
+    // --- F. Motor de cálculo ---
+    const baseDe = c => Calc.alumnosDeClase(c.id).filter(a => !Calc.nivelDeAlumno(c.id, a.id));
+    const aciDe = c => Calc.alumnosDeClase(c.id).filter(a => !!Calc.nivelDeAlumno(c.id, a.id));
+    let malRango = null, malLogro = null, sinNota = null;
+    const notas = {};
+    clases.forEach(c => {
+      notas[c.id] = {};
+      Calc.alumnosDeClase(c.id).forEach(a => {
+        const n = Calc.notaEvaluacion(c.id, a.id, 'Final');
+        notas[c.id][a.id] = n;
+        if (n == null) sinNota = c.id + '/' + a.apellidos;
+        else if (n < 0 || n > 10) malRango = c.id + '/' + a.apellidos + '=' + n;
+        Calc.criteriosDeAlumno(c.id, a.id).forEach(cr => {
+          const l = Calc.logroCriterioEnInsts(cr.id, c.id, a.id, instsDe(c));
+          if (l != null && (l < 0 || l > 1)) malLogro = c.id + '/' + cr.codigo + '=' + l;
+        });
+      });
+    });
+    check('F1 · todas las notas de evaluación están entre 0 y 10', !malRango, malRango);
+    check('F2 · todos los logros por criterio están entre 0 y 1', !malLogro, malLogro);
+    check('F3 · ningún alumno del escenario queda sin nota', !sinNota, sinNota);
+
+    // Aislamiento entre currículos: cada alumno se califica SOLO con el suyo.
+    const conSolo = filtro => {
+      const guardado = Storage.db;
+      Storage.db = JSON.parse(JSON.stringify(db));
+      Storage.db.instrumentos = Storage.db.instrumentos.filter(filtro);
+      const salida = db.clases.map(c => notasDe(app, c.id));
+      Storage.db = guardado;
+      return salida;
+    };
+    const soloBase = conSolo(i => !i.nivel || i.nivel === 'BASE');
+    const soloAci = conSolo(i => !!i.nivel && i.nivel !== 'BASE');
+    const todas = db.clases.map(c => notasDe(app, c.id));
+    check('F4 · quitar los instrumentos ACI no cambia la nota del alumnado sin adaptación',
+      db.clases.every((c, ci) => Calc.alumnosDeClase(c.id).every((a, ai) =>
+        !!Calc.nivelDeAlumno(c.id, a.id) || soloBase[ci][ai] === todas[ci][ai])));
+    check('F5 · quitar los instrumentos base/comunes no cambia la nota del alumnado ACI',
+      db.clases.every((c, ci) => Calc.alumnosDeClase(c.id).every((a, ai) =>
+        !Calc.nivelDeAlumno(c.id, a.id) || soloAci[ci][ai] === todas[ci][ai])));
+
+    let malCE = null, malClave = null;
+    clases.forEach(c => Calc.alumnosDeClase(c.id).forEach(a => {
+      const nv = Calc.nivelDeAlumno(c.id, a.id);
+      Calc.competenciasEspecificasDeNivel(c.id, nv).forEach(e => {
+        const n = Calc.notaCompetencia(c.id, a.id, e.id, 'Final');
+        if (n != null && (n < 0 || n > 10)) malCE = c.id + '/' + e.codigo + '=' + n;
+      });
+      Calc.clavesDeNivel(c.id, nv).forEach(k => {
+        const n = Calc.notaClave(c.id, a.id, k.id, 'Final');
+        if (n != null && (n < 0 || n > 10)) malClave = c.id + '/' + k.codigo + '=' + n;
+      });
+    }));
+    check('F6 · las notas por competencia específica están entre 0 y 10', !malCE, malCE);
+    check('F7 · las notas por competencia clave están entre 0 y 10', !malClave, malClave);
+
+    check('F8 · los tramos de la distribución suman las notas contadas', clases.every(c => {
+      const d = Calc.distribucionNotas(c.id, instsDe(c));
+      return d.buckets.reduce((s, b) => s + b.cantidad, 0) === d.notas.length;
+    }));
+    check('F9 · la media de la distribución está entre 0 y 10', clases.every(c => {
+      const d = Calc.distribucionNotas(c.id, instsDe(c));
+      return d.media == null || (d.media >= 0 && d.media <= 10);
+    }));
+    check('F10 · la distribución de un nivel ACI cuenta solo a su alumnado', clases.every(c =>
+      Calc.nivelesAciDeClase(c.id).every(n =>
+        Calc.distribucionNotas(c.id, instsDe(c), n.codigo).notas.length
+        === aciDe(c).filter(a => Calc.nivelDeAlumno(c.id, a.id) === n.codigo).length)));
+    check('F11 · la distribución de «Base» excluye al alumnado con ACI',
+      clases.every(c => Calc.distribucionNotas(c.id, instsDe(c), '').notas.length === baseDe(c).length));
+
+    check('F12 · absoluto y relativo de la tabla de criterios cuadran con el logro', clases.every(c =>
+      Calc.tablaCriteriosInforme(c.id, instsDe(c), Calc.criteriosDeClase(c.id)).every(f =>
+        f.filas.every(x => x.absoluto === (x.logro == null ? null : x.logro >= 0.5)
+          && x.relativo === (x.logro == null || f.media == null ? null : x.logro >= f.media)))));
+    check('F13 · la tabla de criterios incluye a todo el grupo', clases.every(c => {
+      const t = Calc.tablaCriteriosInforme(c.id, instsDe(c), Calc.criteriosDeClase(c.id));
+      return t.length > 0 && t.every(f => f.filas.length === Calc.alumnosDeClase(c.id).length);
+    }));
+
+    let dupH = null, ajeno = null, malOrden = null;
+    clases.forEach(c => {
+      const niveles = [{ etiqueta: 'Base', criterios: Calc.criteriosDeClase(c.id) }]
+        .concat(Calc.nivelesAciDeClase(c.id).map(n => ({ etiqueta: n.etiqueta, criterios: Calc.criteriosDeNivel(c.id, n.codigo) })));
+      const vistos = new Set();
+      niveles.forEach(nv => Calc.hallazgos(c.id, instsDe(c), nv.criterios).forEach(h => {
+        if (h.tipo !== 'criterio') return;
+        if (vistos.has(h.criterioId)) dupH = c.id + '/' + h.codigo;
+        vistos.add(h.criterioId);
+        if (!nv.criterios.some(cr => cr.id === h.criterioId)) ajeno = c.id + '/' + h.codigo;
+      }));
+      const hs = Calc.hallazgos(c.id, instsDe(c), Calc.criteriosDeClase(c.id));
+      const orden = { critico: 0, atencion: 1, bien: 2 };
+      for (let i = 1; i < hs.length; i++) {
+        if (orden[hs[i - 1].nivel] > orden[hs[i].nivel]
+          || (hs[i - 1].nivel === hs[i].nivel && hs[i - 1].pct < hs[i].pct)) malOrden = c.id;
+      }
+    });
+    check('F14 · ningún criterio genera dos hallazgos', !dupH, dupH);
+    check('F15 · cada hallazgo pertenece al currículo del nivel analizado', !ajeno, ajeno);
+    check('F16 · los hallazgos van de más grave a menos', !malOrden, malOrden);
+    check('F17 · los hallazgos de pregunta apuntan a instrumentos de su clase', clases.every(c =>
+      Calc.hallazgos(c.id, instsDe(c), []).every(h => instsDe(c).some(i => i.id === h.instrumentoId))));
+
+    check('F18 · un instrumento de nivel ACI incluye solo a su alumnado',
+      db.instrumentos.filter(i => i.nivel && i.nivel !== 'BASE').every(i =>
+        Calc.alumnosDeInstrumento(i).every(a => Calc.nivelDeAlumno(i.claseId, a.id) === Calc.nivelNorm(i.nivel))));
+    check('F19 · un instrumento «BASE» excluye al alumnado con ACI',
+      db.instrumentos.filter(i => i.nivel === 'BASE').every(i =>
+        Calc.alumnosDeInstrumento(i).every(a => !Calc.nivelDeAlumno(i.claseId, a.id))));
+    check('F20 · un instrumento común incluye a todo el grupo',
+      db.instrumentos.filter(i => !i.nivel).every(i =>
+        Calc.alumnosDeInstrumento(i).length === Calc.alumnosDeClase(i.claseId).length));
+
+    // --- G. Vistas ---
+    const errores = [];
+    clases.forEach(c => {
+      try {
+        const el = makeEl();
+        app.CuadriculaView.render(el, { claseId: c.id });
+        app.InstrumentosView.render(el);
+        app.CurriculoView.render(el);
+        app.ClasesView.render(el);
+      } catch (e) { errores.push(c.id + ': ' + e.message); }
+    });
+    check('G1 · las vistas de las 6 clases se dibujan sin errores', errores.length === 0, errores.join(' | '));
+
+    check('G2 · el imprimible de la cuadrícula lleva tres tablas por nivel', clases.every(c =>
+      (app.CuadriculaView.informeHtml(c.id, 'Final', {}).match(/tabla-cuadricula/g) || []).length
+      === 3 * (1 + Calc.nivelesAciDeClase(c.id).length)));
+
+    const infErr = [];
+    clases.forEach(c => {
+      try {
+        const el = makeEl();
+        app.InformeView.render(el, { claseSel: c.id, nivelSel: '' });
+        const html = app.InformeView.informeHtml();
+        if (!html.includes('Informe de análisis')) infErr.push(c.id + ': sin cabecera');
+        if (!html.includes('informe-seccion')) infErr.push(c.id + ': sin secciones');
+      } catch (e) { infErr.push(c.id + ': ' + e.message); }
+    });
+    check('G3 · el informe se genera en las 6 clases', infErr.length === 0, infErr.join(' | '));
+    check('G4 · el informe de criterios usa el currículo de cada nivel', clases.every(c =>
+      [''].concat(Calc.nivelesAciDeClase(c.id).map(n => n.codigo)).every(nv => {
+        const asig = Calc.asignaturaDeNivel(c.id, nv);
+        return Calc.tablaCriteriosInforme(c.id, instsDe(c), Calc.criteriosDeNivel(c.id, nv))
+          .every(f => f.criterio.asignaturaId === (asig ? asig.id : null));
+      })));
+
+    // --- H. Paneles de Inicio ---
+    const P = app.App.panelesInicio;
+    const est = P.estado();
+    check('H1 · el panel de estado lista las 6 clases', (est.match(/data-clase=/g) || []).length === 6);
+    check('H2 · ninguna clase aparece «sin instrumentos»', !est.includes('sin instrumentos'));
+    const pendReal = clases.reduce((s, c) => s + instsDe(c).reduce((t, i) => t + Calc.progresoInstrumento(i).pendientes, 0), 0);
+    const pendPanel = [...est.matchAll(/(\d+) por corregir/g)].map(m => Number(m[1])).reduce((a, b) => a + b, 0);
+    check('H3 · el panel de estado cuenta las mismas celdas pendientes que el motor',
+      pendPanel === pendReal, pendPanel + ' vs ' + pendReal);
+
+    const cob = P.cobertura();
+    check('H4 · la cobertura no ve currículos sin criterios', !cob.includes('sin criterios definidos'));
+    check('H5 · la cobertura no ve pesos distintos de 100%', !cob.includes('suman'));
+    aviso('H6 · la cobertura no avisa de criterios sin competencias clave', cob.includes('sin competencias clave'),
+      'avisa de Lengua Castellana (perfil de salida de CE10 vacío en las plantillas)');
+    const aci = P.aci();
+    check('H7 · el panel ACI lista las 6 clases con niveles', (aci.match(/<tr>/g) || []).length === 7);
+    const adaptTotal = clases.reduce((s, c) => s + Object.keys(c.adaptaciones).length, 0);
+    check('H8 · el panel ACI cuenta el alumnado adaptado',
+      [...aci.matchAll(/(\d+) alumno/g)].map(m => Number(m[1])).reduce((a, b) => a + b, 0) === adaptTotal);
+
+    // La cobertura vigila también los currículos que solo usan los niveles ACI.
+    const l3 = db.asignaturas.find(a => /Lengua/.test(a.nombre) && a.curso === '3º');
+    Storage.db = JSON.parse(JSON.stringify(db));
+    Storage.db.criterios = Storage.db.criterios.filter(c => c.asignaturaId !== l3.id);
+    check('H9 · la cobertura vigila los currículos de los niveles ACI', (() => {
+      const html = P.cobertura();
+      return html.includes(l3.nombre) && html.includes('sin criterios definidos');
+    })());
+    Storage.db = db;
+
+    // --- I. Coherencia global ---
+    check('I1 · ningún alumnado con ACI cae fuera de su nivel', clases.every(c =>
+      Object.keys(c.adaptaciones).every(al => Calc.nivelDeAlumno(c.id, al) !== '')));
+    check('I2 · cada adaptación apunta a un nivel definido en su clase', clases.every(c =>
+      Object.keys(c.adaptaciones).every(al =>
+        Calc.nivelesAciDeClase(c.id).some(n => n.codigo === Calc.nivelNorm(c.adaptaciones[al])))));
+    check('I3 · la cuadrícula de cada clase no mezcla alumnado de otro grupo', clases.every(c =>
+      Calc.alumnosDeClase(c.id).every(a => a.grupoId === c.grupoId)));
+  }
+
+  console.log('\n' + (fallos ? 'FALLOS: ' + fallos + '/' + total : 'TODO OK: ' + total + ' comprobaciones')
+    + (avisos ? ' · ' + avisos + ' aviso(s)' : ''));
   process.exitCode = fallos ? 1 : 0;
 }
 
