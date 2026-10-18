@@ -92,21 +92,26 @@ const InformeView = (function () {
       criterios: Calc.criteriosDeNivel(claseId, nv.codigo)
     })));
 
-    const todos = [];
+
+
+    const critsPorNivel = [];
     for (const nv of niveles) {
       Calc.hallazgos(claseId, insts, nv.criterios).forEach(h => {
-        h.nivelEtiqueta = nv.etiqueta;
-        todos.push(h);
+        if (h.tipo === 'criterio') {
+          h.nivelEtiqueta = nv.etiqueta;
+          critsPorNivel.push(h);
+        }
       });
     }
-
-    if (!todos.length) {
+    const pregGlobal = Calc.hallazgos(claseId, insts, []).filter(h => h.tipo === 'pregunta');
+    pregGlobal.forEach(h => { if (!h.nivelEtiqueta) h.nivelEtiqueta = '—'; });
+    const todosH = critsPorNivel.concat(pregGlobal);
+    if (!todosH.length) {
       return '<div class="aviso">No se han detectado problemas significativos en este alcance.</div>';
     }
-
-    const nCrit = todos.filter(h => h.nivel === 'critico').length;
-    const nAten = todos.filter(h => h.nivel === 'atencion').length;
-    const visibles = filtroSev === 'todos' ? todos : todos.filter(h => h.nivel === filtroSev);
+    const nCrit = todosH.filter(h => h.nivel === 'critico').length;
+    const nAten = todosH.filter(h => h.nivel === 'atencion').length;
+    const visibles = filtroSev === 'todos' ? todosH : todosH.filter(h => h.nivel === filtroSev);
 
     // Cabecera: resumen de severidad + chips de filtro.
     const resumen = `
@@ -157,9 +162,8 @@ const InformeView = (function () {
 
     const pregs = visibles.filter(h => h.tipo === 'pregunta');
     const htmlPregs = pregs.length ? tit('Preguntas con fallos', pregs.length)
-      + tabla(['Nivel', 'Pregunta', 'Instrumento', 'Alumnado con fallo'], pregs.map(h => `
+      + tabla(['Pregunta', 'Instrumento', 'Alumnado con fallo'], pregs.map(h => `
         <tr>
-          <td>${badgeNivel(h)}</td>
           <td>${Utils.esc(h.pregunta)}</td>
           <td style="color:var(--tinta-suave)">${Utils.esc(h.titulo)}</td>
           <td style="min-width:170px">${barra(h)}</td>
