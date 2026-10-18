@@ -340,6 +340,8 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--acento-suav
 .informe-seccion { margin-bottom: 16px; break-inside: avoid; page-break-inside: avoid; }
 /* El título viaja siempre con su tabla: nunca solo al pie de una página. */
 .informe-titulo { font-size: 15px; margin: 0 0 6px; break-after: avoid; page-break-after: avoid; }
-.informe-seccion h3 { break-after: avoid; page-break-after: avoid; page-break-before: auto; }
-.informe-seccion table { break-before: avoid; page-break-before: avoid; break-inside: avoid; page-break-inside: avoid; }
+.informe-seccion h3 { break-after: avoid; page-break-after: avoid; page-break-before: avoid; }
+.informe-seccion .scroll-x + .scroll-x { break-before: page; page-break-before: always; }
+.informe-seccion .scroll-x:first-of-type { break-before: auto; page-break-before: auto; }
+.informe-seccion table { break-before: auto; page-break-before: auto; break-inside: avoid; page-break-inside: avoid; }
 .informe-seccion .scroll-x { break-inside: avoid; page-break-inside: avoid; }
