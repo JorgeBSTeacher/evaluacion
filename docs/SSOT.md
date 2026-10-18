@@ -152,6 +152,8 @@ Si los pesos no casan con el reparto de puntos, ambas notas difieren **a propós
 - La sección activa se conserva al recargar el navegador (F5) mediante hash de URL (#seccion) (D-25).
 - La cabecera de la cuadrícula muestra siempre «Grupo vinculado · N alumno(s)» como diagnóstico inmediato de desajustes entre grupos y clases (D-26).
 - Modal ACI (v0.4.3): si aún no hay niveles con código, la sección «Asignación de alumnado» explica qué hacer en vez de mostrar desplegables con solo «Base»; al pulsar «Añadir nivel» el foco va al campo Código y el desplegable por alumno se actualiza al teclear el código.
+- **Rebranding: Evalora (D-58):** el producto pasa de «EvalCrit» a **«Evalora»** (evaluar + valor + valorar). Se cambian todas las cadenas visibles para el usuario (título, marca, mensajes de bienvenida y errores); los **identificadores de formato de datos** (`rubrica-evalcrit`, `curriculo-evalcrit`) **se mantienen** por retrocompatibilidad con backups existentes. Se añade una pestaña **«Sobre»** al final del menú (`VISTAS` en `js/app.js`) con: descripción breve, autor (Jorge Bourgon Salinero), «Todos los derechos reservados» y el año de última modificación. P-07 (licencia) sigue abierta: por ahora todos los derechos reservados.
+- **Pestaña Informe en Cuadrícula (D-59):** análisis de datos existentes (`db.registros`) **solo lectura**, dentro de Cuadrícula como **cuarta pestaña** (Notas / Criterios / Competencias / **Informe**), sin añadir entradas al menú principal. Módulo autocontenido en `js/views-informe.js` — para eliminarlo basta quitar la entrada de la tabla de pestañas y el fichero. Tres vistas internas: (1) **Hallazgos** (visible primero): reglas de umbral sobre datos agregados — «X% de la clase por debajo del 50% en criterio Y», «Pregunta Z con N% de fallos», «Criterio mejora/empeora entre trimestres» — con plantillas de texto en castellano llano, **sin IA**; (2) **Criterios**: tabla **absoluto × relativo** (2×2) — nota real vs umbral 50% y vs media de clase, semáforo de 4 estados; (3) **Distribución**: histograma de notas en CSS puro con línea del 50% y media de clase (campana de aprendizaje desplazada a la derecha = objetivo). **Selector de alcance en cascada**: trimestre → unidad didáctica → instrumento; las funciones de análisis reciben un array de instrumentos ya filtrado (`Calc.instrumentosAlcance`). Umbrales por defecto: ≥50% de la clase bajo 50% = crítico; ≥30% = atención; ≥70% de fallos en una pregunta = reseñar; ≥10 puntos de variación entre trimestres = tendencia. Sin cambios en `Storage`, `Calc.notaCriterio` ni modelo de datos.
 
 ## 9. Informes
 
@@ -242,6 +244,8 @@ Reglas de robustez (lecciones de la v0.1):
 | F5 | Motor cálculo + paneles competencia | Hecho (v0.1) |
 | F6 | Informes impresión | Básico hecho (v0.1) |
 | F7 | Pruebas en dispositivos reales (USB Windows + Android) | Pendiente |
+| F8 | Rebranding Evalora + pestaña Sobre (D-58) | Pendiente |
+| F9 | Informe de análisis en Cuadrícula (D-59): Hallazgos + tabla 2×2 + distribución | Pendiente |
 
 Futuras: arrastre de cursos (D-07), escala cualitativa Infantil completa, plantilla currículo oficial, nube.
 
