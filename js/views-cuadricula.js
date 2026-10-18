@@ -269,7 +269,7 @@ const CuadriculaView = (() => {
     const asigImp = (Calc.asignaturaDeClase(claseSel) || {}).nombre || '';
     const grupoImp = gru ? gru.nombre : '';
     const nivelImp = modoTodas ? 'todos los niveles' : nivelSel ? 'nivel ' + Calc.etiquetaNivel(claseSel, nivelSel) : 'base';
-    const tituloImp = tab === 'notas' ? 'Instrumentos' : tab === 'criterios' ? 'Criterios' : 'Competencias específicas y clave';
+    const tituloImp = tab === 'notas' ? 'Instrumentos' : tab === 'criterios' ? 'Criterios' : tab === 'informe' ? 'Informe de análisis' : 'Competencias específicas y clave';
     const cabeceraImp = `<div class="solo-impresion cabecera-impresion">
       <strong>Cuadrícula de alumnado · ${tituloImp}</strong>
       <span>${Utils.esc(asigImp)} · ${Utils.esc(grupoImp)} · ${periodo} · ${nivelImp} · impreso el ${Utils.hoy().split('-').reverse().join('/')}</span>
@@ -304,18 +304,26 @@ const CuadriculaView = (() => {
           <label class="chip ${tab === 'notas' ? 'on' : ''}" data-tab="notas">Instrumentos</label>
           <label class="chip ${tab === 'criterios' ? 'on' : ''}" data-tab="criterios">Criterios</label>
           <label class="chip ${tab === 'competencias' ? 'on' : ''}" data-tab="competencias">Competencias específicas y clave</label>
+          <label class="chip ${tab === 'informe' ? 'on' : ''}" data-tab="informe">Informe</label>
         </div>
         ${tab === 'notas' ? `<div class="barra-tab no-print">
           ${btnCorregir}
         </div>` : ''}
         <div class="scroll-x" id="contenido">
           ${tab === 'notas' ? tablaNotas(alumnos, insts, modoTodas)
+            : tab === 'informe' ? '<div id="informe-contenido"></div>'
             : modoTodas && (tab === 'criterios' || tab === 'competencias')
               ? '<div class="aviso">En la vista «Todos los niveles» solo se muestran los instrumentos y la nota armonizada de cada alumno. Elige un nivel concreto para ver criterios y competencias.</div>'
             : tab === 'criterios' ? tablaCriterios(alumnos, modoTodas, claseSel, periodo)
             : tablaCompetencias(alumnos, modoTodas)}
         </div>
       </section>`;
+
+    // La pestaña Informe renderiza su propio contenido (D-59).
+    if (tab === 'informe') {
+      const infEl = el.querySelector('#informe-contenido');
+      if (infEl) InformeView.render(infEl, { claseSel, nivelSel, periodo });
+    }
 
     el.querySelector('#sel-clase').onchange = e => { claseSel = e.target.value; nivelSel = ''; render(el); };
     el.querySelector('#sel-periodo').onchange = e => { periodo = e.target.value; render(el); };
