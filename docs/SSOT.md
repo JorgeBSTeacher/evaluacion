@@ -245,6 +245,8 @@ Reglas de robustez (lecciones de la v0.1):
 
 Futuras: arrastre de cursos (D-07), escala cualitativa Infantil completa, plantilla currículo oficial, nube.
 
+**Mejora propuesta (perfil de profesor, v0.7.x):** editor de perfil docente — nombre del profesor, nombre del centro y logo del centro para las cabeceras de los PDF. Modelo: `db.perfil = { nombre, centro, logo }` (logo como data URL base64). Modal con input file + FileReader. Integración en `informeHtml` (cabecera de Criterios y Competencias). Sin dependencias, compatible file:// en Windows y Android. Tamaño logo ~40 KB base64, sin problema con localStorage. RGPD: nombre del profesor y centro no son datos de menores. Esfuerzo estimado: batch de tamaño D-53/D-54.
+
 ## 14. Pendientes abiertas
 
 - P-01: ~~verificar decreto y extraer currículo a JSON~~ **RESUELTA (v0.2)** y **completada (v0.6.7)**: el extractor genera exactamente las mismas plantillas de CMN/CNSC que las hechas a mano (diff 0). No requiere ajustes.
