@@ -116,6 +116,10 @@ main { max-width: 1440px; margin: 0 auto; padding: 20px 18px 60px; }
 
 .scroll-x { overflow-x: auto; }
 
+/* Filas de los paneles de Inicio: al tocarlas se abre la vista correspondiente. */
+.fila-inicio { cursor: pointer; }
+.fila-inicio:hover td { background: #faf9f4; }
+
 /* Cuadrícula ancha: fija la columna del alumno y agrupa por unidades didácticas */
 .tabla-cuadricula th:first-child, .tabla-cuadricula td:first-child {
   position: sticky; left: 0; background: #fff; z-index: 2;

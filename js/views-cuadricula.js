@@ -317,6 +317,9 @@ const CuadriculaView = (() => {
       opciones.unidadesAbiertas.forEach(u => udsAbiertas.add(u));
     }
     const db = Storage.db;
+    // `opciones.claseId` permite abrir una clase concreta (p. ej. desde los
+    // paneles de Inicio).
+    if (opciones && opciones.claseId && Calc.clase(opciones.claseId)) claseSel = opciones.claseId;
     if (!claseSel || !Calc.clase(claseSel)) claseSel = db.clases.length ? db.clases[0].id : null;
 
     if (!db.clases.length) {

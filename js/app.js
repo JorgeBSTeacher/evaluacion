@@ -34,6 +34,107 @@ const App = (() => {
     return '';
   }
 
+  // --- Paneles de Inicio (puros, sin DOM: comprobables en el arnés) ---------
+  // Estado por clase: qué está montado y qué queda por corregir. Toca la fila
+  // para abrir Calificaciones de esa clase.
+  function panelesEstadoHtml() {
+    const db = Storage.db;
+    if (!db.clases.length) return '';
+    const filas = db.clases.map(c => {
+      const asig = Calc.asignaturaDeClase(c.id);
+      const gru = Calc.byId(db.grupos, c.grupoId);
+      const insts = Calc.instrumentosDeClase(c.id);
+      const pend = insts.reduce((s, i) => s + Calc.progresoInstrumento(i).pendientes, 0);
+      const marca = !insts.length ? '<span class="badge na">sin instrumentos</span>'
+        : pend ? `<span class="badge warn">${pend} por corregir</span>`
+        : '<span class="badge ok">al día</span>';
+      return `<tr class="fila-inicio" data-clase="${Utils.esc(c.id)}" title="Abrir Calificaciones de esta clase">
+        <td><b>${Utils.esc(asig ? asig.nombre : '¿?')}</b> · ${Utils.esc(gru ? gru.nombre : '¿?')}</td>
+        <td class="num">${Calc.alumnosDeClase(c.id).length}</td>
+        <td class="num">${insts.length}</td>
+        <td>${marca}</td></tr>`;
+    }).join('');
+    return `
+      <section class="card">
+        <div class="card-head"><h2>Estado por clase</h2>
+          <small style="color:var(--tinta-suave)">Toca una fila para abrir Calificaciones</small></div>
+        <table class="tabla">
+          <thead><tr><th>Asignatura · grupo</th><th class="num">Alumnos</th><th class="num">Instrumentos</th><th>Corrección</th></tr></thead>
+          <tbody>${filas}</tbody>
+        </table>
+      </section>`;
+  }
+
+  // Asignaturas en uso por el curso: la de cada clase y la de cada nivel ACI
+  // (los ACI pueden apuntar a la asignatura de otro curso).
+  function asignaturasEnUso(db) {
+    const ids = [];
+    db.clases.forEach(c => {
+      if (c.asignaturaId && !ids.includes(c.asignaturaId)) ids.push(c.asignaturaId);
+      Calc.nivelesAciDeClase(c.id).forEach(n => {
+        const id = n.asignaturaId || c.asignaturaId;
+        if (id && !ids.includes(id)) ids.push(id);
+      });
+    });
+    return ids;
+  }
+
+  // Cobertura del currículo: errores de montaje que rompen la calificación.
+  function panelesCoberturaHtml() {
+    const db = Storage.db;
+    const ids = asignaturasEnUso(db);
+    if (!ids.length) return '';
+    const incidencias = [];
+    ids.forEach(id => {
+      const asig = Calc.asignatura(id);
+      const nombre = asig ? asig.nombre : '¿?';
+      const crits = db.criterios.filter(c => c.asignaturaId === id);
+      if (!crits.length) { incidencias.push(['ko', nombre, 'sin criterios definidos']); return; }
+      const suma = crits.reduce((s, c) => s + (Number(c.peso) || 0), 0);
+      if (Math.abs(suma - 100) > 0.01) incidencias.push(['warn', nombre, `los criterios suman ${Utils.fmt(suma)}% (deben ser 100%)`]);
+      const sinClave = crits.filter(c => !(c.claveIds || []).length).length;
+      if (sinClave) incidencias.push(['warn', nombre, `${sinClave} criterio${sinClave === 1 ? '' : 's'} sin competencias clave asignadas`]);
+    });
+    const cuerpo = incidencias.length
+      ? `<ul style="margin:0;padding-left:18px;color:var(--tinta-suave);line-height:1.9">${incidencias.map(([nivel, nombre, txt]) =>
+          `<li><span class="badge ${nivel}">${nivel === 'ko' ? 'Falta' : 'Revisar'}</span> <b>${Utils.esc(nombre)}</b> — ${Utils.esc(txt)}</li>`).join('')}</ul>`
+      : '<p style="margin:0"><span class="badge ok">Todo en orden</span> Criterios, pesos y competencias clave completos en las asignaturas en uso.</p>';
+    return `
+      <section class="card">
+        <div class="card-head"><h2>Cobertura del currículo</h2>
+          <button class="btn btn-mini" id="btn-ir-curriculo">Abrir Currículo</button></div>
+        ${cuerpo}
+      </section>`;
+  }
+
+  // Niveles ACI por asignatura, con el alumnado que hay en cada nivel.
+  function panelesAciHtml() {
+    const db = Storage.db;
+    const filas = [];
+    db.clases.forEach(c => {
+      const niveles = Calc.nivelesAciDeClase(c.id);
+      if (!niveles.length) return;
+      const asig = Calc.asignaturaDeClase(c.id);
+      const gru = Calc.byId(db.grupos, c.grupoId);
+      const alumnos = Calc.alumnosDeClase(c.id);
+      const chips = niveles.map(n => {
+        const nAl = alumnos.filter(a => Calc.nivelDeAlumno(c.id, a.id) === n.codigo).length;
+        return `<span class="badge ${nAl ? 'info' : 'na'}">${Utils.esc(n.etiqueta || n.codigo)} · ${nAl} alumno${nAl === 1 ? '' : 's'}</span>`;
+      }).join(' ');
+      filas.push(`<tr><td><b>${Utils.esc(asig ? asig.nombre : '¿?')}</b> · ${Utils.esc(gru ? gru.nombre : '¿?')}</td><td>${chips}</td></tr>`);
+    });
+    if (!filas.length) return '';
+    return `
+      <section class="card">
+        <div class="card-head"><h2>Niveles ACI por asignatura</h2>
+          <button class="btn btn-mini" id="btn-ir-clases">Abrir Asignaturas y clases</button></div>
+        <table class="tabla">
+          <thead><tr><th>Asignatura · grupo</th><th>Niveles (alumnado)</th></tr></thead>
+          <tbody>${filas.join('')}</tbody>
+        </table>
+      </section>`;
+  }
+
   function renderInicio(el) {
     const db = Storage.db;
     const stats = [
@@ -83,7 +184,10 @@ const App = (() => {
           <li>Revisa el <b>Informe</b>: hallazgos, criterios con dificultades, distribución de notas y alumnos en riesgo. Imprime o exporta a PDF el informe que necesites.</li>
           <li>Exporta el <b>backup</b> al terminar cada sesión.</li>
         </ol>
-      </section>`;
+      </section>
+      ${panelesEstadoHtml()}
+      ${panelesCoberturaHtml()}
+      ${panelesAciHtml()}`;
 
     const curso = el.querySelector('#sel-curso');
     if (curso) {
@@ -154,9 +258,18 @@ const App = (() => {
         }
       });
     };
+
+    // Paneles de estado: cada fila de clase abre Calificaciones de esa clase.
+    el.querySelectorAll('.fila-inicio').forEach(tr => {
+      tr.onclick = () => ir('cuadricula', { claseId: tr.dataset.clase });
+    });
+    const btnCur = el.querySelector('#btn-ir-curriculo');
+    if (btnCur) btnCur.onclick = () => ir('curriculo');
+    const btnCl = el.querySelector('#btn-ir-clases');
+    if (btnCl) btnCl.onclick = () => ir('clases');
   }
 
-  function ir(id) {
+  function ir(id, opciones) {
     actual = id;
     const vista = VISTAS.find(v => v.id === id);
     const nav = document.getElementById('nav');
@@ -170,7 +283,7 @@ const App = (() => {
       nav.appendChild(b);
     }
     UI.closeModal();
-    vista.render(document.getElementById('app'));
+    vista.render(document.getElementById('app'), opciones);
     window.scrollTo(0, 0);
     history.replaceState(null, '', '#' + id);
   }
@@ -218,7 +331,9 @@ const App = (() => {
   return {
     ir,
     arrancar,
-    refrescar() { ir(actual); }
+    refrescar() { ir(actual); },
+    // Paneles de Inicio expuestos para poder comprobarlos sin navegador.
+    panelesInicio: { estado: panelesEstadoHtml, cobertura: panelesCoberturaHtml, aci: panelesAciHtml }
   };
 })();
 

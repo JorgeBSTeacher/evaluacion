@@ -19,7 +19,8 @@ const ARCHIVOS = [
   'js/views-curriculo.js',
   'js/views-instrumentos.js',
   'js/views-informe.js',
-  'js/views-cuadricula.js'
+  'js/views-cuadricula.js',
+  'js/app.js'
 ];
 
 let total = 0;
@@ -83,7 +84,7 @@ function cargarApp() {
   };
   vm.createContext(s);
   const code = ARCHIVOS.map(f => fs.readFileSync(path.join(raiz, f), 'utf8')).join('\n')
-    + '\nthis.__app = { Utils, Storage, Calc, PLANTILLAS_CURRICULO, CurriculoView, InstrumentosView, CuadriculaView, ClasesView, InformeView };';
+    + '\nthis.__app = { Utils, Storage, Calc, PLANTILLAS_CURRICULO, CurriculoView, InstrumentosView, CuadriculaView, ClasesView, InformeView, App };';
   vm.runInContext(code, s, { filename: 'app.bundle.js' });
   return s.__app;
 }
@@ -159,6 +160,48 @@ function estadoAci() {
       iAci: { c1al: { q1: 7 }, c2al: { q1: 6 }, a1: { q1: 10 } },
       iComun: { a1: { r1: 6 }, c1al: { r2: 8 } }
     }
+  };
+}
+
+// Estado para los paneles de Inicio: una clase completa, una sin criterios,
+// una con pesos a 90% y una clase con nivel ACI (un alumno adaptado).
+function estadoPaneles() {
+  return {
+    schemaVersion: 1,
+    cursoEscolar: '2025/2026',
+    grupos: [{ id: 'g1', nombre: '6ºA', etapa: 'Primaria' }],
+    alumnos: [
+      { id: 'a1', nombre: 'Ana', apellidos: 'Uno', grupoId: 'g1' },
+      { id: 'a2', nombre: 'Beto', apellidos: 'Dos', grupoId: 'g1' },
+      { id: 'a3', nombre: 'Carla', apellidos: 'Tres', grupoId: 'g1' }
+    ],
+    asignaturas: [
+      { id: 's1', nombre: 'Matemáticas 6º', etapa: 'Primaria' },
+      { id: 's2', nombre: 'Lengua 6º', etapa: 'Primaria' },
+      { id: 's3', nombre: 'Matemáticas 4º', etapa: 'Primaria' }
+    ],
+    clases: [
+      { id: 'c1', asignaturaId: 's1', grupoId: 'g1', nivelesAci: [], adaptaciones: {} },
+      { id: 'c2', asignaturaId: 's2', grupoId: 'g1', nivelesAci: [], adaptaciones: {} },
+      { id: 'c3', asignaturaId: 's1', grupoId: 'g1',
+        nivelesAci: [{ codigo: 'N1', etiqueta: 'Nivel 1', asignaturaId: 's3' }],
+        adaptaciones: { a3: 'N1' } }
+    ],
+    competenciasEspecificas: [{ id: 'e1', asignaturaId: 's1', codigo: 'CE1', descripcion: 'x' }],
+    criterios: [
+      { id: 'k1', asignaturaId: 's1', codigo: 'C1', descripcion: 'c1', peso: 60, espIds: ['e1'], claveIds: [] },
+      { id: 'k2', asignaturaId: 's1', codigo: 'C2', descripcion: 'c2', peso: 40, espIds: ['e1'], claveIds: [] },
+      { id: 'm1', asignaturaId: 's3', codigo: 'A1', descripcion: 'a1', peso: 90, espIds: [], claveIds: [] }
+    ],
+    instrumentos: [{
+      id: 'i1', claseId: 'c1', tipo: 'Control', titulo: 'Control 1', fecha: '2026-01-10', periodo: 'T1', nivel: '', unidad: '',
+      apartados: [
+        { id: 'p1', orden: 1, descripcion: 'a', maxPts: 10, criterioIds: ['k1'] },
+        { id: 'p2', orden: 2, descripcion: 'b', maxPts: 10, criterioIds: ['k2'] }
+      ]
+    }],
+    // a1 y a3 corregidos; a2 queda pendiente → «1 por corregir».
+    registros: { i1: { a1: { p1: 8, p2: 6 }, a3: { p1: 7, p2: 7 } } }
   };
 }
 
@@ -1462,6 +1505,35 @@ async function main() {
     const hb = el.innerHTML;
     check('distribución en Base solo cuenta a los 2 alumnos base',
       hb.includes('2 de 2 aprueban') && hb.includes('alumnado de <b>Base</b>'), hb.slice(0, 160));
+  }
+
+  console.log('\n== Inicio: paneles de estado (dashboard) ==');
+  {
+    const app = cargarApp();
+    app.Storage.load();
+    await importarJson(app, estadoPaneles());
+    const P = app.App.panelesInicio;
+
+    const est = P.estado();
+    check('estado por clase lista todas las clases', (est.match(/fila-inicio/g) || []).length === 3, est);
+    check('estado por clase muestra asignatura y grupo', est.includes('Matemáticas 6º') && est.includes('6ºA'));
+    check('estado cuenta el alumnado del grupo', est.includes('<td class="num">3</td>'));
+    check('estado marca lo que falta por corregir', est.includes('1 por corregir'), est);
+    check('estado avisa de las clases sin instrumentos', est.includes('sin instrumentos'));
+
+    const cob = P.cobertura();
+    check('cobertura detecta una asignatura sin criterios', cob.includes('Lengua 6º') && cob.includes('sin criterios definidos'), cob);
+    check('cobertura detecta pesos que no suman 100', cob.includes('suman 90'), cob);
+    check('cobertura detecta criterios sin competencias clave', cob.includes('sin competencias clave asignadas'), cob);
+
+    const aci = P.aci();
+    check('el panel ACI lista los niveles con su alumnado', aci.includes('Nivel 1 · 1 alumno'), aci);
+    check('el panel ACI solo incluye clases con niveles', !aci.includes('Lengua 6º'));
+
+    // Sin clases no se muestran paneles (la portada no enseña tablas vacías).
+    app.Storage.db.clases = [];
+    check('sin clases no se muestra el panel de estado', P.estado() === '');
+    check('sin clases no se muestra el panel ACI', P.aci() === '');
   }
 
   console.log('\n' + (fallos ? 'FALLOS: ' + fallos + '/' + total : 'TODO OK: ' + total + ' comprobaciones'));
