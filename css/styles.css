@@ -307,7 +307,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--acento-suav
   thead { display: table-header-group; }
   tr { page-break-inside: avoid; break-inside: avoid; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  @page { margin: 12mm; }
+  @page { margin: 10mm; size: A4 landscape; }
 
   /* Reducir tablas muy anchas (criterios, etc.) */
   #informe-impresion .tabla,
