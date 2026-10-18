@@ -11,6 +11,8 @@
   --ko-suave: #fdecec;
   --na: #9ca3af;
   --na-suave: #f1f2f4;
+  --aviso: #d97706;
+  --aviso-suave: #fdf3e7;
   --radio: 14px;
   --sombra: 0 1px 3px rgba(43, 42, 38, .08), 0 8px 24px rgba(43, 42, 38, .06);
 }
@@ -141,6 +143,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--acento-suav
 .badge.ko { background: var(--ko-suave); color: var(--ko); }
 .badge.na { background: var(--na-suave); color: var(--na); }
 .badge.info { background: var(--acento-suave); color: var(--acento); }
+.badge.warn { background: var(--aviso-suave); color: var(--aviso); }
 
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .hint { display: block; color: var(--tinta-suave); font-size: 12px; margin-bottom: 6px; }

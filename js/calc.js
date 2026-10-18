@@ -614,9 +614,14 @@ const Calc = {
   },
 
   // Distribución de notas (0–10) en un alcance. Devuelve buckets para el
-  // histograma, la media y las notas sueltas.
-  distribucionNotas(claseId, insts) {
-    const alumnos = this.alumnosDeClase(claseId);
+  // histograma, la media y las notas sueltas. `nivelCodigo` (opcional) restringe
+  // el alumnado: ausente = todo el grupo, '' = base, otro = ese nivel ACI.
+  distribucionNotas(claseId, insts, nivelCodigo) {
+    let alumnos = this.alumnosDeClase(claseId);
+    if (nivelCodigo !== undefined && nivelCodigo !== null) {
+      const nv = this.nivelNorm(nivelCodigo);
+      alumnos = alumnos.filter(a => this.nivelDeAlumno(claseId, a.id) === nv);
+    }
     const notas = alumnos
       .map(a => this.notaEnInsts(claseId, a.id, insts))
       .filter(n => n != null);

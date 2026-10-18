@@ -18,6 +18,7 @@ const ARCHIVOS = [
   'js/views-clases.js',
   'js/views-curriculo.js',
   'js/views-instrumentos.js',
+  'js/views-informe.js',
   'js/views-cuadricula.js'
 ];
 
@@ -29,8 +30,10 @@ function check(nombre, cond, detalle) {
   else { fallos++; console.log('  FAIL ' + nombre + (detalle ? '  → ' + detalle : '')); }
 }
 
-function makeEl() {
-  return {
+// Elemento falso para el arnés sin navegador. `over` permite sustituir algún
+// método (p. ej. querySelectorAll para devolver chips con los que interactuar).
+function makeEl(over) {
+  const el = {
     _html: '',
     classList: { add() {}, remove() {}, toggle() {} },
     addEventListener() {},
@@ -41,6 +44,7 @@ function makeEl() {
     set innerHTML(v) { this._html = v; },
     get innerHTML() { return this._html; }
   };
+  return Object.assign(el, over || {});
 }
 
 function cargarApp() {
@@ -79,7 +83,7 @@ function cargarApp() {
   };
   vm.createContext(s);
   const code = ARCHIVOS.map(f => fs.readFileSync(path.join(raiz, f), 'utf8')).join('\n')
-    + '\nthis.__app = { Utils, Storage, Calc, PLANTILLAS_CURRICULO, CurriculoView, InstrumentosView, CuadriculaView, ClasesView };';
+    + '\nthis.__app = { Utils, Storage, Calc, PLANTILLAS_CURRICULO, CurriculoView, InstrumentosView, CuadriculaView, ClasesView, InformeView };';
   vm.runInContext(code, s, { filename: 'app.bundle.js' });
   return s.__app;
 }
@@ -1343,6 +1347,75 @@ async function main() {
     check('buckets: 10 rangos', dist.buckets.length === 10);
     const totalBuckets = dist.buckets.reduce((s, b) => s + b.cantidad, 0);
     check('suma de buckets = 4', totalBuckets === 4);
+
+    // distribucionNotas con filtro de nivel (D-59: filtro base/ACI)
+    const distBase = C.distribucionNotas('c1', t1, '');
+    check('distribución filtrada por base = mismo alumnado', distBase.notas.length === 4);
+    const distAci = C.distribucionNotas('c1', t1, '4');
+    check('distribución filtrada por un nivel sin alumnado = vacía',
+      distAci.notas.length === 0 && distAci.media === null);
+  }
+
+  console.log('\n== Informe: vista renderizada (D-59) ==');
+  // Hallazgos: resumen de severidad, dos tablas y barra de porcentaje.
+  {
+    const app = cargarApp();
+    app.Storage.load();
+    await importarJson(app, estadoInforme());
+    const chips = [
+      { dataset: { subvista: 'hallazgos' } },
+      { dataset: { subvista: 'criterios' } },
+      { dataset: { subvista: 'distribucion' } }
+    ];
+    const el = makeEl({ querySelectorAll: sel => (sel === '[data-subvista]' ? chips : []) });
+    app.InformeView.render(el, { claseSel: 'c1', nivelSel: '__todas__' });
+    const h = el.innerHTML;
+    check('el informe muestra el resumen de severidad',
+      /\d+ críticos?/.test(h) && h.includes('de atención'), h.slice(0, 160));
+    check('los hallazgos salen en dos tablas (criterios y preguntas)',
+      h.includes('Criterios con dificultades') && h.includes('Preguntas con fallos'));
+    check('cada hallazgo lleva barra de porcentaje y chip de filtro',
+      h.includes('min-width:70px') && h.includes('data-filtrosev'));
+  }
+
+  // Criterios y Distribución con niveles: una tabla por nivel y filtro de alumnado.
+  {
+    const app = cargarApp();
+    app.Storage.load();
+    await importarJson(app, estadoAci());
+    const chips = [
+      { dataset: { subvista: 'hallazgos' } },
+      { dataset: { subvista: 'criterios' } },
+      { dataset: { subvista: 'distribucion' } }
+    ];
+    const el = makeEl({ querySelectorAll: sel => (sel === '[data-subvista]' ? chips : []) });
+    const opciones = { claseSel: 'c1', nivelSel: '__todas__' };
+    app.InformeView.render(el, opciones);
+
+    // Criterios: una tabla por nivel, cada una con SUS criterios.
+    chips[1].onclick();
+    const hc = el.innerHTML;
+    const nTablas = (hc.match(/tabla-cuadricula/g) || []).length;
+    check('«Todos los niveles» dibuja una tabla por nivel', nTablas === 2, 'tablas=' + nTablas);
+    check('cada tabla lleva el título de su nivel',
+      hc.includes('>Base</h3>') && hc.includes('>4º</h3>'));
+    check('la tabla base usa los criterios base (C1, C2)',
+      hc.includes('<b>C1</b>') && hc.includes('<b>C2</b>'));
+    check('la tabla del ACI usa sus propios criterios (A1)', hc.includes('<b>A1</b>'));
+    check('los alumnos base salen en la tabla base', hc.includes('Base, Ana') && hc.includes('Base, Beto'));
+    check('los alumnos ACI salen con datos en su tabla',
+      hc.includes('Aci, Carla') && hc.includes('75%'));
+
+    // Distribución: el nivel del selector decide qué alumnado cuenta.
+    chips[2].onclick();
+    const hd = el.innerHTML;
+    check('distribución con «Todos los niveles» cuenta a los 4 alumnos',
+      hd.includes('4 de 4 aprueban'), hd.slice(-160));
+    opciones.nivelSel = '';
+    app.InformeView.render(el, opciones);
+    const hb = el.innerHTML;
+    check('distribución en Base solo cuenta a los 2 alumnos base',
+      hb.includes('2 de 2 aprueban') && hb.includes('alumnado de <b>Base</b>'), hb.slice(0, 160));
   }
 
   console.log('\n' + (fallos ? 'FALLOS: ' + fallos + '/' + total : 'TODO OK: ' + total + ' comprobaciones'));

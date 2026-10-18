@@ -12,6 +12,10 @@ const InformeView = (function () {
   let subVista = 'hallazgos'; // 'hallazgos' | 'criterios' | 'distribucion'
   let contenedor = null;
 
+  // El selector de la Cuadrícula envía '__todas__' para «Todos los niveles»
+  // (se acepta también 'TODAS' por compatibilidad con enlaces o datos viejos).
+  function esTodas(nv) { return nv === '__todas__' || nv === 'TODAS'; }
+
   // ---------------------------------------------------------------- alcance
   // Selector en cascada: trimestre → unidad didáctica → instrumento.
   function htmlAlcance(claseId) {
@@ -61,10 +65,11 @@ const InformeView = (function () {
   }
 
   // ------------------------------------------------------------ hallazgos
-  // Se analiza cada nivel (base + cada ACI) por separado para etiquetar cada
-  // hallazgo con su nivel. Se agrupa en dos secciones —criterios y preguntas—
-  // y dentro de cada una los bloques por nivel/instrumento son colapsables.
-  let abiertos = new Set(); // claves de bloques expandidos
+  // Cada nivel (base + cada ACI) se analiza por separado y cada hallazgo lleva
+  // su etiqueta de nivel. Se presentan en dos tablas —criterios y preguntas—
+  // con barra de porcentaje y filtro de severidad, más legible que tarjetas de
+  // texto.
+  let filtroSev = 'todos'; // 'todos' | 'critico' | 'atencion'
 
   function htmlHallazgos(claseId, insts) {
     const nivelesAci = Calc.nivelesAciDeClase(claseId);
@@ -87,89 +92,115 @@ const InformeView = (function () {
       return '<div class="aviso">No se han detectado problemas significativos en este alcance.</div>';
     }
 
-    const tarjeta = h => `
-      <div style="border-left:4px solid ${h.nivel === 'critico' ? '#dc3545' : '#ffc107'};
-                  padding:10px 14px;margin-bottom:8px;
-                  background:${h.nivel === 'critico' ? '#fff5f5' : '#fffde7'};
-                  border-radius:0 4px 4px 0">
-        <span style="font-size:12px;font-weight:700;text-transform:uppercase;
-                     color:${h.nivel === 'critico' ? '#dc3545' : '#856404'}">
-          ${h.nivel === 'critico' ? 'Crítico' : 'Atención'}
+    const nCrit = todos.filter(h => h.nivel === 'critico').length;
+    const nAten = todos.filter(h => h.nivel === 'atencion').length;
+    const visibles = filtroSev === 'todos' ? todos : todos.filter(h => h.nivel === filtroSev);
+
+    // Cabecera: resumen de severidad + chips de filtro.
+    const resumen = `
+      <div class="no-print" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:14px">
+        <span style="font-size:13px"><b style="color:var(--ko)">●</b> ${nCrit} crítico${nCrit === 1 ? '' : 's'}</span>
+        <span style="font-size:13px"><b style="color:var(--aviso)">●</b> ${nAten} de atención</span>
+        <span class="chips" style="margin:0">
+          ${[['todos', 'Todos'], ['critico', 'Críticos'], ['atencion', 'Atención']].map(v =>
+            `<label class="chip ${filtroSev === v[0] ? 'on' : ''}" data-filtrosev="${v[0]}">${v[1]}</label>`).join('')}
         </span>
-        <span class="badge info" style="margin-left:8px;font-size:11px">${Utils.esc(h.nivelEtiqueta)}</span>
-        <span style="margin-left:10px">${Utils.esc(h.texto)}</span>
       </div>`;
 
-    // Bloque colapsable: cabecera con flecha + cuerpo que se oculta.
-    const bloque = (clave, titulo, items) => {
-      const abierto = abiertos.has(clave);
-      return `
-        <div class="bloque-hall" data-clave="${Utils.esc(clave)}" style="margin-bottom:6px">
-          <div class="bloque-cab" data-toggle-bloque="${Utils.esc(clave)}"
-               style="cursor:pointer;display:flex;align-items:center;gap:8px;
-                      padding:7px 12px;background:var(--fondo, #f0f0f0);
-                      border-radius:4px;font-weight:600;font-size:13px">
-            <span style="font-size:11px;transition:transform 0.15s;
-                         transform:rotate(${abierto ? '90' : '0'}deg)">▶</span>
-            ${titulo}
-            <span class="badge" style="margin-left:auto">${items.length}</span>
-          </div>
-          <div class="bloque-cuerpo" style="display:${abierto ? 'block' : 'none'};
-               padding:8px 0 4px 16px">
-            ${items.map(tarjeta).join('')}
-          </div>
-        </div>`;
-    };
+    // Barra horizontal: longitud = porcentaje, color = severidad.
+    const barra = h => `
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="flex:1;min-width:70px;height:12px;background:var(--na-suave);
+                    border-radius:6px;overflow:hidden">
+          <div style="width:${h.pct}%;height:100%;
+                      background:${h.nivel === 'critico' ? 'var(--ko)' : 'var(--aviso)'}"></div>
+        </div>
+        <b style="min-width:36px;text-align:right;font-size:13px">${h.pct}%</b>
+      </div>`;
 
-    const porCriterio = todos.filter(h => h.tipo === 'criterio');
-    const porPregunta = todos.filter(h => h.tipo === 'pregunta');
+    const badgeNivel = h =>
+      `<span class="badge info" style="font-size:11px;white-space:nowrap">${Utils.esc(h.nivelEtiqueta)}</span>`;
 
-    // Criterios: un bloque por nivel.
-    const bloquesCriterios = [];
-    for (const nv of niveles) {
-      const items = porCriterio.filter(h => h.nivelEtiqueta === nv.etiqueta);
-      if (items.length) bloquesCriterios.push(bloque('crit-' + nv.etiqueta, nv.etiqueta, items));
+    const tabla = (cab, filas) => `
+      <table class="tabla">
+        <thead><tr>${cab.map(c => `<th>${c}</th>`).join('')}</tr></thead>
+        <tbody>${filas.join('')}</tbody>
+      </table>`;
+
+    const tit = (nom, n) =>
+      `<h3 style="margin:16px 0 8px;font-size:14px">${nom}
+         <small style="color:var(--tinta-suave);font-weight:400">(${n})</small></h3>`;
+
+    const crits = visibles.filter(h => h.tipo === 'criterio');
+    const htmlCrits = crits.length ? tit('Criterios con dificultades', crits.length)
+      + tabla(['Nivel', 'Criterio', 'Alumnado por debajo del 50%'], crits.map(h => {
+        const c = Calc.criterio(h.criterioId);
+        return `<tr>
+          <td>${badgeNivel(h)}</td>
+          <td><b>${Utils.esc(h.codigo)}</b>
+              <span style="color:var(--tinta-suave)">${c ? Utils.esc(c.descripcion) : ''}</span></td>
+          <td style="min-width:170px">${barra(h)}</td>
+        </tr>`;
+      })) : '';
+
+    const pregs = visibles.filter(h => h.tipo === 'pregunta');
+    const htmlPregs = pregs.length ? tit('Preguntas con fallos', pregs.length)
+      + tabla(['Nivel', 'Pregunta', 'Instrumento', 'Alumnado con fallo'], pregs.map(h => `
+        <tr>
+          <td>${badgeNivel(h)}</td>
+          <td>${Utils.esc(h.pregunta)}</td>
+          <td style="color:var(--tinta-suave)">${Utils.esc(h.titulo)}</td>
+          <td style="min-width:170px">${barra(h)}</td>
+        </tr>`)) : '';
+
+    if (!visibles.length) {
+      return resumen + '<div class="aviso">Ningún hallazgo de esta severidad en este alcance.</div>';
     }
-
-    // Preguntas: un bloque por instrumento (agrupando por su nivel).
-    const bloquesPreguntas = [];
-    const porInst = {};
-    porPregunta.forEach(h => { (porInst[h.instrumentoId] = porInst[h.instrumentoId] || []).push(h); });
-    for (const instId of Object.keys(porInst)) {
-      const inst = Calc.instrumento(instId);
-      const titulo = `${inst ? inst.titulo : instId} <small style="color:var(--tinta-suave);font-weight:400">· ${Utils.esc(porInst[instId][0].nivelEtiqueta)}</small>`;
-      bloquesPreguntas.push(bloque('preg-' + instId, titulo, porInst[instId]));
-    }
-
-    const seccion = (titulo, bloques) => bloques.length
-      ? `<h3 style="margin:18px 0 8px;font-size:14px">${titulo}</h3>${bloques.join('')}`
-      : '';
-
-    return seccion('Criterios con dificultades', bloquesCriterios)
-         + seccion('Preguntas con fallos', bloquesPreguntas);
+    return resumen + htmlCrits + htmlPregs;
   }
 
   // -------------------------------------------------------------- criterios
-  // Matriz alumnos × criterios agrupada por niveles (Base y cada ACI).
-  // Dos modos: Absoluto (logro vs 50%) y Relativo (vs media de la clase).
+  // Una tabla por nivel (Base y cada ACI): cada grupo se analiza con SUS
+  // criterios y su propia media, porque el currículo de cada ACI es distinto
+  // y mezclarlos deja las celdas del otro currículo en blanco.
+  // Dos modos: Absoluto (logro vs 50%) y Relativo (vs media del grupo).
   let modoCriterios = 'absoluto'; // 'absoluto' | 'relativo'
 
-  function htmlCriterios(claseId, insts, criterios) {
-    const tabla = Calc.tablaCriteriosInforme(claseId, insts, criterios);
-    if (!tabla.length) {
-      return '<div class="aviso">No hay criterios para analizar en este alcance.</div>';
-    }
+  // Datos de un nivel: sus criterios como columnas y solo su alumnado como
+  // filas. La media se calcula con ese alumnado (la media de la clase mezclaría
+  // currículos distintos). Devuelve null si el nivel no tiene nada que ver.
+  function datosNivel(claseId, insts, codigo, etiqueta) {
+    const alumnos = Calc.alumnosDeClase(claseId)
+      .filter(a => Calc.nivelDeAlumno(claseId, a.id) === codigo);
+    if (!alumnos.length) return null;
+    const ids = new Set(alumnos.map(a => a.id));
+    const columnas = Calc.tablaCriteriosInforme(claseId, insts,
+      Calc.criteriosDeNivel(claseId, codigo))
+      .map(f => {
+        const filas = f.filas.filter(fl => ids.has(fl.alumno.id));
+        const vals = filas.map(fl => fl.logro).filter(v => v != null);
+        const media = vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : null;
+        return { criterio: f.criterio, media, filas };
+      })
+      .filter(f => f.filas.length);
+    if (!columnas.length) return null;
+    return { etiqueta, alumnos, columnas };
+  }
 
-    // Filas de la primera tabla (todos los alumnos de la clase).
-    const filasBase = tabla[0].filas;
+  function htmlCriterios(claseId, insts) {
+    const niveles = [{ codigo: '', etiqueta: 'Base' }]
+      .concat(Calc.nivelesAciDeClase(claseId)
+        .map(nv => ({ codigo: nv.codigo, etiqueta: nv.etiqueta || nv.codigo })));
+    const seleccion = esTodas(nivelSel)
+      ? niveles
+      : niveles.filter(nv => nv.codigo === Calc.nivelNorm(nivelSel));
 
-    // Agrupar alumnos por nivel: Base primero, luego cada ACI.
-    const grupos = [];
-    const sinNivel = filasBase.filter(fl => !Calc.nivelDeAlumno(claseId, fl.alumno.id));
-    if (sinNivel.length) grupos.push({ etiqueta: 'Base', filas: sinNivel });
-    for (const nv of Calc.nivelesAciDeClase(claseId)) {
-      const delNivel = filasBase.filter(fl => Calc.nivelDeAlumno(claseId, fl.alumno.id) === nv.codigo);
-      if (delNivel.length) grupos.push({ etiqueta: nv.etiqueta || nv.codigo, filas: delNivel });
+    const tablas = seleccion
+      .map(nv => datosNivel(claseId, insts, nv.codigo, nv.etiqueta))
+      .filter(Boolean);
+
+    if (!tablas.length) {
+      return '<div class="aviso">Este nivel no tiene criterios de evaluación o no hay datos en este alcance.</div>';
     }
 
     const toggle = `
@@ -186,12 +217,13 @@ const InformeView = (function () {
         ${Utils.esc(f.criterio.codigo)}
       </th>`;
 
-    // Celda para una fila concreta dentro de un criterio.
+    // Celda para una fila concreta dentro de un criterio. `f.media` es la media
+    // del grupo (no de la clase).
     const celda = (f, fl) => {
       if (fl.logro == null) return '<td class="num"><span class="badge na">—</span></td>';
       if (modoCriterios === 'absoluto') {
         const pct = Math.round(fl.logro * 100);
-        const cls = fl.logro >= 0.5 ? 'ok' : fl.logro >= 0.4 ? 'info' : 'ko';
+        const cls = fl.logro >= 0.5 ? 'ok' : fl.logro >= 0.4 ? 'warn' : 'ko';
         return `<td class="num"><span class="badge ${cls}">${pct}%</span></td>`;
       }
       if (f.media == null) return '<td class="num"><span class="badge na">—</span></td>';
@@ -200,66 +232,78 @@ const InformeView = (function () {
       return `<td class="num"><span class="badge ${cls}">${dif >= 0 ? '+' : ''}${dif}%</span></td>`;
     };
 
-    // Fila de media global de la clase.
-    const filaMedia = `
-      <tr style="font-weight:700;border-top:2px solid #ccc">
-        <td>Media clase</td>
-        ${tabla.map(f => {
-          if (f.media == null) return '<td class="num">—</td>';
-          const pct = Math.round(f.media * 100);
-          const cls = f.media >= 0.5 ? 'ok' : f.media >= 0.4 ? 'info' : 'ko';
-          return modoCriterios === 'absoluto'
-            ? `<td class="num"><span class="badge ${cls}">${pct}%</span></td>`
-            : '<td class="num">—</td>';
-        }).join('')}
-      </tr>`;
+    const tablaHtml = (g, i) => {
+      // Fila de media del grupo.
+      const filaMedia = `
+        <tr style="font-weight:700;border-top:2px solid #ccc">
+          <td>Media del grupo</td>
+          ${g.columnas.map(f => {
+            if (f.media == null) return '<td class="num">—</td>';
+            const pct = Math.round(f.media * 100);
+            if (modoCriterios === 'absoluto') {
+              const cls = f.media >= 0.5 ? 'ok' : f.media >= 0.4 ? 'warn' : 'ko';
+              return `<td class="num"><span class="badge ${cls}">${pct}%</span></td>`;
+            }
+            // En modo relativo la media es la referencia: se muestra en tono suave.
+            return `<td class="num"><span style="color:var(--tinta-suave)">${pct}%</span></td>`;
+          }).join('')}
+        </tr>`;
 
-    const leyenda = `
-      <p style="color:var(--tinta-suave);font-size:12px;margin-top:10px;line-height:1.6">
-        ${tabla.map(f => `<b>${Utils.esc(f.criterio.codigo)}</b> ${Utils.esc(f.criterio.descripcion)}`).join(' · ')}
-      </p>`;
+      const leyenda = `
+        <p style="color:var(--tinta-suave);font-size:12px;margin-top:8px;line-height:1.6">
+          ${g.columnas.map(f => `<b>${Utils.esc(f.criterio.codigo)}</b> ${Utils.esc(f.criterio.descripcion)}`).join(' · ')}
+        </p>`;
 
-    return `
-      ${toggle}
-      <div class="scroll-x">
-        <table class="tabla tabla-cuadricula">
-          <thead><tr><th>Alumno</th>${tabla.map(thCriterio).join('')}</tr></thead>
-          <tbody>
-            ${grupos.map(g => `
-              <tr style="background:var(--fondo, #f0f0f0)">
-                <td colspan="${tabla.length + 1}" style="font-weight:700;font-size:13px;padding:6px 10px">
-                  ${Utils.esc(g.etiqueta)}
-                </td>
-              </tr>
-              ${g.filas.map(fl => `
+      // Con varias tablas a la vista hace falta un título por tabla.
+      const titulo = tablas.length > 1
+        ? `<h3 style="margin:18px 0 8px;font-size:14px">${Utils.esc(g.etiqueta)}</h3>`
+        : '';
+
+      return `
+        ${titulo}
+        <div class="scroll-x">
+          <table class="tabla tabla-cuadricula">
+            <thead><tr><th>Alumno</th>${g.columnas.map(thCriterio).join('')}</tr></thead>
+            <tbody>
+              ${g.alumnos.map(a => `
                 <tr>
-                  <td>${Utils.esc(fl.alumno.apellidos)}, ${Utils.esc(fl.alumno.nombre)}</td>
-                  ${tabla.map(f => {
-                    const fila = f.filas.find(x => x.alumno.id === fl.alumno.id);
-                    return fila ? celda(f, fila) : '<td class="num">—</td>';
+                  <td>${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}</td>
+                  ${g.columnas.map(f => {
+                    const fl = f.filas.find(x => x.alumno.id === a.id);
+                    return fl ? celda(f, fl) : '<td class="num">—</td>';
                   }).join('')}
-                </tr>`).join('')}`).join('')}
-            ${filaMedia}
-          </tbody>
-        </table>
-      </div>
-      ${leyenda}`;
+                </tr>`).join('')}
+              ${filaMedia}
+            </tbody>
+          </table>
+        </div>
+        ${leyenda}`;
+    };
+
+    return toggle + tablas.map(tablaHtml).join('');
   }
 
   // ----------------------------------------------------------- distribución
   // Una barra por nota (sin agrupar), con línea punteada en el 5 (corte del
   // aprobado). Eje X = nota (0–10), altura proporcional a la nota.
-  function htmlDistribucion(claseId, insts) {
-    const dist = Calc.distribucionNotas(claseId, insts);
-    if (!dist.notas.length) {
-      return '<div class="aviso">No hay notas para analizar en este alcance.</div>';
-    }
+  // `nivelFiltro`: undefined = todo el grupo; '' = base; otro = ese nivel ACI.
+  function htmlDistribucion(claseId, insts, nivelFiltro) {
+    const dist = Calc.distribucionNotas(claseId, insts, nivelFiltro);
+    const filtrado = nivelFiltro !== undefined;
+    const mediaTxt = filtrado
+      ? `Media del alumnado de <b>${Utils.esc(Calc.etiquetaNivel(claseId, nivelFiltro))}</b>`
+      : 'Media de todo el grupo';
+    const avisoTxt = filtrado
+      ? `No hay notas del alumnado de <b>${Utils.esc(Calc.etiquetaNivel(claseId, nivelFiltro))}</b> en este alcance.`
+      : 'No hay notas de todo el grupo en este alcance.';
+    if (!dist.notas.length) return `<div class="aviso">${avisoTxt}</div>`;
     const media = Math.round(dist.media * 10) / 10;
     const notas = dist.notas.slice().sort((a, b) => a - b);
     const ALTO = 180; // px máximos de barra
 
     return `
-      <p style="margin-bottom:14px"><strong>Media de la clase:</strong> ${media} / 10</p>
+      <p style="margin-bottom:${filtrado ? 4 : 14}px"><strong>${mediaTxt}:</strong> ${media} / 10</p>
+      ${filtrado ? '<p class="no-print" style="margin-bottom:14px;font-size:12px;color:var(--tinta-suave)">Nivel filtrado con el selector superior de la cuadrícula.</p>' : ''}
       <div style="position:relative;height:${ALTO + 28}px;
                   border-bottom:2px solid #ccc;margin-bottom:4px">
         ${notas.map(n => {
@@ -306,25 +350,18 @@ const InformeView = (function () {
     if (alcance.unidad) f.unidad = alcance.unidad;
     if (alcance.instrumentoId) f.instrumentoId = alcance.instrumentoId;
     const insts = Calc.instrumentosAlcance(claseSel, f);
+    const todas = esTodas(nivelSel);
 
-    const criterios = nivelSel && nivelSel !== 'TODAS'
-      ? Calc.criteriosDeNivel(claseSel, nivelSel)
-      : Calc.criteriosDeClase(claseSel);
-
-    // En modo «Todos los niveles» la vista de Criterios no es significativa
-    // (cada nivel tiene su propio currículo). Hallazgos y Distribución sí
-    // funcionan: los hallazgos analizan cada nivel por separado.
-    const modoTodas = nivelSel === 'TODAS';
-    const avisoTodas = '<div class="aviso">Elige un nivel concreto (o Base) en el selector superior para ver la matriz de criterios.</div>';
-
+    // Criterios decide sus tablas según el nivel; Distribución filtra el
+    // alumnado por el mismo nivel; Hallazgos analiza todos los niveles y los
+    // etiqueta.
     el.innerHTML = `
       ${htmlAlcance(claseSel)}
       ${htmlSubVista()}
       <div id="informe-cuerpo">
-        ${modoTodas && subVista === 'criterios' ? avisoTodas
-          : subVista === 'hallazgos' ? htmlHallazgos(claseSel, insts)
-          : subVista === 'criterios' ? htmlCriterios(claseSel, insts, criterios)
-          : htmlDistribucion(claseSel, insts)}
+        ${subVista === 'hallazgos' ? htmlHallazgos(claseSel, insts)
+          : subVista === 'criterios' ? htmlCriterios(claseSel, insts)
+          : htmlDistribucion(claseSel, insts, todas ? undefined : nivelSel)}
       </div>`;
 
     // --- eventos ---
@@ -352,12 +389,8 @@ const InformeView = (function () {
     el.querySelectorAll('[data-modocrit]').forEach(ch => {
       ch.onclick = () => { modoCriterios = ch.dataset.modocrit; render(el, opciones); };
     });
-    el.querySelectorAll('[data-toggle-bloque]').forEach(ch => {
-      ch.onclick = () => {
-        const clave = ch.dataset.toggleBloque;
-        if (abiertos.has(clave)) abiertos.delete(clave); else abiertos.add(clave);
-        render(el, opciones);
-      };
+    el.querySelectorAll('[data-filtrosev]').forEach(ch => {
+      ch.onclick = () => { filtroSev = ch.dataset.filtrosev; render(el, opciones); };
     });
   }
 
