@@ -1652,8 +1652,8 @@ async function main() {
     db.instrumentos.forEach(i => Calc.alumnosDeInstrumento(i).forEach(a => {
       if (!puede(i, a.id)) muertas.push(i.titulo + ' → ' + a.apellidos + ', ' + a.nombre);
     }));
-    aviso('E6 · la app no pide corregir celdas que no pueden puntuar', muertas.length > 0,
-      muertas.length + ' celda(s): ' + muertas.join(' · '));
+    check('E6 · la app no pide corregir celdas que no pueden puntuar', muertas.length === 0,
+      muertas.length + ' celda(s): ' + muertas.slice(0, 4).join(' · '));
 
     // --- F. Motor de cálculo ---
     const baseDe = c => Calc.alumnosDeClase(c.id).filter(a => !Calc.nivelDeAlumno(c.id, a.id));
@@ -1765,9 +1765,13 @@ async function main() {
     check('F19 · un instrumento «BASE» excluye al alumnado con ACI',
       db.instrumentos.filter(i => i.nivel === 'BASE').every(i =>
         Calc.alumnosDeInstrumento(i).every(a => !Calc.nivelDeAlumno(i.claseId, a.id))));
-    check('F20 · un instrumento común incluye a todo el grupo',
+    check('F20 · un instrumento común incluye a todo el alumnado sin adaptación',
       db.instrumentos.filter(i => !i.nivel).every(i =>
-        Calc.alumnosDeInstrumento(i).length === Calc.alumnosDeClase(i.claseId).length));
+        Calc.alumnosDeInstrumento(i).length === baseDe(Calc.clase(i.claseId)).length
+        && Calc.alumnosDeInstrumento(i).every(a => !Calc.nivelDeAlumno(i.claseId, a.id))));
+    check('F21 · el alumnado ACI solo entra en los instrumentos donde puede puntuar',
+      db.instrumentos.every(i => Calc.alumnosDeInstrumento(i)
+        .every(a => !Calc.nivelDeAlumno(i.claseId, a.id) || puede(i, a.id))));
 
     // --- G. Vistas ---
     const errores = [];

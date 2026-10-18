@@ -1643,8 +1643,24 @@ const Calc = {
     return this.nivelNorm(inst.nivel) === this.nivelNorm(codigo);
   },
 
+  // Un instrumento solo se corrige para quien PUEDE puntuar en él: además del
+  // nivel, sus criterios (los de los apartados o, en modo global, los globales)
+  // tienen que ser del currículo de ese alumno. Si no, el alumnado con ACI
+  // aparecería en la corrección de un instrumento común o base y en «por
+  // corregir» para siempre, sin que sus notas contaran para nada.
   instrumentoParaAlumno(inst, claseId, alumnoId) {
-    return this.instrumentoParaNivel(inst, this.nivelDeAlumno(claseId, alumnoId));
+    if (!this.instrumentoParaNivel(inst, this.nivelDeAlumno(claseId, alumnoId))) return false;
+    const ids = new Set(this.criteriosDeAlumno(claseId, alumnoId).map(c => c.id));
+    if ((inst.criteriosModo || 'desglosado') === 'global') {
+      const globales = inst.criterioIdsGlobal || [];
+      // Sin criterios globales declarados (datos antiguos) se comporta como antes.
+      return !globales.length || globales.some(id => ids.has(id));
+    }
+    const apartados = inst.apartados || [];
+    // Un instrumento sin ningún criterio declarado (datos antiguos) no permite
+    // decidir: se deja como estaba para no vaciar correcciones ya hechas.
+    if (!apartados.some(ap => (ap.criterioIds || []).length)) return true;
+    return apartados.some(ap => (ap.criterioIds || []).some(id => ids.has(id)));
   },
 
   alumnosDeInstrumento(inst) {
