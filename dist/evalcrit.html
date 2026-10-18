@@ -315,6 +315,22 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--acento-suav
   tr { page-break-inside: avoid; break-inside: avoid; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   @page { margin: 12mm; }
+
+  /* Reducir tablas muy anchas (criterios, etc.) */
+  #informe-impresion .tabla,
+  #informe-impresion .tabla-cuadricula {
+    width: 100%;
+    table-layout: fixed;
+    word-break: break-word;
+    hyphens: auto;
+  }
+  #informe-impresion .tabla th,
+  #informe-impresion .tabla td {
+    padding: 3px 4px;
+    font-size: 10px;
+    line-height: 1.25;
+  }
+  .informe-seccion .scroll-x { overflow: visible !important; }
 }
 .aci-ast { font-size: 11px; vertical-align: text-top; margin-left: 1px; }
 
@@ -4448,7 +4464,7 @@ const CuadriculaView = (() => {
       ? Utils.esc(`${alu.apellidos}, ${alu.nombre}`)
       : `${Calc.alumnosDeClase(claseId).length} alumno(s)`;
     return `<div class="informe-cab">
-        <strong>${alu ? 'Informe individual' : 'Cuadrícula de alumnado'} · ${tituloBloques}</strong>
+        <strong>${alu ? 'Informe individual' : 'Cuadrícula de calificaciones'} · ${tituloBloques}</strong>
         <span>${Utils.esc(nombreAsig(cl.asignaturaId))} · ${Utils.esc(gru ? gru.nombre : '¿?')} · ${quien} · ${periodo} · impreso el ${Utils.hoy().split('-').reverse().join('/')}</span>
       </div>
       ${secciones || '<p class="aviso">No hay alumnado para imprimir.</p>'}`;
@@ -4619,7 +4635,7 @@ const CuadriculaView = (() => {
     const nivelImp = modoTodas ? 'todos los niveles' : nivelSel ? 'nivel ' + Calc.etiquetaNivel(claseSel, nivelSel) : 'base';
     const tituloImp = tab === 'notas' ? 'Instrumentos' : tab === 'criterios' ? 'Criterios' : tab === 'informe' ? 'Informe de análisis' : 'Competencias específicas y clave';
     const cabeceraImp = `<div class="solo-impresion cabecera-impresion">
-      <strong>Cuadrícula de alumnado · ${tituloImp}</strong>
+      <strong>Cuadrícula de calificaciones · ${tituloImp}</strong>
       <span>${Utils.esc(asigImp)} · ${Utils.esc(grupoImp)} · ${periodo} · ${nivelImp} · impreso el ${Utils.hoy().split('-').reverse().join('/')}</span>
     </div>`;
 
@@ -4627,7 +4643,7 @@ const CuadriculaView = (() => {
       <section class="card">
         ${cabeceraImp}
         <div class="card-head no-print">
-          <h2>Cuadrícula de calificación</h2>
+          <h2>Calificaciones</h2>
           ${(() => {
             const lblNivel = modoTodas
               ? ' · <b>todos los niveles</b>'
@@ -4654,7 +4670,8 @@ const CuadriculaView = (() => {
           <label class="chip ${tab === 'competencias' ? 'on' : ''}" data-tab="competencias">Competencias específicas y clave</label>
           <label class="chip ${tab === 'informe' ? 'on' : ''}" data-tab="informe">Informe</label>
         </div>
-        ${tab === 'notas' ? `<div class="barra-tab no-print">
+        ${tab === 'notas' ? `<div class="barra-tab no-print" style="justify-content:flex-end">
+          <button class="btn" id="btn-nuevo-instrumento">+ Crear instrumento</button>
           ${btnCorregir}
         </div>` : ''}
         <div class="scroll-x" id="contenido">
@@ -4700,6 +4717,12 @@ const CuadriculaView = (() => {
           id => InstrumentosView.renderCorreccion(el, id, () => render(el)));
       };
     }
+    const btnNuevo = el.querySelector('#btn-nuevo-instrumento');
+    if (btnNuevo) {
+      btnNuevo.onclick = () => {
+        InstrumentosView.modalInstrumento(null, () => render(el));
+      };
+    }
 
     el.querySelector('#btn-imprimir').onclick = () => modalImprimir(el, insts);
 
@@ -4743,7 +4766,7 @@ const App = (() => {
     { id: 'clases', label: 'Asignaturas y clases', render: el => ClasesView.render(el) },
     { id: 'curriculo', label: 'Currículo', render: el => CurriculoView.render(el), riesgo: true },
     { id: 'instrumentos', label: 'Instrumentos', render: el => InstrumentosView.render(el) },
-    { id: 'cuadricula', label: 'Cuadrícula', render: el => CuadriculaView.render(el) }
+    { id: 'cuadricula', label: 'Calificaciones', render: el => CuadriculaView.render(el) }
   ];
   let actual = 'inicio';
 

@@ -308,6 +308,22 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--acento-suav
   tr { page-break-inside: avoid; break-inside: avoid; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   @page { margin: 12mm; }
+
+  /* Reducir tablas muy anchas (criterios, etc.) */
+  #informe-impresion .tabla,
+  #informe-impresion .tabla-cuadricula {
+    width: 100%;
+    table-layout: fixed;
+    word-break: break-word;
+    hyphens: auto;
+  }
+  #informe-impresion .tabla th,
+  #informe-impresion .tabla td {
+    padding: 3px 4px;
+    font-size: 10px;
+    line-height: 1.25;
+  }
+  .informe-seccion .scroll-x { overflow: visible !important; }
 }
 .aci-ast { font-size: 11px; vertical-align: text-top; margin-left: 1px; }
 

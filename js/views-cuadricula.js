@@ -196,7 +196,7 @@ const CuadriculaView = (() => {
       ? Utils.esc(`${alu.apellidos}, ${alu.nombre}`)
       : `${Calc.alumnosDeClase(claseId).length} alumno(s)`;
     return `<div class="informe-cab">
-        <strong>${alu ? 'Informe individual' : 'Cuadrícula de alumnado'} · ${tituloBloques}</strong>
+        <strong>${alu ? 'Informe individual' : 'Cuadrícula de calificaciones'} · ${tituloBloques}</strong>
         <span>${Utils.esc(nombreAsig(cl.asignaturaId))} · ${Utils.esc(gru ? gru.nombre : '¿?')} · ${quien} · ${periodo} · impreso el ${Utils.hoy().split('-').reverse().join('/')}</span>
       </div>
       ${secciones || '<p class="aviso">No hay alumnado para imprimir.</p>'}`;
@@ -367,7 +367,7 @@ const CuadriculaView = (() => {
     const nivelImp = modoTodas ? 'todos los niveles' : nivelSel ? 'nivel ' + Calc.etiquetaNivel(claseSel, nivelSel) : 'base';
     const tituloImp = tab === 'notas' ? 'Instrumentos' : tab === 'criterios' ? 'Criterios' : tab === 'informe' ? 'Informe de análisis' : 'Competencias específicas y clave';
     const cabeceraImp = `<div class="solo-impresion cabecera-impresion">
-      <strong>Cuadrícula de alumnado · ${tituloImp}</strong>
+      <strong>Cuadrícula de calificaciones · ${tituloImp}</strong>
       <span>${Utils.esc(asigImp)} · ${Utils.esc(grupoImp)} · ${periodo} · ${nivelImp} · impreso el ${Utils.hoy().split('-').reverse().join('/')}</span>
     </div>`;
 
@@ -375,7 +375,7 @@ const CuadriculaView = (() => {
       <section class="card">
         ${cabeceraImp}
         <div class="card-head no-print">
-          <h2>Cuadrícula de calificación</h2>
+          <h2>Calificaciones</h2>
           ${(() => {
             const lblNivel = modoTodas
               ? ' · <b>todos los niveles</b>'
@@ -402,7 +402,8 @@ const CuadriculaView = (() => {
           <label class="chip ${tab === 'competencias' ? 'on' : ''}" data-tab="competencias">Competencias específicas y clave</label>
           <label class="chip ${tab === 'informe' ? 'on' : ''}" data-tab="informe">Informe</label>
         </div>
-        ${tab === 'notas' ? `<div class="barra-tab no-print">
+        ${tab === 'notas' ? `<div class="barra-tab no-print" style="justify-content:flex-end">
+          <button class="btn" id="btn-nuevo-instrumento">+ Crear instrumento</button>
           ${btnCorregir}
         </div>` : ''}
         <div class="scroll-x" id="contenido">
@@ -446,6 +447,12 @@ const CuadriculaView = (() => {
         // corrector se vuelve a la cuadrícula.
         InstrumentosView.modalCalificar(claseSel,
           id => InstrumentosView.renderCorreccion(el, id, () => render(el)));
+      };
+    }
+    const btnNuevo = el.querySelector('#btn-nuevo-instrumento');
+    if (btnNuevo) {
+      btnNuevo.onclick = () => {
+        InstrumentosView.modalInstrumento(null, () => render(el));
       };
     }
 

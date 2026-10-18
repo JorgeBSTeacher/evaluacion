@@ -528,7 +528,7 @@ async function main() {
     check('cada sección muestra los criterios de su propio currículo',
       secBase.includes('>C1<') && !secBase.includes('>A1<') && secAci.includes('>A1<') && !secAci.includes('>C1<'));
     check('el informe lleva cabecera con asignatura, grupo y periodo',
-      inf.includes('Cuadrícula de alumnado · Criterios') && inf.includes('Matemáticas 6º') && inf.includes('6ºA') && inf.includes('T1'));
+      inf.includes('Cuadrícula de calificaciones · Criterios') && inf.includes('Matemáticas 6º') && inf.includes('6ºA') && inf.includes('T1'));
     check('el informe de impresión incluye la columna Evaluación', inf.includes('>Evaluación<'));
     check('el informe también sirve para competencias',
       app2.CuadriculaView.informeHtml('c1', 'T1', { criterios: false, competencias: true })

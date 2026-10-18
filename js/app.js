@@ -5,7 +5,7 @@ const App = (() => {
     { id: 'clases', label: 'Asignaturas y clases', render: el => ClasesView.render(el) },
     { id: 'curriculo', label: 'Currículo', render: el => CurriculoView.render(el), riesgo: true },
     { id: 'instrumentos', label: 'Instrumentos', render: el => InstrumentosView.render(el) },
-    { id: 'cuadricula', label: 'Cuadrícula', render: el => CuadriculaView.render(el) }
+    { id: 'cuadricula', label: 'Calificaciones', render: el => CuadriculaView.render(el) }
   ];
   let actual = 'inicio';
 
