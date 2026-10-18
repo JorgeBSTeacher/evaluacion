@@ -452,7 +452,7 @@ const CuadriculaView = (() => {
     const btnNuevo = el.querySelector('#btn-nuevo-instrumento');
     if (btnNuevo) {
       btnNuevo.onclick = () => {
-        InstrumentosView.modalInstrumento(null, () => render(el));
+        InstrumentosView.modalInstrumento(null, claseSel, () => render(el));
       };
     }
 

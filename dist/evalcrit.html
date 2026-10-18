@@ -2909,12 +2909,13 @@ function columnasNivel(filas) {
       </div>`;
   }
 
-  function modalInstrumento(inst, claseIdFijo) {
+  function modalInstrumento(inst, claseIdFijo, alCerrar) {
     const db = Storage.db;
-    if (!inst && !claseIdFijo && !claseSel) { alert('Primero selecciona una clase'); return; }
-    const claseId = inst ? inst.claseId : (claseIdFijo || claseSel);
-    const asig = Calc.asignaturaDeClase(claseId);
+    const cid = inst ? inst.claseId : (claseIdFijo || claseSel);
+    if (!cid) { alert('Primero selecciona una clase'); return; }
+    const asig = Calc.asignaturaDeClase(cid);
     if (!asig) { alert('Error: esta clase no tiene asignatura asociada'); return; }
+    const claseId = cid;
     const esNueva = !inst;
     const tipoIni = inst ? inst.tipo : 'Control';
     const nivelesAci = Calc.nivelesAciDeClase(claseId);
@@ -2974,6 +2975,7 @@ function columnasNivel(filas) {
           <input type="url" id="f-url" value="${Utils.esc(inst ? (inst.url || '') : '')}" placeholder="https://… (examen, proyecto, materiales)">
           <small class="hint">Dirección del examen, del proyecto o de los materiales. Quedará a mano en el listado y al corregir.</small></label>`,
       textoGuardar: esNueva ? 'Crear' : 'Guardar cambios',
+      alCerrar,
       alGuardar(body) {
         const titulo = body.querySelector('#f-titulo').value.trim();
         const tipo = body.querySelector('#f-tipo').value;
@@ -4720,7 +4722,7 @@ const CuadriculaView = (() => {
     const btnNuevo = el.querySelector('#btn-nuevo-instrumento');
     if (btnNuevo) {
       btnNuevo.onclick = () => {
-        InstrumentosView.modalInstrumento(null, () => render(el));
+        InstrumentosView.modalInstrumento(null, claseSel, () => render(el));
       };
     }
 
