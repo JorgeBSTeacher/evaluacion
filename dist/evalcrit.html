@@ -344,10 +344,12 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--acento-suav
 .informe-cab { margin: 0 0 12px; }
 .informe-cab strong { font-size: 16px; }
 .informe-cab span { display: block; color: var(--tinta-suave); font-size: 12px; }
-.informe-seccion { margin-bottom: 16px; }
+.informe-seccion { margin-bottom: 16px; break-inside: avoid; page-break-inside: avoid; }
 /* El título viaja siempre con su tabla: nunca solo al pie de una página. */
 .informe-titulo { font-size: 15px; margin: 0 0 6px; break-after: avoid; page-break-after: avoid; }
-.informe-seccion table { break-before: avoid; page-break-before: avoid; }
+.informe-seccion h3 { break-after: avoid; page-break-after: avoid; page-break-before: auto; }
+.informe-seccion table { break-before: avoid; page-break-before: avoid; break-inside: avoid; page-break-inside: avoid; }
+.informe-seccion .scroll-x { break-inside: avoid; page-break-inside: avoid; }
 
 </style>
 </head>
