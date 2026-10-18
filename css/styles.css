@@ -60,7 +60,7 @@ body {
 .save-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--ok); display: inline-block; transition: background .3s; }
 .save-dot.guardando { background: #f59e0b; }
 
-main { max-width: 1200px; margin: 0 auto; padding: 20px 18px 60px; }
+main { max-width: 1440px; margin: 0 auto; padding: 20px 18px 60px; }
 
 .card {
   background: #fff; border: 1px solid var(--linea);

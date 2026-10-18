@@ -512,9 +512,9 @@ async function main() {
     app2.CuadriculaView.render(el4, { tab: 'competencias' });
     check('en Competencias el buscador sigue disponible', el4.innerHTML.includes('id="busca-alumno"'));
 
-    // «Imprimir todo»: una sección por nivel, cada una con SU currículo y sus
+    // «Imprimir»: una sección por nivel, cada una con SU currículo y sus
     // alumnos. Con currículos distintos mezclar columnas no tiene sentido.
-    const inf = app2.CuadriculaView.informeHtml('c1', 'T1', 'criterios');
+    const inf = app2.CuadriculaView.informeHtml('c1', 'T1', { criterios: true, competencias: false });
     const secs = inf.split('<section class="informe-seccion">').slice(1);
     check('el informe de impresión separa base y cada nivel ACI', secs.length === 2, 'secciones=' + secs.length);
     const secBase = secs[0] || '';
@@ -528,10 +528,24 @@ async function main() {
     check('el informe lleva cabecera con asignatura, grupo y periodo',
       inf.includes('Cuadrícula de alumnado · Criterios') && inf.includes('Matemáticas 6º') && inf.includes('6ºA') && inf.includes('T1'));
     check('el informe también sirve para competencias',
-      app2.CuadriculaView.informeHtml('c1', 'T1', 'competencias').includes('Competencias específicas y clave'));
+      app2.CuadriculaView.informeHtml('c1', 'T1', { criterios: false, competencias: true })
+        .includes('Competencias específicas y clave'));
+    // Ambos bloques a la vez: la sección lleva rótulo para los criterios y
+    // los suyos propios para las competencias.
+    const infAmbos = app2.CuadriculaView.informeHtml('c1', 'T1', { criterios: true, competencias: true });
+    check('el informe puede incluir criterios y competencias juntos',
+      infAmbos.includes('Criterios y competencias') && infAmbos.includes('>Criterios</h3>'), infAmbos.slice(0, 160));
+    // Informe individual: solo ese alumno, solo su nivel.
+    const infAlu = app2.CuadriculaView.informeHtml('c1', 'T1',
+      { criterios: true, competencias: false, alumnoId: 'c1al' });
+    const filasAlu = (infAlu.match(/<td>[^<]*, [^<]*<\/td>/g) || []).length;
+    check('el informe individual lleva solo al alumno elegido',
+      infAlu.includes('Informe individual') && infAlu.includes('Aci, Carla') && !infAlu.includes('Base, Ana'),
+      infAlu.slice(0, 160));
+    check('el informe individual tiene una sola sección (su nivel)', filasAlu === 1, 'filas=' + filasAlu);
     // El informe fija nivel/clase/periodo del módulo: al terminar debe restaurarlos
     // (si no, tras imprimir la vista quedaría en el último nivel del informe).
-    app2.CuadriculaView.informeHtml('c1', 'T1', 'criterios');
+    app2.CuadriculaView.informeHtml('c1', 'T1', { criterios: true, competencias: false });
     const elImp = makeEl();
     app2.CuadriculaView.render(elImp, { tab: 'criterios' });
     check('el informe no deja cambiado el nivel seleccionado en la vista',
@@ -574,7 +588,7 @@ async function main() {
     appH.Storage.load();
     await importarJson(appH, estH);
     check('un código huérfano cae a base (nivel efectivo)', appH.Calc.nivelDeAlumno('c1', 'c1al') === '');
-    const infH = appH.CuadriculaView.informeHtml('c1', 'T1', 'criterios');
+    const infH = appH.CuadriculaView.informeHtml('c1', 'T1', { criterios: true, competencias: false });
     const secsH = infH.split('<section class="informe-seccion">').slice(1);
     const filasH = secsH.reduce((n, s) => n + (s.match(/<td>[^<]*, [^<]*<\/td>/g) || []).length, 0);
     check('el informe conserva a TODO el alumnado aunque falte un nivel', filasH === 4, 'filas=' + filasH);
@@ -1399,9 +1413,10 @@ async function main() {
     check('«Todos los niveles» dibuja una tabla por nivel', nTablas === 2, 'tablas=' + nTablas);
     check('cada tabla lleva el título de su nivel',
       hc.includes('>Base</h3>') && hc.includes('>4º</h3>'));
-    check('la tabla base usa los criterios base (C1, C2)',
-      hc.includes('<b>C1</b>') && hc.includes('<b>C2</b>'));
-    check('la tabla del ACI usa sus propios criterios (A1)', hc.includes('<b>A1</b>'));
+    check('la tabla base usa los criterios base (C1, C2)', hc.includes('C1') && hc.includes('C2'));
+    check('la tabla del ACI usa sus propios criterios (A1)', hc.includes('A1'));
+    check('la descripción del criterio se ve en el tooltip de su cabecera',
+      hc.includes('title="c1"') && hc.includes('title="a1"'));
     check('los alumnos base salen en la tabla base', hc.includes('Base, Ana') && hc.includes('Base, Beto'));
     check('los alumnos ACI salen con datos en su tabla',
       hc.includes('Aci, Carla') && hc.includes('75%'));

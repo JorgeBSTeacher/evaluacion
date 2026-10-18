@@ -132,17 +132,23 @@ const CuadriculaView = (() => {
     return Calc.criteriosDeNivel(claseSel, nivelSel).some(c => (c.claveIds || []).length > 0);
   }
 
-  // Informe de «Imprimir todo»: una sección por nivel —base y cada nivel ACI—
+  // Informe de «Imprimir»: una sección por nivel —base y cada nivel ACI—
   // con SOLO su alumnado y SU currículo, sin mezclar columnas (los currículos
-  // de cada nivel pueden no coincidir). Se compone aquí y no en el DOM para
-  // poder comprobarlo sin navegador.
-  function informeHtml(claseId, periodoId, tabId) {
+  // de cada nivel pueden no coincidir). `opciones`:
+  //   - criterios / competencias: qué bloques incluir (al menos uno).
+  //   - alumnoId: si se indica, solo ese alumno (informe individual).
+  // Se compone aquí y no en el DOM para poder comprobarlo sin navegador.
+  function informeHtml(claseId, periodoId, opciones) {
+    const op = Object.assign({ criterios: true, competencias: true, alumnoId: null }, opciones || {});
     const db = Storage.db;
     const cl = Calc.clase(claseId);
     if (!cl) return '';
     const gru = Calc.byId(db.grupos, cl.grupoId);
-    const tituloTab = tabId === 'criterios' ? 'Criterios' : 'Competencias específicas y clave';
+    const alu = op.alumnoId ? Calc.alumno(op.alumnoId) : null;
     const nombreAsig = id => (Calc.asignatura(id) || {}).nombre || '¿?';
+    const tituloBloques = op.criterios && op.competencias ? 'Criterios y competencias'
+      : op.criterios ? 'Criterios' : 'Competencias específicas y clave';
+    const dosBloques = op.criterios && op.competencias;
     const niveles = [{ codigo: '', etiqueta: 'Base (sin adaptación)', asig: nombreAsig(cl.asignaturaId) }]
       .concat(Calc.nivelesAciDeClase(claseId).map(n => ({
         codigo: n.codigo,
@@ -153,37 +159,44 @@ const CuadriculaView = (() => {
     // Las tablas leen clase, nivel y periodo del estado del módulo: se fija aquí
     // y se restaura al final, para que el informe no dependa de lo que hubiera
     // seleccionado en pantalla.
-    const antes = { claseSel, periodo, tab, nivelSel };
+    const antes = { claseSel, periodo, nivelSel };
     claseSel = claseId;
     periodo = periodoId;
-    tab = tabId;
     let secciones = '';
     try {
       secciones = niveles.map(nv => {
         nivelSel = nv.codigo;
-        const alumnos = Calc.alumnosDeClase(claseId)
+        let alumnos = Calc.alumnosDeClase(claseId)
           .filter(a => Calc.nivelDeAlumno(claseId, a.id) === nv.codigo);
+        if (alu) alumnos = alumnos.filter(a => a.id === alu.id);
         if (!alumnos.length) return '';
-        const tabla = tabId === 'criterios'
-          ? tablaCriterios(alumnos, false, claseId, periodoId)
-          : tablaCompetencias(alumnos, false);
+        const partes = [];
+        if (op.criterios) {
+          // Con dos bloques hace falta un rótulo; las competencias ya llevan
+          // los suyos propios dentro de tablaCompetencias.
+          partes.push((dosBloques
+            ? '<h3 style="font-size:15px;margin:4px 0 8px">Criterios</h3>' : '')
+            + tablaCriterios(alumnos, false, claseId, periodoId));
+        }
+        if (op.competencias) partes.push(tablaCompetencias(alumnos, false));
         // El título lleva la asignatura del nivel (los ACI pueden venir de otro curso).
         return `<section class="informe-seccion">
         <h2 class="informe-titulo">${Utils.esc(nv.etiqueta)} · ${Utils.esc(nv.asig)}</h2>
-        ${tabla}
+        ${partes.join('')}
       </section>`;
       }).join('');
     } finally {
       claseSel = antes.claseSel;
       periodo = antes.periodo;
-      tab = antes.tab;
       nivelSel = antes.nivelSel;
     }
 
-    const total = Calc.alumnosDeClase(claseId).length;
+    const quien = alu
+      ? Utils.esc(`${alu.apellidos}, ${alu.nombre}`)
+      : `${Calc.alumnosDeClase(claseId).length} alumno(s)`;
     return `<div class="informe-cab">
-        <strong>Cuadrícula de alumnado · ${tituloTab}</strong>
-        <span>${Utils.esc(nombreAsig(cl.asignaturaId))} · ${Utils.esc(gru ? gru.nombre : '¿?')} · ${periodo} · ${total} alumno(s) · impreso el ${Utils.hoy().split('-').reverse().join('/')}</span>
+        <strong>${alu ? 'Informe individual' : 'Cuadrícula de alumnado'} · ${tituloBloques}</strong>
+        <span>${Utils.esc(nombreAsig(cl.asignaturaId))} · ${Utils.esc(gru ? gru.nombre : '¿?')} · ${quien} · ${periodo} · impreso el ${Utils.hoy().split('-').reverse().join('/')}</span>
       </div>
       ${secciones || '<p class="aviso">No hay alumnado para imprimir.</p>'}`;
   }
@@ -209,6 +222,88 @@ const CuadriculaView = (() => {
     // Al cerrar el diálogo se retira el informe; la vista queda intacta.
     const alCerrar = () => { limpiarInforme(); window.removeEventListener('afterprint', alCerrar); };
     window.addEventListener('afterprint', alCerrar);
+    window.print();
+  }
+
+  // Modal de impresión: elegir alcance (vista actual, clase completa o un
+  // alumno) y qué bloques incluir (criterios / competencias) al generar el PDF.
+  function modalImprimir(el, insts) {
+    const alumnos = Calc.alumnosDeClase(claseSel)
+      .map(a => ({ id: a.id, nom: `${a.apellidos}, ${a.nombre}` }));
+    const mbody = UI.openModal({
+      titulo: 'Imprimir / PDF',
+      cuerpo: `<p class="hint">Elige qué quieres pasar a PDF.</p>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <label style="display:flex;gap:8px;align-items:center">
+            <input type="radio" name="imp-alcance" value="vista" checked>
+            Vista actual (lo que se ve en pantalla)
+          </label>
+          <label style="display:flex;gap:8px;align-items:center">
+            <input type="radio" name="imp-alcance" value="clase">
+            Informe de la clase (base + cada nivel ACI)
+          </label>
+          <label style="display:flex;gap:8px;align-items:center">
+            <input type="radio" name="imp-alcance" value="alumno" ${alumnos.length ? '' : 'disabled'}>
+            Informe de un alumno
+            <select id="imp-alumno" style="max-width:220px;margin-left:auto">
+              ${UI.selectHtml(alumnos, alumnos[0] ? alumnos[0].id : '', 'id', 'nom')}
+            </select>
+          </label>
+        </div>
+        <div id="imp-bloques" style="display:none;gap:16px;margin:10px 0 2px;
+             padding:10px 12px;border:1px solid var(--linea);border-radius:8px">
+          <label style="display:flex;gap:6px;align-items:center">
+            <input type="checkbox" id="imp-criterios" checked> Criterios
+          </label>
+          <label style="display:flex;gap:6px;align-items:center">
+            <input type="checkbox" id="imp-competencias" checked> Competencias
+          </label>
+        </div>
+        <button class="btn btn-primario" id="imp-go" style="margin-top:12px">Imprimir / PDF</button>`
+    });
+
+    const selAlumno = mbody.querySelector('#imp-alumno');
+    const cajaBloques = mbody.querySelector('#imp-bloques');
+    const alcance = () => {
+      const r = mbody.querySelector('input[name=imp-alcance]:checked');
+      return r ? r.value : 'vista';
+    };
+    const refresca = () => {
+      selAlumno.disabled = alcance() !== 'alumno';
+      cajaBloques.style.display = alcance() === 'vista' ? 'none' : 'flex';
+    };
+    mbody.querySelectorAll('input[name=imp-alcance]').forEach(r => { r.onchange = refresca; });
+    refresca();
+
+    mbody.querySelector('#imp-go').onclick = () => {
+      const donde = alcance();
+      if (donde === 'vista') {
+        UI.closeModal();
+        imprimirVistaActual(el, insts);
+        return;
+      }
+      const criterios = mbody.querySelector('#imp-criterios').checked;
+      const competencias = mbody.querySelector('#imp-competencias').checked;
+      if (!criterios && !competencias) {
+        UI.toast('Marca «Criterios», «Competencias» o ambas.');
+        return;
+      }
+      const alumnoId = donde === 'alumno' ? selAlumno.value : null;
+      UI.closeModal();
+      imprimirInforme(informeHtml(claseSel, periodo, { criterios, competencias, alumnoId }));
+    };
+  }
+
+  // Imprime lo que hay en pantalla. Si la pestaña es «Instrumentos», todas las
+  // unidades quedan desplegadas: una unidad plegada deja su celda de relleno y
+  // CSS no puede recuperarla, así que se abren en JS.
+  function imprimirVistaActual(el, insts) {
+    limpiarInforme();
+    if (tab === 'notas') {
+      udsAbiertas.clear();
+      Calc.unidadesDe(insts).forEach(u => udsAbiertas.add(u));
+      render(el);
+    }
     window.print();
   }
 
@@ -353,40 +448,7 @@ const CuadriculaView = (() => {
       };
     }
 
-    el.querySelector('#btn-imprimir').onclick = () => {
-      // Con alumnado adaptado (ACI), en las pestañas de currículo, se puede
-      // imprimir la vista actual o el informe completo por niveles.
-      const acis = Calc.nivelesAciDeClase(claseSel);
-      if (acis.length && (tab === 'criterios' || tab === 'competencias')) {
-        const mbody = UI.openModal({
-          titulo: 'Imprimir',
-          cuerpo: `<p class="hint">Elige qué quieres pasar a PDF.</p>
-            <div style="display:flex;flex-direction:column;gap:8px">
-              <button class="btn" id="imp-actual">Imprimir vista actual</button>
-              <button class="btn btn-primario" id="imp-todo">Imprimir todo (base + cada nivel ACI)</button>
-            </div>`
-        });
-        mbody.querySelector('#imp-actual').onclick = () => {
-          UI.closeModal();
-          limpiarInforme();
-          window.print();
-        };
-        mbody.querySelector('#imp-todo').onclick = () => {
-          UI.closeModal();
-          imprimirInforme(informeHtml(claseSel, periodo, tab));
-        };
-        return;
-      }
-      limpiarInforme();
-      // Al imprimir salen TODAS las columnas desplegadas: una unidad plegada deja
-      // su celda de relleno y CSS no puede recuperarla, así que se abren en JS.
-      if (tab === 'notas') {
-        udsAbiertas.clear();
-        Calc.unidadesDe(insts).forEach(u => udsAbiertas.add(u));
-        render(el);
-      }
-      window.print();
-    };
+    el.querySelector('#btn-imprimir').onclick = () => modalImprimir(el, insts);
 
     el.querySelectorAll('#tabs .chip').forEach(ch => {
       ch.onclick = () => { tab = ch.dataset.tab; render(el); };

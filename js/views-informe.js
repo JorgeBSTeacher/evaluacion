@@ -249,10 +249,8 @@ const InformeView = (function () {
           }).join('')}
         </tr>`;
 
-      const leyenda = `
-        <p style="color:var(--tinta-suave);font-size:12px;margin-top:8px;line-height:1.6">
-          ${g.columnas.map(f => `<b>${Utils.esc(f.criterio.codigo)}</b> ${Utils.esc(f.criterio.descripcion)}`).join(' · ')}
-        </p>`;
+      // La descripción de cada criterio no se lista al pie (ocupa mucho): se
+      // ve al pasar el ratón sobre su cabecera (atributo `title` del th).
 
       // Con varias tablas a la vista hace falta un título por tabla.
       const titulo = tablas.length > 1
@@ -276,8 +274,7 @@ const InformeView = (function () {
               ${filaMedia}
             </tbody>
           </table>
-        </div>
-        ${leyenda}`;
+        </div>`;
     };
 
     return toggle + tablas.map(tablaHtml).join('');
