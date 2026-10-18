@@ -1329,8 +1329,11 @@ async function main() {
     const hCrit = hall.filter(h => h.tipo === 'criterio');
     check('k1 crítico (75% < 50%)', hCrit.some(h => h.criterioId === 'k1' && h.nivel === 'critico' && h.pct === 75));
     check('k2 crítico (75% < 50%)', hCrit.some(h => h.criterioId === 'k2' && h.nivel === 'critico' && h.pct === 75));
+    check('el texto del hallazgo incluye la descripción del criterio',
+      hCrit.some(h => h.criterioId === 'k1' && h.texto.includes('Operaciones')));
     const hPreg = hall.filter(h => h.tipo === 'pregunta');
     check('pregunta i1/p1 con 75% de fallos', hPreg.some(h => h.instrumentoId === 'i1' && h.pct === 75));
+    check('la pregunta i2/p2 también aparece (umbral 50%)', hPreg.some(h => h.instrumentoId === 'i2' && h.pct === 75));
     check('los críticos van primero', hall[0].nivel === 'critico');
 
     // distribucionNotas

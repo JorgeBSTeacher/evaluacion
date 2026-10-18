@@ -560,7 +560,7 @@ const Calc = {
   // severidad: críticos primero, luego atención, por porcentaje descendente.
   hallazgos(claseId, insts, criterios) {
     const alumnos = this.alumnosDeClase(claseId);
-    const UMB = { critico: 50, atencion: 30, fallosPregunta: 70 };
+    const UMB = { critico: 50, atencion: 30, fallosPregunta: 50 };
     const salida = [];
 
     // Regla 1: criterios con alto porcentaje de alumnos por debajo del 50%.
@@ -570,17 +570,18 @@ const Calc = {
         .filter(v => v != null);
       if (logros.length < 2) continue;
       const pct = Math.round(logros.filter(v => v < 0.5).length / logros.length * 100);
+      const ref = `«${c.codigo} — ${c.descripcion}»`;
       if (pct >= UMB.critico) {
         salida.push({
           nivel: 'critico', tipo: 'criterio', criterioId: c.id,
           codigo: c.codigo, pct,
-          texto: `${pct}% de la clase por debajo del 50% en «${c.codigo}»`
+          texto: `${pct}% de la clase por debajo del 50% en ${ref}`
         });
       } else if (pct >= UMB.atencion) {
         salida.push({
           nivel: 'atencion', tipo: 'criterio', criterioId: c.id,
           codigo: c.codigo, pct,
-          texto: `${pct}% de la clase por debajo del 50% en «${c.codigo}»`
+          texto: `${pct}% de la clase por debajo del 50% en ${ref}`
         });
       }
     }

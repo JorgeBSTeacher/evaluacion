@@ -88,8 +88,12 @@ const InformeView = (function () {
     }
     return tabla.map(f => {
       const mediaPct = f.media == null ? '—' : Math.round(f.media * 100) + '%';
-      const badge = v => v == null ? '—'
-        : v ? '<span class="badge ok">Sí</span>' : '<span class="badge ko">No</span>';
+      // Semáforo: verde ≥50%, amarillo 40–49%, rojo <40%.
+      const colorLogro = l => l == null ? '' : l >= 0.5 ? 'ok' : l >= 0.4 ? 'info' : 'ko';
+      const colorRel = (logro, media) => {
+        if (logro == null || media == null) return '';
+        return logro >= media ? 'ok' : 'ko';
+      };
       return `
         <div style="margin-bottom:22px">
           <h3 style="margin:0 0 8px;font-size:15px">
@@ -101,13 +105,17 @@ const InformeView = (function () {
           <table class="tabla">
             <thead><tr><th>Alumno</th><th>Logro</th><th>Absoluto (≥50%)</th><th>Relativo (≥ media)</th></tr></thead>
             <tbody>
-              ${f.filas.map(fl => `
+              ${f.filas.map(fl => {
+                const pctLogro = fl.logro == null ? null : Math.round(fl.logro * 100);
+                const dif = (fl.logro == null || f.media == null) ? null
+                  : Math.round((fl.logro - f.media) * 100);
+                return `
                 <tr>
                   <td>${Utils.esc(fl.alumno.apellidos)}, ${Utils.esc(fl.alumno.nombre)}</td>
-                  <td>${fl.logro == null ? '—' : Math.round(fl.logro * 100) + '%'}</td>
-                  <td>${badge(fl.absoluto)}</td>
-                  <td>${badge(fl.relativo)}</td>
-                </tr>`).join('')}
+                  <td><span class="badge ${colorLogro(fl.logro)}">${pctLogro == null ? '—' : pctLogro + '%'}</span></td>
+                  <td>${dif == null ? '—' : `<span class="badge ${colorRel(fl.logro, f.media)}">${dif >= 0 ? '+' : ''}${dif}% sobre la media</span>`}</td>
+                </tr>`;
+              }).join('')}
             </tbody>
           </table>
         </div>`;
@@ -115,31 +123,42 @@ const InformeView = (function () {
   }
 
   // ----------------------------------------------------------- distribución
-  // Histograma CSS con los datos de Calc.distribucionNotas.
+  // Una barra por nota (sin agrupar), con línea punteada en el 5 (corte del
+  // aprobado). Eje X = nota (0–10), altura proporcional a la nota.
   function htmlDistribucion(claseId, insts) {
     const dist = Calc.distribucionNotas(claseId, insts);
     if (!dist.notas.length) {
       return '<div class="aviso">No hay notas para analizar en este alcance.</div>';
     }
-    const maxCant = Math.max.apply(null, dist.buckets.map(b => b.cantidad));
     const media = Math.round(dist.media * 10) / 10;
+    const notas = dist.notas.slice().sort((a, b) => a - b);
+    const ALTO = 180; // px máximos de barra
+
     return `
       <p style="margin-bottom:14px"><strong>Media de la clase:</strong> ${media} / 10</p>
-      <div style="display:flex;align-items:flex-end;gap:4px;height:200px;
-                  border-bottom:2px solid #ccc;padding-bottom:4px">
-        ${dist.buckets.map(b => {
-          const h = maxCant > 0 ? Math.round((b.cantidad / maxCant) * 180) : 0;
+      <div style="position:relative;height:${ALTO + 28}px;
+                  border-bottom:2px solid #ccc;margin-bottom:4px">
+        ${notas.map(n => {
+          const h = Math.max(4, Math.round((n / 10) * ALTO));
+          const x = (n / 10 * 100).toFixed(2);
+          const color = n >= 5 ? 'var(--acento, #4a90d9)' : '#dc3545';
           return `
-            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
-              ${b.cantidad > 0 ? `<span style="font-size:11px;color:var(--tinta-suave)">${b.cantidad}</span>` : ''}
-              <div style="width:100%;height:${h}px;background:var(--acento, #4a90d9);
-                          border-radius:3px 3px 0 0;min-height:${b.cantidad > 0 ? '4px' : '0'}"></div>
-              <span style="font-size:10px;color:var(--tinta-suave)">${b.rango}</span>
-            </div>`;
+            <div style="position:absolute;bottom:0;left:${x}%;
+                        transform:translateX(-50%);
+                        width:10px;height:${h}px;
+                        background:${color};border-radius:3px 3px 0 0"
+                 title="${Math.round(n * 10) / 10}"></div>`;
         }).join('')}
+        <div style="position:absolute;top:0;bottom:0;left:50%;
+                    border-left:2px dashed #888"></div>
+        <span style="position:absolute;bottom:-20px;left:50%;transform:translateX(-50%);
+                     font-size:11px;color:#888">5 (aprobado)</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--tinta-suave)">
+        <span>0</span><span>2</span><span>4</span><span>6</span><span>8</span><span>10</span>
       </div>
       <p style="margin-top:14px;font-size:13px;color:var(--tinta-suave)">
-        Notas: ${dist.notas.map(n => Math.round(n * 10) / 10).join(', ')}
+        Cada barra es un alumno · ${notas.filter(n => n >= 5).length} de ${notas.length} aprueban (${Math.round(notas.filter(n => n >= 5).length / notas.length * 100)}%)
       </p>`;
   }
 
