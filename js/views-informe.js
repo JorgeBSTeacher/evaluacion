@@ -168,11 +168,17 @@ const InformeView = (function () {
       ? Calc.criteriosDeNivel(claseSel, nivelSel)
       : Calc.criteriosDeClase(claseSel);
 
+    // En modo «Todos los niveles» el análisis de criterios no es significativo
+    // (cada nivel tiene su propio currículo); se muestra un aviso.
+    const modoTodas = nivelSel === 'TODAS';
+    const avisoTodas = '<div class="aviso">Elige un nivel concreto (o Base) en el selector superior para ver el análisis de criterios y hallazgos.</div>';
+
     el.innerHTML = `
       ${htmlAlcance(claseSel)}
       ${htmlSubVista()}
       <div id="informe-cuerpo">
-        ${subVista === 'hallazgos' ? htmlHallazgos(claseSel, insts, criterios)
+        ${modoTodas && subVista !== 'distribucion' ? avisoTodas
+          : subVista === 'hallazgos' ? htmlHallazgos(claseSel, insts, criterios)
           : subVista === 'criterios' ? htmlCriterios(claseSel, insts, criterios)
           : htmlDistribucion(claseSel, insts)}
       </div>`;
