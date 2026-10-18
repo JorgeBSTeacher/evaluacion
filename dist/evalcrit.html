@@ -319,16 +319,23 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--acento-suav
   /* Reducir tablas muy anchas (criterios, etc.) */
   #informe-impresion .tabla,
   #informe-impresion .tabla-cuadricula {
-    width: 100%;
-    table-layout: fixed;
+    width: auto;
+    min-width: 100%;
+    table-layout: auto;
     word-break: break-word;
     hyphens: auto;
+    font-size: 9px;
   }
   #informe-impresion .tabla th,
   #informe-impresion .tabla td {
-    padding: 3px 4px;
-    font-size: 10px;
-    line-height: 1.25;
+    padding: 2px 3px;
+    font-size: 9px;
+    line-height: 1.2;
+    white-space: normal;
+  }
+  #informe-impresion .scroll-x {
+    overflow-x: visible !important;
+    overflow-y: visible !important;
   }
   .informe-seccion .scroll-x { overflow: visible !important; }
 }
