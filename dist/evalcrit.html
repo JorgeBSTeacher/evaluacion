@@ -336,6 +336,10 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--acento-suav
     overflow: visible !important;
   }
   .informe-seccion .scroll-x { overflow: visible !important; }
+  /* Un poco de aire entre tablas: el título siguiente no pega con la anterior
+     (el margin-top no sobrevive al salto de página, se usa padding). */
+  .informe-seccion + .informe-seccion { padding-top: 12px; }
+  #informe-impresion .informe-seccion h3 { margin-top: 14px !important; }
 }
 .aci-ast { font-size: 11px; vertical-align: text-top; margin-left: 1px; }
 
