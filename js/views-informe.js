@@ -9,7 +9,7 @@ const InformeView = (function () {
   let claseSel = null;
   let nivelSel = '';
   let alcance = { periodo: '', unidad: '', instrumentoId: '' };
-  let subVista = 'hallazgos'; // 'hallazgos' | 'criterios' | 'distribucion'
+  let subVista = 'hallazgos'; // 'hallazgos' | 'criterios' | 'distribucion' | 'alumnos'
   let contenedor = null;
 
   // El selector de la Cuadrícula envía '__todas__' para «Todos los niveles»
@@ -55,13 +55,25 @@ const InformeView = (function () {
     const vistas = [
       { id: 'hallazgos', nombre: 'Hallazgos' },
       { id: 'criterios', nombre: 'Criterios' },
-      { id: 'distribucion', nombre: 'Distribución' }
+      { id: 'distribucion', nombre: 'Distribución' },
+      { id: 'alumnos', nombre: 'Alumnos' }
     ];
     return `
       <div class="chips no-print" style="margin-bottom:14px">
         ${vistas.map(v =>
           `<label class="chip ${subVista === v.id ? 'on' : ''}" data-subvista="${v.id}">${v.nombre}</label>`).join('')}
+        <button class="btn" id="btn-informe-pdf" title="Pasar a PDF todas las subvistas del informe"
+                style="margin-left:auto">Imprimir / PDF</button>
       </div>`;
+  }
+
+  // Instrumentos del alcance activo (trimestre → UD → instrumento).
+  function instsAlcance() {
+    const f = {};
+    if (alcance.periodo) f.periodo = alcance.periodo;
+    if (alcance.unidad) f.unidad = alcance.unidad;
+    if (alcance.instrumentoId) f.instrumentoId = alcance.instrumentoId;
+    return Calc.instrumentosAlcance(claseSel, f);
   }
 
   // ------------------------------------------------------------ hallazgos
@@ -327,6 +339,104 @@ const InformeView = (function () {
       </p>`;
   }
 
+  // --------------------------------------------------------------- alumnos
+  // Resumen accionable («¿con quién hablo mañana?»): cada alumno con SU
+  // nivel, SU nota en el alcance y los criterios que van por debajo del 50%
+  // (el mismo umbral que los hallazgos). Ordenado por riesgo: más criterios
+  // primero y, a igualdad, nota más baja. `nivelFiltro` actúa como en
+  // Distribución: undefined = todos los niveles.
+  const UMB_RIESGO = 0.5;
+
+  function htmlAlumnos(claseId, insts, nivelFiltro) {
+    let alumnos = Calc.alumnosDeClase(claseId);
+    if (nivelFiltro !== undefined && nivelFiltro !== null) {
+      const nv = Calc.nivelNorm(nivelFiltro);
+      alumnos = alumnos.filter(a => Calc.nivelDeAlumno(claseId, a.id) === nv);
+    }
+    if (!alumnos.length) return '<div class="aviso">No hay alumnado en esta clase.</div>';
+
+    const filas = alumnos.map(a => {
+      const criterios = Calc.criteriosDeAlumno(claseId, a.id);
+      const bajo = criterios
+        .map(c => ({ criterio: c, logro: Calc.logroCriterioEnInsts(c.id, claseId, a.id, insts) }))
+        .filter(x => x.logro != null && x.logro < UMB_RIESGO);
+      return {
+        alumno: a,
+        nivel: Calc.etiquetaNivel(claseId, Calc.nivelDeAlumno(claseId, a.id)),
+        nota: Calc.notaEnInsts(claseId, a.id, insts),
+        bajo
+      };
+    });
+
+    const enRiesgo = filas.filter(f => f.bajo.length)
+      .sort((x, y) => y.bajo.length - x.bajo.length
+        || (x.nota == null ? 99 : x.nota) - (y.nota == null ? 99 : y.nota));
+    const tranquilos = filas.length - enRiesgo.length;
+
+    const resumen = `
+      <p style="margin-bottom:12px"><strong>${enRiesgo.length} de ${filas.length}</strong>
+        alumnos con criterios por debajo del 50% en este alcance.</p>`;
+
+    if (!enRiesgo.length) {
+      return resumen + '<div class="aviso">Ningún alumno tiene criterios por debajo del 50% en este alcance.</div>';
+    }
+
+    return resumen + `
+      <div class="scroll-x">
+        <table class="tabla">
+          <thead><tr>
+            <th>Alumno</th><th>Nivel</th><th class="num">Nota</th>
+            <th class="num">Criterios bajo 50%</th><th>Criterios con dificultad</th>
+          </tr></thead>
+          <tbody>
+            ${enRiesgo.map(f => `
+              <tr>
+                <td>${Utils.esc(f.alumno.apellidos)}, ${Utils.esc(f.alumno.nombre)}</td>
+                <td><span class="badge info" style="font-size:11px;white-space:nowrap">${Utils.esc(f.nivel || 'Base')}</span></td>
+                <td class="num">${Calc.badgeHtml(f.nota)}</td>
+                <td class="num"><span class="badge ${f.bajo.length >= 2 ? 'ko' : 'warn'}">${f.bajo.length}</span></td>
+                <td>${f.bajo.map(x =>
+                  `<span class="badge ${x.logro < 0.3 ? 'ko' : 'warn'}" style="font-size:11px;margin-right:4px"
+                         title="${Utils.esc(x.criterio.descripcion)}">${Utils.esc(x.criterio.codigo)} ${Math.round(x.logro * 100)}%</span>`).join('')}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      <p style="color:var(--tinta-suave);font-size:13px;margin-top:10px">
+        ${tranquilos} alumno(s) sin criterios por debajo del 50%. Cada alumno se valora con los criterios de SU nivel.
+      </p>`;
+  }
+
+  // Informe de análisis para PDF: todas las subvistas compuestas —hallazgos,
+  // criterios, distribución y alumnos— con cabecera de clase y alcance. Devuelve
+  // un string puro (comprobable sin navegador); el botón «Imprimir / PDF» se lo
+  // pasa al contenedor de impresión de la Cuadrícula (opciones.imprimir).
+  function informeHtml() {
+    if (!claseSel) return '';
+    const insts = instsAlcance();
+    const gru = Calc.byId(Storage.db.grupos, (Calc.clase(claseSel) || {}).grupoId);
+    const asig = Calc.asignaturaDeClase(claseSel);
+    const alcanceTxt = [
+      alcance.periodo ? 'Trimestre ' + alcance.periodo : 'Todo el curso',
+      alcance.unidad,
+      alcance.instrumentoId ? (Calc.instrumento(alcance.instrumentoId) || {}).titulo : ''
+    ].filter(Boolean).map(t => Utils.esc(t));
+    const nivelTxt = esTodas(nivelSel) ? 'Todos los niveles' : (Calc.etiquetaNivel(claseSel, nivelSel) || 'Base');
+    const bloque = (titulo, cuerpo) => `
+      <section class="informe-seccion">
+        <h2 class="informe-titulo">${titulo}</h2>
+        ${cuerpo}
+      </section>`;
+    return `<div class="informe-cab">
+        <strong>Informe de análisis · ${Utils.esc(asig ? asig.nombre : '¿?')}</strong>
+        <span>${Utils.esc(gru ? gru.nombre : '¿?')} · nivel: ${Utils.esc(nivelTxt)} · ${alcanceTxt.join(' · ')} · impreso el ${Utils.hoy().split('-').reverse().join('/')}</span>
+      </div>
+      ${bloque('Hallazgos', htmlHallazgos(claseSel, insts))}
+      ${bloque('Criterios', htmlCriterios(claseSel, insts))}
+      ${bloque('Distribución', htmlDistribucion(claseSel, insts, esTodas(nivelSel) ? undefined : nivelSel))}
+      ${bloque('Alumnos en riesgo', htmlAlumnos(claseSel, insts, esTodas(nivelSel) ? undefined : nivelSel))}`;
+  }
+
   // ---------------------------------------------------------------- render
   function render(el, opciones) {
     // Al cambiar de clase se restablece el alcance.
@@ -342,23 +452,20 @@ const InformeView = (function () {
       return;
     }
 
-    const f = {};
-    if (alcance.periodo) f.periodo = alcance.periodo;
-    if (alcance.unidad) f.unidad = alcance.unidad;
-    if (alcance.instrumentoId) f.instrumentoId = alcance.instrumentoId;
-    const insts = Calc.instrumentosAlcance(claseSel, f);
+    const insts = instsAlcance();
     const todas = esTodas(nivelSel);
 
     // Criterios decide sus tablas según el nivel; Distribución filtra el
     // alumnado por el mismo nivel; Hallazgos analiza todos los niveles y los
-    // etiqueta.
+    // etiqueta; Alumnos ordena por riesgo.
     el.innerHTML = `
       ${htmlAlcance(claseSel)}
       ${htmlSubVista()}
       <div id="informe-cuerpo">
         ${subVista === 'hallazgos' ? htmlHallazgos(claseSel, insts)
           : subVista === 'criterios' ? htmlCriterios(claseSel, insts)
-          : htmlDistribucion(claseSel, insts, todas ? undefined : nivelSel)}
+          : subVista === 'distribucion' ? htmlDistribucion(claseSel, insts, todas ? undefined : nivelSel)
+          : htmlAlumnos(claseSel, insts, todas ? undefined : nivelSel)}
       </div>`;
 
     // --- eventos ---
@@ -389,7 +496,13 @@ const InformeView = (function () {
     el.querySelectorAll('[data-filtrosev]').forEach(ch => {
       ch.onclick = () => { filtroSev = ch.dataset.filtrosev; render(el, opciones); };
     });
+    // La Cuadrícula inyecta la función de impresión (opciones.imprimir); sin
+    // ella (arnés de pruebas) el botón no hace nada.
+    const btnPdf = el.querySelector('#btn-informe-pdf');
+    if (btnPdf && opciones.imprimir) {
+      btnPdf.onclick = () => opciones.imprimir(informeHtml());
+    }
   }
 
-  return { render };
+  return { render, informeHtml };
 })();

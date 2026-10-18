@@ -507,6 +507,8 @@ async function main() {
     check('en Criterios no aparece «Añadir calificación»', !h3.includes('id="add-inst"'));
     check('en Criterios tampoco hay botón de «Corregir»', !h3.includes('id="btn-corregir"'));
     check('en Criterios tampoco el desplegable de unidades', !h3.includes('id="sel-ud"'));
+    check('la pestaña Criterios muestra la columna Evaluación (nota ponderada)',
+      h3.includes('>Evaluación<'));
 
     const el4 = makeEl();
     app2.CuadriculaView.render(el4, { tab: 'competencias' });
@@ -527,6 +529,7 @@ async function main() {
       secBase.includes('>C1<') && !secBase.includes('>A1<') && secAci.includes('>A1<') && !secAci.includes('>C1<'));
     check('el informe lleva cabecera con asignatura, grupo y periodo',
       inf.includes('Cuadrícula de alumnado · Criterios') && inf.includes('Matemáticas 6º') && inf.includes('6ºA') && inf.includes('T1'));
+    check('el informe de impresión incluye la columna Evaluación', inf.includes('>Evaluación<'));
     check('el informe también sirve para competencias',
       app2.CuadriculaView.informeHtml('c1', 'T1', { criterios: false, competencias: true })
         .includes('Competencias específicas y clave'));
@@ -1379,7 +1382,8 @@ async function main() {
     const chips = [
       { dataset: { subvista: 'hallazgos' } },
       { dataset: { subvista: 'criterios' } },
-      { dataset: { subvista: 'distribucion' } }
+      { dataset: { subvista: 'distribucion' } },
+      { dataset: { subvista: 'alumnos' } }
     ];
     const el = makeEl({ querySelectorAll: sel => (sel === '[data-subvista]' ? chips : []) });
     app.InformeView.render(el, { claseSel: 'c1', nivelSel: '__todas__' });
@@ -1390,6 +1394,28 @@ async function main() {
       h.includes('Criterios con dificultades') && h.includes('Preguntas con fallos'));
     check('cada hallazgo lleva barra de porcentaje y chip de filtro',
       h.includes('min-width:70px') && h.includes('data-filtrosev'));
+
+    // Subvista Alumnos: quién va por debajo del 50%, ordenado por riesgo.
+    chips[3].onclick();
+    const ha = el.innerHTML;
+    check('la vista Alumnos resume cuántos alumnos hay en riesgo',
+      ha.includes('<strong>3 de 4</strong>'), ha.slice(0, 160));
+    const iDiego = ha.indexOf('Muybajo, Diego');
+    const iBenito = ha.indexOf('Bajo, Benito');
+    const iCarla = ha.indexOf('Regular, Carla');
+    check('los alumnos en riesgo van ordenados (más criterios y nota más baja primero)',
+      iDiego !== -1 && iBenito !== -1 && iCarla !== -1 && iDiego < iBenito && iBenito < iCarla,
+      'indices=' + [iDiego, iBenito, iCarla].join(','));
+    check('el alumno sin problemas no aparece en la lista de riesgo', !ha.includes('Alta, Ana'));
+
+    // Informe de análisis para PDF: todas las subvistas compuestas.
+    const infAn = app.InformeView.informeHtml();
+    check('el informe de análisis lleva cabecera de clase y alcance',
+      infAn.includes('Informe de análisis') && infAn.includes('Matemáticas 6º') && infAn.includes('6ºA'),
+      infAn.slice(0, 160));
+    check('el informe de análisis imprime las cuatro subvistas',
+      infAn.includes('>Hallazgos</h2>') && infAn.includes('>Criterios</h2>')
+      && infAn.includes('>Distribución</h2>') && infAn.includes('>Alumnos en riesgo</h2>'));
   }
 
   // Criterios y Distribución con niveles: una tabla por nivel y filtro de alumnado.

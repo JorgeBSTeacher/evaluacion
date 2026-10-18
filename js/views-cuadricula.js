@@ -75,7 +75,7 @@ const CuadriculaView = (() => {
       <table class="tabla tabla-cuadricula">
         <thead><tr><th>Alumno</th>${criterios.map(c =>
           `<th title="${Utils.esc(c.descripcion)}">${Utils.esc(c.codigo)}<br><small>${Utils.fmt(c.peso)}%</small></th>`
-        ).join('')}</tr></thead>
+        ).join('')}<th class="num">Evaluación</th></tr></thead>
         <tbody>
           ${alumnos.map(a => `<tr>
             <td>${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}</td>
@@ -84,10 +84,11 @@ const CuadriculaView = (() => {
               const n = (l == null ? null : l * 10);
               return `<td class="num">${n == null ? '<span class="badge na">—</span>' : '<span class="badge ' + Calc.clasif(n) + '">' + Utils.fmt(n) + '</span>'}</td>`;
             }).join('')}
+            <td class="num">${Calc.badgeHtml(Calc.notaEvaluacion(claseSel, a.id, periodo))}</td>
           </tr>`).join('')}
         </tbody>
       </table>
-      <p class="no-print" style="color:var(--tinta-suave);font-size:13px">% de logro acumulado por criterio del nivel${periodo === 'Final' ? ' (todo el curso)' : ' en ' + periodo}. «—» = sin evidencias todavía.</p>`;
+      <p class="no-print" style="color:var(--tinta-suave);font-size:13px">% de logro acumulado por criterio del nivel${periodo === 'Final' ? ' (todo el curso)' : ' en ' + periodo}. «—» = sin evidencias todavía. La columna «Evaluación» es la nota final (0–10) con las ponderaciones de los criterios.</p>`;
   }
 
   function tablaCompetencias(alumnos, modoTodas) {
@@ -417,7 +418,7 @@ const CuadriculaView = (() => {
     // La pestaña Informe renderiza su propio contenido (D-59).
     if (tab === 'informe') {
       const infEl = el.querySelector('#informe-contenido');
-      if (infEl) InformeView.render(infEl, { claseSel, nivelSel, periodo });
+      if (infEl) InformeView.render(infEl, { claseSel, nivelSel, periodo, imprimir: imprimirInforme });
     }
 
     el.querySelector('#sel-clase').onchange = e => { claseSel = e.target.value; nivelSel = ''; render(el); };
