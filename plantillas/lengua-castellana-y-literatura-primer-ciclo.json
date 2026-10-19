@@ -154,7 +154,16 @@
     {
       "codigo": "LCL.PC.CE10",
       "descripcion": "Poner las propias prácticas comunicativas al servicio de la convivencia democrática utilizando un lenguaje no discriminatorio y detectando y rechazando los abusos de poder a través de la palabra, para favorecer un uso no solo eficaz sino también ético del lenguaje.",
-      "perfilSalida": []
+      "perfilSalida": [
+        "CCL1",
+        "CCL5",
+        "CP3",
+        "CD3",
+        "CPSAA3",
+        "CC1",
+        "CC2",
+        "CC3"
+      ]
     }
   ],
   "criterios": [
@@ -167,7 +176,13 @@
     {
       "codigo": "LCL.PC.1.2",
       "ceCodigo": "LCL.PC.CE1",
-      "descripcion": "Reconocer, de manera acompañada y en contextos próximos, algunos prejuicios y estereotipos lingüísticos y culturales muy frecuentes. Comprender el sentido de textos orales y multimodales sencillos, reconociendo las ideas principales y los mensajes explícitos y los mensajes implícitos más sencillos, e iniciando, de manera acompañada, la valoración del contenido y de los elementos no verbales más elementales.",
+      "descripcion": "Reconocer, de manera acompañada y en contextos próximos, algunos prejuicios y estereotipos lingüísticos y culturales muy frecuentes.",
+      "peso": null
+    },
+    {
+      "codigo": "LCL.PC.2.1",
+      "ceCodigo": "LCL.PC.CE2",
+      "descripcion": "Comprender el sentido de textos orales y multimodales sencillos, reconociendo las ideas principales y los mensajes explícitos y los mensajes implícitos más sencillos, e iniciando, de manera acompañada, la valoración del contenido y de los elementos no verbales más elementales.",
       "peso": null
     },
     {
@@ -191,7 +206,13 @@
     {
       "codigo": "LCL.PC.4.2",
       "ceCodigo": "LCL.PC.CE4",
-      "descripcion": "Analizar, de manera acompañada, el contenido y aspectos formales y no formales elementales de textos escritos y multimodales sencillos valorando su contenido y estructura. Producir textos escritos y multimodales sencillos y coherentes en distintos soportes, desde las diferentes etapas del proceso evolutivo de la escritura, ajustándose a modelos dados y movilizando, de manera acompañada, estrategias elementales, individuales o grupales, de planificación, textualización y revisión.",
+      "descripcion": "Analizar, de manera acompañada, el contenido y aspectos formales y no formales elementales de textos escritos y multimodales sencillos valorando su contenido y estructura.",
+      "peso": null
+    },
+    {
+      "codigo": "LCL.PC.5.1",
+      "ceCodigo": "LCL.PC.CE5",
+      "descripcion": "Producir textos escritos y multimodales sencillos y coherentes en distintos soportes, desde las diferentes etapas del proceso evolutivo de la escritura, ajustándose a modelos dados y movilizando, de manera acompañada, estrategias elementales, individuales o grupales, de planificación, textualización y revisión.",
       "peso": null
     },
     {

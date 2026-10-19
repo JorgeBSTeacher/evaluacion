@@ -81,7 +81,13 @@
     {
       "codigo": "EFIS.TC.CE5",
       "descripcion": "Valorar diferentes medios naturales y urbanos como contextos de práctica motriz, interactuando con ellos y comprendiendo la importancia de su conservación desde un enfoque sostenible, adoptando medidas de responsabilidad individual durante la práctica de juegos y actividades físico-deportivas, para realizar una práctica eficiente y respetuosa con el entorno y participar en su cuidado y mejora.",
-      "perfilSalida": []
+      "perfilSalida": [
+        "STEM5",
+        "CC2",
+        "CC4",
+        "CE1",
+        "CE3"
+      ]
     }
   ],
   "criterios": [
@@ -166,7 +172,13 @@
     {
       "codigo": "EFIS.TC.4.3",
       "ceCodigo": "EFIS.TC.CE4",
-      "descripcion": "Reproducir y crear composiciones con o sin soporte musical, y comunicar diferentes sensaciones, emociones e ideas, de forma estética y creativa, desde el uso de los recursos rítmicos y expresivos de la motricidad. Adaptar las acciones motrices a la incertidumbre propia del medio natural y urbano en contextos terrestres o acuáticos de forma eficiente y segura, valorando sus posibilidades para la práctica de actividad física y actuando desde una perspectiva ecosostenible y comunitaria del entorno.",
+      "descripcion": "Reproducir y crear composiciones con o sin soporte musical, y comunicar diferentes sensaciones, emociones e ideas, de forma estética y creativa, desde el uso de los recursos rítmicos y expresivos de la motricidad.",
+      "peso": null
+    },
+    {
+      "codigo": "EFIS.TC.5.1",
+      "ceCodigo": "EFIS.TC.CE5",
+      "descripcion": "Adaptar las acciones motrices a la incertidumbre propia del medio natural y urbano en contextos terrestres o acuáticos de forma eficiente y segura, valorando sus posibilidades para la práctica de actividad física y actuando desde una perspectiva ecosostenible y comunitaria del entorno.",
       "peso": null
     }
   ]

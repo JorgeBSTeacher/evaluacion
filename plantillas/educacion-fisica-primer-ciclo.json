@@ -81,7 +81,13 @@
     {
       "codigo": "EFIS.PC.CE5",
       "descripcion": "Valorar diferentes medios naturales y urbanos como contextos de práctica motriz, interactuando con ellos y comprendiendo la importancia de su conservación desde un enfoque sostenible, adoptando medidas de responsabilidad individual durante la práctica de juegos y actividades físico-deportivas, para realizar una práctica eficiente y respetuosa con el entorno y participar en su cuidado y mejora.",
-      "perfilSalida": []
+      "perfilSalida": [
+        "STEM5",
+        "CC2",
+        "CC4",
+        "CE1",
+        "CE3"
+      ]
     }
   ],
   "criterios": [
@@ -166,7 +172,13 @@
     {
       "codigo": "EFIS.PC.4.3",
       "ceCodigo": "EFIS.PC.CE4",
-      "descripcion": "Adaptar los distintos usos comunicativos del cuerpo y sus manifestaciones a diferentes ritmos y contextos expresivos. Participar en actividades lúdico- recreativas de forma segura en los entornos natural y urbano y en contextos terrestres o acuáticos, conociendo otros usos desde la motricidad y adoptando actitudes de respeto, cuidado y conservación de dichos entornos.",
+      "descripcion": "Adaptar los distintos usos comunicativos del cuerpo y sus manifestaciones a diferentes ritmos y contextos expresivos.",
+      "peso": null
+    },
+    {
+      "codigo": "EFIS.PC.5.1",
+      "ceCodigo": "EFIS.PC.CE5",
+      "descripcion": "Participar en actividades lúdico- recreativas de forma segura en los entornos natural y urbano y en contextos terrestres o acuáticos, conociendo otros usos desde la motricidad y adoptando actitudes de respeto, cuidado y conservación de dichos entornos.",
       "peso": null
     }
   ]

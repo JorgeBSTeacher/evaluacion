@@ -49,7 +49,10 @@ RUIDO = re.compile(
 RE_CE = re.compile(r"^\s*(\d{1,2})\.\s+(\S.*)$")
 RE_CE_HDR = re.compile(r"^\s*Competencia espec[ií]fica\s+(\d{1,2})\b", re.IGNORECASE)
 RE_CRIT = re.compile(r"^\s*(\d{1,2})\.(\d{1,2})\.\s+(\S.*)$")
-RE_PERFIL = re.compile(r"descriptores del Perfil de salida:\s*(.+?)\.\s*$", re.IGNORECASE)
+# El punto final es opcional: en el BOC hay 6 lineas de perfil que no lo llevan
+# (Lengua CE10 en los 3 ciclos, Educacion Fisica CE5 en los 3) y sin esto se
+# quedaban con perfilSalida vacio.
+RE_PERFIL = re.compile(r"descriptores del Perfil de salida:\s*(.+?)\.?\s*$", re.IGNORECASE)
 RE_BLOQUE = re.compile(r"^\s*([A-Z])\.\s+(\S.*?)\.\s*$")
 RE_SUBITEM = re.compile(r"^\s*(\d{1,2})\.+\.?\s*(\S.*?)\.?\s*$")
 
@@ -111,17 +114,34 @@ def parse_ce(lineas):
 
 
 def parse_criterios(lineas):
+    """Criterios de evaluacion numerados N.M. Ademas, en el BOC hay 8 CE cuyo
+    criterio va SIN numerar (Lengua CE2 en los 3 ciclos y CE5 en 1.er/2.o,
+    Educacion Fisica CE5 en los 3): es un texto suelto justo bajo su cabecera
+    "Competencia especifica N.". Se recupera como N.1; sin esto el criterio se
+    perdia y la CE quedaba sin ninguno."""
     crits, actual = [], None
+    ce_hdr = None       # ultima cabecera "Competencia especifica N."
+    numerado = False    # ya salio un criterio numerado tras esa cabecera
     for ln in lineas:
         m = RE_CRIT.match(ln)
         if m:
             actual = {"ce": int(m.group(1)), "ord": int(m.group(2)), "desc": m.group(3).strip()}
             crits.append(actual)
+            numerado = True
             continue
-        if RE_CE_HDR.match(ln):
+        mh = RE_CE_HDR.match(ln)
+        if mh:
+            ce_hdr = int(mh.group(1))
+            numerado = False
+            actual = None
             continue
-        if actual and ln.strip():
+        if not ln.strip():
+            continue
+        if actual is not None:
             actual["desc"] += " " + ln.strip()
+        elif ce_hdr is not None and not numerado:
+            actual = {"ce": ce_hdr, "ord": 1, "desc": ln.strip()}
+            crits.append(actual)
     return crits
 
 

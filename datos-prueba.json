@@ -177,7 +177,7 @@
       ]
     },
     {
-      "id": "u30",
+      "id": "u31",
       "nombre": "Matemáticas 6º",
       "etapa": "Primaria",
       "curso": "6º",
@@ -238,7 +238,7 @@
       ]
     },
     {
-      "id": "u56",
+      "id": "u57",
       "nombre": "Matemáticas 4º",
       "etapa": "Primaria",
       "curso": "4º",
@@ -298,7 +298,7 @@
       ]
     },
     {
-      "id": "u82",
+      "id": "u83",
       "nombre": "Lengua Extranjera 4º",
       "etapa": "Primaria",
       "curso": "4º",
@@ -319,7 +319,7 @@
       ]
     },
     {
-      "id": "u104",
+      "id": "u105",
       "nombre": "Lengua Castellana y Literatura 3º",
       "etapa": "Primaria",
       "curso": "3º",
@@ -340,7 +340,7 @@
       ]
     },
     {
-      "id": "u132",
+      "id": "u135",
       "nombre": "Matemáticas 3º",
       "etapa": "Primaria",
       "curso": "3º",
@@ -400,7 +400,7 @@
       ]
     },
     {
-      "id": "u158",
+      "id": "u161",
       "nombre": "Matemáticas 2º",
       "etapa": "Primaria",
       "curso": "2º",
@@ -455,7 +455,7 @@
       ]
     },
     {
-      "id": "u184",
+      "id": "u187",
       "nombre": "Lengua Extranjera 2º",
       "etapa": "Primaria",
       "curso": "2º",
@@ -485,7 +485,7 @@
         {
           "codigo": "3",
           "etiqueta": "3º",
-          "asignaturaId": "u104"
+          "asignaturaId": "u105"
         }
       ],
       "adaptaciones": {
@@ -494,18 +494,18 @@
     },
     {
       "id": "cl-m6a",
-      "asignaturaId": "u30",
+      "asignaturaId": "u31",
       "grupoId": "g-6a",
       "nivelesAci": [
         {
           "codigo": "3",
           "etiqueta": "3º",
-          "asignaturaId": "u132"
+          "asignaturaId": "u135"
         },
         {
           "codigo": "4",
           "etiqueta": "4º",
-          "asignaturaId": "u56"
+          "asignaturaId": "u57"
         }
       ],
       "adaptaciones": {
@@ -521,7 +521,7 @@
         {
           "codigo": "3",
           "etiqueta": "3º",
-          "asignaturaId": "u104"
+          "asignaturaId": "u105"
         }
       ],
       "adaptaciones": {
@@ -530,13 +530,13 @@
     },
     {
       "id": "cl-m6b",
-      "asignaturaId": "u30",
+      "asignaturaId": "u31",
       "grupoId": "g-6b",
       "nivelesAci": [
         {
           "codigo": "3",
           "etiqueta": "3º",
-          "asignaturaId": "u132"
+          "asignaturaId": "u135"
         }
       ],
       "adaptaciones": {
@@ -545,13 +545,13 @@
     },
     {
       "id": "cl-m4a",
-      "asignaturaId": "u56",
+      "asignaturaId": "u57",
       "grupoId": "g-4a",
       "nivelesAci": [
         {
           "codigo": "2",
           "etiqueta": "2º",
-          "asignaturaId": "u158"
+          "asignaturaId": "u161"
         }
       ],
       "adaptaciones": {
@@ -560,13 +560,13 @@
     },
     {
       "id": "cl-e4a",
-      "asignaturaId": "u82",
+      "asignaturaId": "u83",
       "grupoId": "g-4a",
       "nivelesAci": [
         {
           "codigo": "2",
           "etiqueta": "2º",
-          "asignaturaId": "u184"
+          "asignaturaId": "u187"
         }
       ],
       "adaptaciones": {
@@ -761,11 +761,20 @@
       "asignaturaId": "u1",
       "codigo": "LCL.TC.CE10",
       "descripcion": "Poner las propias prácticas comunicativas al servicio de la convivencia democrática utilizando un lenguaje no discriminatorio y detectando y rechazando los abusos de poder a través de la palabra, para favorecer un uso no solo eficaz sino también ético del lenguaje.",
-      "perfilSalida": []
+      "perfilSalida": [
+        "CCL1",
+        "CCL5",
+        "CP3",
+        "CD3",
+        "CPSAA3",
+        "CC1",
+        "CC2",
+        "CC3"
+      ]
     },
     {
-      "id": "u31",
-      "asignaturaId": "u30",
+      "id": "u32",
+      "asignaturaId": "u31",
       "codigo": "MAT.TC.CE1",
       "descripcion": "Interpretar situaciones de la vida cotidiana, proporcionando una representación matemática de las mismas mediante conceptos, herramientas y estrategias, para analizar la información más relevante.",
       "perfilSalida": [
@@ -780,8 +789,8 @@
       ]
     },
     {
-      "id": "u32",
-      "asignaturaId": "u30",
+      "id": "u33",
+      "asignaturaId": "u31",
       "codigo": "MAT.TC.CE2",
       "descripcion": "Resolver situaciones problematizadas, aplicando diferentes técnicas, estrategias y formas de razonamiento, para explorar distintas maneras de proceder, obtener soluciones y asegurar su validez desde un punto de vista formal y en relación con el contexto planteado.",
       "perfilSalida": [
@@ -793,8 +802,8 @@
       ]
     },
     {
-      "id": "u33",
-      "asignaturaId": "u30",
+      "id": "u34",
+      "asignaturaId": "u31",
       "codigo": "MAT.TC.CE3",
       "descripcion": "Explorar, formular y comprobar conjeturas sencillas o plantear problemas de tipo matemático en situaciones basadas en la vida cotidiana, de forma guiada, reconociendo el valor del razonamiento y la argumentación, para contrastar su validez, adquirir e integrar nuevo conocimiento.",
       "perfilSalida": [
@@ -808,8 +817,8 @@
       ]
     },
     {
-      "id": "u34",
-      "asignaturaId": "u30",
+      "id": "u35",
+      "asignaturaId": "u31",
       "codigo": "MAT.TC.CE4",
       "descripcion": "Utilizar el pensamiento computacional, organizando datos, descomponiendo en partes, reconociendo patrones, generalizando e interpretando, modificando y creando algoritmos de forma guiada, para modelizar y automatizar situaciones de la vida cotidiana.",
       "perfilSalida": [
@@ -823,8 +832,8 @@
       ]
     },
     {
-      "id": "u35",
-      "asignaturaId": "u30",
+      "id": "u36",
+      "asignaturaId": "u31",
       "codigo": "MAT.TC.CE5",
       "descripcion": "Reconocer y utilizar conexiones entre las diferentes ideas matemáticas, así como identificar las matemáticas implicadas en otras áreas o en la vida cotidiana, interrelacionando conceptos y procedimientos, para interpretar situaciones y contextos diversos.",
       "perfilSalida": [
@@ -837,8 +846,8 @@
       ]
     },
     {
-      "id": "u36",
-      "asignaturaId": "u30",
+      "id": "u37",
+      "asignaturaId": "u31",
       "codigo": "MAT.TC.CE6",
       "descripcion": "Comunicar y representar, de forma individual y colectiva, conceptos, procedimientos y resultados matemáticos, utilizando el lenguaje oral, escrito, gráfico, multimodal y la terminología apropiados, para dar significado y permanencia a las ideas matemáticas.",
       "perfilSalida": [
@@ -853,8 +862,8 @@
       ]
     },
     {
-      "id": "u37",
-      "asignaturaId": "u30",
+      "id": "u38",
+      "asignaturaId": "u31",
       "codigo": "MAT.TC.CE7",
       "descripcion": "Desarrollar destrezas personales que ayuden a identificar y gestionar emociones al enfrentarse a retos matemáticos, fomentando la confianza en las propias posibilidades, aceptando el error como parte del proceso de aprendizaje y adaptándose a las situaciones de incertidumbre, para mejorar la perseverancia y disfrutar en el aprendizaje de las matemáticas.",
       "perfilSalida": [
@@ -867,8 +876,8 @@
       ]
     },
     {
-      "id": "u38",
-      "asignaturaId": "u30",
+      "id": "u39",
+      "asignaturaId": "u31",
       "codigo": "MAT.TC.CE8",
       "descripcion": "Desarrollar destrezas sociales, reconociendo y respetando las emociones, las experiencias de los demás y el valor de la diversidad y participando activamente en equipos de trabajo heterogéneos con roles asignados, para construir una identidad positiva como estudiante de matemáticas, fomentar el bienestar personal y crear relaciones saludables.",
       "perfilSalida": [
@@ -882,8 +891,8 @@
       ]
     },
     {
-      "id": "u57",
-      "asignaturaId": "u56",
+      "id": "u58",
+      "asignaturaId": "u57",
       "codigo": "MAT.SC.CE1",
       "descripcion": "Interpretar situaciones de la vida cotidiana, proporcionando una representación matemática de las mismas mediante conceptos, herramientas y estrategias, para analizar la información más relevante.",
       "perfilSalida": [
@@ -898,8 +907,8 @@
       ]
     },
     {
-      "id": "u58",
-      "asignaturaId": "u56",
+      "id": "u59",
+      "asignaturaId": "u57",
       "codigo": "MAT.SC.CE2",
       "descripcion": "Resolver situaciones problematizadas, aplicando diferentes técnicas, estrategias y formas de razonamiento, para explorar distintas maneras de proceder, obtener soluciones y asegurar su validez desde un punto de vista formal y en relación con el contexto planteado.",
       "perfilSalida": [
@@ -911,8 +920,8 @@
       ]
     },
     {
-      "id": "u59",
-      "asignaturaId": "u56",
+      "id": "u60",
+      "asignaturaId": "u57",
       "codigo": "MAT.SC.CE3",
       "descripcion": "Explorar, formular y comprobar conjeturas sencillas o plantear problemas de tipo matemático en situaciones basadas en la vida cotidiana, de forma guiada, reconociendo el valor del razonamiento y la argumentación, para contrastar su validez, adquirir e integrar nuevo conocimiento.",
       "perfilSalida": [
@@ -926,8 +935,8 @@
       ]
     },
     {
-      "id": "u60",
-      "asignaturaId": "u56",
+      "id": "u61",
+      "asignaturaId": "u57",
       "codigo": "MAT.SC.CE4",
       "descripcion": "Utilizar el pensamiento computacional, organizando datos, descomponiendo en partes, reconociendo patrones, generalizando e interpretando, modificando y creando algoritmos de forma guiada, para modelizar y automatizar situaciones de la vida cotidiana.",
       "perfilSalida": [
@@ -941,8 +950,8 @@
       ]
     },
     {
-      "id": "u61",
-      "asignaturaId": "u56",
+      "id": "u62",
+      "asignaturaId": "u57",
       "codigo": "MAT.SC.CE5",
       "descripcion": "Reconocer y utilizar conexiones entre las diferentes ideas matemáticas, así como identificar las matemáticas implicadas en otras áreas o en la vida cotidiana, interrelacionando conceptos y procedimientos, para interpretar situaciones y contextos diversos.",
       "perfilSalida": [
@@ -955,8 +964,8 @@
       ]
     },
     {
-      "id": "u62",
-      "asignaturaId": "u56",
+      "id": "u63",
+      "asignaturaId": "u57",
       "codigo": "MAT.SC.CE6",
       "descripcion": "Comunicar y representar, de forma individual y colectiva, conceptos, procedimientos y resultados matemáticos, utilizando el lenguaje oral, escrito, gráfico, multimodal y la terminología apropiados, para dar significado y permanencia a las ideas matemáticas.",
       "perfilSalida": [
@@ -971,8 +980,8 @@
       ]
     },
     {
-      "id": "u63",
-      "asignaturaId": "u56",
+      "id": "u64",
+      "asignaturaId": "u57",
       "codigo": "MAT.SC.CE7",
       "descripcion": "Desarrollar destrezas personales que ayuden a identificar y gestionar emociones al enfrentarse a retos matemáticos, fomentando la confianza en las propias posibilidades, aceptando el error como parte del proceso de aprendizaje y adaptándose a las situaciones de incertidumbre, para mejorar la perseverancia y disfrutar en el aprendizaje de las matemáticas.",
       "perfilSalida": [
@@ -985,8 +994,8 @@
       ]
     },
     {
-      "id": "u64",
-      "asignaturaId": "u56",
+      "id": "u65",
+      "asignaturaId": "u57",
       "codigo": "MAT.SC.CE8",
       "descripcion": "Desarrollar destrezas sociales, reconociendo y respetando las emociones, las experiencias de los demás y el valor de la diversidad y participando activamente en equipos de trabajo heterogéneos con roles asignados, para construir una identidad positiva como estudiante de matemáticas, fomentar el bienestar personal y crear relaciones saludables.",
       "perfilSalida": [
@@ -1000,8 +1009,8 @@
       ]
     },
     {
-      "id": "u83",
-      "asignaturaId": "u82",
+      "id": "u84",
+      "asignaturaId": "u83",
       "codigo": "LEXT.SC.CE1",
       "descripcion": "Comprender el sentido general e información específica y predecible de textos breves y sencillos, expresados de forma clara y en la lengua estándar, haciendo uso de diversas estrategias y recurriendo, cuando sea necesario, al uso de distintos tipos de apoyo, para desarrollar el repertorio lingüístico y para responder a necesidades comunicativas cotidianas.",
       "perfilSalida": [
@@ -1016,8 +1025,8 @@
       ]
     },
     {
-      "id": "u84",
-      "asignaturaId": "u82",
+      "id": "u85",
+      "asignaturaId": "u83",
       "codigo": "LEXT.SC.CE2",
       "descripcion": "Producir textos sencillos de manera comprensible y estructurada, mediante el empleo de estrategias como la planificación o la compensación, para expresar mensajes breves relacionados con necesidades inmediatas y responder a propósitos comunicativos cotidianos.",
       "perfilSalida": [
@@ -1032,8 +1041,8 @@
       ]
     },
     {
-      "id": "u85",
-      "asignaturaId": "u82",
+      "id": "u86",
+      "asignaturaId": "u83",
       "codigo": "LEXT.SC.CE3",
       "descripcion": "Interactuar con otras personas usando expresiones cotidianas, recurriendo a estrategias de cooperación y empleando recursos analógicos y digitales, para responder a necesidades inmediatas de su interés en intercambios comunicativos respetuosos con las normas de cortesía.",
       "perfilSalida": [
@@ -1048,8 +1057,8 @@
       ]
     },
     {
-      "id": "u86",
-      "asignaturaId": "u82",
+      "id": "u87",
+      "asignaturaId": "u83",
       "codigo": "LEXT.SC.CE4",
       "descripcion": "Mediar en situaciones predecibles, usando estrategias y conocimientos para procesar y transmitir información básica y sencilla, con el fin de facilitar la comunicación.",
       "perfilSalida": [
@@ -1064,8 +1073,8 @@
       ]
     },
     {
-      "id": "u87",
-      "asignaturaId": "u82",
+      "id": "u88",
+      "asignaturaId": "u83",
       "codigo": "LEXT.SC.CE5",
       "descripcion": "Reconocer y usar los repertorios lingüísticos personales entre distintas lenguas, reflexionando sobre su funcionamiento e identificando las estrategias y conocimientos propios, para mejorar la respuesta a necesidades comunicativas concretas en situaciones conocidas.",
       "perfilSalida": [
@@ -1079,8 +1088,8 @@
       ]
     },
     {
-      "id": "u88",
-      "asignaturaId": "u82",
+      "id": "u89",
+      "asignaturaId": "u83",
       "codigo": "LEXT.SC.CE6",
       "descripcion": "Apreciar y respetar la diversidad lingüística, cultural y artística a partir de la lengua extranjera, identificando y valorando las diferencias y semejanzas entre lenguas y culturas, para aprender a gestionar situaciones interculturales.",
       "perfilSalida": [
@@ -1094,8 +1103,8 @@
       ]
     },
     {
-      "id": "u105",
-      "asignaturaId": "u104",
+      "id": "u106",
+      "asignaturaId": "u105",
       "codigo": "LCL.SC.CE1",
       "descripcion": "Reconocer la diversidad lingüística del mundo a partir de la identificación de las lenguas del alumnado y de la realidad plurilingüe y multicultural de España, para favorecer la reflexión interlingüística, para identificar y rechazar estereotipos y prejuicios lingüísticos y para valorar dicha diversidad como fuente de riqueza cultural.",
       "perfilSalida": [
@@ -1110,8 +1119,8 @@
       ]
     },
     {
-      "id": "u106",
-      "asignaturaId": "u104",
+      "id": "u107",
+      "asignaturaId": "u105",
       "codigo": "LCL.SC.CE2",
       "descripcion": "Comprender e interpretar textos orales y multimodales, identificando el sentido general y la información más relevante y valorando con ayuda aspectos formales y de contenido básicos, para construir conocimiento y responder a diferentes necesidades comunicativas.",
       "perfilSalida": [
@@ -1124,8 +1133,8 @@
       ]
     },
     {
-      "id": "u107",
-      "asignaturaId": "u104",
+      "id": "u108",
+      "asignaturaId": "u105",
       "codigo": "LCL.SC.CE3",
       "descripcion": "Producir textos orales y multimodales, con coherencia, claridad y registro adecuados, para expresar ideas, sentimientos y conceptos; construir conocimiento; establecer vínculos personales; y participar con autonomía y una actitud cooperativa y empática en interacciones orales variadas.",
       "perfilSalida": [
@@ -1141,8 +1150,8 @@
       ]
     },
     {
-      "id": "u108",
-      "asignaturaId": "u104",
+      "id": "u109",
+      "asignaturaId": "u105",
       "codigo": "LCL.SC.CE4",
       "descripcion": "Comprender e interpretar textos escritos y multimodales, reconociendo el sentido global, las ideas principales y la información explícita e implícita, y realizando con ayuda reflexiones elementales sobre aspectos formales y de contenido, para adquirir y construir conocimiento y para responder a necesidades e intereses comunicativos diversos.",
       "perfilSalida": [
@@ -1157,8 +1166,8 @@
       ]
     },
     {
-      "id": "u109",
-      "asignaturaId": "u104",
+      "id": "u110",
+      "asignaturaId": "u105",
       "codigo": "LCL.SC.CE5",
       "descripcion": "Producir textos escritos y multimodales, con corrección gramatical y ortográfica básicas, secuenciando correctamente los contenidos y aplicando estrategias elementales de planificación, textualización, revisión y edición, para construir conocimiento y para dar respuesta a demandas comunicativas concretas.",
       "perfilSalida": [
@@ -1173,8 +1182,8 @@
       ]
     },
     {
-      "id": "u110",
-      "asignaturaId": "u104",
+      "id": "u111",
+      "asignaturaId": "u105",
       "codigo": "LCL.SC.CE6",
       "descripcion": "Buscar, seleccionar y contrastar información procedente de dos o más fuentes, de forma planificada y con el debido acompañamiento, evaluando su fiabilidad y reconociendo algunos riesgos de manipulación y desinformación, para transformarla en conocimiento y para comunicarla de manera creativa, adoptando un punto de vista personal y respetuoso con la propiedad intelectual.",
       "perfilSalida": [
@@ -1189,8 +1198,8 @@
       ]
     },
     {
-      "id": "u111",
-      "asignaturaId": "u104",
+      "id": "u112",
+      "asignaturaId": "u105",
       "codigo": "LCL.SC.CE7",
       "descripcion": "Leer de manera autónoma obras diversas seleccionadas atendiendo a sus gustos e intereses, compartiendo las experiencias de lectura, para iniciar la construcción de la identidad lectora, para fomentar el gusto por la lectura como fuente de placer y para disfrutar de su dimensión social.",
       "perfilSalida": [
@@ -1204,8 +1213,8 @@
       ]
     },
     {
-      "id": "u112",
-      "asignaturaId": "u104",
+      "id": "u113",
+      "asignaturaId": "u105",
       "codigo": "LCL.SC.CE8",
       "descripcion": "Leer, interpretar y analizar, de manera acompañada, obras o fragmentos literarios adecuados a su desarrollo, estableciendo relaciones entre ellos e identificando el género literario y sus convenciones fundamentales, para iniciarse en el reconocimiento de la literatura como manifestación artística y fuente de placer, conocimiento e inspiración para crear textos de intención literaria.",
       "perfilSalida": [
@@ -1219,8 +1228,8 @@
       ]
     },
     {
-      "id": "u113",
-      "asignaturaId": "u104",
+      "id": "u114",
+      "asignaturaId": "u105",
       "codigo": "LCL.SC.CE9",
       "descripcion": "Reflexionar de forma guiada sobre el lenguaje a partir de procesos de producción y comprensión de textos en contextos significativos, utilizando la terminología elemental adecuada, para iniciarse en el desarrollo de la conciencia lingüística y para mejorar las destrezas de producción y comprensión oral y escrita.",
       "perfilSalida": [
@@ -1233,15 +1242,24 @@
       ]
     },
     {
-      "id": "u114",
-      "asignaturaId": "u104",
+      "id": "u115",
+      "asignaturaId": "u105",
       "codigo": "LCL.SC.CE10",
       "descripcion": "Poner las propias prácticas comunicativas al servicio de la convivencia democrática utilizando un lenguaje no discriminatorio y detectando y rechazando los abusos de poder a través de la palabra, para favorecer un uso no solo eficaz sino también ético del lenguaje.",
-      "perfilSalida": []
+      "perfilSalida": [
+        "CCL1",
+        "CCL5",
+        "CP3",
+        "CD3",
+        "CPSAA3",
+        "CC1",
+        "CC2",
+        "CC3"
+      ]
     },
     {
-      "id": "u133",
-      "asignaturaId": "u132",
+      "id": "u136",
+      "asignaturaId": "u135",
       "codigo": "MAT.SC.CE1",
       "descripcion": "Interpretar situaciones de la vida cotidiana, proporcionando una representación matemática de las mismas mediante conceptos, herramientas y estrategias, para analizar la información más relevante.",
       "perfilSalida": [
@@ -1256,8 +1274,8 @@
       ]
     },
     {
-      "id": "u134",
-      "asignaturaId": "u132",
+      "id": "u137",
+      "asignaturaId": "u135",
       "codigo": "MAT.SC.CE2",
       "descripcion": "Resolver situaciones problematizadas, aplicando diferentes técnicas, estrategias y formas de razonamiento, para explorar distintas maneras de proceder, obtener soluciones y asegurar su validez desde un punto de vista formal y en relación con el contexto planteado.",
       "perfilSalida": [
@@ -1269,8 +1287,8 @@
       ]
     },
     {
-      "id": "u135",
-      "asignaturaId": "u132",
+      "id": "u138",
+      "asignaturaId": "u135",
       "codigo": "MAT.SC.CE3",
       "descripcion": "Explorar, formular y comprobar conjeturas sencillas o plantear problemas de tipo matemático en situaciones basadas en la vida cotidiana, de forma guiada, reconociendo el valor del razonamiento y la argumentación, para contrastar su validez, adquirir e integrar nuevo conocimiento.",
       "perfilSalida": [
@@ -1284,8 +1302,8 @@
       ]
     },
     {
-      "id": "u136",
-      "asignaturaId": "u132",
+      "id": "u139",
+      "asignaturaId": "u135",
       "codigo": "MAT.SC.CE4",
       "descripcion": "Utilizar el pensamiento computacional, organizando datos, descomponiendo en partes, reconociendo patrones, generalizando e interpretando, modificando y creando algoritmos de forma guiada, para modelizar y automatizar situaciones de la vida cotidiana.",
       "perfilSalida": [
@@ -1299,8 +1317,8 @@
       ]
     },
     {
-      "id": "u137",
-      "asignaturaId": "u132",
+      "id": "u140",
+      "asignaturaId": "u135",
       "codigo": "MAT.SC.CE5",
       "descripcion": "Reconocer y utilizar conexiones entre las diferentes ideas matemáticas, así como identificar las matemáticas implicadas en otras áreas o en la vida cotidiana, interrelacionando conceptos y procedimientos, para interpretar situaciones y contextos diversos.",
       "perfilSalida": [
@@ -1313,8 +1331,8 @@
       ]
     },
     {
-      "id": "u138",
-      "asignaturaId": "u132",
+      "id": "u141",
+      "asignaturaId": "u135",
       "codigo": "MAT.SC.CE6",
       "descripcion": "Comunicar y representar, de forma individual y colectiva, conceptos, procedimientos y resultados matemáticos, utilizando el lenguaje oral, escrito, gráfico, multimodal y la terminología apropiados, para dar significado y permanencia a las ideas matemáticas.",
       "perfilSalida": [
@@ -1329,8 +1347,8 @@
       ]
     },
     {
-      "id": "u139",
-      "asignaturaId": "u132",
+      "id": "u142",
+      "asignaturaId": "u135",
       "codigo": "MAT.SC.CE7",
       "descripcion": "Desarrollar destrezas personales que ayuden a identificar y gestionar emociones al enfrentarse a retos matemáticos, fomentando la confianza en las propias posibilidades, aceptando el error como parte del proceso de aprendizaje y adaptándose a las situaciones de incertidumbre, para mejorar la perseverancia y disfrutar en el aprendizaje de las matemáticas.",
       "perfilSalida": [
@@ -1343,8 +1361,8 @@
       ]
     },
     {
-      "id": "u140",
-      "asignaturaId": "u132",
+      "id": "u143",
+      "asignaturaId": "u135",
       "codigo": "MAT.SC.CE8",
       "descripcion": "Desarrollar destrezas sociales, reconociendo y respetando las emociones, las experiencias de los demás y el valor de la diversidad y participando activamente en equipos de trabajo heterogéneos con roles asignados, para construir una identidad positiva como estudiante de matemáticas, fomentar el bienestar personal y crear relaciones saludables.",
       "perfilSalida": [
@@ -1358,8 +1376,8 @@
       ]
     },
     {
-      "id": "u159",
-      "asignaturaId": "u158",
+      "id": "u162",
+      "asignaturaId": "u161",
       "codigo": "MAT.PC.CE1",
       "descripcion": "Interpretar situaciones de la vida cotidiana, proporcionando una representación matemática de las mismas mediante conceptos, herramientas y estrategias, para analizar la información más relevante.",
       "perfilSalida": [
@@ -1374,8 +1392,8 @@
       ]
     },
     {
-      "id": "u160",
-      "asignaturaId": "u158",
+      "id": "u163",
+      "asignaturaId": "u161",
       "codigo": "MAT.PC.CE2",
       "descripcion": "Resolver situaciones problematizadas, aplicando diferentes técnicas, estrategias y formas de razonamiento, para explorar distintas maneras de proceder, obtener soluciones y asegurar su validez desde un punto de vista formal y en relación con el contexto planteado.",
       "perfilSalida": [
@@ -1387,8 +1405,8 @@
       ]
     },
     {
-      "id": "u161",
-      "asignaturaId": "u158",
+      "id": "u164",
+      "asignaturaId": "u161",
       "codigo": "MAT.PC.CE3",
       "descripcion": "Explorar, formular y comprobar conjeturas sencillas o plantear problemas de tipo matemático en situaciones basadas en la vida cotidiana, de forma guiada, reconociendo el valor del razonamiento y la argumentación, para contrastar su validez, adquirir e integrar nuevo conocimiento.",
       "perfilSalida": [
@@ -1402,8 +1420,8 @@
       ]
     },
     {
-      "id": "u162",
-      "asignaturaId": "u158",
+      "id": "u165",
+      "asignaturaId": "u161",
       "codigo": "MAT.PC.CE4",
       "descripcion": "Utilizar el pensamiento computacional, organizando datos, descomponiendo en partes, reconociendo patrones, generalizando e interpretando, modificando y creando algoritmos de forma guiada, para modelizar y automatizar situaciones de la vida cotidiana.",
       "perfilSalida": [
@@ -1417,8 +1435,8 @@
       ]
     },
     {
-      "id": "u163",
-      "asignaturaId": "u158",
+      "id": "u166",
+      "asignaturaId": "u161",
       "codigo": "MAT.PC.CE5",
       "descripcion": "Reconocer y utilizar conexiones entre las diferentes ideas matemáticas, así como identificar las matemáticas implicadas en otras áreas o en la vida cotidiana, interrelacionando conceptos y procedimientos, para interpretar situaciones y contextos diversos.",
       "perfilSalida": [
@@ -1431,8 +1449,8 @@
       ]
     },
     {
-      "id": "u164",
-      "asignaturaId": "u158",
+      "id": "u167",
+      "asignaturaId": "u161",
       "codigo": "MAT.PC.CE6",
       "descripcion": "Comunicar y representar, de forma individual y colectiva, conceptos, procedimientos y resultados matemáticos, utilizando el lenguaje oral, escrito, gráfico, multimodal y la terminología apropiados, para dar significado y permanencia a las ideas matemáticas.",
       "perfilSalida": [
@@ -1447,8 +1465,8 @@
       ]
     },
     {
-      "id": "u165",
-      "asignaturaId": "u158",
+      "id": "u168",
+      "asignaturaId": "u161",
       "codigo": "MAT.PC.CE7",
       "descripcion": "Desarrollar destrezas personales que ayuden a identificar y gestionar emociones al enfrentarse a retos matemáticos, fomentando la confianza en las propias posibilidades, aceptando el error como parte del proceso de aprendizaje y adaptándose a las situaciones de incertidumbre, para mejorar la perseverancia y disfrutar en el aprendizaje de las matemáticas.",
       "perfilSalida": [
@@ -1461,8 +1479,8 @@
       ]
     },
     {
-      "id": "u166",
-      "asignaturaId": "u158",
+      "id": "u169",
+      "asignaturaId": "u161",
       "codigo": "MAT.PC.CE8",
       "descripcion": "Desarrollar destrezas sociales, reconociendo y respetando las emociones, las experiencias de los demás y el valor de la diversidad y participando activamente en equipos de trabajo heterogéneos con roles asignados, para construir una identidad positiva como estudiante de matemáticas, fomentar el bienestar personal y crear relaciones saludables.",
       "perfilSalida": [
@@ -1476,8 +1494,8 @@
       ]
     },
     {
-      "id": "u185",
-      "asignaturaId": "u184",
+      "id": "u188",
+      "asignaturaId": "u187",
       "codigo": "LEXT.PC.CE1",
       "descripcion": "Comprender el sentido general e información específica y predecible de textos breves y sencillos, expresados de forma clara y en la lengua estándar, haciendo uso de diversas estrategias y recurriendo, cuando sea necesario, al uso de distintos tipos de apoyo, para desarrollar el repertorio lingüístico y para responder a necesidades comunicativas cotidianas.",
       "perfilSalida": [
@@ -1492,8 +1510,8 @@
       ]
     },
     {
-      "id": "u186",
-      "asignaturaId": "u184",
+      "id": "u189",
+      "asignaturaId": "u187",
       "codigo": "LEXT.PC.CE2",
       "descripcion": "Producir textos sencillos de manera comprensible y estructurada, mediante el empleo de estrategias como la planificación o la compensación, para expresar mensajes breves relacionados con necesidades inmediatas y responder a propósitos comunicativos cotidianos.",
       "perfilSalida": [
@@ -1508,8 +1526,8 @@
       ]
     },
     {
-      "id": "u187",
-      "asignaturaId": "u184",
+      "id": "u190",
+      "asignaturaId": "u187",
       "codigo": "LEXT.PC.CE3",
       "descripcion": "Interactuar con otras personas usando expresiones cotidianas, recurriendo a estrategias de cooperación y empleando recursos analógicos y digitales, para responder a necesidades inmediatas de su interés en intercambios comunicativos respetuosos con las normas de cortesía.",
       "perfilSalida": [
@@ -1524,8 +1542,8 @@
       ]
     },
     {
-      "id": "u188",
-      "asignaturaId": "u184",
+      "id": "u191",
+      "asignaturaId": "u187",
       "codigo": "LEXT.PC.CE4",
       "descripcion": "Mediar en situaciones predecibles, usando estrategias y conocimientos para procesar y transmitir información básica y sencilla, con el fin de facilitar la comunicación.",
       "perfilSalida": [
@@ -1540,8 +1558,8 @@
       ]
     },
     {
-      "id": "u189",
-      "asignaturaId": "u184",
+      "id": "u192",
+      "asignaturaId": "u187",
       "codigo": "LEXT.PC.CE5",
       "descripcion": "Reconocer y usar los repertorios lingüísticos personales entre distintas lenguas, reflexionando sobre su funcionamiento e identificando las estrategias y conocimientos propios, para mejorar la respuesta a necesidades comunicativas concretas en situaciones conocidas.",
       "perfilSalida": [
@@ -1555,8 +1573,8 @@
       ]
     },
     {
-      "id": "u190",
-      "asignaturaId": "u184",
+      "id": "u193",
+      "asignaturaId": "u187",
       "codigo": "LEXT.PC.CE6",
       "descripcion": "Apreciar y respetar la diversidad lingüística, cultural y artística a partir de la lengua extranjera, identificando y valorando las diferencias y semejanzas entre lenguas y culturas, para aprender a gestionar situaciones interculturales.",
       "perfilSalida": [
@@ -1576,7 +1594,7 @@
       "asignaturaId": "u1",
       "codigo": "LCL.TC.1.1",
       "descripcion": "Mostrar interés y respeto a las distintas lenguas y variedades dialectales, identificando las características fundamentales de las de su entorno geográfico, así como algunos rasgos de los dialectos y lenguas familiares del alumnado.",
-      "peso": 5.5556,
+      "peso": 5.2632,
       "espIds": [
         "u2"
       ],
@@ -1591,8 +1609,8 @@
       "id": "u13",
       "asignaturaId": "u1",
       "codigo": "LCL.TC.1.2",
-      "descripcion": "Detectar, con autonomía creciente y en contextos próximos, prejuicios y estereotipos lingüísticos frecuentes, aportando alternativas y valorando la diversidad lingüística del mundo como una fuente de riqueza cultural. Comprender el sentido de textos orales y multimodales sencillos, reconociendo las ideas principales y los mensajes explícitos e implícitos, valorando su contenido y los elementos no verbales elementales y, de manera acompañada, algunos elementos formales elementales.",
-      "peso": 5.5556,
+      "descripcion": "Detectar, con autonomía creciente y en contextos próximos, prejuicios y estereotipos lingüísticos frecuentes, aportando alternativas y valorando la diversidad lingüística del mundo como una fuente de riqueza cultural.",
+      "peso": 5.2632,
       "espIds": [
         "u2"
       ],
@@ -1606,27 +1624,27 @@
     {
       "id": "u14",
       "asignaturaId": "u1",
-      "codigo": "LCL.TC.3.1",
-      "descripcion": "Producir textos orales y multimodales, de manera autónoma, coherente y fluida, en contextos formales sencillos y utilizando correctamente recursos verbales y no verbales básicos.",
-      "peso": 5.5556,
+      "codigo": "LCL.TC.2.1",
+      "descripcion": "Comprender el sentido de textos orales y multimodales sencillos, reconociendo las ideas principales y los mensajes explícitos e implícitos, valorando su contenido y los elementos no verbales elementales y, de manera acompañada, algunos elementos formales elementales.",
+      "peso": 5.2632,
       "espIds": [
-        "u4"
+        "u3"
       ],
       "claveIds": [
         "cc-ccl",
         "cc-cp",
         "cc-stem",
         "cc-cd",
-        "cc-cc",
-        "cc-ce"
+        "cc-cpsaa",
+        "cc-cc"
       ]
     },
     {
       "id": "u15",
       "asignaturaId": "u1",
-      "codigo": "LCL.TC.3.2",
-      "descripcion": "Participar en interacciones orales espontáneas o regladas, incorporando estrategias sencillas de escucha activa, de cortesía lingüística y de cooperación conversacional.",
-      "peso": 5.5556,
+      "codigo": "LCL.TC.3.1",
+      "descripcion": "Producir textos orales y multimodales, de manera autónoma, coherente y fluida, en contextos formales sencillos y utilizando correctamente recursos verbales y no verbales básicos.",
+      "peso": 5.2632,
       "espIds": [
         "u4"
       ],
@@ -1642,26 +1660,27 @@
     {
       "id": "u16",
       "asignaturaId": "u1",
-      "codigo": "LCL.TC.4.1",
-      "descripcion": "Comprender el sentido global y la información relevante de textos escritos y multimodales, realizando inferencias y a partir de estrategias básicas de comprensión antes, durante y después de la lectura.",
-      "peso": 5.5556,
+      "codigo": "LCL.TC.3.2",
+      "descripcion": "Participar en interacciones orales espontáneas o regladas, incorporando estrategias sencillas de escucha activa, de cortesía lingüística y de cooperación conversacional.",
+      "peso": 5.2632,
       "espIds": [
-        "u5"
+        "u4"
       ],
       "claveIds": [
         "cc-ccl",
         "cc-cp",
         "cc-stem",
         "cc-cd",
-        "cc-cpsaa"
+        "cc-cc",
+        "cc-ce"
       ]
     },
     {
       "id": "u17",
       "asignaturaId": "u1",
-      "codigo": "LCL.TC.4.2",
-      "descripcion": "Analizar, de manera acompañada, el contenido y aspectos formales y no formales elementales de textos escritos y multimodales, valorando su contenido y estructura y evaluando su calidad, fiabilidad e idoneidad en función del propósito de lectura.",
-      "peso": 5.5556,
+      "codigo": "LCL.TC.4.1",
+      "descripcion": "Comprender el sentido global y la información relevante de textos escritos y multimodales, realizando inferencias y a partir de estrategias básicas de comprensión antes, durante y después de la lectura.",
+      "peso": 5.2632,
       "espIds": [
         "u5"
       ],
@@ -1676,9 +1695,26 @@
     {
       "id": "u18",
       "asignaturaId": "u1",
+      "codigo": "LCL.TC.4.2",
+      "descripcion": "Analizar, de manera acompañada, el contenido y aspectos formales y no formales elementales de textos escritos y multimodales, valorando su contenido y estructura y evaluando su calidad, fiabilidad e idoneidad en función del propósito de lectura.",
+      "peso": 5.2632,
+      "espIds": [
+        "u5"
+      ],
+      "claveIds": [
+        "cc-ccl",
+        "cc-cp",
+        "cc-stem",
+        "cc-cd",
+        "cc-cpsaa"
+      ]
+    },
+    {
+      "id": "u19",
+      "asignaturaId": "u1",
       "codigo": "LCL.TC.5.1",
       "descripcion": "Producir textos escritos y multimodales de relativa complejidad, con coherencia y adecuación, en distintos soportes, progresando en el uso de las normas gramaticales y ortográficas básicas al servicio de la cohesión textual y movilizando estrategias sencillas, individuales o grupales, de planificación, textualización, revisión y edición.",
-      "peso": 5.5556,
+      "peso": 5.2632,
       "espIds": [
         "u6"
       ],
@@ -1691,28 +1727,11 @@
       ]
     },
     {
-      "id": "u19",
+      "id": "u20",
       "asignaturaId": "u1",
       "codigo": "LCL.TC.6.1",
       "descripcion": "Localizar, seleccionar y contrastar información de distintas fuentes, incluidas las digitales, citándolas y recreándolas mediante la adaptación creativa de modelos dados.",
-      "peso": 5.5556,
-      "espIds": [
-        "u7"
-      ],
-      "claveIds": [
-        "cc-ccl",
-        "cc-cd",
-        "cc-cpsaa",
-        "cc-cc",
-        "cc-ce"
-      ]
-    },
-    {
-      "id": "u20",
-      "asignaturaId": "u1",
-      "codigo": "LCL.TC.6.2",
-      "descripcion": "Compartir los resultados de un proceso de investigación sencillo, individual o grupal, sobre algún tema de interés personal o ecosocial, realizado de manera acompañada.",
-      "peso": 5.5556,
+      "peso": 5.2632,
       "espIds": [
         "u7"
       ],
@@ -1727,9 +1746,9 @@
     {
       "id": "u21",
       "asignaturaId": "u1",
-      "codigo": "LCL.TC.6.3",
-      "descripcion": "Adoptar hábitos de uso crítico, seguro, sostenible y saludable de las tecnologías digitales en relación con la búsqueda y la comunicación de la información.",
-      "peso": 5.5556,
+      "codigo": "LCL.TC.6.2",
+      "descripcion": "Compartir los resultados de un proceso de investigación sencillo, individual o grupal, sobre algún tema de interés personal o ecosocial, realizado de manera acompañada.",
+      "peso": 5.2632,
       "espIds": [
         "u7"
       ],
@@ -1744,25 +1763,26 @@
     {
       "id": "u22",
       "asignaturaId": "u1",
-      "codigo": "LCL.TC.7.1",
-      "descripcion": "Leer de manera autónoma textos de diversos autores y autoras ajustados a sus gustos e intereses, progresando en la construcción de su identidad lectora.",
-      "peso": 5.5556,
+      "codigo": "LCL.TC.6.3",
+      "descripcion": "Adoptar hábitos de uso crítico, seguro, sostenible y saludable de las tecnologías digitales en relación con la búsqueda y la comunicación de la información.",
+      "peso": 5.2632,
       "espIds": [
-        "u8"
+        "u7"
       ],
       "claveIds": [
         "cc-ccl",
         "cc-cd",
         "cc-cpsaa",
-        "cc-ccec"
+        "cc-cc",
+        "cc-ce"
       ]
     },
     {
       "id": "u23",
       "asignaturaId": "u1",
-      "codigo": "LCL.TC.7.2",
-      "descripcion": "Compartir la experiencia de lectura, en soportes diversos, participando en comunidades lectoras en el ámbito escolar o social.",
-      "peso": 5.5556,
+      "codigo": "LCL.TC.7.1",
+      "descripcion": "Leer de manera autónoma textos de diversos autores y autoras ajustados a sus gustos e intereses, progresando en la construcción de su identidad lectora.",
+      "peso": 5.2632,
       "espIds": [
         "u8"
       ],
@@ -1776,23 +1796,25 @@
     {
       "id": "u24",
       "asignaturaId": "u1",
-      "codigo": "LCL.TC.8.1",
-      "descripcion": "Escuchar y leer de manera acompañada textos literarios adecuados a su edad, que recojan diversidad de autores y autoras, relacionándolos en función de los temas y de aspectos elementales de cada género literario, e interpretándolos, valorándolos y relacionándolos con otras manifestaciones artísticas o culturales de manera progresivamente autónoma.",
-      "peso": 5.5556,
+      "codigo": "LCL.TC.7.2",
+      "descripcion": "Compartir la experiencia de lectura, en soportes diversos, participando en comunidades lectoras en el ámbito escolar o social.",
+      "peso": 5.2632,
       "espIds": [
-        "u9"
+        "u8"
       ],
       "claveIds": [
         "cc-ccl",
+        "cc-cd",
+        "cc-cpsaa",
         "cc-ccec"
       ]
     },
     {
       "id": "u25",
       "asignaturaId": "u1",
-      "codigo": "LCL.TC.8.2",
-      "descripcion": "Producir, de manera progresivamente autónoma, textos sencillos individuales o colectivos con intención literaria, reelaborando con creatividad los modelos dados, en distintos soportes y complementándolos con otros lenguajes artísticos.",
-      "peso": 5.5556,
+      "codigo": "LCL.TC.8.1",
+      "descripcion": "Escuchar y leer de manera acompañada textos literarios adecuados a su edad, que recojan diversidad de autores y autoras, relacionándolos en función de los temas y de aspectos elementales de cada género literario, e interpretándolos, valorándolos y relacionándolos con otras manifestaciones artísticas o culturales de manera progresivamente autónoma.",
+      "peso": 5.2632,
       "espIds": [
         "u9"
       ],
@@ -1804,25 +1826,23 @@
     {
       "id": "u26",
       "asignaturaId": "u1",
-      "codigo": "LCL.TC.9.1",
-      "descripcion": "Establecer generalizaciones sobre aspectos básicos del funcionamiento de la lengua de manera acompañada, formulando hipótesis y buscando contraejemplos, a partir de la observación, comparación y transformación de palabras, enunciados y textos, en un proceso acompañado de producción o comprensión de textos en contextos significativos.",
-      "peso": 5.5556,
+      "codigo": "LCL.TC.8.2",
+      "descripcion": "Producir, de manera progresivamente autónoma, textos sencillos individuales o colectivos con intención literaria, reelaborando con creatividad los modelos dados, en distintos soportes y complementándolos con otros lenguajes artísticos.",
+      "peso": 5.2632,
       "espIds": [
-        "u10"
+        "u9"
       ],
       "claveIds": [
         "cc-ccl",
-        "cc-cp",
-        "cc-stem",
-        "cc-cpsaa"
+        "cc-ccec"
       ]
     },
     {
       "id": "u27",
       "asignaturaId": "u1",
-      "codigo": "LCL.TC.9.2",
-      "descripcion": "Revisar y mejorar los textos propios y ajenos y subsanar algunos problemas de comprensión lectora, de manera progresivamente autónoma, a partir de la reflexión metalingüística e interlingüística y usando la terminología básica adecuada.",
-      "peso": 5.5556,
+      "codigo": "LCL.TC.9.1",
+      "descripcion": "Establecer generalizaciones sobre aspectos básicos del funcionamiento de la lengua de manera acompañada, formulando hipótesis y buscando contraejemplos, a partir de la observación, comparación y transformación de palabras, enunciados y textos, en un proceso acompañado de producción o comprensión de textos en contextos significativos.",
+      "peso": 5.2632,
       "espIds": [
         "u10"
       ],
@@ -1836,50 +1856,61 @@
     {
       "id": "u28",
       "asignaturaId": "u1",
-      "codigo": "LCL.TC.10.1",
-      "descripcion": "Rechazar los usos lingüísticos discriminatorios y los abusos de poder a través de la palabra identificados mediante la reflexión grupal acompañada sobre distintos aspectos, verbales y no verbales, de la comunicación, teniendo en cuenta una perspectiva de género.",
-      "peso": 5.5556,
+      "codigo": "LCL.TC.9.2",
+      "descripcion": "Revisar y mejorar los textos propios y ajenos y subsanar algunos problemas de comprensión lectora, de manera progresivamente autónoma, a partir de la reflexión metalingüística e interlingüística y usando la terminología básica adecuada.",
+      "peso": 5.2632,
       "espIds": [
-        "u11"
+        "u10"
       ],
-      "claveIds": []
+      "claveIds": [
+        "cc-ccl",
+        "cc-cp",
+        "cc-stem",
+        "cc-cpsaa"
+      ]
     },
     {
       "id": "u29",
       "asignaturaId": "u1",
-      "codigo": "LCL.TC.10.2",
-      "descripcion": "Movilizar, con la planificación y el acompañamiento necesarios, estrategias básicas para la escucha activa, la comunicación asertiva y la deliberación argumentada, progresando en la gestión dialogada de conflictos.",
-      "peso": 5.5548,
+      "codigo": "LCL.TC.10.1",
+      "descripcion": "Rechazar los usos lingüísticos discriminatorios y los abusos de poder a través de la palabra identificados mediante la reflexión grupal acompañada sobre distintos aspectos, verbales y no verbales, de la comunicación, teniendo en cuenta una perspectiva de género.",
+      "peso": 5.2632,
       "espIds": [
         "u11"
       ],
-      "claveIds": []
-    },
-    {
-      "id": "u39",
-      "asignaturaId": "u30",
-      "codigo": "MAT.TC.1.1",
-      "descripcion": "Comprender problemas de la vida cotidiana a través de la reformulación de la pregunta, de forma verbal y gráfica.",
-      "peso": 5.8824,
-      "espIds": [
-        "u31"
-      ],
       "claveIds": [
-        "cc-stem",
+        "cc-ccl",
+        "cc-cp",
         "cc-cd",
         "cc-cpsaa",
-        "cc-ce",
-        "cc-ccec"
+        "cc-cc"
+      ]
+    },
+    {
+      "id": "u30",
+      "asignaturaId": "u1",
+      "codigo": "LCL.TC.10.2",
+      "descripcion": "Movilizar, con la planificación y el acompañamiento necesarios, estrategias básicas para la escucha activa, la comunicación asertiva y la deliberación argumentada, progresando en la gestión dialogada de conflictos.",
+      "peso": 5.2624,
+      "espIds": [
+        "u11"
+      ],
+      "claveIds": [
+        "cc-ccl",
+        "cc-cp",
+        "cc-cd",
+        "cc-cpsaa",
+        "cc-cc"
       ]
     },
     {
       "id": "u40",
-      "asignaturaId": "u30",
-      "codigo": "MAT.TC.1.2",
-      "descripcion": "Elaborar representaciones matemáticas que ayuden en la búsqueda y elección de estrategias y herramientas, incluidas las tecnológicas, para la resolución de una situación problematizada.",
+      "asignaturaId": "u31",
+      "codigo": "MAT.TC.1.1",
+      "descripcion": "Comprender problemas de la vida cotidiana a través de la reformulación de la pregunta, de forma verbal y gráfica.",
       "peso": 5.8824,
       "espIds": [
-        "u31"
+        "u32"
       ],
       "claveIds": [
         "cc-stem",
@@ -1891,27 +1922,29 @@
     },
     {
       "id": "u41",
-      "asignaturaId": "u30",
-      "codigo": "MAT.TC.2.1",
-      "descripcion": "Seleccionar entre diferentes estrategias para resolver un problema, justificando la elección.",
+      "asignaturaId": "u31",
+      "codigo": "MAT.TC.1.2",
+      "descripcion": "Elaborar representaciones matemáticas que ayuden en la búsqueda y elección de estrategias y herramientas, incluidas las tecnológicas, para la resolución de una situación problematizada.",
       "peso": 5.8824,
       "espIds": [
         "u32"
       ],
       "claveIds": [
         "cc-stem",
+        "cc-cd",
         "cc-cpsaa",
-        "cc-ce"
+        "cc-ce",
+        "cc-ccec"
       ]
     },
     {
       "id": "u42",
-      "asignaturaId": "u30",
-      "codigo": "MAT.TC.2.2",
-      "descripcion": "Obtener posibles soluciones de un problema, seleccionando entre varias estrategias conocidas de forma autónoma.",
+      "asignaturaId": "u31",
+      "codigo": "MAT.TC.2.1",
+      "descripcion": "Seleccionar entre diferentes estrategias para resolver un problema, justificando la elección.",
       "peso": 5.8824,
       "espIds": [
-        "u32"
+        "u33"
       ],
       "claveIds": [
         "cc-stem",
@@ -1921,12 +1954,12 @@
     },
     {
       "id": "u43",
-      "asignaturaId": "u30",
-      "codigo": "MAT.TC.2.3",
-      "descripcion": "Comprobar la corrección matemática de las soluciones de un problema y su coherencia en el contexto planteado.",
+      "asignaturaId": "u31",
+      "codigo": "MAT.TC.2.2",
+      "descripcion": "Obtener posibles soluciones de un problema, seleccionando entre varias estrategias conocidas de forma autónoma.",
       "peso": 5.8824,
       "espIds": [
-        "u32"
+        "u33"
       ],
       "claveIds": [
         "cc-stem",
@@ -1936,28 +1969,27 @@
     },
     {
       "id": "u44",
-      "asignaturaId": "u30",
-      "codigo": "MAT.TC.3.1",
-      "descripcion": "Formular conjeturas matemáticas sencillas investigando patrones, propiedades y relaciones de forma guiada.",
+      "asignaturaId": "u31",
+      "codigo": "MAT.TC.2.3",
+      "descripcion": "Comprobar la corrección matemática de las soluciones de un problema y su coherencia en el contexto planteado.",
       "peso": 5.8824,
       "espIds": [
         "u33"
       ],
       "claveIds": [
-        "cc-ccl",
         "cc-stem",
-        "cc-cd",
+        "cc-cpsaa",
         "cc-ce"
       ]
     },
     {
       "id": "u45",
-      "asignaturaId": "u30",
-      "codigo": "MAT.TC.3.2",
-      "descripcion": "Plantear nuevos problemas sobre situaciones cotidianas que se resuelvan matemáticamente.",
+      "asignaturaId": "u31",
+      "codigo": "MAT.TC.3.1",
+      "descripcion": "Formular conjeturas matemáticas sencillas investigando patrones, propiedades y relaciones de forma guiada.",
       "peso": 5.8824,
       "espIds": [
-        "u33"
+        "u34"
       ],
       "claveIds": [
         "cc-ccl",
@@ -1968,14 +2000,15 @@
     },
     {
       "id": "u46",
-      "asignaturaId": "u30",
-      "codigo": "MAT.TC.4.1",
-      "descripcion": "Modelizar situaciones de la vida cotidiana utilizando, de forma pautada, principios básicos del pensamiento computacional.",
+      "asignaturaId": "u31",
+      "codigo": "MAT.TC.3.2",
+      "descripcion": "Plantear nuevos problemas sobre situaciones cotidianas que se resuelvan matemáticamente.",
       "peso": 5.8824,
       "espIds": [
         "u34"
       ],
       "claveIds": [
+        "cc-ccl",
         "cc-stem",
         "cc-cd",
         "cc-ce"
@@ -1983,12 +2016,12 @@
     },
     {
       "id": "u47",
-      "asignaturaId": "u30",
-      "codigo": "MAT.TC.4.2",
-      "descripcion": "Emplear herramientas tecnológicas adecuadas en la investigación y resolución de problemas.",
+      "asignaturaId": "u31",
+      "codigo": "MAT.TC.4.1",
+      "descripcion": "Modelizar situaciones de la vida cotidiana utilizando, de forma pautada, principios básicos del pensamiento computacional.",
       "peso": 5.8824,
       "espIds": [
-        "u34"
+        "u35"
       ],
       "claveIds": [
         "cc-stem",
@@ -1998,9 +2031,9 @@
     },
     {
       "id": "u48",
-      "asignaturaId": "u30",
-      "codigo": "MAT.TC.5.1",
-      "descripcion": "Utilizar conexiones entre diferentes elementos matemáticos movilizando conocimientos y experiencias propios.",
+      "asignaturaId": "u31",
+      "codigo": "MAT.TC.4.2",
+      "descripcion": "Emplear herramientas tecnológicas adecuadas en la investigación y resolución de problemas.",
       "peso": 5.8824,
       "espIds": [
         "u35"
@@ -2008,18 +2041,17 @@
       "claveIds": [
         "cc-stem",
         "cc-cd",
-        "cc-cc",
-        "cc-ccec"
+        "cc-ce"
       ]
     },
     {
       "id": "u49",
-      "asignaturaId": "u30",
-      "codigo": "MAT.TC.5.2",
-      "descripcion": "Utilizar las conexiones entre las matemáticas, otras áreas y la vida cotidiana para resolver problemas en contextos no matemáticos.",
+      "asignaturaId": "u31",
+      "codigo": "MAT.TC.5.1",
+      "descripcion": "Utilizar conexiones entre diferentes elementos matemáticos movilizando conocimientos y experiencias propios.",
       "peso": 5.8824,
       "espIds": [
-        "u35"
+        "u36"
       ],
       "claveIds": [
         "cc-stem",
@@ -2030,29 +2062,28 @@
     },
     {
       "id": "u50",
-      "asignaturaId": "u30",
-      "codigo": "MAT.TC.6.1",
-      "descripcion": "Interpretar el lenguaje matemático sencillo presente en la vida cotidiana en diferentes formatos, adquiriendo vocabulario apropiado y mostrando la comprensión del mensaje.",
+      "asignaturaId": "u31",
+      "codigo": "MAT.TC.5.2",
+      "descripcion": "Utilizar las conexiones entre las matemáticas, otras áreas y la vida cotidiana para resolver problemas en contextos no matemáticos.",
       "peso": 5.8824,
       "espIds": [
         "u36"
       ],
       "claveIds": [
-        "cc-ccl",
         "cc-stem",
         "cc-cd",
-        "cc-ce",
+        "cc-cc",
         "cc-ccec"
       ]
     },
     {
       "id": "u51",
-      "asignaturaId": "u30",
-      "codigo": "MAT.TC.6.2",
-      "descripcion": "Comunicar en diferentes formatos las conjeturas y procesos matemáticos, utilizando lenguaje matemático adecuado.",
+      "asignaturaId": "u31",
+      "codigo": "MAT.TC.6.1",
+      "descripcion": "Interpretar el lenguaje matemático sencillo presente en la vida cotidiana en diferentes formatos, adquiriendo vocabulario apropiado y mostrando la comprensión del mensaje.",
       "peso": 5.8824,
       "espIds": [
-        "u36"
+        "u37"
       ],
       "claveIds": [
         "cc-ccl",
@@ -2064,27 +2095,29 @@
     },
     {
       "id": "u52",
-      "asignaturaId": "u30",
-      "codigo": "MAT.TC.7.1",
-      "descripcion": "Autorregular las emociones propias y reconocer algunas fortalezas y debilidades, desarrollando así la autoconfianza al abordar retos matemáticos.",
+      "asignaturaId": "u31",
+      "codigo": "MAT.TC.6.2",
+      "descripcion": "Comunicar en diferentes formatos las conjeturas y procesos matemáticos, utilizando lenguaje matemático adecuado.",
       "peso": 5.8824,
       "espIds": [
         "u37"
       ],
       "claveIds": [
+        "cc-ccl",
         "cc-stem",
-        "cc-cpsaa",
-        "cc-ce"
+        "cc-cd",
+        "cc-ce",
+        "cc-ccec"
       ]
     },
     {
       "id": "u53",
-      "asignaturaId": "u30",
-      "codigo": "MAT.TC.7.2",
-      "descripcion": "Elegir actitudes positivas ante retos matemáticos, tales como la perseverancia y la responsabilidad, valorando el error como una oportunidad de aprendizaje.",
+      "asignaturaId": "u31",
+      "codigo": "MAT.TC.7.1",
+      "descripcion": "Autorregular las emociones propias y reconocer algunas fortalezas y debilidades, desarrollando así la autoconfianza al abordar retos matemáticos.",
       "peso": 5.8824,
       "espIds": [
-        "u37"
+        "u38"
       ],
       "claveIds": [
         "cc-stem",
@@ -2094,29 +2127,27 @@
     },
     {
       "id": "u54",
-      "asignaturaId": "u30",
-      "codigo": "MAT.TC.8.1",
-      "descripcion": "Trabajar en equipo activa, respetuosa y responsablemente, mostrando iniciativa, comunicándose de forma efectiva, valorando la diversidad, mostrando empatía y estableciendo relaciones saludables basadas en el respeto, la igualdad y la resolución pacífica de conflictos.",
+      "asignaturaId": "u31",
+      "codigo": "MAT.TC.7.2",
+      "descripcion": "Elegir actitudes positivas ante retos matemáticos, tales como la perseverancia y la responsabilidad, valorando el error como una oportunidad de aprendizaje.",
       "peso": 5.8824,
       "espIds": [
         "u38"
       ],
       "claveIds": [
-        "cc-ccl",
-        "cc-cp",
         "cc-stem",
         "cc-cpsaa",
-        "cc-cc"
+        "cc-ce"
       ]
     },
     {
       "id": "u55",
-      "asignaturaId": "u30",
-      "codigo": "MAT.TC.8.2",
-      "descripcion": "Colaborar en el reparto de tareas, asumiendo y respetando las responsabilidades individuales asignadas y empleando estrategias de trabajo en equipo sencillas dirigidas a la consecución de objetivos compartidos.",
-      "peso": 5.8816,
+      "asignaturaId": "u31",
+      "codigo": "MAT.TC.8.1",
+      "descripcion": "Trabajar en equipo activa, respetuosa y responsablemente, mostrando iniciativa, comunicándose de forma efectiva, valorando la diversidad, mostrando empatía y estableciendo relaciones saludables basadas en el respeto, la igualdad y la resolución pacífica de conflictos.",
+      "peso": 5.8824,
       "espIds": [
-        "u38"
+        "u39"
       ],
       "claveIds": [
         "cc-ccl",
@@ -2127,30 +2158,30 @@
       ]
     },
     {
-      "id": "u65",
-      "asignaturaId": "u56",
-      "codigo": "MAT.SC.1.1",
-      "descripcion": "Interpretar, de forma verbal o gráfica, problemas de la vida cotidiana, comprendiendo las preguntas planteadas a través de diferentes estrategias o herramientas, incluidas las tecnológicas.",
-      "peso": 5.8824,
+      "id": "u56",
+      "asignaturaId": "u31",
+      "codigo": "MAT.TC.8.2",
+      "descripcion": "Colaborar en el reparto de tareas, asumiendo y respetando las responsabilidades individuales asignadas y empleando estrategias de trabajo en equipo sencillas dirigidas a la consecución de objetivos compartidos.",
+      "peso": 5.8816,
       "espIds": [
-        "u57"
+        "u39"
       ],
       "claveIds": [
+        "cc-ccl",
+        "cc-cp",
         "cc-stem",
-        "cc-cd",
         "cc-cpsaa",
-        "cc-ce",
-        "cc-ccec"
+        "cc-cc"
       ]
     },
     {
       "id": "u66",
-      "asignaturaId": "u56",
-      "codigo": "MAT.SC.1.2",
-      "descripcion": "Producir representaciones matemáticas a través de esquemas o diagramas que ayuden en la resolución de una situación problematizada.",
+      "asignaturaId": "u57",
+      "codigo": "MAT.SC.1.1",
+      "descripcion": "Interpretar, de forma verbal o gráfica, problemas de la vida cotidiana, comprendiendo las preguntas planteadas a través de diferentes estrategias o herramientas, incluidas las tecnológicas.",
       "peso": 5.8824,
       "espIds": [
-        "u57"
+        "u58"
       ],
       "claveIds": [
         "cc-stem",
@@ -2162,27 +2193,29 @@
     },
     {
       "id": "u67",
-      "asignaturaId": "u56",
-      "codigo": "MAT.SC.2.1",
-      "descripcion": "Comparar entre diferentes estrategias para resolver un problema de forma pautada.",
+      "asignaturaId": "u57",
+      "codigo": "MAT.SC.1.2",
+      "descripcion": "Producir representaciones matemáticas a través de esquemas o diagramas que ayuden en la resolución de una situación problematizada.",
       "peso": 5.8824,
       "espIds": [
         "u58"
       ],
       "claveIds": [
         "cc-stem",
+        "cc-cd",
         "cc-cpsaa",
-        "cc-ce"
+        "cc-ce",
+        "cc-ccec"
       ]
     },
     {
       "id": "u68",
-      "asignaturaId": "u56",
-      "codigo": "MAT.SC.2.2",
-      "descripcion": "Obtener posibles soluciones de un problema siguiendo alguna estrategia conocida.",
+      "asignaturaId": "u57",
+      "codigo": "MAT.SC.2.1",
+      "descripcion": "Comparar entre diferentes estrategias para resolver un problema de forma pautada.",
       "peso": 5.8824,
       "espIds": [
-        "u58"
+        "u59"
       ],
       "claveIds": [
         "cc-stem",
@@ -2192,12 +2225,12 @@
     },
     {
       "id": "u69",
-      "asignaturaId": "u56",
-      "codigo": "MAT.SC.2.3",
-      "descripcion": "Demostrar la corrección matemática de las soluciones de un problema y su coherencia en el contexto planteado.",
+      "asignaturaId": "u57",
+      "codigo": "MAT.SC.2.2",
+      "descripcion": "Obtener posibles soluciones de un problema siguiendo alguna estrategia conocida.",
       "peso": 5.8824,
       "espIds": [
-        "u58"
+        "u59"
       ],
       "claveIds": [
         "cc-stem",
@@ -2207,28 +2240,27 @@
     },
     {
       "id": "u70",
-      "asignaturaId": "u56",
-      "codigo": "MAT.SC.3.1",
-      "descripcion": "Analizar conjeturas matemáticas sencillas investigando patrones, propiedades y relaciones de forma pautada.",
+      "asignaturaId": "u57",
+      "codigo": "MAT.SC.2.3",
+      "descripcion": "Demostrar la corrección matemática de las soluciones de un problema y su coherencia en el contexto planteado.",
       "peso": 5.8824,
       "espIds": [
         "u59"
       ],
       "claveIds": [
-        "cc-ccl",
         "cc-stem",
-        "cc-cd",
+        "cc-cpsaa",
         "cc-ce"
       ]
     },
     {
       "id": "u71",
-      "asignaturaId": "u56",
-      "codigo": "MAT.SC.3.2",
-      "descripcion": "Dar ejemplos de problemas sobre situaciones cotidianas que se resuelven matemáticamente.",
+      "asignaturaId": "u57",
+      "codigo": "MAT.SC.3.1",
+      "descripcion": "Analizar conjeturas matemáticas sencillas investigando patrones, propiedades y relaciones de forma pautada.",
       "peso": 5.8824,
       "espIds": [
-        "u59"
+        "u60"
       ],
       "claveIds": [
         "cc-ccl",
@@ -2239,14 +2271,15 @@
     },
     {
       "id": "u72",
-      "asignaturaId": "u56",
-      "codigo": "MAT.SC.4.1",
-      "descripcion": "Automatizar situaciones sencillas de la vida cotidiana que se realicen paso a paso o sigan una rutina, utilizando de forma pautada principios básicos del pensamiento computacional.",
+      "asignaturaId": "u57",
+      "codigo": "MAT.SC.3.2",
+      "descripcion": "Dar ejemplos de problemas sobre situaciones cotidianas que se resuelven matemáticamente.",
       "peso": 5.8824,
       "espIds": [
         "u60"
       ],
       "claveIds": [
+        "cc-ccl",
         "cc-stem",
         "cc-cd",
         "cc-ce"
@@ -2254,12 +2287,12 @@
     },
     {
       "id": "u73",
-      "asignaturaId": "u56",
-      "codigo": "MAT.SC.4.2",
-      "descripcion": "Emplear herramientas tecnológicas adecuadas en el proceso de resolución de problemas.",
+      "asignaturaId": "u57",
+      "codigo": "MAT.SC.4.1",
+      "descripcion": "Automatizar situaciones sencillas de la vida cotidiana que se realicen paso a paso o sigan una rutina, utilizando de forma pautada principios básicos del pensamiento computacional.",
       "peso": 5.8824,
       "espIds": [
-        "u60"
+        "u61"
       ],
       "claveIds": [
         "cc-stem",
@@ -2269,9 +2302,9 @@
     },
     {
       "id": "u74",
-      "asignaturaId": "u56",
-      "codigo": "MAT.SC.5.1",
-      "descripcion": "Realizar conexiones entre los diferentes elementos matemáticos, aplicando conocimientos y experiencias propios.",
+      "asignaturaId": "u57",
+      "codigo": "MAT.SC.4.2",
+      "descripcion": "Emplear herramientas tecnológicas adecuadas en el proceso de resolución de problemas.",
       "peso": 5.8824,
       "espIds": [
         "u61"
@@ -2279,18 +2312,17 @@
       "claveIds": [
         "cc-stem",
         "cc-cd",
-        "cc-cc",
-        "cc-ccec"
+        "cc-ce"
       ]
     },
     {
       "id": "u75",
-      "asignaturaId": "u56",
-      "codigo": "MAT.SC.5.2",
-      "descripcion": "Interpretar situaciones en contextos diversos, reconociendo las conexiones entre las matemáticas y la vida cotidiana.",
+      "asignaturaId": "u57",
+      "codigo": "MAT.SC.5.1",
+      "descripcion": "Realizar conexiones entre los diferentes elementos matemáticos, aplicando conocimientos y experiencias propios.",
       "peso": 5.8824,
       "espIds": [
-        "u61"
+        "u62"
       ],
       "claveIds": [
         "cc-stem",
@@ -2301,29 +2333,28 @@
     },
     {
       "id": "u76",
-      "asignaturaId": "u56",
-      "codigo": "MAT.SC.6.1",
-      "descripcion": "Reconocer el lenguaje matemático sencillo presente en la vida cotidiana en diferentes formatos, adquiriendo vocabulario específico básico y mostrando la comprensión del mensaje.",
+      "asignaturaId": "u57",
+      "codigo": "MAT.SC.5.2",
+      "descripcion": "Interpretar situaciones en contextos diversos, reconociendo las conexiones entre las matemáticas y la vida cotidiana.",
       "peso": 5.8824,
       "espIds": [
         "u62"
       ],
       "claveIds": [
-        "cc-ccl",
         "cc-stem",
         "cc-cd",
-        "cc-ce",
+        "cc-cc",
         "cc-ccec"
       ]
     },
     {
       "id": "u77",
-      "asignaturaId": "u56",
-      "codigo": "MAT.SC.6.2",
-      "descripcion": "Explicar los procesos e ideas matemáticas, los pasos seguidos en la resolución de un problema o los resultados obtenidos, utilizando un lenguaje matemático sencillo en diferentes formatos.",
+      "asignaturaId": "u57",
+      "codigo": "MAT.SC.6.1",
+      "descripcion": "Reconocer el lenguaje matemático sencillo presente en la vida cotidiana en diferentes formatos, adquiriendo vocabulario específico básico y mostrando la comprensión del mensaje.",
       "peso": 5.8824,
       "espIds": [
-        "u62"
+        "u63"
       ],
       "claveIds": [
         "cc-ccl",
@@ -2335,27 +2366,29 @@
     },
     {
       "id": "u78",
-      "asignaturaId": "u56",
-      "codigo": "MAT.SC.7.1",
-      "descripcion": "Identificar las emociones propias al abordar retos matemáticos, pidiendo ayuda solo cuando sea necesario y desarrollando la autoconfianza.",
+      "asignaturaId": "u57",
+      "codigo": "MAT.SC.6.2",
+      "descripcion": "Explicar los procesos e ideas matemáticas, los pasos seguidos en la resolución de un problema o los resultados obtenidos, utilizando un lenguaje matemático sencillo en diferentes formatos.",
       "peso": 5.8824,
       "espIds": [
         "u63"
       ],
       "claveIds": [
+        "cc-ccl",
         "cc-stem",
-        "cc-cpsaa",
-        "cc-ce"
+        "cc-cd",
+        "cc-ce",
+        "cc-ccec"
       ]
     },
     {
       "id": "u79",
-      "asignaturaId": "u56",
-      "codigo": "MAT.SC.7.2",
-      "descripcion": "Mostrar actitudes positivas ante retos matemáticos tales como el esfuerzo y la flexibilidad, valorando el error como una oportunidad de aprendizaje.",
+      "asignaturaId": "u57",
+      "codigo": "MAT.SC.7.1",
+      "descripcion": "Identificar las emociones propias al abordar retos matemáticos, pidiendo ayuda solo cuando sea necesario y desarrollando la autoconfianza.",
       "peso": 5.8824,
       "espIds": [
-        "u63"
+        "u64"
       ],
       "claveIds": [
         "cc-stem",
@@ -2365,29 +2398,27 @@
     },
     {
       "id": "u80",
-      "asignaturaId": "u56",
-      "codigo": "MAT.SC.8.1",
-      "descripcion": "Trabajar en equipo activa y respetuosamente, comunicándose adecuadamente, respetando la diversidad del grupo y estableciendo relaciones saludables basadas en la igualdad y la resolución pacífica de conflictos.",
+      "asignaturaId": "u57",
+      "codigo": "MAT.SC.7.2",
+      "descripcion": "Mostrar actitudes positivas ante retos matemáticos tales como el esfuerzo y la flexibilidad, valorando el error como una oportunidad de aprendizaje.",
       "peso": 5.8824,
       "espIds": [
         "u64"
       ],
       "claveIds": [
-        "cc-ccl",
-        "cc-cp",
         "cc-stem",
         "cc-cpsaa",
-        "cc-cc"
+        "cc-ce"
       ]
     },
     {
       "id": "u81",
-      "asignaturaId": "u56",
-      "codigo": "MAT.SC.8.2",
-      "descripcion": "Participar en el reparto de tareas, asumiendo y respetando las responsabilidades individuales asignadas y empleando estrategias sencillas de trabajo en equipo dirigidas a la consecución de objetivos compartidos.",
-      "peso": 5.8816,
+      "asignaturaId": "u57",
+      "codigo": "MAT.SC.8.1",
+      "descripcion": "Trabajar en equipo activa y respetuosamente, comunicándose adecuadamente, respetando la diversidad del grupo y estableciendo relaciones saludables basadas en la igualdad y la resolución pacífica de conflictos.",
+      "peso": 5.8824,
       "espIds": [
-        "u64"
+        "u65"
       ],
       "claveIds": [
         "cc-ccl",
@@ -2398,31 +2429,30 @@
       ]
     },
     {
-      "id": "u89",
-      "asignaturaId": "u82",
-      "codigo": "LEXT.SC.1.1",
-      "descripcion": "Reconocer y comprender el sentido global, así como palabras y frases previamente indicadas en textos orales escritos y multimodales breves y sencillos sobre temas frecuentes y cotidianos de relevancia personal y próximos a su experiencia, así como de textos expositivos adecuados al nivel de desarrollo del alumnado, expresados de forma comprensible, clara y en lengua estándar a través de distintos soportes.",
-      "peso": 6.6667,
+      "id": "u82",
+      "asignaturaId": "u57",
+      "codigo": "MAT.SC.8.2",
+      "descripcion": "Participar en el reparto de tareas, asumiendo y respetando las responsabilidades individuales asignadas y empleando estrategias sencillas de trabajo en equipo dirigidas a la consecución de objetivos compartidos.",
+      "peso": 5.8816,
       "espIds": [
-        "u83"
+        "u65"
       ],
       "claveIds": [
         "cc-ccl",
         "cc-cp",
         "cc-stem",
-        "cc-cd",
         "cc-cpsaa",
-        "cc-ccec"
+        "cc-cc"
       ]
     },
     {
       "id": "u90",
-      "asignaturaId": "u82",
-      "codigo": "LEXT.SC.1.2",
-      "descripcion": "Seleccionar y planificar de forma guiada estrategias adecuadas en situaciones comunicativas cotidianas y de relevancia para el alumnado para captar el sentido global y procesar informaciones explícitas en textos breves y sencillos sobre temas familiares.",
+      "asignaturaId": "u83",
+      "codigo": "LEXT.SC.1.1",
+      "descripcion": "Reconocer y comprender el sentido global, así como palabras y frases previamente indicadas en textos orales escritos y multimodales breves y sencillos sobre temas frecuentes y cotidianos de relevancia personal y próximos a su experiencia, así como de textos expositivos adecuados al nivel de desarrollo del alumnado, expresados de forma comprensible, clara y en lengua estándar a través de distintos soportes.",
       "peso": 6.6667,
       "espIds": [
-        "u83"
+        "u84"
       ],
       "claveIds": [
         "cc-ccl",
@@ -2435,9 +2465,9 @@
     },
     {
       "id": "u91",
-      "asignaturaId": "u82",
-      "codigo": "LEXT.SC.2.1",
-      "descripcion": "Expresar oralmente frases cortas con información básica sobre asuntos cotidianos y de relevancia para el alumnado, utilizando de forma guiada recursos verbales y no verbales, reproduciendo en la medida de lo posible el ritmo, la acentuación y la entonación de la lengua extranjera.",
+      "asignaturaId": "u83",
+      "codigo": "LEXT.SC.1.2",
+      "descripcion": "Seleccionar y planificar de forma guiada estrategias adecuadas en situaciones comunicativas cotidianas y de relevancia para el alumnado para captar el sentido global y procesar informaciones explícitas en textos breves y sencillos sobre temas familiares.",
       "peso": 6.6667,
       "espIds": [
         "u84"
@@ -2448,18 +2478,17 @@
         "cc-stem",
         "cc-cd",
         "cc-cpsaa",
-        "cc-ce",
         "cc-ccec"
       ]
     },
     {
       "id": "u92",
-      "asignaturaId": "u82",
-      "codigo": "LEXT.SC.2.2",
-      "descripcion": "Redactar textos muy breves y sencillos, con adecuación a la situación comunicativa propuesta, a partir de modelos y a través de herramientas analógicas y digitales, usando estructuras y léxico elemental sobre asuntos cotidianos y de relevancia personal para el alumnado.",
+      "asignaturaId": "u83",
+      "codigo": "LEXT.SC.2.1",
+      "descripcion": "Expresar oralmente frases cortas con información básica sobre asuntos cotidianos y de relevancia para el alumnado, utilizando de forma guiada recursos verbales y no verbales, reproduciendo en la medida de lo posible el ritmo, la acentuación y la entonación de la lengua extranjera.",
       "peso": 6.6667,
       "espIds": [
-        "u84"
+        "u85"
       ],
       "claveIds": [
         "cc-ccl",
@@ -2473,12 +2502,12 @@
     },
     {
       "id": "u93",
-      "asignaturaId": "u82",
-      "codigo": "LEXT.SC.2.3",
-      "descripcion": "Seleccionar y planificar de forma guiada estrategias para producir mensajes breves y sencillos adecuados a las intenciones comunicativas usando, con ayuda, recursos y apoyos físicos o digitales en función de las necesidades de cada momento.",
+      "asignaturaId": "u83",
+      "codigo": "LEXT.SC.2.2",
+      "descripcion": "Redactar textos muy breves y sencillos, con adecuación a la situación comunicativa propuesta, a partir de modelos y a través de herramientas analógicas y digitales, usando estructuras y léxico elemental sobre asuntos cotidianos y de relevancia personal para el alumnado.",
       "peso": 6.6667,
       "espIds": [
-        "u84"
+        "u85"
       ],
       "claveIds": [
         "cc-ccl",
@@ -2492,9 +2521,9 @@
     },
     {
       "id": "u94",
-      "asignaturaId": "u82",
-      "codigo": "LEXT.SC.3.1",
-      "descripcion": "Participar activamente en situaciones interactivas breves y sencillas sobre temas cotidianos, de relevancia personal y próximos a su experiencia, preparados previamente, a través de diversos soportes, apoyándose en recursos tales como la repetición, el ritmo pausado o el lenguaje no verbal, y mostrando empatía y respeto por la cortesía lingüística y la etiqueta digital.",
+      "asignaturaId": "u83",
+      "codigo": "LEXT.SC.2.3",
+      "descripcion": "Seleccionar y planificar de forma guiada estrategias para producir mensajes breves y sencillos adecuados a las intenciones comunicativas usando, con ayuda, recursos y apoyos físicos o digitales en función de las necesidades de cada momento.",
       "peso": 6.6667,
       "espIds": [
         "u85"
@@ -2503,19 +2532,20 @@
         "cc-ccl",
         "cc-cp",
         "cc-stem",
+        "cc-cd",
         "cc-cpsaa",
-        "cc-cc",
-        "cc-ce"
+        "cc-ce",
+        "cc-ccec"
       ]
     },
     {
       "id": "u95",
-      "asignaturaId": "u82",
-      "codigo": "LEXT.SC.3.2",
-      "descripcion": "Seleccionar, utilizar y planificar de forma guiada y en situaciones cotidianas, estrategias elementales para saludar, despedirse y presentarse; expresar mensajes breves; y formular y contestar preguntas sencillas.",
+      "asignaturaId": "u83",
+      "codigo": "LEXT.SC.3.1",
+      "descripcion": "Participar activamente en situaciones interactivas breves y sencillas sobre temas cotidianos, de relevancia personal y próximos a su experiencia, preparados previamente, a través de diversos soportes, apoyándose en recursos tales como la repetición, el ritmo pausado o el lenguaje no verbal, y mostrando empatía y respeto por la cortesía lingüística y la etiqueta digital.",
       "peso": 6.6667,
       "espIds": [
-        "u85"
+        "u86"
       ],
       "claveIds": [
         "cc-ccl",
@@ -2528,9 +2558,9 @@
     },
     {
       "id": "u96",
-      "asignaturaId": "u82",
-      "codigo": "LEXT.SC.4.1",
-      "descripcion": "Interpretar y explicar textos, conceptos y comunicaciones breves y sencillas, de forma guiada, en situaciones en las que atender a la diversidad, mostrando empatía e interés por los interlocutores e interlocutoras y por los problemas de entendimiento en su entorno más próximo, apoyándose en diversos recursos y soportes.",
+      "asignaturaId": "u83",
+      "codigo": "LEXT.SC.3.2",
+      "descripcion": "Seleccionar, utilizar y planificar de forma guiada y en situaciones cotidianas, estrategias elementales para saludar, despedirse y presentarse; expresar mensajes breves; y formular y contestar preguntas sencillas.",
       "peso": 6.6667,
       "espIds": [
         "u86"
@@ -2540,17 +2570,18 @@
         "cc-cp",
         "cc-stem",
         "cc-cpsaa",
-        "cc-ccec"
+        "cc-cc",
+        "cc-ce"
       ]
     },
     {
       "id": "u97",
-      "asignaturaId": "u82",
-      "codigo": "LEXT.SC.4.2",
-      "descripcion": "Seleccionar y aplicar, de forma guiada, estrategias elementales que ayuden a crear puentes y faciliten la comprensión y producción de información, así como la comunicación fluida, usando con ayuda, recursos y apoyos físicos o digitales en función de las necesidades de cada contexto.",
+      "asignaturaId": "u83",
+      "codigo": "LEXT.SC.4.1",
+      "descripcion": "Interpretar y explicar textos, conceptos y comunicaciones breves y sencillas, de forma guiada, en situaciones en las que atender a la diversidad, mostrando empatía e interés por los interlocutores e interlocutoras y por los problemas de entendimiento en su entorno más próximo, apoyándose en diversos recursos y soportes.",
       "peso": 6.6667,
       "espIds": [
-        "u86"
+        "u87"
       ],
       "claveIds": [
         "cc-ccl",
@@ -2562,29 +2593,29 @@
     },
     {
       "id": "u98",
-      "asignaturaId": "u82",
-      "codigo": "LEXT.SC.5.1",
-      "descripcion": "Comprender y distinguir las similitudes y diferencias entre distintas lenguas reflexionando, de forma guiada, sobre aspectos básicos de su funcionamiento.",
+      "asignaturaId": "u83",
+      "codigo": "LEXT.SC.4.2",
+      "descripcion": "Seleccionar y aplicar, de forma guiada, estrategias elementales que ayuden a crear puentes y faciliten la comprensión y producción de información, así como la comunicación fluida, usando con ayuda, recursos y apoyos físicos o digitales en función de las necesidades de cada contexto.",
       "peso": 6.6667,
       "espIds": [
         "u87"
       ],
       "claveIds": [
+        "cc-ccl",
         "cc-cp",
         "cc-stem",
-        "cc-cd",
         "cc-cpsaa",
-        "cc-ce"
+        "cc-ccec"
       ]
     },
     {
       "id": "u99",
-      "asignaturaId": "u82",
-      "codigo": "LEXT.SC.5.2",
-      "descripcion": "Utilizar y diferenciar, de forma guiada, los conocimientos y estrategias de mejora de su capacidad de comunicar y de aprender la lengua extranjera, con apoyo de otros participantes y de soportes analógicos y digitales.",
+      "asignaturaId": "u83",
+      "codigo": "LEXT.SC.5.1",
+      "descripcion": "Comprender y distinguir las similitudes y diferencias entre distintas lenguas reflexionando, de forma guiada, sobre aspectos básicos de su funcionamiento.",
       "peso": 6.6667,
       "espIds": [
-        "u87"
+        "u88"
       ],
       "claveIds": [
         "cc-cp",
@@ -2596,12 +2627,12 @@
     },
     {
       "id": "u100",
-      "asignaturaId": "u82",
-      "codigo": "LEXT.SC.5.3",
-      "descripcion": "Identificar, registrar y aplicar, de manera guiada, los progresos y dificultades elementales en el proceso de aprendizaje de la lengua extranjera, reconociendo los aspectos que ayudan a mejorar y participando en actividades de autoevaluación y coevaluación, como las propuestas en el Portfolio Europeo de las Lenguas (PEL).",
+      "asignaturaId": "u83",
+      "codigo": "LEXT.SC.5.2",
+      "descripcion": "Utilizar y diferenciar, de forma guiada, los conocimientos y estrategias de mejora de su capacidad de comunicar y de aprender la lengua extranjera, con apoyo de otros participantes y de soportes analógicos y digitales.",
       "peso": 6.6667,
       "espIds": [
-        "u87"
+        "u88"
       ],
       "claveIds": [
         "cc-cp",
@@ -2613,29 +2644,29 @@
     },
     {
       "id": "u101",
-      "asignaturaId": "u82",
-      "codigo": "LEXT.SC.6.1",
-      "descripcion": "Mostrar interés y actuar con respeto en situaciones interculturales, identificando y comparando semejanzas y diferencias elementales entre lenguas y culturas, y mostrando rechazo frente a discriminaciones, prejuicios y estereotipos de cualquier tipo en contextos comunicativos cotidianos y habituales.",
+      "asignaturaId": "u83",
+      "codigo": "LEXT.SC.5.3",
+      "descripcion": "Identificar, registrar y aplicar, de manera guiada, los progresos y dificultades elementales en el proceso de aprendizaje de la lengua extranjera, reconociendo los aspectos que ayudan a mejorar y participando en actividades de autoevaluación y coevaluación, como las propuestas en el Portfolio Europeo de las Lenguas (PEL).",
       "peso": 6.6667,
       "espIds": [
         "u88"
       ],
       "claveIds": [
-        "cc-ccl",
         "cc-cp",
+        "cc-stem",
+        "cc-cd",
         "cc-cpsaa",
-        "cc-cc",
-        "cc-ccec"
+        "cc-ce"
       ]
     },
     {
       "id": "u102",
-      "asignaturaId": "u82",
-      "codigo": "LEXT.SC.6.2",
-      "descripcion": "Reconocer y apreciar la diversidad lingüística, cultural y artística propia de países donde se habla la lengua extranjera como fuente de enriquecimiento personal, mostrando interés por comprender elementos culturales y lingüísticos elementales y habituales que fomenten la convivencia pacífica y el respeto por los demás.",
+      "asignaturaId": "u83",
+      "codigo": "LEXT.SC.6.1",
+      "descripcion": "Mostrar interés y actuar con respeto en situaciones interculturales, identificando y comparando semejanzas y diferencias elementales entre lenguas y culturas, y mostrando rechazo frente a discriminaciones, prejuicios y estereotipos de cualquier tipo en contextos comunicativos cotidianos y habituales.",
       "peso": 6.6667,
       "espIds": [
-        "u88"
+        "u89"
       ],
       "claveIds": [
         "cc-ccl",
@@ -2647,12 +2678,12 @@
     },
     {
       "id": "u103",
-      "asignaturaId": "u82",
-      "codigo": "LEXT.SC.6.3",
-      "descripcion": "Seleccionar y aplicar, de forma guiada, estrategias básicas para entender y apreciar los aspectos más relevantes de la diversidad lingüística, cultural y artística.",
-      "peso": 6.6662,
+      "asignaturaId": "u83",
+      "codigo": "LEXT.SC.6.2",
+      "descripcion": "Reconocer y apreciar la diversidad lingüística, cultural y artística propia de países donde se habla la lengua extranjera como fuente de enriquecimiento personal, mostrando interés por comprender elementos culturales y lingüísticos elementales y habituales que fomenten la convivencia pacífica y el respeto por los demás.",
+      "peso": 6.6667,
       "espIds": [
-        "u88"
+        "u89"
       ],
       "claveIds": [
         "cc-ccl",
@@ -2663,29 +2694,30 @@
       ]
     },
     {
-      "id": "u115",
-      "asignaturaId": "u104",
-      "codigo": "LCL.SC.1.1",
-      "descripcion": "Mostrar interés y respeto a las distintas lenguas y variedades dialectales de su entorno, identificando algunas expresiones de uso cotidiano.",
-      "peso": 5.8824,
+      "id": "u104",
+      "asignaturaId": "u83",
+      "codigo": "LEXT.SC.6.3",
+      "descripcion": "Seleccionar y aplicar, de forma guiada, estrategias básicas para entender y apreciar los aspectos más relevantes de la diversidad lingüística, cultural y artística.",
+      "peso": 6.6662,
       "espIds": [
-        "u105"
+        "u89"
       ],
       "claveIds": [
         "cc-ccl",
         "cc-cp",
+        "cc-cpsaa",
         "cc-cc",
         "cc-ccec"
       ]
     },
     {
       "id": "u116",
-      "asignaturaId": "u104",
-      "codigo": "LCL.SC.1.2",
-      "descripcion": "Identificar, con cierta autonomía y en contextos próximos, prejuicios y estereotipos lingüísticos frecuentes, aportando alternativas y reconociendo la diversidad lingüística de su entorno como una fuente de riqueza cultural. Comprender el sentido de textos orales y multimodales sencillos, reconociendo las ideas principales, los mensajes explícitos y los mensajes implícitos más sencillos, y progresando, de manera acompañada, en la valoración crítica del contenido y de los elementos no verbales elementales.",
-      "peso": 5.8824,
+      "asignaturaId": "u105",
+      "codigo": "LCL.SC.1.1",
+      "descripcion": "Mostrar interés y respeto a las distintas lenguas y variedades dialectales de su entorno, identificando algunas expresiones de uso cotidiano.",
+      "peso": 5.2632,
       "espIds": [
-        "u105"
+        "u106"
       ],
       "claveIds": [
         "cc-ccl",
@@ -2696,28 +2728,26 @@
     },
     {
       "id": "u117",
-      "asignaturaId": "u104",
-      "codigo": "LCL.SC.3.1",
-      "descripcion": "Producir textos orales y multimodales coherentes, con planificación acompañada, ajustando el discurso a la situación comunicativa y utilizando recursos no verbales básicos.",
-      "peso": 5.8824,
+      "asignaturaId": "u105",
+      "codigo": "LCL.SC.1.2",
+      "descripcion": "Identificar, con cierta autonomía y en contextos próximos, prejuicios y estereotipos lingüísticos frecuentes, aportando alternativas y reconociendo la diversidad lingüística de su entorno como una fuente de riqueza cultural.",
+      "peso": 5.2632,
       "espIds": [
-        "u107"
+        "u106"
       ],
       "claveIds": [
         "cc-ccl",
         "cc-cp",
-        "cc-stem",
-        "cc-cd",
         "cc-cc",
-        "cc-ce"
+        "cc-ccec"
       ]
     },
     {
       "id": "u118",
-      "asignaturaId": "u104",
-      "codigo": "LCL.SC.3.2",
-      "descripcion": "Participar en interacciones orales espontáneas o regladas, incorporando estrategias básicas de escucha activa y cortesía lingüística.",
-      "peso": 5.8824,
+      "asignaturaId": "u105",
+      "codigo": "LCL.SC.2.1",
+      "descripcion": "Comprender el sentido de textos orales y multimodales sencillos, reconociendo las ideas principales, los mensajes explícitos y los mensajes implícitos más sencillos, y progresando, de manera acompañada, en la valoración crítica del contenido y de los elementos no verbales elementales.",
+      "peso": 5.2632,
       "espIds": [
         "u107"
       ],
@@ -2726,16 +2756,16 @@
         "cc-cp",
         "cc-stem",
         "cc-cd",
-        "cc-cc",
-        "cc-ce"
+        "cc-cpsaa",
+        "cc-cc"
       ]
     },
     {
       "id": "u119",
-      "asignaturaId": "u104",
-      "codigo": "LCL.SC.4.1",
-      "descripcion": "Comprender el sentido global y la información relevante de textos sencillos, escritos y multimodales, realizando inferencias a partir de estrategias básicas de comprensión antes, durante y después de la lectura.",
-      "peso": 5.8824,
+      "asignaturaId": "u105",
+      "codigo": "LCL.SC.3.1",
+      "descripcion": "Producir textos orales y multimodales coherentes, con planificación acompañada, ajustando el discurso a la situación comunicativa y utilizando recursos no verbales básicos.",
+      "peso": 5.2632,
       "espIds": [
         "u108"
       ],
@@ -2744,17 +2774,36 @@
         "cc-cp",
         "cc-stem",
         "cc-cd",
-        "cc-cpsaa"
+        "cc-cc",
+        "cc-ce"
       ]
     },
     {
       "id": "u120",
-      "asignaturaId": "u104",
-      "codigo": "LCL.SC.4.2",
-      "descripcion": "Analizar, de manera acompañada, el contenido y aspectos formales y no formales elementales de textos escritos y multimodales, valorando su contenido y estructura e iniciándose en la evaluación de su fiabilidad. Producir textos escritos y multimodales sencillos, con coherencia y adecuación, en distintos soportes, iniciándose en el uso de las normas gramaticales y ortográficas más sencillas al servicio de la cohesión y progresando, de manera acompañada, en la movilización de estrategias sencillas, individuales o grupales, de planificación, textualización y revisión.",
-      "peso": 5.8824,
+      "asignaturaId": "u105",
+      "codigo": "LCL.SC.3.2",
+      "descripcion": "Participar en interacciones orales espontáneas o regladas, incorporando estrategias básicas de escucha activa y cortesía lingüística.",
+      "peso": 5.2632,
       "espIds": [
         "u108"
+      ],
+      "claveIds": [
+        "cc-ccl",
+        "cc-cp",
+        "cc-stem",
+        "cc-cd",
+        "cc-cc",
+        "cc-ce"
+      ]
+    },
+    {
+      "id": "u121",
+      "asignaturaId": "u105",
+      "codigo": "LCL.SC.4.1",
+      "descripcion": "Comprender el sentido global y la información relevante de textos sencillos, escritos y multimodales, realizando inferencias a partir de estrategias básicas de comprensión antes, durante y después de la lectura.",
+      "peso": 5.2632,
+      "espIds": [
+        "u109"
       ],
       "claveIds": [
         "cc-ccl",
@@ -2765,47 +2814,47 @@
       ]
     },
     {
-      "id": "u121",
-      "asignaturaId": "u104",
-      "codigo": "LCL.SC.6.1",
-      "descripcion": "Localizar, seleccionar y contrastar información de distintas fuentes, incluidas las digitales, citándolas y recreándolas mediante la adaptación creativa de modelos dados.",
-      "peso": 5.8824,
-      "espIds": [
-        "u110"
-      ],
-      "claveIds": [
-        "cc-ccl",
-        "cc-cd",
-        "cc-cpsaa",
-        "cc-cc",
-        "cc-ce"
-      ]
-    },
-    {
       "id": "u122",
-      "asignaturaId": "u104",
-      "codigo": "LCL.SC.6.2",
-      "descripcion": "Compartir los resultados de un proceso de investigación sencillo, individual o grupal, sobre algún tema de interés personal o ecosocial, realizado de manera acompañada.",
-      "peso": 5.8824,
+      "asignaturaId": "u105",
+      "codigo": "LCL.SC.4.2",
+      "descripcion": "Analizar, de manera acompañada, el contenido y aspectos formales y no formales elementales de textos escritos y multimodales, valorando su contenido y estructura e iniciándose en la evaluación de su fiabilidad.",
+      "peso": 5.2632,
       "espIds": [
-        "u110"
+        "u109"
       ],
       "claveIds": [
         "cc-ccl",
+        "cc-cp",
+        "cc-stem",
         "cc-cd",
-        "cc-cpsaa",
-        "cc-cc",
-        "cc-ce"
+        "cc-cpsaa"
       ]
     },
     {
       "id": "u123",
-      "asignaturaId": "u104",
-      "codigo": "LCL.SC.6.3",
-      "descripcion": "Adoptar hábitos de uso crítico, seguro, sostenible y saludable de las tecnologías digitales en relación con la búsqueda y la comunicación de la información.",
-      "peso": 5.8824,
+      "asignaturaId": "u105",
+      "codigo": "LCL.SC.5.1",
+      "descripcion": "Producir textos escritos y multimodales sencillos, con coherencia y adecuación, en distintos soportes, iniciándose en el uso de las normas gramaticales y ortográficas más sencillas al servicio de la cohesión y progresando, de manera acompañada, en la movilización de estrategias sencillas, individuales o grupales, de planificación, textualización y revisión.",
+      "peso": 5.2632,
       "espIds": [
         "u110"
+      ],
+      "claveIds": [
+        "cc-ccl",
+        "cc-stem",
+        "cc-cd",
+        "cc-cpsaa",
+        "cc-cc"
+      ]
+    },
+    {
+      "id": "u124",
+      "asignaturaId": "u105",
+      "codigo": "LCL.SC.6.1",
+      "descripcion": "Localizar, seleccionar y contrastar información de distintas fuentes, incluidas las digitales, citándolas y recreándolas mediante la adaptación creativa de modelos dados.",
+      "peso": 5.2632,
+      "espIds": [
+        "u111"
       ],
       "claveIds": [
         "cc-ccl",
@@ -2816,27 +2865,11 @@
       ]
     },
     {
-      "id": "u124",
-      "asignaturaId": "u104",
-      "codigo": "LCL.SC.7.1",
-      "descripcion": "Leer con progresiva autonomía o de forma acompañada textos de diversos autores y autoras, ajustados a sus gustos e intereses y seleccionados con creciente autonomía, avanzando en la construcción de su identidad lectora.",
-      "peso": 5.8824,
-      "espIds": [
-        "u111"
-      ],
-      "claveIds": [
-        "cc-ccl",
-        "cc-cd",
-        "cc-cpsaa",
-        "cc-ccec"
-      ]
-    },
-    {
       "id": "u125",
-      "asignaturaId": "u104",
-      "codigo": "LCL.SC.7.2",
-      "descripcion": "Compartir la experiencia de lectura, en soportes diversos, participando en comunidades lectoras en el ámbito escolar.",
-      "peso": 5.8824,
+      "asignaturaId": "u105",
+      "codigo": "LCL.SC.6.2",
+      "descripcion": "Compartir los resultados de un proceso de investigación sencillo, individual o grupal, sobre algún tema de interés personal o ecosocial, realizado de manera acompañada.",
+      "peso": 5.2632,
       "espIds": [
         "u111"
       ],
@@ -2844,61 +2877,95 @@
         "cc-ccl",
         "cc-cd",
         "cc-cpsaa",
-        "cc-ccec"
+        "cc-cc",
+        "cc-ce"
       ]
     },
     {
       "id": "u126",
-      "asignaturaId": "u104",
-      "codigo": "LCL.SC.8.1",
-      "descripcion": "Escuchar y leer textos variados de la literatura infantil universal, que recojan diversidad de autores y autoras, relacionándolos en función de temas y aspectos elementales del género literario, e interpretándolos y relacionándolos con otras manifestaciones artísticas o culturales de manera acompañada.",
-      "peso": 5.8824,
+      "asignaturaId": "u105",
+      "codigo": "LCL.SC.6.3",
+      "descripcion": "Adoptar hábitos de uso crítico, seguro, sostenible y saludable de las tecnologías digitales en relación con la búsqueda y la comunicación de la información.",
+      "peso": 5.2632,
       "espIds": [
-        "u112"
+        "u111"
       ],
       "claveIds": [
         "cc-ccl",
-        "cc-ccec"
+        "cc-cd",
+        "cc-cpsaa",
+        "cc-cc",
+        "cc-ce"
       ]
     },
     {
       "id": "u127",
-      "asignaturaId": "u104",
-      "codigo": "LCL.SC.8.2",
-      "descripcion": "Producir, de manera acompañada, textos sencillos individuales o colectivos con intención literaria, recreando de manera personal los modelos dados, en distintos soportes y complementándolos con otros lenguajes artísticos.",
-      "peso": 5.8824,
+      "asignaturaId": "u105",
+      "codigo": "LCL.SC.7.1",
+      "descripcion": "Leer con progresiva autonomía o de forma acompañada textos de diversos autores y autoras, ajustados a sus gustos e intereses y seleccionados con creciente autonomía, avanzando en la construcción de su identidad lectora.",
+      "peso": 5.2632,
       "espIds": [
         "u112"
       ],
       "claveIds": [
         "cc-ccl",
+        "cc-cd",
+        "cc-cpsaa",
         "cc-ccec"
       ]
     },
     {
       "id": "u128",
-      "asignaturaId": "u104",
-      "codigo": "LCL.SC.9.1",
-      "descripcion": "Formular conclusiones elementales sobre el funcionamiento de la lengua, prestando especial atención a la relación entre sustantivos, adjetivos y verbos, a partir de la observación, comparación y transformación de palabras, enunciados y textos, en un proceso acompañado de producción o comprensión de textos en contextos significativos.",
-      "peso": 5.8824,
+      "asignaturaId": "u105",
+      "codigo": "LCL.SC.7.2",
+      "descripcion": "Compartir la experiencia de lectura, en soportes diversos, participando en comunidades lectoras en el ámbito escolar.",
+      "peso": 5.2632,
       "espIds": [
-        "u113"
+        "u112"
       ],
       "claveIds": [
         "cc-ccl",
-        "cc-cp",
-        "cc-stem",
-        "cc-cpsaa"
+        "cc-cd",
+        "cc-cpsaa",
+        "cc-ccec"
       ]
     },
     {
       "id": "u129",
-      "asignaturaId": "u104",
-      "codigo": "LCL.SC.9.2",
-      "descripcion": "Revisar y mejorar los textos propios y ajenos y subsanar algunos problemas de comprensión lectora, de manera acompañada, a partir de la reflexión metalingüística e interlingüística y usando la terminología básica adecuada.",
-      "peso": 5.8824,
+      "asignaturaId": "u105",
+      "codigo": "LCL.SC.8.1",
+      "descripcion": "Escuchar y leer textos variados de la literatura infantil universal, que recojan diversidad de autores y autoras, relacionándolos en función de temas y aspectos elementales del género literario, e interpretándolos y relacionándolos con otras manifestaciones artísticas o culturales de manera acompañada.",
+      "peso": 5.2632,
       "espIds": [
         "u113"
+      ],
+      "claveIds": [
+        "cc-ccl",
+        "cc-ccec"
+      ]
+    },
+    {
+      "id": "u130",
+      "asignaturaId": "u105",
+      "codigo": "LCL.SC.8.2",
+      "descripcion": "Producir, de manera acompañada, textos sencillos individuales o colectivos con intención literaria, recreando de manera personal los modelos dados, en distintos soportes y complementándolos con otros lenguajes artísticos.",
+      "peso": 5.2632,
+      "espIds": [
+        "u113"
+      ],
+      "claveIds": [
+        "cc-ccl",
+        "cc-ccec"
+      ]
+    },
+    {
+      "id": "u131",
+      "asignaturaId": "u105",
+      "codigo": "LCL.SC.9.1",
+      "descripcion": "Formular conclusiones elementales sobre el funcionamiento de la lengua, prestando especial atención a la relación entre sustantivos, adjetivos y verbos, a partir de la observación, comparación y transformación de palabras, enunciados y textos, en un proceso acompañado de producción o comprensión de textos en contextos significativos.",
+      "peso": 5.2632,
+      "espIds": [
+        "u114"
       ],
       "claveIds": [
         "cc-ccl",
@@ -2908,163 +2975,145 @@
       ]
     },
     {
-      "id": "u130",
-      "asignaturaId": "u104",
+      "id": "u132",
+      "asignaturaId": "u105",
+      "codigo": "LCL.SC.9.2",
+      "descripcion": "Revisar y mejorar los textos propios y ajenos y subsanar algunos problemas de comprensión lectora, de manera acompañada, a partir de la reflexión metalingüística e interlingüística y usando la terminología básica adecuada.",
+      "peso": 5.2632,
+      "espIds": [
+        "u114"
+      ],
+      "claveIds": [
+        "cc-ccl",
+        "cc-cp",
+        "cc-stem",
+        "cc-cpsaa"
+      ]
+    },
+    {
+      "id": "u133",
+      "asignaturaId": "u105",
       "codigo": "LCL.SC.10.1",
       "descripcion": "Rechazar los usos lingüísticos discriminatorios e identificar los abusos de poder a través de la palabra a partir de la reflexión grupal acompañada sobre los aspectos básicos, verbales y no verbales, de la comunicación, teniendo en cuenta una perspectiva de género.",
-      "peso": 5.8824,
+      "peso": 5.2632,
       "espIds": [
-        "u114"
+        "u115"
       ],
-      "claveIds": []
+      "claveIds": [
+        "cc-ccl",
+        "cc-cp",
+        "cc-cd",
+        "cc-cpsaa",
+        "cc-cc"
+      ]
     },
     {
-      "id": "u131",
-      "asignaturaId": "u104",
+      "id": "u134",
+      "asignaturaId": "u105",
       "codigo": "LCL.SC.10.2",
       "descripcion": "Movilizar, con la planificación y el acompañamiento necesarios, estrategias básicas para la escucha activa, la comunicación asertiva y el consenso, progresando en la gestión dialogada de conflictos.",
-      "peso": 5.8816,
+      "peso": 5.2624,
       "espIds": [
-        "u114"
-      ],
-      "claveIds": []
-    },
-    {
-      "id": "u141",
-      "asignaturaId": "u132",
-      "codigo": "MAT.SC.1.1",
-      "descripcion": "Interpretar, de forma verbal o gráfica, problemas de la vida cotidiana, comprendiendo las preguntas planteadas a través de diferentes estrategias o herramientas, incluidas las tecnológicas.",
-      "peso": 5.8824,
-      "espIds": [
-        "u133"
+        "u115"
       ],
       "claveIds": [
-        "cc-stem",
+        "cc-ccl",
+        "cc-cp",
         "cc-cd",
         "cc-cpsaa",
-        "cc-ce",
-        "cc-ccec"
-      ]
-    },
-    {
-      "id": "u142",
-      "asignaturaId": "u132",
-      "codigo": "MAT.SC.1.2",
-      "descripcion": "Producir representaciones matemáticas a través de esquemas o diagramas que ayuden en la resolución de una situación problematizada.",
-      "peso": 5.8824,
-      "espIds": [
-        "u133"
-      ],
-      "claveIds": [
-        "cc-stem",
-        "cc-cd",
-        "cc-cpsaa",
-        "cc-ce",
-        "cc-ccec"
-      ]
-    },
-    {
-      "id": "u143",
-      "asignaturaId": "u132",
-      "codigo": "MAT.SC.2.1",
-      "descripcion": "Comparar entre diferentes estrategias para resolver un problema de forma pautada.",
-      "peso": 5.8824,
-      "espIds": [
-        "u134"
-      ],
-      "claveIds": [
-        "cc-stem",
-        "cc-cpsaa",
-        "cc-ce"
+        "cc-cc"
       ]
     },
     {
       "id": "u144",
-      "asignaturaId": "u132",
-      "codigo": "MAT.SC.2.2",
-      "descripcion": "Obtener posibles soluciones de un problema siguiendo alguna estrategia conocida.",
+      "asignaturaId": "u135",
+      "codigo": "MAT.SC.1.1",
+      "descripcion": "Interpretar, de forma verbal o gráfica, problemas de la vida cotidiana, comprendiendo las preguntas planteadas a través de diferentes estrategias o herramientas, incluidas las tecnológicas.",
       "peso": 5.8824,
       "espIds": [
-        "u134"
+        "u136"
       ],
       "claveIds": [
         "cc-stem",
+        "cc-cd",
         "cc-cpsaa",
-        "cc-ce"
+        "cc-ce",
+        "cc-ccec"
       ]
     },
     {
       "id": "u145",
-      "asignaturaId": "u132",
-      "codigo": "MAT.SC.2.3",
-      "descripcion": "Demostrar la corrección matemática de las soluciones de un problema y su coherencia en el contexto planteado.",
+      "asignaturaId": "u135",
+      "codigo": "MAT.SC.1.2",
+      "descripcion": "Producir representaciones matemáticas a través de esquemas o diagramas que ayuden en la resolución de una situación problematizada.",
       "peso": 5.8824,
       "espIds": [
-        "u134"
+        "u136"
       ],
       "claveIds": [
         "cc-stem",
+        "cc-cd",
         "cc-cpsaa",
-        "cc-ce"
+        "cc-ce",
+        "cc-ccec"
       ]
     },
     {
       "id": "u146",
-      "asignaturaId": "u132",
-      "codigo": "MAT.SC.3.1",
-      "descripcion": "Analizar conjeturas matemáticas sencillas investigando patrones, propiedades y relaciones de forma pautada.",
+      "asignaturaId": "u135",
+      "codigo": "MAT.SC.2.1",
+      "descripcion": "Comparar entre diferentes estrategias para resolver un problema de forma pautada.",
       "peso": 5.8824,
       "espIds": [
-        "u135"
+        "u137"
       ],
       "claveIds": [
-        "cc-ccl",
         "cc-stem",
-        "cc-cd",
+        "cc-cpsaa",
         "cc-ce"
       ]
     },
     {
       "id": "u147",
-      "asignaturaId": "u132",
-      "codigo": "MAT.SC.3.2",
-      "descripcion": "Dar ejemplos de problemas sobre situaciones cotidianas que se resuelven matemáticamente.",
+      "asignaturaId": "u135",
+      "codigo": "MAT.SC.2.2",
+      "descripcion": "Obtener posibles soluciones de un problema siguiendo alguna estrategia conocida.",
       "peso": 5.8824,
       "espIds": [
-        "u135"
+        "u137"
       ],
       "claveIds": [
-        "cc-ccl",
         "cc-stem",
-        "cc-cd",
+        "cc-cpsaa",
         "cc-ce"
       ]
     },
     {
       "id": "u148",
-      "asignaturaId": "u132",
-      "codigo": "MAT.SC.4.1",
-      "descripcion": "Automatizar situaciones sencillas de la vida cotidiana que se realicen paso a paso o sigan una rutina, utilizando de forma pautada principios básicos del pensamiento computacional.",
+      "asignaturaId": "u135",
+      "codigo": "MAT.SC.2.3",
+      "descripcion": "Demostrar la corrección matemática de las soluciones de un problema y su coherencia en el contexto planteado.",
       "peso": 5.8824,
       "espIds": [
-        "u136"
+        "u137"
       ],
       "claveIds": [
         "cc-stem",
-        "cc-cd",
+        "cc-cpsaa",
         "cc-ce"
       ]
     },
     {
       "id": "u149",
-      "asignaturaId": "u132",
-      "codigo": "MAT.SC.4.2",
-      "descripcion": "Emplear herramientas tecnológicas adecuadas en el proceso de resolución de problemas.",
+      "asignaturaId": "u135",
+      "codigo": "MAT.SC.3.1",
+      "descripcion": "Analizar conjeturas matemáticas sencillas investigando patrones, propiedades y relaciones de forma pautada.",
       "peso": 5.8824,
       "espIds": [
-        "u136"
+        "u138"
       ],
       "claveIds": [
+        "cc-ccl",
         "cc-stem",
         "cc-cd",
         "cc-ce"
@@ -3072,125 +3121,154 @@
     },
     {
       "id": "u150",
-      "asignaturaId": "u132",
-      "codigo": "MAT.SC.5.1",
-      "descripcion": "Realizar conexiones entre los diferentes elementos matemáticos, aplicando conocimientos y experiencias propios.",
+      "asignaturaId": "u135",
+      "codigo": "MAT.SC.3.2",
+      "descripcion": "Dar ejemplos de problemas sobre situaciones cotidianas que se resuelven matemáticamente.",
       "peso": 5.8824,
       "espIds": [
-        "u137"
+        "u138"
       ],
       "claveIds": [
+        "cc-ccl",
         "cc-stem",
         "cc-cd",
-        "cc-cc",
-        "cc-ccec"
+        "cc-ce"
       ]
     },
     {
       "id": "u151",
-      "asignaturaId": "u132",
-      "codigo": "MAT.SC.5.2",
-      "descripcion": "Interpretar situaciones en contextos diversos, reconociendo las conexiones entre las matemáticas y la vida cotidiana.",
+      "asignaturaId": "u135",
+      "codigo": "MAT.SC.4.1",
+      "descripcion": "Automatizar situaciones sencillas de la vida cotidiana que se realicen paso a paso o sigan una rutina, utilizando de forma pautada principios básicos del pensamiento computacional.",
       "peso": 5.8824,
       "espIds": [
-        "u137"
+        "u139"
+      ],
+      "claveIds": [
+        "cc-stem",
+        "cc-cd",
+        "cc-ce"
+      ]
+    },
+    {
+      "id": "u152",
+      "asignaturaId": "u135",
+      "codigo": "MAT.SC.4.2",
+      "descripcion": "Emplear herramientas tecnológicas adecuadas en el proceso de resolución de problemas.",
+      "peso": 5.8824,
+      "espIds": [
+        "u139"
+      ],
+      "claveIds": [
+        "cc-stem",
+        "cc-cd",
+        "cc-ce"
+      ]
+    },
+    {
+      "id": "u153",
+      "asignaturaId": "u135",
+      "codigo": "MAT.SC.5.1",
+      "descripcion": "Realizar conexiones entre los diferentes elementos matemáticos, aplicando conocimientos y experiencias propios.",
+      "peso": 5.8824,
+      "espIds": [
+        "u140"
       ],
       "claveIds": [
         "cc-stem",
         "cc-cd",
         "cc-cc",
-        "cc-ccec"
-      ]
-    },
-    {
-      "id": "u152",
-      "asignaturaId": "u132",
-      "codigo": "MAT.SC.6.1",
-      "descripcion": "Reconocer el lenguaje matemático sencillo presente en la vida cotidiana en diferentes formatos, adquiriendo vocabulario específico básico y mostrando la comprensión del mensaje.",
-      "peso": 5.8824,
-      "espIds": [
-        "u138"
-      ],
-      "claveIds": [
-        "cc-ccl",
-        "cc-stem",
-        "cc-cd",
-        "cc-ce",
-        "cc-ccec"
-      ]
-    },
-    {
-      "id": "u153",
-      "asignaturaId": "u132",
-      "codigo": "MAT.SC.6.2",
-      "descripcion": "Explicar los procesos e ideas matemáticas, los pasos seguidos en la resolución de un problema o los resultados obtenidos, utilizando un lenguaje matemático sencillo en diferentes formatos.",
-      "peso": 5.8824,
-      "espIds": [
-        "u138"
-      ],
-      "claveIds": [
-        "cc-ccl",
-        "cc-stem",
-        "cc-cd",
-        "cc-ce",
         "cc-ccec"
       ]
     },
     {
       "id": "u154",
-      "asignaturaId": "u132",
-      "codigo": "MAT.SC.7.1",
-      "descripcion": "Identificar las emociones propias al abordar retos matemáticos, pidiendo ayuda solo cuando sea necesario y desarrollando la autoconfianza.",
+      "asignaturaId": "u135",
+      "codigo": "MAT.SC.5.2",
+      "descripcion": "Interpretar situaciones en contextos diversos, reconociendo las conexiones entre las matemáticas y la vida cotidiana.",
       "peso": 5.8824,
       "espIds": [
-        "u139"
+        "u140"
       ],
       "claveIds": [
         "cc-stem",
-        "cc-cpsaa",
-        "cc-ce"
+        "cc-cd",
+        "cc-cc",
+        "cc-ccec"
       ]
     },
     {
       "id": "u155",
-      "asignaturaId": "u132",
-      "codigo": "MAT.SC.7.2",
-      "descripcion": "Mostrar actitudes positivas ante retos matemáticos tales como el esfuerzo y la flexibilidad, valorando el error como una oportunidad de aprendizaje.",
+      "asignaturaId": "u135",
+      "codigo": "MAT.SC.6.1",
+      "descripcion": "Reconocer el lenguaje matemático sencillo presente en la vida cotidiana en diferentes formatos, adquiriendo vocabulario específico básico y mostrando la comprensión del mensaje.",
       "peso": 5.8824,
       "espIds": [
-        "u139"
+        "u141"
       ],
       "claveIds": [
+        "cc-ccl",
         "cc-stem",
-        "cc-cpsaa",
-        "cc-ce"
+        "cc-cd",
+        "cc-ce",
+        "cc-ccec"
       ]
     },
     {
       "id": "u156",
-      "asignaturaId": "u132",
-      "codigo": "MAT.SC.8.1",
-      "descripcion": "Trabajar en equipo activa y respetuosamente, comunicándose adecuadamente, respetando la diversidad del grupo y estableciendo relaciones saludables basadas en la igualdad y la resolución pacífica de conflictos.",
+      "asignaturaId": "u135",
+      "codigo": "MAT.SC.6.2",
+      "descripcion": "Explicar los procesos e ideas matemáticas, los pasos seguidos en la resolución de un problema o los resultados obtenidos, utilizando un lenguaje matemático sencillo en diferentes formatos.",
       "peso": 5.8824,
       "espIds": [
-        "u140"
+        "u141"
       ],
       "claveIds": [
         "cc-ccl",
-        "cc-cp",
         "cc-stem",
-        "cc-cpsaa",
-        "cc-cc"
+        "cc-cd",
+        "cc-ce",
+        "cc-ccec"
       ]
     },
     {
       "id": "u157",
-      "asignaturaId": "u132",
-      "codigo": "MAT.SC.8.2",
-      "descripcion": "Participar en el reparto de tareas, asumiendo y respetando las responsabilidades individuales asignadas y empleando estrategias sencillas de trabajo en equipo dirigidas a la consecución de objetivos compartidos.",
-      "peso": 5.8816,
+      "asignaturaId": "u135",
+      "codigo": "MAT.SC.7.1",
+      "descripcion": "Identificar las emociones propias al abordar retos matemáticos, pidiendo ayuda solo cuando sea necesario y desarrollando la autoconfianza.",
+      "peso": 5.8824,
       "espIds": [
-        "u140"
+        "u142"
+      ],
+      "claveIds": [
+        "cc-stem",
+        "cc-cpsaa",
+        "cc-ce"
+      ]
+    },
+    {
+      "id": "u158",
+      "asignaturaId": "u135",
+      "codigo": "MAT.SC.7.2",
+      "descripcion": "Mostrar actitudes positivas ante retos matemáticos tales como el esfuerzo y la flexibilidad, valorando el error como una oportunidad de aprendizaje.",
+      "peso": 5.8824,
+      "espIds": [
+        "u142"
+      ],
+      "claveIds": [
+        "cc-stem",
+        "cc-cpsaa",
+        "cc-ce"
+      ]
+    },
+    {
+      "id": "u159",
+      "asignaturaId": "u135",
+      "codigo": "MAT.SC.8.1",
+      "descripcion": "Trabajar en equipo activa y respetuosamente, comunicándose adecuadamente, respetando la diversidad del grupo y estableciendo relaciones saludables basadas en la igualdad y la resolución pacífica de conflictos.",
+      "peso": 5.8824,
+      "espIds": [
+        "u143"
       ],
       "claveIds": [
         "cc-ccl",
@@ -3201,141 +3279,112 @@
       ]
     },
     {
-      "id": "u167",
-      "asignaturaId": "u158",
-      "codigo": "MAT.PC.1.1",
-      "descripcion": "Comprender las preguntas planteadas a través de diferentes estrategias o herramientas, reconociendo la información contenida en problemas de la vida cotidiana.",
-      "peso": 5.8824,
+      "id": "u160",
+      "asignaturaId": "u135",
+      "codigo": "MAT.SC.8.2",
+      "descripcion": "Participar en el reparto de tareas, asumiendo y respetando las responsabilidades individuales asignadas y empleando estrategias sencillas de trabajo en equipo dirigidas a la consecución de objetivos compartidos.",
+      "peso": 5.8816,
       "espIds": [
-        "u159"
+        "u143"
       ],
       "claveIds": [
-        "cc-stem",
-        "cc-cd",
-        "cc-cpsaa",
-        "cc-ce",
-        "cc-ccec"
-      ]
-    },
-    {
-      "id": "u168",
-      "asignaturaId": "u158",
-      "codigo": "MAT.PC.1.2",
-      "descripcion": "Proporcionar ejemplos de representaciones de situaciones problematizadas sencillas, con recursos manipulativos y gráficos que ayuden en la resolución de un problema de la vida cotidiana.",
-      "peso": 5.8824,
-      "espIds": [
-        "u159"
-      ],
-      "claveIds": [
-        "cc-stem",
-        "cc-cd",
-        "cc-cpsaa",
-        "cc-ce",
-        "cc-ccec"
-      ]
-    },
-    {
-      "id": "u169",
-      "asignaturaId": "u158",
-      "codigo": "MAT.PC.2.1",
-      "descripcion": "Emplear algunas estrategias adecuadas en la resolución de problemas.",
-      "peso": 5.8824,
-      "espIds": [
-        "u160"
-      ],
-      "claveIds": [
+        "cc-ccl",
+        "cc-cp",
         "cc-stem",
         "cc-cpsaa",
-        "cc-ce"
+        "cc-cc"
       ]
     },
     {
       "id": "u170",
-      "asignaturaId": "u158",
-      "codigo": "MAT.PC.2.2",
-      "descripcion": "Obtener posibles soluciones a problemas, de forma guiada, aplicando estrategias básicas de resolución.",
+      "asignaturaId": "u161",
+      "codigo": "MAT.PC.1.1",
+      "descripcion": "Comprender las preguntas planteadas a través de diferentes estrategias o herramientas, reconociendo la información contenida en problemas de la vida cotidiana.",
       "peso": 5.8824,
       "espIds": [
-        "u160"
+        "u162"
       ],
       "claveIds": [
         "cc-stem",
+        "cc-cd",
         "cc-cpsaa",
-        "cc-ce"
+        "cc-ce",
+        "cc-ccec"
       ]
     },
     {
       "id": "u171",
-      "asignaturaId": "u158",
-      "codigo": "MAT.PC.2.3",
-      "descripcion": "Describir verbalmente la idoneidad de las soluciones de un problema a partir de las preguntas previamente planteadas.",
+      "asignaturaId": "u161",
+      "codigo": "MAT.PC.1.2",
+      "descripcion": "Proporcionar ejemplos de representaciones de situaciones problematizadas sencillas, con recursos manipulativos y gráficos que ayuden en la resolución de un problema de la vida cotidiana.",
       "peso": 5.8824,
       "espIds": [
-        "u160"
+        "u162"
       ],
       "claveIds": [
         "cc-stem",
+        "cc-cd",
         "cc-cpsaa",
-        "cc-ce"
+        "cc-ce",
+        "cc-ccec"
       ]
     },
     {
       "id": "u172",
-      "asignaturaId": "u158",
-      "codigo": "MAT.PC.3.1",
-      "descripcion": "Realizar conjeturas matemáticas sencillas, investigando patrones, propiedades y relaciones de forma guiada.",
+      "asignaturaId": "u161",
+      "codigo": "MAT.PC.2.1",
+      "descripcion": "Emplear algunas estrategias adecuadas en la resolución de problemas.",
       "peso": 5.8824,
       "espIds": [
-        "u161"
+        "u163"
       ],
       "claveIds": [
-        "cc-ccl",
         "cc-stem",
-        "cc-cd",
+        "cc-cpsaa",
         "cc-ce"
       ]
     },
     {
       "id": "u173",
-      "asignaturaId": "u158",
-      "codigo": "MAT.PC.3.2",
-      "descripcion": "Dar ejemplos de problemas a partir de situaciones cotidianas que se resuelven matemáticamente.",
+      "asignaturaId": "u161",
+      "codigo": "MAT.PC.2.2",
+      "descripcion": "Obtener posibles soluciones a problemas, de forma guiada, aplicando estrategias básicas de resolución.",
       "peso": 5.8824,
       "espIds": [
-        "u161"
+        "u163"
       ],
       "claveIds": [
-        "cc-ccl",
         "cc-stem",
-        "cc-cd",
+        "cc-cpsaa",
         "cc-ce"
       ]
     },
     {
       "id": "u174",
-      "asignaturaId": "u158",
-      "codigo": "MAT.PC.4.1",
-      "descripcion": "Describir rutinas y actividades sencillas de la vida cotidiana que se realicen paso a paso, utilizando principios básicos del pensamiento computacional de forma guiada.",
+      "asignaturaId": "u161",
+      "codigo": "MAT.PC.2.3",
+      "descripcion": "Describir verbalmente la idoneidad de las soluciones de un problema a partir de las preguntas previamente planteadas.",
       "peso": 5.8824,
       "espIds": [
-        "u162"
+        "u163"
       ],
       "claveIds": [
         "cc-stem",
-        "cc-cd",
+        "cc-cpsaa",
         "cc-ce"
       ]
     },
     {
       "id": "u175",
-      "asignaturaId": "u158",
-      "codigo": "MAT.PC.4.2",
-      "descripcion": "Emplear herramientas tecnológicas adecuadas, de forma guiada, en el proceso de resolución de problemas.",
+      "asignaturaId": "u161",
+      "codigo": "MAT.PC.3.1",
+      "descripcion": "Realizar conjeturas matemáticas sencillas, investigando patrones, propiedades y relaciones de forma guiada.",
       "peso": 5.8824,
       "espIds": [
-        "u162"
+        "u164"
       ],
       "claveIds": [
+        "cc-ccl",
         "cc-stem",
         "cc-cd",
         "cc-ce"
@@ -3343,93 +3392,124 @@
     },
     {
       "id": "u176",
-      "asignaturaId": "u158",
-      "codigo": "MAT.PC.5.1",
-      "descripcion": "Reconocer conexiones entre los diferentes elementos matemáticos, aplicando conocimientos y experiencias propios.",
+      "asignaturaId": "u161",
+      "codigo": "MAT.PC.3.2",
+      "descripcion": "Dar ejemplos de problemas a partir de situaciones cotidianas que se resuelven matemáticamente.",
       "peso": 5.8824,
       "espIds": [
-        "u163"
+        "u164"
       ],
       "claveIds": [
+        "cc-ccl",
         "cc-stem",
         "cc-cd",
-        "cc-cc",
-        "cc-ccec"
+        "cc-ce"
       ]
     },
     {
       "id": "u177",
-      "asignaturaId": "u158",
-      "codigo": "MAT.PC.5.2",
-      "descripcion": "Reconocer las matemáticas presentes en la vida cotidiana y en otras áreas, estableciendo conexiones sencillas entre ellas.",
+      "asignaturaId": "u161",
+      "codigo": "MAT.PC.4.1",
+      "descripcion": "Describir rutinas y actividades sencillas de la vida cotidiana que se realicen paso a paso, utilizando principios básicos del pensamiento computacional de forma guiada.",
       "peso": 5.8824,
       "espIds": [
-        "u163"
+        "u165"
+      ],
+      "claveIds": [
+        "cc-stem",
+        "cc-cd",
+        "cc-ce"
+      ]
+    },
+    {
+      "id": "u178",
+      "asignaturaId": "u161",
+      "codigo": "MAT.PC.4.2",
+      "descripcion": "Emplear herramientas tecnológicas adecuadas, de forma guiada, en el proceso de resolución de problemas.",
+      "peso": 5.8824,
+      "espIds": [
+        "u165"
+      ],
+      "claveIds": [
+        "cc-stem",
+        "cc-cd",
+        "cc-ce"
+      ]
+    },
+    {
+      "id": "u179",
+      "asignaturaId": "u161",
+      "codigo": "MAT.PC.5.1",
+      "descripcion": "Reconocer conexiones entre los diferentes elementos matemáticos, aplicando conocimientos y experiencias propios.",
+      "peso": 5.8824,
+      "espIds": [
+        "u166"
       ],
       "claveIds": [
         "cc-stem",
         "cc-cd",
         "cc-cc",
-        "cc-ccec"
-      ]
-    },
-    {
-      "id": "u178",
-      "asignaturaId": "u158",
-      "codigo": "MAT.PC.6.1",
-      "descripcion": "Reconocer lenguaje matemático sencillo presente en la vida cotidiana, adquiriendo vocabulario específico básico.",
-      "peso": 5.8824,
-      "espIds": [
-        "u164"
-      ],
-      "claveIds": [
-        "cc-ccl",
-        "cc-stem",
-        "cc-cd",
-        "cc-ce",
-        "cc-ccec"
-      ]
-    },
-    {
-      "id": "u179",
-      "asignaturaId": "u158",
-      "codigo": "MAT.PC.6.2",
-      "descripcion": "Explicar ideas y procesos matemáticos sencillos, los pasos seguidos en la resolución de un problema o los resultados matemáticos, de forma verbal o gráfica.",
-      "peso": 5.8824,
-      "espIds": [
-        "u164"
-      ],
-      "claveIds": [
-        "cc-ccl",
-        "cc-stem",
-        "cc-cd",
-        "cc-ce",
         "cc-ccec"
       ]
     },
     {
       "id": "u180",
-      "asignaturaId": "u158",
-      "codigo": "MAT.PC.7.1",
-      "descripcion": "Reconocer las emociones básicas propias al abordar retos matemáticos, pidiendo ayuda solo cuando sea necesario.",
+      "asignaturaId": "u161",
+      "codigo": "MAT.PC.5.2",
+      "descripcion": "Reconocer las matemáticas presentes en la vida cotidiana y en otras áreas, estableciendo conexiones sencillas entre ellas.",
       "peso": 5.8824,
       "espIds": [
-        "u165"
+        "u166"
       ],
       "claveIds": [
         "cc-stem",
-        "cc-cpsaa",
-        "cc-ce"
+        "cc-cd",
+        "cc-cc",
+        "cc-ccec"
       ]
     },
     {
       "id": "u181",
-      "asignaturaId": "u158",
-      "codigo": "MAT.PC.7.2",
-      "descripcion": "Expresar actitudes positivas ante retos matemáticos, valorando el error como una oportunidad de aprendizaje.",
+      "asignaturaId": "u161",
+      "codigo": "MAT.PC.6.1",
+      "descripcion": "Reconocer lenguaje matemático sencillo presente en la vida cotidiana, adquiriendo vocabulario específico básico.",
       "peso": 5.8824,
       "espIds": [
-        "u165"
+        "u167"
+      ],
+      "claveIds": [
+        "cc-ccl",
+        "cc-stem",
+        "cc-cd",
+        "cc-ce",
+        "cc-ccec"
+      ]
+    },
+    {
+      "id": "u182",
+      "asignaturaId": "u161",
+      "codigo": "MAT.PC.6.2",
+      "descripcion": "Explicar ideas y procesos matemáticos sencillos, los pasos seguidos en la resolución de un problema o los resultados matemáticos, de forma verbal o gráfica.",
+      "peso": 5.8824,
+      "espIds": [
+        "u167"
+      ],
+      "claveIds": [
+        "cc-ccl",
+        "cc-stem",
+        "cc-cd",
+        "cc-ce",
+        "cc-ccec"
+      ]
+    },
+    {
+      "id": "u183",
+      "asignaturaId": "u161",
+      "codigo": "MAT.PC.7.1",
+      "descripcion": "Reconocer las emociones básicas propias al abordar retos matemáticos, pidiendo ayuda solo cuando sea necesario.",
+      "peso": 5.8824,
+      "espIds": [
+        "u168"
       ],
       "claveIds": [
         "cc-stem",
@@ -3438,13 +3518,28 @@
       ]
     },
     {
-      "id": "u182",
-      "asignaturaId": "u158",
+      "id": "u184",
+      "asignaturaId": "u161",
+      "codigo": "MAT.PC.7.2",
+      "descripcion": "Expresar actitudes positivas ante retos matemáticos, valorando el error como una oportunidad de aprendizaje.",
+      "peso": 5.8824,
+      "espIds": [
+        "u168"
+      ],
+      "claveIds": [
+        "cc-stem",
+        "cc-cpsaa",
+        "cc-ce"
+      ]
+    },
+    {
+      "id": "u185",
+      "asignaturaId": "u161",
       "codigo": "MAT.PC.8.1",
       "descripcion": "Participar respetuosamente en el trabajo en equipo, estableciendo relaciones saludables basadas en el respeto, la igualdad y la resolución pacífica de conflictos.",
       "peso": 5.8824,
       "espIds": [
-        "u166"
+        "u169"
       ],
       "claveIds": [
         "cc-ccl",
@@ -3455,13 +3550,13 @@
       ]
     },
     {
-      "id": "u183",
-      "asignaturaId": "u158",
+      "id": "u186",
+      "asignaturaId": "u161",
       "codigo": "MAT.PC.8.2",
       "descripcion": "Aceptar la tarea y rol asignado en el trabajo en equipo, cumpliendo con las responsabilidades individuales y contribuyendo a la consecución de los objetivos del grupo.",
       "peso": 5.8816,
       "espIds": [
-        "u166"
+        "u169"
       ],
       "claveIds": [
         "cc-ccl",
@@ -3472,13 +3567,13 @@
       ]
     },
     {
-      "id": "u191",
-      "asignaturaId": "u184",
+      "id": "u194",
+      "asignaturaId": "u187",
       "codigo": "LEXT.PC.1.1",
       "descripcion": "Reconocer y comprender palabras y expresiones habituales en textos orales, escritos y multimodales breves y muy sencillos sobre temas frecuentes y cotidianos de relevancia personal y próximos a su experiencia, expresados de forma comprensible, clara, sencilla y directa, y en lengua estándar.",
       "peso": 7.1429,
       "espIds": [
-        "u185"
+        "u188"
       ],
       "claveIds": [
         "cc-ccl",
@@ -3486,73 +3581,35 @@
         "cc-stem",
         "cc-cd",
         "cc-cpsaa",
-        "cc-ccec"
-      ]
-    },
-    {
-      "id": "u192",
-      "asignaturaId": "u184",
-      "codigo": "LEXT.PC.1.2",
-      "descripcion": "Seleccionar de forma guiada estrategias elementales para comprender la idea global y elementos específicos de mensajes breves y sencillos en situaciones comunicativas cotidianas y de relevancia para el alumnado con el fin de captar el sentido global e identificar elementos específicos con ayuda de elementos lingüísticos y no lingüísticos del contexto.",
-      "peso": 7.1429,
-      "espIds": [
-        "u185"
-      ],
-      "claveIds": [
-        "cc-ccl",
-        "cc-cp",
-        "cc-stem",
-        "cc-cd",
-        "cc-cpsaa",
-        "cc-ccec"
-      ]
-    },
-    {
-      "id": "u193",
-      "asignaturaId": "u184",
-      "codigo": "LEXT.PC.2.1",
-      "descripcion": "Expresar oralmente frases cortas y sencillas con información básica sobre asuntos cotidianos y de relevancia para el alumnado, utilizando de forma guiada recursos verbales y no verbales, recurriendo a modelos y estructuras previamente presentados y reproduciendo en la medida de lo posible el ritmo, la acentuación y la entonación de la lengua extranjera.",
-      "peso": 7.1429,
-      "espIds": [
-        "u186"
-      ],
-      "claveIds": [
-        "cc-ccl",
-        "cc-cp",
-        "cc-stem",
-        "cc-cd",
-        "cc-cpsaa",
-        "cc-ce",
-        "cc-ccec"
-      ]
-    },
-    {
-      "id": "u194",
-      "asignaturaId": "u184",
-      "codigo": "LEXT.PC.2.2",
-      "descripcion": "Escribir palabras, expresiones conocidas y frases a partir de modelos y con una finalidad específica, a través de herramientas analógicas y digitales, usando estructuras gramaticales y léxico elemental sobre asuntos cotidianos y de relevancia personal para el alumnado.",
-      "peso": 7.1429,
-      "espIds": [
-        "u186"
-      ],
-      "claveIds": [
-        "cc-ccl",
-        "cc-cp",
-        "cc-stem",
-        "cc-cd",
-        "cc-cpsaa",
-        "cc-ce",
         "cc-ccec"
       ]
     },
     {
       "id": "u195",
-      "asignaturaId": "u184",
-      "codigo": "LEXT.PC.2.3",
-      "descripcion": "Seleccionar de forma guiada estrategias elementales para producir mensajes breves y sencillos adecuados a las intenciones comunicativas usando, con ayuda, recursos y apoyos físicos o digitales en función de las necesidades de cada contexto.",
+      "asignaturaId": "u187",
+      "codigo": "LEXT.PC.1.2",
+      "descripcion": "Seleccionar de forma guiada estrategias elementales para comprender la idea global y elementos específicos de mensajes breves y sencillos en situaciones comunicativas cotidianas y de relevancia para el alumnado con el fin de captar el sentido global e identificar elementos específicos con ayuda de elementos lingüísticos y no lingüísticos del contexto.",
       "peso": 7.1429,
       "espIds": [
-        "u186"
+        "u188"
+      ],
+      "claveIds": [
+        "cc-ccl",
+        "cc-cp",
+        "cc-stem",
+        "cc-cd",
+        "cc-cpsaa",
+        "cc-ccec"
+      ]
+    },
+    {
+      "id": "u196",
+      "asignaturaId": "u187",
+      "codigo": "LEXT.PC.2.1",
+      "descripcion": "Expresar oralmente frases cortas y sencillas con información básica sobre asuntos cotidianos y de relevancia para el alumnado, utilizando de forma guiada recursos verbales y no verbales, recurriendo a modelos y estructuras previamente presentados y reproduciendo en la medida de lo posible el ritmo, la acentuación y la entonación de la lengua extranjera.",
+      "peso": 7.1429,
+      "espIds": [
+        "u189"
       ],
       "claveIds": [
         "cc-ccl",
@@ -3565,66 +3622,87 @@
       ]
     },
     {
-      "id": "u196",
-      "asignaturaId": "u184",
-      "codigo": "LEXT.PC.3.1",
-      "descripcion": "Participar de forma guiada, en situaciones interactivas elementales sobre temas cotidianos, preparados previamente, a través de distintos soportes, apoyándose en recursos tales como la repetición, el ritmo pausado o el lenguaje no verbal, y mostrando empatía.",
-      "peso": 7.1429,
-      "espIds": [
-        "u187"
-      ],
-      "claveIds": [
-        "cc-ccl",
-        "cc-cp",
-        "cc-stem",
-        "cc-cpsaa",
-        "cc-cc",
-        "cc-ce"
-      ]
-    },
-    {
       "id": "u197",
-      "asignaturaId": "u184",
-      "codigo": "LEXT.PC.3.2",
-      "descripcion": "Seleccionar de forma guiada y en entornos próximos, estrategias elementales para saludar, despedirse y presentarse; expresar mensajes sencillos y breves; y formular y contestar preguntas básicas para la comunicación.",
+      "asignaturaId": "u187",
+      "codigo": "LEXT.PC.2.2",
+      "descripcion": "Escribir palabras, expresiones conocidas y frases a partir de modelos y con una finalidad específica, a través de herramientas analógicas y digitales, usando estructuras gramaticales y léxico elemental sobre asuntos cotidianos y de relevancia personal para el alumnado.",
       "peso": 7.1429,
       "espIds": [
-        "u187"
+        "u189"
       ],
       "claveIds": [
         "cc-ccl",
         "cc-cp",
         "cc-stem",
+        "cc-cd",
         "cc-cpsaa",
-        "cc-cc",
-        "cc-ce"
+        "cc-ce",
+        "cc-ccec"
       ]
     },
     {
       "id": "u198",
-      "asignaturaId": "u184",
-      "codigo": "LEXT.PC.4.1",
-      "descripcion": "Interpretar y explicar, de forma guiada, información básica de conceptos, comunicaciones y textos breves y sencillos en situaciones en las que atender a la diversidad, mostrando empatía e interés por los interlocutores e interlocutoras y por los problemas de entendimiento en su entorno inmediato, apoyándose en diversos recursos y soportes.",
+      "asignaturaId": "u187",
+      "codigo": "LEXT.PC.2.3",
+      "descripcion": "Seleccionar de forma guiada estrategias elementales para producir mensajes breves y sencillos adecuados a las intenciones comunicativas usando, con ayuda, recursos y apoyos físicos o digitales en función de las necesidades de cada contexto.",
       "peso": 7.1429,
       "espIds": [
-        "u188"
+        "u189"
       ],
       "claveIds": [
         "cc-ccl",
         "cc-cp",
         "cc-stem",
+        "cc-cd",
         "cc-cpsaa",
+        "cc-ce",
         "cc-ccec"
       ]
     },
     {
       "id": "u199",
-      "asignaturaId": "u184",
-      "codigo": "LEXT.PC.4.2",
-      "descripcion": "Seleccionar y aplicar, de forma muy guiada, estrategias elementales que ayuden a crear puentes y faciliten la comprensión y producción de información, así como la comunicación fluida, usando, con ayuda, recursos y apoyos físicos o digitales en función de las necesidades de cada contexto.",
+      "asignaturaId": "u187",
+      "codigo": "LEXT.PC.3.1",
+      "descripcion": "Participar de forma guiada, en situaciones interactivas elementales sobre temas cotidianos, preparados previamente, a través de distintos soportes, apoyándose en recursos tales como la repetición, el ritmo pausado o el lenguaje no verbal, y mostrando empatía.",
       "peso": 7.1429,
       "espIds": [
-        "u188"
+        "u190"
+      ],
+      "claveIds": [
+        "cc-ccl",
+        "cc-cp",
+        "cc-stem",
+        "cc-cpsaa",
+        "cc-cc",
+        "cc-ce"
+      ]
+    },
+    {
+      "id": "u200",
+      "asignaturaId": "u187",
+      "codigo": "LEXT.PC.3.2",
+      "descripcion": "Seleccionar de forma guiada y en entornos próximos, estrategias elementales para saludar, despedirse y presentarse; expresar mensajes sencillos y breves; y formular y contestar preguntas básicas para la comunicación.",
+      "peso": 7.1429,
+      "espIds": [
+        "u190"
+      ],
+      "claveIds": [
+        "cc-ccl",
+        "cc-cp",
+        "cc-stem",
+        "cc-cpsaa",
+        "cc-cc",
+        "cc-ce"
+      ]
+    },
+    {
+      "id": "u201",
+      "asignaturaId": "u187",
+      "codigo": "LEXT.PC.4.1",
+      "descripcion": "Interpretar y explicar, de forma guiada, información básica de conceptos, comunicaciones y textos breves y sencillos en situaciones en las que atender a la diversidad, mostrando empatía e interés por los interlocutores e interlocutoras y por los problemas de entendimiento en su entorno inmediato, apoyándose en diversos recursos y soportes.",
+      "peso": 7.1429,
+      "espIds": [
+        "u191"
       ],
       "claveIds": [
         "cc-ccl",
@@ -3635,64 +3713,81 @@
       ]
     },
     {
-      "id": "u200",
-      "asignaturaId": "u184",
-      "codigo": "LEXT.PC.5.1",
-      "descripcion": "Entender que existen similitudes y diferencias evidentes entre distintas lenguas reflexionando, de forma guiada, sobre aspectos elementales de su funcionamiento.",
-      "peso": 7.1429,
-      "espIds": [
-        "u189"
-      ],
-      "claveIds": [
-        "cc-cp",
-        "cc-stem",
-        "cc-cd",
-        "cc-cpsaa",
-        "cc-ce"
-      ]
-    },
-    {
-      "id": "u201",
-      "asignaturaId": "u184",
-      "codigo": "LEXT.PC.5.2",
-      "descripcion": "Identificar y diferenciar, de forma guiada, conocimientos y estrategias de mejora de su capacidad de comunicar y de aprender la lengua extranjera, con apoyo de otros participantes y de soportes analógicos y digitales.",
-      "peso": 7.1429,
-      "espIds": [
-        "u189"
-      ],
-      "claveIds": [
-        "cc-cp",
-        "cc-stem",
-        "cc-cd",
-        "cc-cpsaa",
-        "cc-ce"
-      ]
-    },
-    {
       "id": "u202",
-      "asignaturaId": "u184",
-      "codigo": "LEXT.PC.5.3",
-      "descripcion": "Identificar y explicar, de manera guiada, progresos y dificultades elementales en el proceso de aprendizaje de la lengua extranjera.",
+      "asignaturaId": "u187",
+      "codigo": "LEXT.PC.4.2",
+      "descripcion": "Seleccionar y aplicar, de forma muy guiada, estrategias elementales que ayuden a crear puentes y faciliten la comprensión y producción de información, así como la comunicación fluida, usando, con ayuda, recursos y apoyos físicos o digitales en función de las necesidades de cada contexto.",
       "peso": 7.1429,
       "espIds": [
-        "u189"
+        "u191"
       ],
       "claveIds": [
+        "cc-ccl",
         "cc-cp",
         "cc-stem",
-        "cc-cd",
         "cc-cpsaa",
-        "cc-ce"
+        "cc-ccec"
       ]
     },
     {
       "id": "u203",
-      "asignaturaId": "u184",
+      "asignaturaId": "u187",
+      "codigo": "LEXT.PC.5.1",
+      "descripcion": "Entender que existen similitudes y diferencias evidentes entre distintas lenguas reflexionando, de forma guiada, sobre aspectos elementales de su funcionamiento.",
+      "peso": 7.1429,
+      "espIds": [
+        "u192"
+      ],
+      "claveIds": [
+        "cc-cp",
+        "cc-stem",
+        "cc-cd",
+        "cc-cpsaa",
+        "cc-ce"
+      ]
+    },
+    {
+      "id": "u204",
+      "asignaturaId": "u187",
+      "codigo": "LEXT.PC.5.2",
+      "descripcion": "Identificar y diferenciar, de forma guiada, conocimientos y estrategias de mejora de su capacidad de comunicar y de aprender la lengua extranjera, con apoyo de otros participantes y de soportes analógicos y digitales.",
+      "peso": 7.1429,
+      "espIds": [
+        "u192"
+      ],
+      "claveIds": [
+        "cc-cp",
+        "cc-stem",
+        "cc-cd",
+        "cc-cpsaa",
+        "cc-ce"
+      ]
+    },
+    {
+      "id": "u205",
+      "asignaturaId": "u187",
+      "codigo": "LEXT.PC.5.3",
+      "descripcion": "Identificar y explicar, de manera guiada, progresos y dificultades elementales en el proceso de aprendizaje de la lengua extranjera.",
+      "peso": 7.1429,
+      "espIds": [
+        "u192"
+      ],
+      "claveIds": [
+        "cc-cp",
+        "cc-stem",
+        "cc-cd",
+        "cc-cpsaa",
+        "cc-ce"
+      ]
+    },
+    {
+      "id": "u206",
+      "asignaturaId": "u187",
       "codigo": "LEXT.PC.6.1",
       "descripcion": "Mostrar interés y valorar positivamente la comunicación intercultural, identificando y analizando, de forma guiada, las discriminaciones, los prejuicios y los estereotipos más comunes, en situaciones cotidianas y habituales.",
       "peso": 7.1429,
       "espIds": [
-        "u190"
+        "u193"
       ],
       "claveIds": [
         "cc-ccl",
@@ -3703,13 +3798,13 @@
       ]
     },
     {
-      "id": "u204",
-      "asignaturaId": "u184",
+      "id": "u207",
+      "asignaturaId": "u187",
       "codigo": "LEXT.PC.6.2",
       "descripcion": "Reconocer y apreciar la diversidad lingüística y cultural relacionada con la lengua extranjera, mostrando interés por conocer sus elementos culturales y lingüísticos elementales.",
       "peso": 7.1423,
       "espIds": [
-        "u190"
+        "u193"
       ],
       "claveIds": [
         "cc-ccl",
@@ -3722,7 +3817,7 @@
   ],
   "instrumentos": [
     {
-      "id": "u209",
+      "id": "u212",
       "claseId": "cl-l6a",
       "tipo": "Control",
       "titulo": "Comprensión lectora UD1",
@@ -3747,7 +3842,7 @@
       ],
       "apartados": [
         {
-          "id": "u205",
+          "id": "u208",
           "orden": 1,
           "descripcion": "Pregunta 1",
           "maxPts": 10,
@@ -3759,7 +3854,7 @@
           ]
         },
         {
-          "id": "u206",
+          "id": "u209",
           "orden": 2,
           "descripcion": "Pregunta 2",
           "maxPts": 10,
@@ -3771,7 +3866,7 @@
           ]
         },
         {
-          "id": "u207",
+          "id": "u210",
           "orden": 3,
           "descripcion": "Pregunta 3",
           "maxPts": 10,
@@ -3783,7 +3878,7 @@
           ]
         },
         {
-          "id": "u208",
+          "id": "u211",
           "orden": 4,
           "descripcion": "Pregunta 4",
           "maxPts": 10,
@@ -3800,7 +3895,7 @@
       "url": ""
     },
     {
-      "id": "u214",
+      "id": "u217",
       "claseId": "cl-l6a",
       "tipo": "Rúbrica",
       "titulo": "Rúbrica de expresión escrita UD1",
@@ -3829,7 +3924,7 @@
       ],
       "apartados": [
         {
-          "id": "u210",
+          "id": "u213",
           "orden": 1,
           "descripcion": "Adecuación al enunciado",
           "maxPts": 100,
@@ -3853,12 +3948,12 @@
             }
           ],
           "criterioIds": [
-            "u115",
-            "u116"
+            "u116",
+            "u117"
           ]
         },
         {
-          "id": "u211",
+          "id": "u214",
           "orden": 2,
           "descripcion": "Riqueza léxica",
           "maxPts": 100,
@@ -3882,12 +3977,12 @@
             }
           ],
           "criterioIds": [
-            "u117",
-            "u118"
+            "u118",
+            "u119"
           ]
         },
         {
-          "id": "u212",
+          "id": "u215",
           "orden": 3,
           "descripcion": "Ortografía y puntuación",
           "maxPts": 100,
@@ -3911,12 +4006,12 @@
             }
           ],
           "criterioIds": [
-            "u119",
-            "u120"
+            "u120",
+            "u121"
           ]
         },
         {
-          "id": "u213",
+          "id": "u216",
           "orden": 4,
           "descripcion": "Presentación",
           "maxPts": 100,
@@ -3940,8 +4035,8 @@
             }
           ],
           "criterioIds": [
-            "u121",
-            "u122"
+            "u122",
+            "u123"
           ]
         }
       ],
@@ -3950,7 +4045,7 @@
       "url": ""
     },
     {
-      "id": "u218",
+      "id": "u221",
       "claseId": "cl-l6a",
       "tipo": "Proyecto",
       "titulo": "Proyecto: podcast literario",
@@ -3975,7 +4070,7 @@
       ],
       "apartados": [
         {
-          "id": "u215",
+          "id": "u218",
           "orden": 1,
           "descripcion": "Planificación",
           "maxPts": 10,
@@ -3987,7 +4082,7 @@
           ]
         },
         {
-          "id": "u216",
+          "id": "u219",
           "orden": 2,
           "descripcion": "Producto final",
           "maxPts": 10,
@@ -3999,7 +4094,7 @@
           ]
         },
         {
-          "id": "u217",
+          "id": "u220",
           "orden": 3,
           "descripcion": "Exposición",
           "maxPts": 10,
@@ -4016,7 +4111,7 @@
       "url": ""
     },
     {
-      "id": "u222",
+      "id": "u225",
       "claseId": "cl-l6a",
       "tipo": "Otro",
       "titulo": "Rincón de lectura (registro)",
@@ -4041,7 +4136,7 @@
       ],
       "apartados": [
         {
-          "id": "u219",
+          "id": "u222",
           "orden": 1,
           "descripcion": "Registro semanal",
           "maxPts": 10,
@@ -4053,7 +4148,7 @@
           ]
         },
         {
-          "id": "u220",
+          "id": "u223",
           "orden": 2,
           "descripcion": "Ficha de lectura",
           "maxPts": 10,
@@ -4065,7 +4160,7 @@
           ]
         },
         {
-          "id": "u221",
+          "id": "u224",
           "orden": 3,
           "descripcion": "Recomendación",
           "maxPts": 10,
@@ -4082,7 +4177,7 @@
       "url": ""
     },
     {
-      "id": "u227",
+      "id": "u230",
       "claseId": "cl-m6a",
       "tipo": "Control",
       "titulo": "Cálculo y operaciones UD1",
@@ -4107,51 +4202,51 @@
       ],
       "apartados": [
         {
-          "id": "u223",
+          "id": "u226",
           "orden": 1,
           "descripcion": "Pregunta 1",
           "maxPts": 10,
           "peso": 10,
           "niveles": [],
           "criterioIds": [
-            "u39",
-            "u40"
+            "u40",
+            "u41"
           ]
         },
         {
-          "id": "u224",
+          "id": "u227",
           "orden": 2,
           "descripcion": "Pregunta 2",
           "maxPts": 10,
           "peso": 10,
           "niveles": [],
           "criterioIds": [
-            "u41",
-            "u42"
+            "u42",
+            "u43"
           ]
         },
         {
-          "id": "u225",
+          "id": "u228",
           "orden": 3,
           "descripcion": "Pregunta 3",
           "maxPts": 10,
           "peso": 10,
           "niveles": [],
           "criterioIds": [
-            "u43",
-            "u44"
+            "u44",
+            "u45"
           ]
         },
         {
-          "id": "u226",
+          "id": "u229",
           "orden": 4,
           "descripcion": "Pregunta 4",
           "maxPts": 10,
           "peso": 10,
           "niveles": [],
           "criterioIds": [
-            "u45",
-            "u46"
+            "u46",
+            "u47"
           ]
         }
       ],
@@ -4160,7 +4255,7 @@
       "url": ""
     },
     {
-      "id": "u232",
+      "id": "u235",
       "claseId": "cl-m6a",
       "tipo": "Rúbrica",
       "titulo": "Rúbrica de resolución de problemas UD2",
@@ -4189,7 +4284,7 @@
       ],
       "apartados": [
         {
-          "id": "u228",
+          "id": "u231",
           "orden": 1,
           "descripcion": "Adecuación al enunciado",
           "maxPts": 100,
@@ -4213,12 +4308,12 @@
             }
           ],
           "criterioIds": [
-            "u141",
-            "u142"
+            "u144",
+            "u145"
           ]
         },
         {
-          "id": "u229",
+          "id": "u232",
           "orden": 2,
           "descripcion": "Riqueza léxica",
           "maxPts": 100,
@@ -4242,12 +4337,12 @@
             }
           ],
           "criterioIds": [
-            "u143",
-            "u144"
+            "u146",
+            "u147"
           ]
         },
         {
-          "id": "u230",
+          "id": "u233",
           "orden": 3,
           "descripcion": "Ortografía y puntuación",
           "maxPts": 100,
@@ -4271,12 +4366,12 @@
             }
           ],
           "criterioIds": [
-            "u145",
-            "u146"
+            "u148",
+            "u149"
           ]
         },
         {
-          "id": "u231",
+          "id": "u234",
           "orden": 4,
           "descripcion": "Presentación",
           "maxPts": 100,
@@ -4300,8 +4395,8 @@
             }
           ],
           "criterioIds": [
-            "u147",
-            "u148"
+            "u150",
+            "u151"
           ]
         }
       ],
@@ -4310,7 +4405,7 @@
       "url": ""
     },
     {
-      "id": "u236",
+      "id": "u239",
       "claseId": "cl-m6a",
       "tipo": "Proyecto",
       "titulo": "Proyecto: presupuesto familiar",
@@ -4335,39 +4430,39 @@
       ],
       "apartados": [
         {
-          "id": "u233",
+          "id": "u236",
           "orden": 1,
           "descripcion": "Planificación",
           "maxPts": 10,
           "peso": 10,
           "niveles": [],
           "criterioIds": [
-            "u45",
-            "u46"
+            "u46",
+            "u47"
           ]
         },
         {
-          "id": "u234",
+          "id": "u237",
           "orden": 2,
           "descripcion": "Producto final",
           "maxPts": 10,
           "peso": 10,
           "niveles": [],
           "criterioIds": [
-            "u47",
-            "u48"
+            "u48",
+            "u49"
           ]
         },
         {
-          "id": "u235",
+          "id": "u238",
           "orden": 3,
           "descripcion": "Exposición",
           "maxPts": 10,
           "peso": 10,
           "niveles": [],
           "criterioIds": [
-            "u49",
-            "u50"
+            "u50",
+            "u51"
           ]
         }
       ],
@@ -4376,7 +4471,7 @@
       "url": ""
     },
     {
-      "id": "u240",
+      "id": "u243",
       "claseId": "cl-m6a",
       "tipo": "Control",
       "titulo": "Geometría y medida UD4",
@@ -4401,39 +4496,39 @@
       ],
       "apartados": [
         {
-          "id": "u237",
+          "id": "u240",
           "orden": 1,
           "descripcion": "Pregunta 1",
           "maxPts": 10,
           "peso": 10,
           "niveles": [],
           "criterioIds": [
-            "u50",
-            "u51"
+            "u51",
+            "u52"
           ]
         },
         {
-          "id": "u238",
+          "id": "u241",
           "orden": 2,
           "descripcion": "Pregunta 2",
           "maxPts": 10,
           "peso": 10,
           "niveles": [],
           "criterioIds": [
-            "u52",
-            "u53"
+            "u53",
+            "u54"
           ]
         },
         {
-          "id": "u239",
+          "id": "u242",
           "orden": 3,
           "descripcion": "Pregunta 3",
           "maxPts": 10,
           "peso": 10,
           "niveles": [],
           "criterioIds": [
-            "u54",
-            "u55"
+            "u55",
+            "u56"
           ]
         }
       ],
@@ -4442,7 +4537,7 @@
       "url": ""
     },
     {
-      "id": "u244",
+      "id": "u247",
       "claseId": "cl-m6a",
       "tipo": "Control",
       "titulo": "Matemáticas 4º · prueba adaptada",
@@ -4467,39 +4562,39 @@
       ],
       "apartados": [
         {
-          "id": "u241",
+          "id": "u244",
           "orden": 1,
           "descripcion": "Pregunta 1",
           "maxPts": 10,
           "peso": 10,
           "niveles": [],
           "criterioIds": [
-            "u65",
-            "u66"
+            "u66",
+            "u67"
           ]
         },
         {
-          "id": "u242",
+          "id": "u245",
           "orden": 2,
           "descripcion": "Pregunta 2",
           "maxPts": 10,
           "peso": 10,
           "niveles": [],
           "criterioIds": [
-            "u67",
-            "u68"
+            "u68",
+            "u69"
           ]
         },
         {
-          "id": "u243",
+          "id": "u246",
           "orden": 3,
           "descripcion": "Pregunta 3",
           "maxPts": 10,
           "peso": 10,
           "niveles": [],
           "criterioIds": [
-            "u69",
-            "u70"
+            "u70",
+            "u71"
           ]
         }
       ],
@@ -4508,7 +4603,7 @@
       "url": ""
     },
     {
-      "id": "u249",
+      "id": "u252",
       "claseId": "cl-l6b",
       "tipo": "Control",
       "titulo": "Dictado y ortografía",
@@ -4533,7 +4628,7 @@
       ],
       "apartados": [
         {
-          "id": "u245",
+          "id": "u248",
           "orden": 1,
           "descripcion": "Pregunta 1",
           "maxPts": 10,
@@ -4545,7 +4640,7 @@
           ]
         },
         {
-          "id": "u246",
+          "id": "u249",
           "orden": 2,
           "descripcion": "Pregunta 2",
           "maxPts": 10,
@@ -4557,7 +4652,7 @@
           ]
         },
         {
-          "id": "u247",
+          "id": "u250",
           "orden": 3,
           "descripcion": "Pregunta 3",
           "maxPts": 10,
@@ -4569,7 +4664,7 @@
           ]
         },
         {
-          "id": "u248",
+          "id": "u251",
           "orden": 4,
           "descripcion": "Pregunta 4",
           "maxPts": 10,
@@ -4586,7 +4681,7 @@
       "url": ""
     },
     {
-      "id": "u254",
+      "id": "u257",
       "claseId": "cl-l6b",
       "tipo": "Rúbrica",
       "titulo": "Rúbrica de exposición oral UD5",
@@ -4615,7 +4710,7 @@
       ],
       "apartados": [
         {
-          "id": "u250",
+          "id": "u253",
           "orden": 1,
           "descripcion": "Adecuación al enunciado",
           "maxPts": 100,
@@ -4639,12 +4734,12 @@
             }
           ],
           "criterioIds": [
-            "u120",
-            "u121"
+            "u121",
+            "u122"
           ]
         },
         {
-          "id": "u251",
+          "id": "u254",
           "orden": 2,
           "descripcion": "Riqueza léxica",
           "maxPts": 100,
@@ -4668,12 +4763,12 @@
             }
           ],
           "criterioIds": [
-            "u122",
-            "u123"
+            "u123",
+            "u124"
           ]
         },
         {
-          "id": "u252",
+          "id": "u255",
           "orden": 3,
           "descripcion": "Ortografía y puntuación",
           "maxPts": 100,
@@ -4697,12 +4792,12 @@
             }
           ],
           "criterioIds": [
-            "u124",
-            "u125"
+            "u125",
+            "u126"
           ]
         },
         {
-          "id": "u253",
+          "id": "u256",
           "orden": 4,
           "descripcion": "Presentación",
           "maxPts": 100,
@@ -4726,8 +4821,8 @@
             }
           ],
           "criterioIds": [
-            "u126",
-            "u127"
+            "u127",
+            "u128"
           ]
         }
       ],
@@ -4736,7 +4831,7 @@
       "url": ""
     },
     {
-      "id": "u258",
+      "id": "u261",
       "claseId": "cl-l6b",
       "tipo": "Proyecto",
       "titulo": "Antología poética UD6",
@@ -4761,7 +4856,7 @@
       ],
       "apartados": [
         {
-          "id": "u255",
+          "id": "u258",
           "orden": 1,
           "descripcion": "Planificación",
           "maxPts": 10,
@@ -4773,7 +4868,7 @@
           ]
         },
         {
-          "id": "u256",
+          "id": "u259",
           "orden": 2,
           "descripcion": "Producto final",
           "maxPts": 10,
@@ -4785,7 +4880,7 @@
           ]
         },
         {
-          "id": "u257",
+          "id": "u260",
           "orden": 3,
           "descripcion": "Exposición",
           "maxPts": 10,
@@ -4802,7 +4897,7 @@
       "url": ""
     },
     {
-      "id": "u262",
+      "id": "u265",
       "claseId": "cl-m6b",
       "tipo": "Control",
       "titulo": "Cálculo mental y estimación",
@@ -4827,39 +4922,39 @@
       ],
       "apartados": [
         {
-          "id": "u259",
+          "id": "u262",
           "orden": 1,
           "descripcion": "Pregunta 1",
           "maxPts": 10,
           "peso": 10,
           "niveles": [],
           "criterioIds": [
-            "u42",
-            "u43"
+            "u43",
+            "u44"
           ]
         },
         {
-          "id": "u260",
+          "id": "u263",
           "orden": 2,
           "descripcion": "Pregunta 2",
           "maxPts": 10,
           "peso": 10,
           "niveles": [],
           "criterioIds": [
-            "u44",
-            "u45"
+            "u45",
+            "u46"
           ]
         },
         {
-          "id": "u261",
+          "id": "u264",
           "orden": 3,
           "descripcion": "Pregunta 3",
           "maxPts": 10,
           "peso": 10,
           "niveles": [],
           "criterioIds": [
-            "u46",
-            "u47"
+            "u47",
+            "u48"
           ]
         }
       ],
@@ -4868,7 +4963,7 @@
       "url": ""
     },
     {
-      "id": "u267",
+      "id": "u270",
       "claseId": "cl-m6b",
       "tipo": "Rúbrica",
       "titulo": "Rúbrica de resolución colaborativa UD6",
@@ -4897,7 +4992,7 @@
       ],
       "apartados": [
         {
-          "id": "u263",
+          "id": "u266",
           "orden": 1,
           "descripcion": "Adecuación al enunciado",
           "maxPts": 100,
@@ -4921,12 +5016,12 @@
             }
           ],
           "criterioIds": [
-            "u146",
-            "u147"
+            "u149",
+            "u150"
           ]
         },
         {
-          "id": "u264",
+          "id": "u267",
           "orden": 2,
           "descripcion": "Riqueza léxica",
           "maxPts": 100,
@@ -4950,12 +5045,12 @@
             }
           ],
           "criterioIds": [
-            "u148",
-            "u149"
+            "u151",
+            "u152"
           ]
         },
         {
-          "id": "u265",
+          "id": "u268",
           "orden": 3,
           "descripcion": "Ortografía y puntuación",
           "maxPts": 100,
@@ -4979,12 +5074,12 @@
             }
           ],
           "criterioIds": [
-            "u150",
-            "u151"
+            "u153",
+            "u154"
           ]
         },
         {
-          "id": "u266",
+          "id": "u269",
           "orden": 4,
           "descripcion": "Presentación",
           "maxPts": 100,
@@ -5008,8 +5103,8 @@
             }
           ],
           "criterioIds": [
-            "u152",
-            "u153"
+            "u155",
+            "u156"
           ]
         }
       ],
@@ -5018,7 +5113,7 @@
       "url": ""
     },
     {
-      "id": "u271",
+      "id": "u274",
       "claseId": "cl-m6b",
       "tipo": "Control",
       "titulo": "Estadística y probabilidad",
@@ -5043,39 +5138,39 @@
       ],
       "apartados": [
         {
-          "id": "u268",
+          "id": "u271",
           "orden": 1,
           "descripcion": "Pregunta 1",
           "maxPts": 10,
           "peso": 10,
           "niveles": [],
           "criterioIds": [
-            "u51",
-            "u52"
+            "u52",
+            "u53"
           ]
         },
         {
-          "id": "u269",
+          "id": "u272",
           "orden": 2,
           "descripcion": "Pregunta 2",
           "maxPts": 10,
           "peso": 10,
           "niveles": [],
           "criterioIds": [
-            "u53",
-            "u54"
+            "u54",
+            "u55"
           ]
         },
         {
-          "id": "u270",
+          "id": "u273",
           "orden": 3,
           "descripcion": "Pregunta 3",
           "maxPts": 10,
           "peso": 10,
           "niveles": [],
           "criterioIds": [
-            "u55",
-            "u39"
+            "u56",
+            "u40"
           ]
         }
       ],
@@ -5084,7 +5179,7 @@
       "url": ""
     },
     {
-      "id": "u276",
+      "id": "u279",
       "claseId": "cl-m4a",
       "tipo": "Control",
       "titulo": "Números y operaciones",
@@ -5109,51 +5204,51 @@
       ],
       "apartados": [
         {
-          "id": "u272",
+          "id": "u275",
           "orden": 1,
           "descripcion": "Pregunta 1",
           "maxPts": 10,
           "peso": 10,
           "niveles": [],
           "criterioIds": [
-            "u65",
-            "u66"
+            "u66",
+            "u67"
           ]
         },
         {
-          "id": "u273",
+          "id": "u276",
           "orden": 2,
           "descripcion": "Pregunta 2",
           "maxPts": 10,
           "peso": 10,
           "niveles": [],
           "criterioIds": [
-            "u67",
-            "u68"
+            "u68",
+            "u69"
           ]
         },
         {
-          "id": "u274",
+          "id": "u277",
           "orden": 3,
           "descripcion": "Pregunta 3",
           "maxPts": 10,
           "peso": 10,
           "niveles": [],
           "criterioIds": [
-            "u69",
-            "u70"
+            "u70",
+            "u71"
           ]
         },
         {
-          "id": "u275",
+          "id": "u278",
           "orden": 4,
           "descripcion": "Pregunta 4",
           "maxPts": 10,
           "peso": 10,
           "niveles": [],
           "criterioIds": [
-            "u71",
-            "u72"
+            "u72",
+            "u73"
           ]
         }
       ],
@@ -5162,7 +5257,7 @@
       "url": ""
     },
     {
-      "id": "u280",
+      "id": "u283",
       "claseId": "cl-m4a",
       "tipo": "Control",
       "titulo": "Prueba diagnóstica de entrada",
@@ -5187,39 +5282,39 @@
       ],
       "apartados": [
         {
-          "id": "u277",
+          "id": "u280",
           "orden": 1,
           "descripcion": "Pregunta 1",
           "maxPts": 10,
           "peso": 10,
           "niveles": [],
           "criterioIds": [
-            "u78",
-            "u79"
+            "u79",
+            "u80"
           ]
         },
         {
-          "id": "u278",
+          "id": "u281",
           "orden": 2,
           "descripcion": "Pregunta 2",
           "maxPts": 10,
           "peso": 10,
           "niveles": [],
           "criterioIds": [
-            "u80",
-            "u81"
+            "u81",
+            "u82"
           ]
         },
         {
-          "id": "u279",
+          "id": "u282",
           "orden": 3,
           "descripcion": "Pregunta 3",
           "maxPts": 10,
           "peso": 10,
           "niveles": [],
           "criterioIds": [
-            "u65",
-            "u66"
+            "u66",
+            "u67"
           ]
         }
       ],
@@ -5228,7 +5323,7 @@
       "url": ""
     },
     {
-      "id": "u285",
+      "id": "u288",
       "claseId": "cl-m4a",
       "tipo": "Rúbrica",
       "titulo": "Rúbrica de problemas con unidades",
@@ -5257,7 +5352,7 @@
       ],
       "apartados": [
         {
-          "id": "u281",
+          "id": "u284",
           "orden": 1,
           "descripcion": "Adecuación al enunciado",
           "maxPts": 100,
@@ -5281,12 +5376,12 @@
             }
           ],
           "criterioIds": [
-            "u167",
-            "u168"
+            "u170",
+            "u171"
           ]
         },
         {
-          "id": "u282",
+          "id": "u285",
           "orden": 2,
           "descripcion": "Riqueza léxica",
           "maxPts": 100,
@@ -5310,12 +5405,12 @@
             }
           ],
           "criterioIds": [
-            "u169",
-            "u170"
+            "u172",
+            "u173"
           ]
         },
         {
-          "id": "u283",
+          "id": "u286",
           "orden": 3,
           "descripcion": "Ortografía y puntuación",
           "maxPts": 100,
@@ -5339,12 +5434,12 @@
             }
           ],
           "criterioIds": [
-            "u171",
-            "u172"
+            "u174",
+            "u175"
           ]
         },
         {
-          "id": "u284",
+          "id": "u287",
           "orden": 4,
           "descripcion": "Presentación",
           "maxPts": 100,
@@ -5368,8 +5463,8 @@
             }
           ],
           "criterioIds": [
-            "u173",
-            "u174"
+            "u176",
+            "u177"
           ]
         }
       ],
@@ -5378,7 +5473,7 @@
       "url": ""
     },
     {
-      "id": "u289",
+      "id": "u292",
       "claseId": "cl-m4a",
       "tipo": "Proyecto",
       "titulo": "Proyecto: el mercado del aula",
@@ -5403,39 +5498,39 @@
       ],
       "apartados": [
         {
-          "id": "u286",
+          "id": "u289",
           "orden": 1,
           "descripcion": "Planificación",
           "maxPts": 10,
           "peso": 10,
           "niveles": [],
           "criterioIds": [
-            "u72",
-            "u73"
+            "u73",
+            "u74"
           ]
         },
         {
-          "id": "u287",
+          "id": "u290",
           "orden": 2,
           "descripcion": "Producto final",
           "maxPts": 10,
           "peso": 10,
           "niveles": [],
           "criterioIds": [
-            "u74",
-            "u75"
+            "u75",
+            "u76"
           ]
         },
         {
-          "id": "u288",
+          "id": "u291",
           "orden": 3,
           "descripcion": "Exposición",
           "maxPts": 10,
           "peso": 10,
           "niveles": [],
           "criterioIds": [
-            "u76",
-            "u77"
+            "u77",
+            "u78"
           ]
         }
       ],
@@ -5444,7 +5539,7 @@
       "url": ""
     },
     {
-      "id": "u294",
+      "id": "u297",
       "claseId": "cl-e4a",
       "tipo": "Control",
       "titulo": "Vocabulary and grammar UD8",
@@ -5469,51 +5564,51 @@
       ],
       "apartados": [
         {
-          "id": "u290",
+          "id": "u293",
           "orden": 1,
           "descripcion": "Pregunta 1",
           "maxPts": 10,
           "peso": 10,
           "niveles": [],
           "criterioIds": [
-            "u89",
-            "u90"
+            "u90",
+            "u91"
           ]
         },
         {
-          "id": "u291",
+          "id": "u294",
           "orden": 2,
           "descripcion": "Pregunta 2",
           "maxPts": 10,
           "peso": 10,
           "niveles": [],
           "criterioIds": [
-            "u91",
-            "u92"
+            "u92",
+            "u93"
           ]
         },
         {
-          "id": "u292",
+          "id": "u295",
           "orden": 3,
           "descripcion": "Pregunta 3",
           "maxPts": 10,
           "peso": 10,
           "niveles": [],
           "criterioIds": [
-            "u93",
-            "u94"
+            "u94",
+            "u95"
           ]
         },
         {
-          "id": "u293",
+          "id": "u296",
           "orden": 4,
           "descripcion": "Pregunta 4",
           "maxPts": 10,
           "peso": 10,
           "niveles": [],
           "criterioIds": [
-            "u95",
-            "u96"
+            "u96",
+            "u97"
           ]
         }
       ],
@@ -5522,7 +5617,7 @@
       "url": ""
     },
     {
-      "id": "u298",
+      "id": "u301",
       "claseId": "cl-e4a",
       "tipo": "Rúbrica",
       "titulo": "Rúbrica de producción oral UD9",
@@ -5551,7 +5646,7 @@
       ],
       "apartados": [
         {
-          "id": "u295",
+          "id": "u298",
           "orden": 1,
           "descripcion": "Adecuación al enunciado",
           "maxPts": 100,
@@ -5575,12 +5670,12 @@
             }
           ],
           "criterioIds": [
-            "u191",
-            "u192"
+            "u194",
+            "u195"
           ]
         },
         {
-          "id": "u296",
+          "id": "u299",
           "orden": 2,
           "descripcion": "Riqueza léxica",
           "maxPts": 100,
@@ -5604,12 +5699,12 @@
             }
           ],
           "criterioIds": [
-            "u193",
-            "u194"
+            "u196",
+            "u197"
           ]
         },
         {
-          "id": "u297",
+          "id": "u300",
           "orden": 3,
           "descripcion": "Ortografía y puntuación",
           "maxPts": 100,
@@ -5633,8 +5728,8 @@
             }
           ],
           "criterioIds": [
-            "u195",
-            "u196"
+            "u198",
+            "u199"
           ]
         }
       ],
@@ -5643,7 +5738,7 @@
       "url": ""
     },
     {
-      "id": "u303",
+      "id": "u306",
       "claseId": "cl-e4a",
       "tipo": "Control",
       "titulo": "Listening test UD9",
@@ -5668,7 +5763,7 @@
       ],
       "apartados": [
         {
-          "id": "u299",
+          "id": "u302",
           "orden": 1,
           "descripcion": "Pregunta 1",
           "maxPts": 10,
@@ -5677,7 +5772,7 @@
           "criterioIds": []
         },
         {
-          "id": "u300",
+          "id": "u303",
           "orden": 2,
           "descripcion": "Pregunta 2",
           "maxPts": 10,
@@ -5686,7 +5781,7 @@
           "criterioIds": []
         },
         {
-          "id": "u301",
+          "id": "u304",
           "orden": 3,
           "descripcion": "Pregunta 3",
           "maxPts": 10,
@@ -5695,7 +5790,7 @@
           "criterioIds": []
         },
         {
-          "id": "u302",
+          "id": "u305",
           "orden": 4,
           "descripcion": "Pregunta 4",
           "maxPts": 10,
@@ -5706,497 +5801,497 @@
       ],
       "criteriosModo": "global",
       "criterioIdsGlobal": [
-        "u89",
         "u90",
-        "u91"
+        "u91",
+        "u92"
       ],
       "url": ""
     }
   ],
   "bancoInstrumentos": [],
   "registros": {
-    "u209": {
+    "u212": {
       "a-6a-1": {
-        "u205": 7,
-        "u206": 6,
-        "u207": 5.5,
-        "u208": 5
+        "u208": 7,
+        "u209": 6,
+        "u210": 5.5,
+        "u211": 5
       },
       "a-6a-2": {
-        "u205": 5,
-        "u206": 7.5,
-        "u207": 7,
-        "u208": 6
+        "u208": 5,
+        "u209": 7.5,
+        "u210": 7,
+        "u211": 6
       },
       "a-6a-3": {
-        "u205": 6,
-        "u206": 5.5,
-        "u207": 5,
-        "u208": 7.5
+        "u208": 6,
+        "u209": 5.5,
+        "u210": 5,
+        "u211": 7.5
       },
       "a-6a-4": {
-        "u205": 7.5,
-        "u206": 7,
-        "u207": 6,
-        "u208": 5.5
+        "u208": 7.5,
+        "u209": 7,
+        "u210": 6,
+        "u211": 5.5
       },
       "a-6a-5": {
-        "u205": 5.5,
-        "u206": 5,
-        "u207": 7.5,
-        "u208": 7
+        "u208": 5.5,
+        "u209": 5,
+        "u210": 7.5,
+        "u211": 7
       },
       "a-6a-6": {
-        "u205": 7,
-        "u206": 6,
-        "u207": 5.5,
-        "u208": 5
+        "u208": 7,
+        "u209": 6,
+        "u210": 5.5,
+        "u211": 5
       },
       "a-6a-8": {
-        "u205": 5,
-        "u206": 7.5,
-        "u207": 7,
-        "u208": 6
+        "u208": 5,
+        "u209": 7.5,
+        "u210": 7,
+        "u211": 6
       }
     },
-    "u214": {
+    "u217": {
       "a-6a-7": {
-        "u210": 75,
-        "u211": 75,
-        "u212": 50,
-        "u213": 75
+        "u213": 75,
+        "u214": 75,
+        "u215": 50,
+        "u216": 75
       }
     },
-    "u218": {
+    "u221": {
       "a-6a-1": {
-        "u215": 7,
-        "u216": 6.5,
-        "u217": 6
-      },
-      "a-6a-2": {
-        "u215": 8.5,
-        "u216": 8,
-        "u217": 7
-      },
-      "a-6a-3": {
-        "u215": 6.5,
-        "u216": 6,
-        "u217": 8.5
-      },
-      "a-6a-4": {
-        "u215": 8,
-        "u216": 7,
-        "u217": 6.5
-      },
-      "a-6a-5": {
-        "u215": 6,
-        "u216": 8.5,
-        "u217": 8
-      },
-      "a-6a-6": {
-        "u215": 7,
-        "u216": 6.5,
-        "u217": 6
-      },
-      "a-6a-8": {
-        "u215": 6.5,
-        "u216": 6,
-        "u217": 8.5
-      }
-    },
-    "u222": {
-      "a-6a-1": {
-        "u219": 8.5,
-        "u220": 8,
-        "u221": 7
-      },
-      "a-6a-2": {
+        "u218": 7,
         "u219": 6.5,
-        "u220": 9,
-        "u221": 8.5
+        "u220": 6
+      },
+      "a-6a-2": {
+        "u218": 8.5,
+        "u219": 8,
+        "u220": 7
       },
       "a-6a-3": {
-        "u219": 8,
-        "u220": 7,
-        "u221": 6.5
+        "u218": 6.5,
+        "u219": 6,
+        "u220": 8.5
       },
       "a-6a-4": {
-        "u219": 9,
-        "u220": 8.5,
-        "u221": 8
-      },
-      "a-6a-5": {
+        "u218": 8,
         "u219": 7,
-        "u220": 6.5,
-        "u221": 9
+        "u220": 6.5
       },
-      "a-6a-6": {
+      "a-6a-5": {
+        "u218": 6,
         "u219": 8.5,
-        "u220": 8,
-        "u221": 7
+        "u220": 8
+      },
+      "a-6a-6": {
+        "u218": 7,
+        "u219": 6.5,
+        "u220": 6
       },
       "a-6a-8": {
+        "u218": 8.5,
         "u219": 8,
-        "u220": 7,
-        "u221": 6.5
+        "u220": 7
       }
     },
-    "u227": {
+    "u225": {
       "a-6a-1": {
-        "u223": 4,
-        "u224": 7,
-        "u225": 6,
-        "u226": 5.5
+        "u222": 8.5,
+        "u223": 8,
+        "u224": 7
       },
       "a-6a-2": {
-        "u223": 5.5,
-        "u224": 5,
-        "u225": 4,
-        "u226": 7
+        "u222": 6.5,
+        "u223": 9,
+        "u224": 8.5
       },
       "a-6a-3": {
+        "u222": 8,
         "u223": 7,
-        "u224": 6,
-        "u225": 5.5,
-        "u226": 5
+        "u224": 6.5
       },
       "a-6a-4": {
-        "u223": 5,
-        "u224": 4,
-        "u225": 7,
-        "u226": 6
+        "u222": 9,
+        "u223": 8.5,
+        "u224": 8
       },
       "a-6a-5": {
-        "u223": 6,
-        "u224": 5.5,
-        "u225": 5,
-        "u226": 4
+        "u222": 7,
+        "u223": 6.5,
+        "u224": 9
       },
       "a-6a-6": {
-        "u223": 4,
-        "u224": 7,
-        "u225": 6,
-        "u226": 5.5
+        "u222": 8.5,
+        "u223": 8,
+        "u224": 7
+      },
+      "a-6a-8": {
+        "u222": 6.5,
+        "u223": 9,
+        "u224": 8.5
       }
     },
-    "u232": {
-      "a-6a-7": {
-        "u228": 75,
-        "u229": 75,
-        "u230": 75,
-        "u231": 50
-      }
-    },
-    "u236": {
+    "u230": {
       "a-6a-1": {
-        "u233": 5.5,
-        "u234": 8.5,
-        "u235": 7.5
+        "u226": 4,
+        "u227": 7,
+        "u228": 6,
+        "u229": 5.5
       },
       "a-6a-2": {
-        "u233": 7,
-        "u234": 6.5,
-        "u235": 5.5
+        "u226": 5.5,
+        "u227": 5,
+        "u228": 4,
+        "u229": 7
       },
       "a-6a-3": {
-        "u233": 8.5,
-        "u234": 7.5,
-        "u235": 7
+        "u226": 7,
+        "u227": 6,
+        "u228": 5.5,
+        "u229": 5
       },
       "a-6a-4": {
-        "u233": 6.5,
-        "u234": 5.5,
-        "u235": 8.5
+        "u226": 5,
+        "u227": 4,
+        "u228": 7,
+        "u229": 6
       },
       "a-6a-5": {
-        "u233": 7.5,
-        "u234": 7,
-        "u235": 6.5
+        "u226": 6,
+        "u227": 5.5,
+        "u228": 5,
+        "u229": 4
       },
       "a-6a-6": {
-        "u233": 5.5,
-        "u234": 8.5,
-        "u235": 7.5
+        "u226": 4,
+        "u227": 7,
+        "u228": 6,
+        "u229": 5.5
       }
     },
-    "u244": {
+    "u235": {
+      "a-6a-7": {
+        "u231": 75,
+        "u232": 75,
+        "u233": 75,
+        "u234": 50
+      }
+    },
+    "u239": {
+      "a-6a-1": {
+        "u236": 5.5,
+        "u237": 8.5,
+        "u238": 7.5
+      },
+      "a-6a-2": {
+        "u236": 7,
+        "u237": 6.5,
+        "u238": 5.5
+      },
+      "a-6a-3": {
+        "u236": 8.5,
+        "u237": 7.5,
+        "u238": 7
+      },
+      "a-6a-4": {
+        "u236": 6.5,
+        "u237": 5.5,
+        "u238": 8.5
+      },
+      "a-6a-5": {
+        "u236": 7.5,
+        "u237": 7,
+        "u238": 6.5
+      },
+      "a-6a-6": {
+        "u236": 5.5,
+        "u237": 8.5,
+        "u238": 7.5
+      }
+    },
+    "u247": {
       "a-6a-8": {
-        "u241": 6,
-        "u242": 5.5,
-        "u243": 4.5
-      }
-    },
-    "u249": {
-      "a-6b-1": {
-        "u245": 3,
-        "u246": 5.5,
-        "u247": 5,
-        "u248": 4
-      },
-      "a-6b-2": {
-        "u245": 4,
-        "u246": 3.5,
-        "u247": 3,
-        "u248": 5.5
-      },
-      "a-6b-3": {
+        "u244": 6,
         "u245": 5.5,
-        "u246": 5,
-        "u247": 4,
-        "u248": 3.5
-      },
-      "a-6b-4": {
-        "u245": 3.5,
-        "u246": 3,
-        "u247": 5.5,
-        "u248": 5
-      },
-      "a-6b-6": {
-        "u245": 5,
-        "u246": 4,
-        "u247": 3.5,
-        "u248": 3
-      },
-      "a-6b-7": {
-        "u245": 3,
-        "u246": 5.5,
-        "u247": 5,
-        "u248": 4
+        "u246": 4.5
       }
     },
-    "u254": {
-      "a-6b-5": {
-        "u250": 50,
-        "u251": 75,
-        "u252": 75,
-        "u253": 75
-      }
-    },
-    "u258": {
+    "u252": {
       "a-6b-1": {
-        "u255": 7,
-        "u256": 6,
-        "u257": 9
+        "u248": 3,
+        "u249": 5.5,
+        "u250": 5,
+        "u251": 4
       },
       "a-6b-2": {
-        "u255": 8,
-        "u256": 7.5,
-        "u257": 7
+        "u248": 4,
+        "u249": 3.5,
+        "u250": 3,
+        "u251": 5.5
       },
       "a-6b-3": {
-        "u255": 6,
-        "u256": 9,
-        "u257": 8
+        "u248": 5.5,
+        "u249": 5,
+        "u250": 4,
+        "u251": 3.5
       },
       "a-6b-4": {
-        "u255": 7.5,
-        "u256": 7,
-        "u257": 6
+        "u248": 3.5,
+        "u249": 3,
+        "u250": 5.5,
+        "u251": 5
       },
       "a-6b-6": {
-        "u255": 7,
-        "u256": 6,
-        "u257": 9
+        "u248": 5,
+        "u249": 4,
+        "u250": 3.5,
+        "u251": 3
       },
       "a-6b-7": {
-        "u255": 8,
-        "u256": 7.5,
-        "u257": 7
+        "u248": 3,
+        "u249": 5.5,
+        "u250": 5,
+        "u251": 4
       }
     },
-    "u262": {
+    "u257": {
+      "a-6b-5": {
+        "u253": 50,
+        "u254": 75,
+        "u255": 75,
+        "u256": 75
+      }
+    },
+    "u261": {
       "a-6b-1": {
+        "u258": 7,
         "u259": 6,
-        "u260": 5.5,
-        "u261": 4.5
+        "u260": 9
       },
       "a-6b-2": {
+        "u258": 8,
         "u259": 7.5,
-        "u260": 6.5,
-        "u261": 6
+        "u260": 7
       },
       "a-6b-3": {
-        "u259": 5.5,
-        "u260": 4.5,
-        "u261": 7.5
+        "u258": 6,
+        "u259": 9,
+        "u260": 8
       },
       "a-6b-4": {
-        "u259": 6.5,
-        "u260": 6,
-        "u261": 5.5
+        "u258": 7.5,
+        "u259": 7,
+        "u260": 6
       },
       "a-6b-6": {
-        "u259": 4.5,
-        "u260": 7.5,
-        "u261": 6.5
+        "u258": 9,
+        "u259": 8,
+        "u260": 7.5
       },
       "a-6b-7": {
+        "u258": 7,
         "u259": 6,
-        "u260": 5.5,
-        "u261": 4.5
+        "u260": 9
       }
     },
-    "u267": {
-      "a-6b-5": {
-        "u263": 75,
-        "u264": 75,
-        "u265": 50,
-        "u266": 50
-      }
-    },
-    "u271": {
+    "u265": {
       "a-6b-1": {
-        "u268": 4,
-        "u269": 3.5,
-        "u270": 6
+        "u262": 6,
+        "u263": 5.5,
+        "u264": 4.5
       },
       "a-6b-2": {
-        "u268": 5.5,
-        "u269": 5,
-        "u270": 4
+        "u262": 7.5,
+        "u263": 6.5,
+        "u264": 6
       },
       "a-6b-3": {
-        "u268": 3.5,
-        "u269": 6,
-        "u270": 5.5
+        "u262": 5.5,
+        "u263": 4.5,
+        "u264": 7.5
       },
       "a-6b-4": {
-        "u268": 5,
-        "u269": 4,
-        "u270": 3.5
+        "u262": 6.5,
+        "u263": 6,
+        "u264": 5.5
+      },
+      "a-6b-6": {
+        "u262": 4.5,
+        "u263": 7.5,
+        "u264": 6.5
+      },
+      "a-6b-7": {
+        "u262": 6,
+        "u263": 5.5,
+        "u264": 4.5
       }
     },
-    "u276": {
-      "a-4a-1": {
-        "u272": 6,
-        "u273": 5,
-        "u274": 8,
-        "u275": 7
+    "u270": {
+      "a-6b-5": {
+        "u266": 75,
+        "u267": 75,
+        "u268": 50,
+        "u269": 50
+      }
+    },
+    "u274": {
+      "a-6b-1": {
+        "u271": 4,
+        "u272": 3.5,
+        "u273": 6
       },
-      "a-4a-2": {
-        "u272": 7,
-        "u273": 6.5,
-        "u274": 6,
-        "u275": 5
-      },
-      "a-4a-3": {
+      "a-6b-2": {
+        "u271": 5.5,
         "u272": 5,
-        "u273": 8,
-        "u274": 7,
-        "u275": 6.5
+        "u273": 4
       },
-      "a-4a-4": {
-        "u272": 6.5,
-        "u273": 6,
-        "u274": 5,
-        "u275": 8
+      "a-6b-3": {
+        "u271": 3.5,
+        "u272": 6,
+        "u273": 5.5
       },
-      "a-4a-6": {
-        "u272": 8,
-        "u273": 7,
-        "u274": 6.5,
-        "u275": 6
+      "a-6b-4": {
+        "u271": 5,
+        "u272": 4,
+        "u273": 3.5
       }
     },
-    "u280": {
+    "u279": {
       "a-4a-1": {
-        "u277": 7.5,
-        "u278": 6.5,
-        "u279": 6
+        "u275": 6,
+        "u276": 5,
+        "u277": 8,
+        "u278": 7
       },
       "a-4a-2": {
-        "u277": 5.5,
-        "u278": 4.5,
-        "u279": 7.5
-      },
-      "a-4a-3": {
-        "u277": 6.5,
-        "u278": 6,
-        "u279": 5.5
-      },
-      "a-4a-4": {
-        "u277": 4.5,
-        "u278": 7.5,
-        "u279": 6.5
-      },
-      "a-4a-6": {
+        "u275": 7,
+        "u276": 6.5,
         "u277": 6,
-        "u278": 5.5,
-        "u279": 4.5
+        "u278": 5
+      },
+      "a-4a-3": {
+        "u275": 5,
+        "u276": 8,
+        "u277": 7,
+        "u278": 6.5
+      },
+      "a-4a-4": {
+        "u275": 6.5,
+        "u276": 6,
+        "u277": 5,
+        "u278": 8
+      },
+      "a-4a-6": {
+        "u275": 8,
+        "u276": 7,
+        "u277": 6.5,
+        "u278": 6
       }
     },
-    "u285": {
+    "u283": {
+      "a-4a-1": {
+        "u280": 7.5,
+        "u281": 6.5,
+        "u282": 6
+      },
+      "a-4a-2": {
+        "u280": 5.5,
+        "u281": 4.5,
+        "u282": 7.5
+      },
+      "a-4a-3": {
+        "u280": 6.5,
+        "u281": 6,
+        "u282": 5.5
+      },
+      "a-4a-4": {
+        "u280": 4.5,
+        "u281": 7.5,
+        "u282": 6.5
+      },
+      "a-4a-6": {
+        "u280": 6,
+        "u281": 5.5,
+        "u282": 4.5
+      }
+    },
+    "u288": {
       "a-4a-5": {
-        "u281": 75,
-        "u282": 75,
-        "u283": 50,
-        "u284": 50
+        "u284": 75,
+        "u285": 75,
+        "u286": 50,
+        "u287": 50
       }
     },
-    "u289": {
+    "u292": {
       "a-4a-1": {
-        "u286": 8.5,
-        "u287": 8,
-        "u288": 7.5
-      },
-      "a-4a-2": {
-        "u286": 6.5,
-        "u287": 6,
-        "u288": 8.5
-      },
-      "a-4a-3": {
-        "u286": 8,
-        "u287": 7.5,
-        "u288": 6.5
-      },
-      "a-4a-4": {
-        "u286": 6,
-        "u287": 8.5,
-        "u288": 8
-      },
-      "a-4a-6": {
-        "u286": 8.5,
-        "u287": 8,
-        "u288": 7.5
-      }
-    },
-    "u294": {
-      "a-4a-1": {
-        "u290": 6,
-        "u291": 5.5,
-        "u292": 8,
-        "u293": 7.5
-      },
-      "a-4a-2": {
-        "u290": 7.5,
-        "u291": 7,
-        "u292": 6,
-        "u293": 5.5
-      },
-      "a-4a-3": {
-        "u290": 5.5,
-        "u291": 8,
-        "u292": 7.5,
-        "u293": 7
-      },
-      "a-4a-4": {
-        "u290": 7,
-        "u291": 6,
-        "u292": 5.5,
-        "u293": 8
-      },
-      "a-4a-6": {
+        "u289": 8.5,
         "u290": 8,
-        "u291": 7.5,
-        "u292": 7,
-        "u293": 6
+        "u291": 7.5
+      },
+      "a-4a-2": {
+        "u289": 6.5,
+        "u290": 6,
+        "u291": 8.5
+      },
+      "a-4a-3": {
+        "u289": 8,
+        "u290": 7.5,
+        "u291": 6.5
+      },
+      "a-4a-4": {
+        "u289": 6,
+        "u290": 8.5,
+        "u291": 8
+      },
+      "a-4a-6": {
+        "u289": 7.5,
+        "u290": 6.5,
+        "u291": 6
       }
     },
-    "u298": {
+    "u297": {
+      "a-4a-1": {
+        "u293": 6,
+        "u294": 5.5,
+        "u295": 8,
+        "u296": 7.5
+      },
+      "a-4a-2": {
+        "u293": 7.5,
+        "u294": 7,
+        "u295": 6,
+        "u296": 5.5
+      },
+      "a-4a-3": {
+        "u293": 5.5,
+        "u294": 8,
+        "u295": 7.5,
+        "u296": 7
+      },
+      "a-4a-4": {
+        "u293": 7,
+        "u294": 6,
+        "u295": 5.5,
+        "u296": 8
+      },
+      "a-4a-6": {
+        "u293": 8,
+        "u294": 7.5,
+        "u295": 7,
+        "u296": 6
+      }
+    },
+    "u301": {
       "a-4a-5": {
-        "u295": 50,
-        "u296": 75,
-        "u297": 75
+        "u298": 50,
+        "u299": 75,
+        "u300": 75
       }
     }
   }

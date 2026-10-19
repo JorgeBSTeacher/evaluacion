@@ -154,7 +154,16 @@
     {
       "codigo": "LCL.TC.CE10",
       "descripcion": "Poner las propias prácticas comunicativas al servicio de la convivencia democrática utilizando un lenguaje no discriminatorio y detectando y rechazando los abusos de poder a través de la palabra, para favorecer un uso no solo eficaz sino también ético del lenguaje.",
-      "perfilSalida": []
+      "perfilSalida": [
+        "CCL1",
+        "CCL5",
+        "CP3",
+        "CD3",
+        "CPSAA3",
+        "CC1",
+        "CC2",
+        "CC3"
+      ]
     }
   ],
   "criterios": [
@@ -167,7 +176,13 @@
     {
       "codigo": "LCL.TC.1.2",
       "ceCodigo": "LCL.TC.CE1",
-      "descripcion": "Detectar, con autonomía creciente y en contextos próximos, prejuicios y estereotipos lingüísticos frecuentes, aportando alternativas y valorando la diversidad lingüística del mundo como una fuente de riqueza cultural. Comprender el sentido de textos orales y multimodales sencillos, reconociendo las ideas principales y los mensajes explícitos e implícitos, valorando su contenido y los elementos no verbales elementales y, de manera acompañada, algunos elementos formales elementales.",
+      "descripcion": "Detectar, con autonomía creciente y en contextos próximos, prejuicios y estereotipos lingüísticos frecuentes, aportando alternativas y valorando la diversidad lingüística del mundo como una fuente de riqueza cultural.",
+      "peso": null
+    },
+    {
+      "codigo": "LCL.TC.2.1",
+      "ceCodigo": "LCL.TC.CE2",
+      "descripcion": "Comprender el sentido de textos orales y multimodales sencillos, reconociendo las ideas principales y los mensajes explícitos e implícitos, valorando su contenido y los elementos no verbales elementales y, de manera acompañada, algunos elementos formales elementales.",
       "peso": null
     },
     {

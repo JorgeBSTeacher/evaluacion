@@ -150,7 +150,16 @@
     {
       "codigo": "LCL.SC.CE10",
       "descripcion": "Poner las propias prácticas comunicativas al servicio de la convivencia democrática utilizando un lenguaje no discriminatorio y detectando y rechazando los abusos de poder a través de la palabra, para favorecer un uso no solo eficaz sino también ético del lenguaje.",
-      "perfilSalida": []
+      "perfilSalida": [
+        "CCL1",
+        "CCL5",
+        "CP3",
+        "CD3",
+        "CPSAA3",
+        "CC1",
+        "CC2",
+        "CC3"
+      ]
     }
   ],
   "criterios": [
@@ -163,7 +172,13 @@
     {
       "codigo": "LCL.SC.1.2",
       "ceCodigo": "LCL.SC.CE1",
-      "descripcion": "Identificar, con cierta autonomía y en contextos próximos, prejuicios y estereotipos lingüísticos frecuentes, aportando alternativas y reconociendo la diversidad lingüística de su entorno como una fuente de riqueza cultural. Comprender el sentido de textos orales y multimodales sencillos, reconociendo las ideas principales, los mensajes explícitos y los mensajes implícitos más sencillos, y progresando, de manera acompañada, en la valoración crítica del contenido y de los elementos no verbales elementales.",
+      "descripcion": "Identificar, con cierta autonomía y en contextos próximos, prejuicios y estereotipos lingüísticos frecuentes, aportando alternativas y reconociendo la diversidad lingüística de su entorno como una fuente de riqueza cultural.",
+      "peso": null
+    },
+    {
+      "codigo": "LCL.SC.2.1",
+      "ceCodigo": "LCL.SC.CE2",
+      "descripcion": "Comprender el sentido de textos orales y multimodales sencillos, reconociendo las ideas principales, los mensajes explícitos y los mensajes implícitos más sencillos, y progresando, de manera acompañada, en la valoración crítica del contenido y de los elementos no verbales elementales.",
       "peso": null
     },
     {
@@ -187,7 +202,13 @@
     {
       "codigo": "LCL.SC.4.2",
       "ceCodigo": "LCL.SC.CE4",
-      "descripcion": "Analizar, de manera acompañada, el contenido y aspectos formales y no formales elementales de textos escritos y multimodales, valorando su contenido y estructura e iniciándose en la evaluación de su fiabilidad. Producir textos escritos y multimodales sencillos, con coherencia y adecuación, en distintos soportes, iniciándose en el uso de las normas gramaticales y ortográficas más sencillas al servicio de la cohesión y progresando, de manera acompañada, en la movilización de estrategias sencillas, individuales o grupales, de planificación, textualización y revisión.",
+      "descripcion": "Analizar, de manera acompañada, el contenido y aspectos formales y no formales elementales de textos escritos y multimodales, valorando su contenido y estructura e iniciándose en la evaluación de su fiabilidad.",
+      "peso": null
+    },
+    {
+      "codigo": "LCL.SC.5.1",
+      "ceCodigo": "LCL.SC.CE5",
+      "descripcion": "Producir textos escritos y multimodales sencillos, con coherencia y adecuación, en distintos soportes, iniciándose en el uso de las normas gramaticales y ortográficas más sencillas al servicio de la cohesión y progresando, de manera acompañada, en la movilización de estrategias sencillas, individuales o grupales, de planificación, textualización y revisión.",
       "peso": null
     },
     {
