@@ -801,6 +801,366 @@ async function main() {
     }
   }
 
+  console.log('\n== Modales reales: editor de rúbrica y salto a importar (P-09) ==');
+  {
+    // Aquí no se simulan las funciones «de lógica»: se monta el DOM de
+    // tools/dom.js y se maneja el MISMO modal que el docente (UI.openModal,
+    // querySelector, atributos data-*, chips y botones). Es lo que habría
+    // cazado el selector mal escrito de v0.5.6.
+    const app = cargarApp({ dom: true });
+    app.Storage.load();
+    await importarJson(app, estadoPrueba());
+    const doc = app.document;
+    const IV = app.InstrumentosView;
+    const db = app.Storage.db;
+    const nInst = db.instrumentos.length;
+
+    // Rellena una fila del modal: nombre, un criterio y sus descriptores.
+    const rellena = (fila, nombre, indice, prefijo) => {
+      fila.querySelector('.ap-desc').value = nombre;
+      const chip = fila.querySelectorAll('.chip input')[indice];
+      chip.checked = true;
+      chip._dispara('change');
+      fila.querySelectorAll('.ap-nv').forEach((inp, i) => { inp.value = prefijo + ' ' + (i + 1); });
+    };
+    const nivelesDe = fila => Array.from(fila.querySelectorAll('.ap-nv'))
+      .map(i => i.dataset.pct + '=' + i.value);
+
+    IV.modalInstrumento(null, 'cl-l6a');
+    let body = doc.querySelector('.modal-body');
+    check('P-09 · el modal de instrumento se monta con su formulario', !!body && !!body.querySelector('#f-titulo'));
+    check('P-09 · un instrumento nuevo arranca en Control y con un apartado',
+      body.querySelector('#f-tipo').value === 'Control' && body.querySelectorAll('.apartado-fila').length === 1);
+
+    body.querySelector('#f-titulo').value = 'Rúbrica de prueba';
+    body.querySelector('#f-periodo').value = 'T2';
+    const tipo = body.querySelector('#f-tipo');
+    tipo.value = 'Rúbrica';
+    tipo._dispara('change');
+    check('P-09 · al elegir Rúbrica aparece la cuadrícula 25 %…100 %',
+      /25%/.test(body.querySelector('.rub-head').textContent) && /100%/.test(body.querySelector('.rub-head').textContent));
+    check('P-09 · cada ítem de rúbrica nace con cuatro casillas de nivel',
+      body.querySelectorAll('.apartado-fila .ap-nv').length === 4);
+
+    rellena(body.querySelectorAll('.apartado-fila')[0], 'Ortografía', 0, 'Ort');
+    body.querySelector('#add-ap').click();
+    rellena(body.querySelectorAll('.apartado-fila')[1], 'Presentación', 1, 'Pres');
+    check('P-09 · «Añadir ítem» añade una fila y conserva la anterior',
+      body.querySelectorAll('.apartado-fila').length === 2 &&
+      body.querySelectorAll('.apartado-fila')[0].querySelector('.ap-desc').value === 'Ortografía');
+    doc.querySelector('.guardar').click();
+
+    const creado = db.instrumentos[db.instrumentos.length - 1];
+    check('P-09 · guardar crea la rúbrica, sin avisos, y cierra el modal',
+      db.instrumentos.length === nInst + 1 && doc.querySelector('.modal-body') === null && !app.alertas.length);
+    check('P-09 · se guardan los dos ítems con su nombre, criterio y peso',
+      creado && creado.tipo === 'Rúbrica' && creado.titulo === 'Rúbrica de prueba' &&
+      creado.periodo === 'T2' && creado.apartados.map(a => a.descripcion).join(',') === 'Ortografía,Presentación' &&
+      creado.apartados.every(a => a.criterioIds.length === 1 && a.peso === 1));
+    check('P-09 · cada ítem guarda sus cuatro descriptores propios',
+      creado.apartados[0].niveles.map(n => n.pct + '=' + n.descriptor).join('|') === '25=Ort 1|50=Ort 2|75=Ort 3|100=Ort 4' &&
+      creado.apartados[1].niveles.map(n => n.pct + '=' + n.descriptor).join('|') === '25=Pres 1|50=Pres 2|75=Pres 3|100=Pres 4');
+
+    // El riesgo anotado de P-09: al reabrir el ítem, ¿vuelven sus descriptores?
+    IV.modalInstrumento(creado);
+    body = doc.querySelector('.modal-body');
+    const filas = body.querySelectorAll('.apartado-fila');
+    check('P-09 · al reabrir, cada ítem recupera su nombre y su criterio marcado',
+      filas.length === 2 && filas[0].querySelector('.ap-desc').value === 'Ortografía' &&
+      filas[1].querySelector('.ap-desc').value === 'Presentación' &&
+      filas[0].querySelectorAll('.chip input:checked').length === 1);
+    check('P-09 · al reabrir, los descriptores propios vuelven a la cuadrícula',
+      nivelesDe(filas[0]).join('|') === '25=Ort 1|50=Ort 2|75=Ort 3|100=Ort 4' &&
+      nivelesDe(filas[1]).join('|') === '25=Pres 1|50=Pres 2|75=Pres 3|100=Pres 4',
+      nivelesDe(filas[0]).join('|') + ' / ' + nivelesDe(filas[1]).join('|'));
+
+    // Editar un descriptor y guardar: persiste y no arrastra al otro ítem.
+    filas[1].querySelectorAll('.ap-nv')[0].value = 'Presentación revisada';
+    doc.querySelector('.guardar').click();
+    const editado = db.instrumentos.find(i => i.id === creado.id);
+    check('P-09 · editar un descriptor y guardar lo persiste sin tocar el otro ítem',
+      editado.apartados[1].niveles[0].descriptor === 'Presentación revisada' &&
+      editado.apartados[0].niveles[0].descriptor === 'Ort 1' &&
+      editado.apartados[0].niveles.length === 4 && editado.apartados[1].niveles.length === 4);
+
+    // Validación: un ítem con menos de dos descriptores no se guarda.
+    const antesVal = JSON.stringify(editado.apartados);
+    const alertasAntes = app.alertas.length;
+    IV.modalInstrumento(editado);
+    body = doc.querySelector('.modal-body');
+    body.querySelectorAll('.apartado-fila')[0].querySelectorAll('.ap-nv').forEach((inp, i) => {
+      if (i > 0) inp.value = '';
+    });
+    doc.querySelector('.guardar').click();
+    check('P-09 · un ítem con menos de dos descriptores no se guarda y se explica',
+      app.alertas.length === alertasAntes + 1 && /al menos dos descriptores/.test(app.alertas[alertasAntes]) &&
+      JSON.stringify(db.instrumentos.find(i => i.id === creado.id).apartados) === antesVal &&
+      !!doc.querySelector('.modal-body'));
+    doc.querySelector('.cancelar').click();
+
+    // Ítems con distinto número de niveles: la cuadrícula enseña la unión,
+    // pero al guardar cada ítem conserva EXACTAMENTE sus niveles (sin huecos).
+    const asigId = app.Calc.asignaturaDeClase('cl-l6a').id;
+    const critAsig = db.criterios.find(c => c.asignaturaId === asigId);
+    const dosNiveles = {
+      id: 'iDosNiveles', claseId: 'cl-l6a', tipo: 'Rúbrica', titulo: 'Escala mixta',
+      fecha: '2026-10-19', periodo: 'T1', saberes: '', unidad: '', nivel: '',
+      criteriosModo: 'desglosado', criterioIdsGlobal: '', url: '',
+      niveles: [{ pct: 25, descriptor: 'a' }, { pct: 50, descriptor: 'b' },
+        { pct: 75, descriptor: 'c' }, { pct: 100, descriptor: 'd' }],
+      apartados: [
+        { id: 'm1', orden: 1, descripcion: 'Cuatro niveles', maxPts: 100, peso: 1,
+          criterioIds: [critAsig.id],
+          niveles: [{ pct: 25, descriptor: 'a' }, { pct: 50, descriptor: 'b' },
+            { pct: 75, descriptor: 'c' }, { pct: 100, descriptor: 'd' }] },
+        { id: 'm2', orden: 2, descripcion: 'Dos niveles', maxPts: 100, peso: 1,
+          criterioIds: [critAsig.id],
+          niveles: [{ pct: 50, descriptor: 'b' }, { pct: 100, descriptor: 'd' }] }
+      ]
+    };
+    db.instrumentos.push(dosNiveles);
+    IV.modalInstrumento(dosNiveles);
+    body = doc.querySelector('.modal-body');
+    const filasMix = body.querySelectorAll('.apartado-fila');
+    check('P-09 · la cuadrícula enseña la unión de niveles de todos los ítems',
+      filasMix[1].querySelectorAll('.ap-nv').length === 4);
+    check('P-09 · el ítem de dos niveles deja vacías las columnas que no tiene',
+      nivelesDe(filasMix[1]).join('|') === '25=|50=b|75=|100=d');
+    doc.querySelector('.guardar').click();
+    check('P-09 · guardar sin tocar nada conserva los dos niveles del ítem',
+      dosNiveles.apartados[1].niveles.map(n => n.pct + '=' + n.descriptor).join('|') === '50=b|100=d');
+
+    // Salto «Nuevo instrumento (Rúbrica) → Importar rúbrica (IA)».
+    IV.modalInstrumento(null, 'cl-l6a');
+    body = doc.querySelector('.modal-body');
+    body.querySelector('#f-periodo').value = 'T3';
+    const tipo2 = body.querySelector('#f-tipo');
+    tipo2.value = 'Rúbrica';
+    tipo2._dispara('change');
+    body.querySelector('#btn-importar-rub').click();
+    const asig6 = app.Calc.asignaturaDeClase('cl-l6a');
+    check('P-09 · «Importar rúbrica (IA)» abre el importador con el periodo elegido',
+      !!doc.querySelector('#ia-json') && doc.querySelector('#ia-periodo').value === 'T3');
+    check('P-09 · el importador trae las instrucciones de la asignatura',
+      doc.querySelector('#ia-prompt').value.length > 100 &&
+      doc.querySelector('#ia-prompt').value.includes(asig6.nombre));
+
+    const crit6 = db.criterios.filter(c => c.asignaturaId === asig6.id);
+    const rub = {
+      tipo: 'rubrica-evalcrit', version: 1, titulo: 'Rúbrica pegada en el modal', nivel: '',
+      items: [
+        { criterio: 'Primero', peso: 2, criterios: [crit6[0].codigo],
+          niveles: [{ pct: 25, descriptor: 'p1' }, { pct: 100, descriptor: 'p2' }] },
+        { criterio: 'Segundo', peso: 1, criterios: [crit6[1].codigo],
+          niveles: [{ pct: 25, descriptor: 'q1' }, { pct: 100, descriptor: 'q2' }] }
+      ]
+    };
+    doc.querySelector('#ia-json').value = JSON.stringify(rub);
+    const nAntesIa = db.instrumentos.length;
+    doc.querySelector('.guardar').click();
+    const importada = db.instrumentos[db.instrumentos.length - 1];
+    check('P-09 · pegar la respuesta de la IA y guardar crea la rúbrica',
+      db.instrumentos.length === nAntesIa + 1 && importada.titulo === 'Rúbrica pegada en el modal' &&
+      importada.apartados[1].niveles.map(n => n.descriptor).join(',') === 'q1,q2');
+
+    // Un texto que no es JSON no crea nada y avisa dentro del modal.
+    IV.modalInstrumento(null, 'cl-l6a');
+    body = doc.querySelector('.modal-body');
+    const tipo3 = body.querySelector('#f-tipo');
+    tipo3.value = 'Rúbrica';
+    tipo3._dispara('change');
+    body.querySelector('#btn-importar-rub').click();
+    doc.querySelector('#ia-json').value = '{ esto no es json';
+    const nAntesMal = db.instrumentos.length;
+    const alertasMal = app.alertas.length;
+    doc.querySelector('.guardar').click();
+    check('P-09 · un JSON inválido en el importador no crea nada y avisa',
+      db.instrumentos.length === nAntesMal && app.alertas.length === alertasMal + 1 &&
+      /JSON válido/.test(app.alertas[alertasMal]) && !!doc.querySelector('.modal-body'));
+    doc.querySelector('.cancelar').click();
+  }
+
+  console.log('\n== Modales reales: alta y edición en el resto de vistas (P-09) ==');
+  {
+    const app = cargarApp({ dom: true });
+    app.Storage.load();
+    await importarJson(app, estadoPrueba());
+    const doc = app.document;
+    const v = doc.getElementById('app');
+    const db = app.Storage.db;
+    const modal = () => doc.querySelector('.modal-body');
+    const guardar = () => doc.querySelector('.guardar').click();
+
+    // --- Grupos y alumnado (vista «Alumnos y grupos») ---
+    app.App.ir('alumnos');
+    const nG = db.grupos.length;
+    v.querySelector('#add-grupo').click();
+    modal().querySelector('#f-nombre').value = '  4ºB  ';
+    modal().querySelector('#f-etapa').value = 'Infantil';
+    guardar();
+    const grupoNuevo = db.grupos[db.grupos.length - 1];
+    check('P-09 · «Nuevo grupo» crea el grupo con lo escrito en el formulario',
+      db.grupos.length === nG + 1 && grupoNuevo.nombre === '4ºB' && grupoNuevo.etapa === 'Infantil');
+
+    const g0 = db.grupos[0];
+    const nombreG0 = g0.nombre;
+    v.querySelector('.editar-grupo').click();
+    check('P-09 · el modal de edición de grupo llega relleno',
+      modal() && modal().querySelector('#f-nombre').value === nombreG0);
+    modal().querySelector('#f-nombre').value = nombreG0 + ' (editado)';
+    guardar();
+    check('P-09 · editar un grupo conserva su id (y con él su alumnado)',
+      db.grupos.filter(g => g.id === g0.id).length === 1 &&
+      db.grupos.find(g => g.id === g0.id).nombre === nombreG0 + ' (editado)');
+
+    v.querySelectorAll('#lista-grupos li[data-id]')[0].click();
+    const nA = db.alumnos.length;
+    v.querySelector('#add-alumno').click();
+    check('P-09 · el modal de alumno nuevo pide nombre, apellidos y grupo',
+      !!modal().querySelector('#f-nombre') && !!modal().querySelector('#f-apellidos') &&
+      !!modal().querySelector('#f-grupo'));
+    modal().querySelector('#f-nombre').value = 'Ada';
+    modal().querySelector('#f-apellidos').value = 'Lovelace';
+    modal().querySelector('#f-grupo').value = g0.id;
+    guardar();
+    const alumnoNuevo = db.alumnos[db.alumnos.length - 1];
+    check('P-09 · «Nuevo alumno» lo crea en el grupo elegido',
+      db.alumnos.length === nA + 1 && alumnoNuevo.nombre === 'Ada' &&
+      alumnoNuevo.apellidos === 'Lovelace' && alumnoNuevo.grupoId === g0.id);
+
+    const nA2 = db.alumnos.length;
+    v.querySelector('#add-varios').click();
+    modal().querySelector('#f-lista').value = 'Turing, Alan\nHopper, Grace\n\nTuring, Alan';
+    guardar();
+    check('P-09 · «Añadir varios» crea uno por línea e ignora los repetidos',
+      db.alumnos.length === nA2 + 2 &&
+      db.alumnos.filter(a => a.apellidos === 'Turing').length === 1 &&
+      db.alumnos.find(a => a.apellidos === 'Turing').nombre === 'Alan');
+    const alertasVarios = app.alertas.length;
+    v.querySelector('#add-varios').click();
+    modal().querySelector('#f-lista').value = 'Turing, Alan';
+    const nA3 = db.alumnos.length;
+    guardar();
+    check('P-09 · el alta masiva sin novedades avisa y no cierra el modal',
+      db.alumnos.length === nA3 && app.alertas.length === alertasVarios + 1 && !!modal());
+    doc.querySelector('.cancelar').click();
+
+    // --- Asignaturas y clases (vista «Asignaturas y clases») ---
+    app.App.ir('clases');
+    const nAsig = db.asignaturas.length;
+    v.querySelector('#add-asig').click();
+    modal().querySelector('#f-modo').value = 'blanco';
+    modal().querySelector('#f-modo')._dispara('change');
+    modal().querySelector('#f-nombre').value = 'Taller de ajedrez';
+    modal().querySelector('#f-etapa').value = 'Primaria';
+    guardar();
+    const asigNueva = db.asignaturas[db.asignaturas.length - 1];
+    check('P-09 · «Nueva asignatura» en blanco usa el nombre del formulario',
+      db.asignaturas.length === nAsig + 1 && asigNueva.nombre === 'Taller de ajedrez' &&
+      asigNueva.curso === '');
+
+    const asig0 = db.asignaturas[0];
+    const nombreAsig0 = asig0.nombre;
+    const critAsig0 = db.criterios.filter(c => c.asignaturaId === asig0.id).length;
+    v.querySelector('.editar-asig').click();
+    check('P-09 · el modal de edición de asignatura llega relleno',
+      modal() && modal().querySelector('#f-nombre').value === nombreAsig0);
+    modal().querySelector('#f-nombre').value = nombreAsig0 + ' (editada)';
+    modal().querySelector('#f-curso').value = '5º';
+    guardar();
+    const asigEditada = db.asignaturas.find(a => a.id === asig0.id);
+    check('P-09 · editar una asignatura cambia la etiqueta pero no su currículo',
+      asigEditada.nombre === nombreAsig0 + ' (editada)' && asigEditada.curso === '5º' &&
+      db.criterios.filter(c => c.asignaturaId === asig0.id).length === critAsig0);
+
+    let par = null;
+    for (const a of db.asignaturas) {
+      for (const g of db.grupos) {
+        if (!db.clases.some(c => c.asignaturaId === a.id && c.grupoId === g.id)) { par = { a, g }; break; }
+      }
+      if (par) break;
+    }
+    const nCl = db.clases.length;
+    v.querySelector('#add-clase').click();
+    modal().querySelector('#f-asig').value = par.a.id;
+    modal().querySelector('#f-grupo').value = par.g.id;
+    guardar();
+    check('P-09 · «Nueva clase» combina la asignatura y el grupo elegidos',
+      db.clases.length === nCl + 1 &&
+      db.clases[db.clases.length - 1].asignaturaId === par.a.id &&
+      db.clases[db.clases.length - 1].grupoId === par.g.id);
+    const nCl2 = db.clases.length;
+    const alertasClase = app.alertas.length;
+    v.querySelector('#add-clase').click();
+    modal().querySelector('#f-asig').value = par.a.id;
+    modal().querySelector('#f-grupo').value = par.g.id;
+    guardar();
+    check('P-09 · una clase repetida se rechaza con aviso y sin duplicar',
+      db.clases.length === nCl2 && app.alertas.length === alertasClase + 1 &&
+      /ya existe/.test(app.alertas[alertasClase]) && !!modal());
+    doc.querySelector('.cancelar').click();
+
+    // --- Niveles ACI (desde el botón de la clase) ---
+    const claseAci = db.clases.find(c => app.Calc.alumnosDeClase(c.id).length);
+    const alumnoAci = app.Calc.alumnosDeClase(claseAci.id)[0];
+    v.querySelector('.aci-clase[data-id="' + claseAci.id + '"]').click();
+    const bodyAci = modal();
+    check('P-09 · el modal ACI se abre para esa clase', !!bodyAci && !!bodyAci.querySelector('#add-nivel-aci'));
+    bodyAci.querySelector('#add-nivel-aci').click();
+    const filaAci = bodyAci.querySelector('.nivel-aci-fila:last-child');
+    check('P-09 · «Añadir nivel» añade una fila de nivel ACI', !!filaAci && !!filaAci.querySelector('.nv-cod'));
+    filaAci.querySelector('.nv-cod').value = 'b';
+    filaAci.querySelector('.nv-cod')._dispara('input');
+    filaAci.querySelector('.nv-etq').value = '5º';
+    const asigAci = db.asignaturas.find(a => a.id !== claseAci.asignaturaId);
+    filaAci.querySelector('.nv-asig').value = asigAci.id;
+    bodyAci.querySelector('.alu-nivel').value = 'B';
+    guardar();
+    const claseGuardada = db.clases.find(c => c.id === claseAci.id);
+    check('P-09 · el modal ACI guarda el nivel (código en mayúsculas) y su currículo',
+      claseGuardada.nivelesAci.some(n => n.codigo === 'B' && n.etiqueta === '5º' && n.asignaturaId === asigAci.id));
+    check('P-09 · el modal ACI asigna el alumnado al nivel elegido',
+      claseGuardada.adaptaciones[alumnoAci.id] === 'B');
+
+    // --- Currículo: competencia específica y criterio ---
+    app.App.ir('curriculo');
+    const nEsp = db.competenciasEspecificas.length;
+    v.querySelector('#add-esp').click();
+    modal().querySelector('#f-cod').value = 'CE9';
+    modal().querySelector('#f-desc').value = 'Competencia de prueba';
+    guardar();
+    check('P-09 · «Añadir» competencia específica la guarda en el currículo',
+      db.competenciasEspecificas.length === nEsp + 1 &&
+      db.competenciasEspecificas[db.competenciasEspecificas.length - 1].codigo === 'CE9');
+
+    const nCrit = db.criterios.length;
+    v.querySelector('#add-crit').click();
+    const bc = modal();
+    bc.querySelector('#f-cod').value = 'PRUEBA 1.1';
+    bc.querySelector('#f-desc').value = 'Criterio de prueba';
+    bc.querySelector('#f-peso').value = '30';
+    const chipEsp = bc.querySelectorAll('[data-campo=esp] input')[0];
+    chipEsp.checked = true;
+    chipEsp._dispara('change');
+    guardar();
+    const critNuevo = db.criterios[db.criterios.length - 1];
+    check('P-09 · «Nuevo criterio» guarda código, peso y competencia específica',
+      db.criterios.length === nCrit + 1 && critNuevo.codigo === 'PRUEBA 1.1' &&
+      critNuevo.peso === 30 && critNuevo.espIds.length === 1);
+
+    const nCrit2 = db.criterios.length;
+    const alertasCrit = app.alertas.length;
+    v.querySelector('#add-crit').click();
+    modal().querySelector('#f-cod').value = 'PRUEBA 1.2';
+    modal().querySelector('#f-desc').value = 'Sin competencia';
+    modal().querySelector('#f-peso').value = '10';
+    guardar();
+    check('P-09 · un criterio sin competencia específica no se guarda y se explica',
+      db.criterios.length === nCrit2 && app.alertas.length === alertasCrit + 1 &&
+      /competencia específica/.test(app.alertas[alertasCrit]) && !!modal());
+    doc.querySelector('.cancelar').click();
+  }
+
   console.log('\n== Instrumentos: por trimestre y unidades plegables ==');
   {
     const app = cargarApp();
