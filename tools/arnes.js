@@ -7,6 +7,7 @@
 const vm = require('vm');
 const fs = require('fs');
 const path = require('path');
+const { crearDocumento } = require('./dom');
 
 const raiz = path.join(__dirname, '..');
 
@@ -43,7 +44,12 @@ function makeEl(over) {
   return Object.assign(el, over || {});
 }
 
-function cargarApp() {
+// Carga la app en un contexto `vm`. Por defecto usa el DOM mínimo de siempre
+// (`makeEl`), suficiente para las funciones que devuelven HTML. Con
+// `{ dom: true }` monta el DOM de tools/dom.js: los modales reales se pueden
+// abrir, rellenar y guardar, y los `alert` quedan capturados en `app.alertas`.
+function cargarApp(opciones) {
+  const conDom = !!(opciones && opciones.dom);
   const s = {};
   s.global = s;
   s.window = s;
@@ -56,13 +62,29 @@ function cargarApp() {
     setItem: (k, v) => { store[k] = String(v); },
     removeItem: k => { delete store[k]; }
   };
-  s.document = {
-    getElementById: () => makeEl(),
-    createElement: () => makeEl(),
-    addEventListener() {},
-    querySelector: () => makeEl(),
-    body: makeEl()
-  };
+  if (conDom) {
+    // Los contenedores fijos de index.html: sin ellos, el `App.refrescar()` que
+    // dispara un guardado se cae (y no por un fallo de la app).
+    s.document = crearDocumento({ ids: [
+      'nav', 'app', 'estado-guardado', 'btn-guardar', 'btn-exportar', 'btn-importar',
+      'input-importar', 'informe-impresion', 'modal-root', 'toast-root'
+    ] });
+    s.__alertas = [];
+    s.alert = m => s.__alertas.push(String(m));
+    s.confirm = () => true;
+    s.scrollTo = () => {};
+    s.history = { replaceState() {} };
+  } else {
+    s.document = {
+      getElementById: () => makeEl(),
+      createElement: () => makeEl(),
+      addEventListener() {},
+      querySelector: () => makeEl(),
+      body: makeEl()
+    };
+  }
+  // La UI real es la de js/ui.js: su `const UI` tapa esta propiedad del global.
+  // Se deja solo como red si algún día se cargara la app sin ui.js.
   s.UI = {
     toast() {}, closeModal() {},
     openModal: () => makeEl(),
@@ -78,10 +100,16 @@ function cargarApp() {
     };
   };
   vm.createContext(s);
-  const code = ARCHIVOS.map(f => fs.readFileSync(path.join(raiz, f), 'utf8')).join('\n')
+  let code = ARCHIVOS.map(f => fs.readFileSync(path.join(raiz, f), 'utf8')).join('\n')
     + '\nthis.__app = { Utils, Storage, Calc, PLANTILLAS_CURRICULO, CurriculoView, InstrumentosView, CuadriculaView, ClasesView, InformeView, App };';
+  if (conDom) code += '\nthis.__dom = { document, alertas: this.__alertas };';
   vm.runInContext(code, s, { filename: 'app.bundle.js' });
-  return s.__app;
+  const app = s.__app;
+  if (conDom) {
+    app.document = s.__dom.document;
+    app.alertas = s.__dom.alertas;
+  }
+  return app;
 }
 
 module.exports = { raiz, ARCHIVOS, makeEl, cargarApp };
