@@ -374,6 +374,9 @@ const CuadriculaView = (() => {
       <span>${Utils.esc(asigImp)} · ${Utils.esc(grupoImp)} · ${periodo} · ${nivelImp} · impreso el ${Utils.hoy().split('-').reverse().join('/')}</span>
     </div>`;
 
+    // En la pestaña Informe el buscador de la cabecera queda oculto (el informe
+    // tiene su subvista «Alumnos»), pero el selector de periodo debe seguir
+    // presente y gobernando el alcance del informe.
     el.innerHTML = `
       <section class="card">
         ${cabeceraImp}
@@ -392,7 +395,7 @@ const CuadriculaView = (() => {
               nombre: `${Calc.asignaturaDeClase(c.id)?.nombre || '?'} · ${(Calc.byId(db.grupos, c.grupoId) || {}).nombre || '?'}`
             })), claseSel, 'id', 'nombre')}</select>
             ${selNivel}
-            ${buscaAlumno}
+            ${tab === 'informe' ? '' : buscaAlumno}
             <select id="sel-periodo" style="max-width:130px">
               ${['T1', 'T2', 'T3', 'Final'].map(p => `<option ${p === periodo ? 'selected' : ''}>${p}</option>`).join('')}
             </select>
@@ -419,14 +422,24 @@ const CuadriculaView = (() => {
         </div>
       </section>`;
 
-    // La pestaña Informe renderiza su propio contenido (D-59).
+    // La pestaña Informe renderiza su propio contenido (D-59) y hereda clase,
+    // nivel y periodo de la cabecera. El informe tiene su propio #alc-periodo;
+    // cuando se cambia allí, se refleja en el selector de arriba vía onPeriodo.
     if (tab === 'informe') {
       const infEl = el.querySelector('#informe-contenido');
-      if (infEl) InformeView.render(infEl, { claseSel, nivelSel, periodo, imprimir: imprimirInforme });
+      if (infEl) InformeView.render(infEl, {
+        claseSel, nivelSel, periodo,
+        imprimir: imprimirInforme,
+        onPeriodo: (p) => {
+          periodo = (p === 'T1' || p === 'T2' || p === 'T3') ? p : 'Final';
+          render(el);
+        }
+      });
     }
 
     el.querySelector('#sel-clase').onchange = e => { claseSel = e.target.value; nivelSel = ''; render(el); };
-    el.querySelector('#sel-periodo').onchange = e => { periodo = e.target.value; render(el); };
+    const selPeriodo = el.querySelector('#sel-periodo');
+    if (selPeriodo) selPeriodo.onchange = e => { periodo = e.target.value; render(el); };
     if (el.querySelector('#sel-nivel')) {
       el.querySelector('#sel-nivel').onchange = e => { nivelSel = e.target.value; render(el); };
     }
