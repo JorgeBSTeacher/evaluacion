@@ -92,13 +92,19 @@ const UI = {
     if (previo && typeof previo.focus === 'function' && previo.isConnected !== false) previo.focus();
   },
 
-  toast(msg) {
+  // Aviso efímero. `tipo: 'error'` se anuncia de forma imperiosa (`role="alert"`,
+  // que implica `aria-live="assertive"`), porque interrumpe al lector a propósito:
+  // solo se usa para fallos que exigen atención inmediata. El resto son informes
+  // (`role="status"`, que implica `aria-live="polite"`: no interrumpen). El rol va
+  // en el propio aviso, no en el contenedor, para no solapar regiones vivas.
+  toast(msg, tipo) {
     const root = document.getElementById('toast-root');
     const t = document.createElement('div');
-    t.className = 'toast';
+    t.className = 'toast' + (tipo === 'error' ? ' toast-error' : '');
+    t.setAttribute('role', tipo === 'error' ? 'alert' : 'status');
     t.textContent = msg;
     root.appendChild(t);
-    setTimeout(() => t.remove(), 2600);
+    setTimeout(() => t.remove(), tipo === 'error' ? 6000 : 2600);
   },
 
   chipsCriterios(asignaturaId, seleccionados) {

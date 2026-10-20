@@ -252,6 +252,9 @@ input:focus, select:focus, textarea:focus { border-color: var(--acento); }
   background: var(--tinta); color: #fff; padding: 10px 18px; border-radius: 999px;
   font-size: 14px; box-shadow: var(--sombra); animation: aparecer .2s ease-out;
 }
+/* Fallo que exige atención inmediata (p. ej. no se pudo guardar): se distingue del
+   aviso informativo, no solo por el color, para que no dependa de percibir el tono. */
+.toast-error { background: var(--ko); font-weight: 600; }
 @keyframes aparecer { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
 .apartado-fila {
@@ -429,7 +432,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--acento); }
   </div>
   <nav id="nav" class="nav"></nav>
   <div class="actions">
-    <span id="estado-guardado" class="save-dot" title="Guardado"></span>
+    <span id="estado-guardado" class="save-dot" title="Guardado" aria-hidden="true"></span>
     <button id="btn-ajustes" class="icon-btn icon-btn-lg" title="Configuración" aria-label="Configuración">
       <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
         <path d="M12 8.4a3.6 3.6 0 1 0 0 7.2 3.6 3.6 0 0 0 0-7.2Zm0 5.6a2 2 0 1 1 0-4 2 2 0 0 1 0 4Z"/>
@@ -586,7 +589,7 @@ const Storage = {
     try {
       localStorage.setItem(this.KEY, JSON.stringify(this.db));
     } catch (e) {
-      if (typeof UI !== 'undefined' && UI.toast) UI.toast('Error al guardar: exporta tu backup ahora');
+      if (typeof UI !== 'undefined' && UI.toast) UI.toast('Error al guardar: exporta tu backup ahora', 'error');
     }
   },
 
@@ -2159,13 +2162,19 @@ const UI = {
     if (previo && typeof previo.focus === 'function' && previo.isConnected !== false) previo.focus();
   },
 
-  toast(msg) {
+  // Aviso efímero. `tipo: 'error'` se anuncia de forma imperiosa (`role="alert"`,
+  // que implica `aria-live="assertive"`), porque interrumpe al lector a propósito:
+  // solo se usa para fallos que exigen atención inmediata. El resto son informes
+  // (`role="status"`, que implica `aria-live="polite"`: no interrumpen). El rol va
+  // en el propio aviso, no en el contenedor, para no solapar regiones vivas.
+  toast(msg, tipo) {
     const root = document.getElementById('toast-root');
     const t = document.createElement('div');
-    t.className = 'toast';
+    t.className = 'toast' + (tipo === 'error' ? ' toast-error' : '');
+    t.setAttribute('role', tipo === 'error' ? 'alert' : 'status');
     t.textContent = msg;
     root.appendChild(t);
-    setTimeout(() => t.remove(), 2600);
+    setTimeout(() => t.remove(), tipo === 'error' ? 6000 : 2600);
   },
 
   chipsCriterios(asignaturaId, seleccionados) {

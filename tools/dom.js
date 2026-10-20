@@ -182,7 +182,13 @@ function crearNodo(tag) {
   el.appendChild = n => { el._sucio = true; return el._meter(n); };
   el.removeChild = n => {
     const i = el.childNodes.indexOf(n);
-    if (i >= 0) el.childNodes.splice(i, 1);
+    if (i >= 0) {
+      // Como en el navegador: al desenganchar, el hijo deja de conocer a su
+      // padre. Sin esto, `isConnected` seguiría diciendo que sí (la raíz se
+      // alcanza subiendo por `parentNode`) y un nodo ya retirado parecería vivo.
+      n.parentNode = null;
+      el.childNodes.splice(i, 1);
+    }
     el._sucio = true;
     return n;
   };

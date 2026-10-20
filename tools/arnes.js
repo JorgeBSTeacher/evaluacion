@@ -54,14 +54,31 @@ function cargarApp(opciones) {
   s.global = s;
   s.window = s;
   s.console = console;
-  s.setTimeout = fn => { try { fn(); } catch (e) { /* noop */ } };
-  s.clearTimeout = () => {};
+  // Temporizadores fieles al navegador: `setTimeout` NO ejecuta el callback al
+  // momento, solo lo agenda. Un aviso o una marca que se apagan «más tarde»
+  // (toast a los 2,6 s, indicador a los 400 ms) siguen vivos al volver de la
+  // función, como en el navegador real; la prueba decide cuándo avanzan con
+  // `app.timers.run()` / `app.timers.runAll()`. El id es un número, como en el
+  // navegador, para que `clearTimeout` (debounce) funcione de verdad.
+  let idTimer = 0;
+  const pendientes = new Map();
+  s.setTimeout = (fn, ms) => { const id = ++idTimer; pendientes.set(id, { fn, ms: ms || 0 }); return id; };
+  s.clearTimeout = id => { pendientes.delete(id); };
   const store = {};
-  s.localStorage = {
+  // `fallar` simula lo que hace el navegador cuando `localStorage` está lleno
+  // (cuota) o bloqueado (algunos `file://`): `setItem` LANZA. Es la única forma
+  // honesta de probar el aviso de «no se pudo guardar», que si no salta casi
+  // nunca a mano. La app real no lo necesita; es una palanca de prueba.
+  const almacen = {
+    fallar: false,
     getItem: k => (k in store ? store[k] : null),
-    setItem: (k, v) => { store[k] = String(v); },
+    setItem: (k, v) => {
+      if (almacen.fallar) { const e = new Error('QuotaExceededError'); e.name = 'QuotaExceededError'; throw e; }
+      store[k] = String(v);
+    },
     removeItem: k => { delete store[k]; }
   };
+  s.localStorage = almacen;
   if (conDom) {
     // Los contenedores fijos de index.html: sin ellos, el `App.refrescar()` que
     // dispara un guardado se cae (y no por un fallo de la app).
@@ -109,6 +126,33 @@ function cargarApp(opciones) {
     app.document = s.__dom.document;
     app.alertas = s.__dom.alertas;
   }
+  // Palanca de prueba: `app.localStorage.fallar = true` hace que guardar lance,
+  // como un navegador con la cuota llena. Se expone siempre (no solo con DOM):
+  // el fallo de guardado es independiente del DOM.
+  app.localStorage = almacen;
+  // Control de los temporizadores agendados por la app (toasts, debounce del
+  // guardado, apagado del indicador). Cada `cargarApp` tiene los suyos: son por
+  // «pestaña».
+  app.timers = {
+    // Avanza al primer vencimiento: ejecuta los temporizadores cuyo `ms` es el
+    // más pequeño (los que «vencen antes»), no todos. Así un aviso normal (2,6 s)
+    // cae antes que un error (6 s), como en el navegador. Devuelve cuántos corrió.
+    run() {
+      if (!pendientes.size) return 0;
+      const menor = Math.min(...[...pendientes.values()].map(t => t.ms));
+      const lote = [...pendientes.entries()].filter(([, t]) => t.ms === menor);
+      lote.forEach(([id]) => pendientes.delete(id));
+      lote.forEach(([, t]) => { try { t.fn(); } catch (e) { /* noop */ } });
+      return lote.length;
+    },
+    runAll() {
+      // Por si un callback agenda otro (p. ej. un toast nuevo): repite hasta
+      // vaciar, con un tope para no colgarse ante un bucle.
+      let vueltas = 0;
+      while (pendientes.size && vueltas++ < 100) this.run();
+    },
+    pendientes: () => pendientes.size
+  };
   return app;
 }
 

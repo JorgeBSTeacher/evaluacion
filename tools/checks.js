@@ -1750,6 +1750,33 @@ async function main() {
     S.volcar();
     check('volcar() NO marca «cambios sin copiar»', S.db.meta.cambiosSinCopia === false);
 
+    // Cuando el navegador NO puede guardar (cuota llena, `file://` bloqueado),
+    // `setItem` lanza. Antes se lo tragaba en silencio; ahora avisa con un toast
+    // crítico, para que nadie siga trabajando creyendo que está a salvo. Se prueba
+    // con la app CON DOM, porque el aviso es un nodo de verdad.
+    const appToast = cargarApp({ dom: true });
+    appToast.Storage.load();
+    const rootToast = appToast.document.getElementById('toast-root');
+    appToast.localStorage.fallar = true;
+    const toastsPrevios = rootToast.childNodes.length;
+    appToast.Storage.volcar();
+    const tError = rootToast.childNodes[rootToast.childNodes.length - 1];
+    const hayToastNuevo = rootToast.childNodes.length > toastsPrevios;
+    check('un guardado que falla avisa en vez de callarse',
+      hayToastNuevo, 'nodos=' + rootToast.childNodes.length + ' (antes ' + toastsPrevios + ')');
+    check('el aviso de fallo de guardado se anuncia como alerta (role="alert")',
+      hayToastNuevo && tError.getAttribute('role') === 'alert',
+      'role=' + (tError && tError.getAttribute('role')));
+    check('el aviso nombra la salida: exportar la copia',
+      hayToastNuevo && /exporta/i.test(tError.textContent || '') && /backup|copia/i.test(tError.textContent || ''),
+      'texto=' + JSON.stringify(tError && tError.textContent));
+    // Un guardado que SÍ funciona no debe avisar de nada.
+    appToast.localStorage.fallar = false;
+    const antesOk = rootToast.childNodes.length;
+    appToast.Storage.volcar();
+    check('un guardado correcto no avisa (no hay falsa alarma)',
+      rootToast.childNodes.length === antesOk);
+
     S.db.meta.ultimaExportacion = new Date(Date.now() - 10 * 86400000).toISOString();
     S.db.meta.cambiosSinCopia = false;
     check('una copia de hace 10 días sale «antigua»',
@@ -2525,6 +2552,67 @@ async function main() {
     try { app.UI.closeModal(); } catch (e) { lanzo = true; }
     check('A11-10 · cerrar tras un repintado no revienta ni enfoca un nodo huérfano',
       !lanzo && doc.activeElement !== efimero);
+  }
+
+  console.log('\n== Avisos anunciados a lectores de pantalla (A-12) ==');
+  {
+    const app = cargarApp({ dom: true });
+    app.Storage.load();
+    const doc = app.document;
+    const root = doc.getElementById('toast-root');
+
+    // Un aviso normal es una región «polite»: informa sin interrumpir.
+    app.UI.toast('Guardado');
+    const normal = root.childNodes[root.childNodes.length - 1];
+    check('A12-1 · un aviso informativo se anuncia con role="status"',
+      normal.getAttribute('role') === 'status', 'role=' + normal.getAttribute('role'));
+    check('A12-2 · el aviso lleva su texto (es lo que se anuncia)',
+      normal.textContent === 'Guardado', 'texto=' + JSON.stringify(normal.textContent));
+
+    // Un error crítico interrumpe a propósito: región «assertive».
+    app.UI.toast('Error al guardar', 'error');
+    const error = root.childNodes[root.childNodes.length - 1];
+    check('A12-3 · un error crítico se anuncia con role="alert" (interrumpe)',
+      error.getAttribute('role') === 'alert', 'role=' + error.getAttribute('role'));
+
+    // El contenedor no declara rol propio: evita solapar dos regiones vivas.
+    check('A12-4 · el contenedor de avisos no declara rol (el rol va en cada aviso)',
+      root.getAttribute('role') === null, 'role=' + root.getAttribute('role'));
+
+    // El puntito de guardado es decorativo: `save()` corre en cada tecla (vía el
+    // debounce de la corrección), así que no debe anunciar nada. Lo comprobamos
+    // donde importa: al guardar, el indicador solo cambia de CLASE (estilo), no
+    // de texto; sin cambio de contenido no hay nada que una región viva anuncie.
+    const dot = doc.getElementById('estado-guardado');
+    app.Storage.db.meta = app.Storage.db.meta || {};
+    app.Storage.save();
+    check('A12-5 · guardar solo anima el indicador; no le escribe texto que anunciar',
+      dot.textContent === '' && dot.classList.contains('guardando'),
+      'texto=' + JSON.stringify(dot.textContent) + ' · guardando=' + dot.classList.contains('guardando'));
+
+    // El indicador se apaga SOLO cuando pasa su tiempo: mientras tanto sigue
+    // encendido, como en el navegador. Con temporizadores fieles, sin avanzarlos
+    // no se apaga (antes se apagaba al instante y nada de esto se podía ver).
+    app.timers.run();
+    check('A12-6 · el indicador se apaga al vencer su tiempo, no antes',
+      !dot.classList.contains('guardando'));
+
+    // Un aviso NORMAL se retira al vencer su tiempo; un ERROR dura más, para dar
+    // margen a leer un fallo crítico antes de que desaparezca.
+    app.timers.runAll();
+    const vacio = root.childNodes.length === 0;
+    app.UI.toast('Aviso normal');
+    const tNormal = root.childNodes[root.childNodes.length - 1];
+    app.UI.toast('Fallo crítico', 'error');
+    const tError = root.childNodes[root.childNodes.length - 1];
+    // Primer vencimiento (2,6 s): cae el normal, el error aún aguanta.
+    app.timers.run();
+    check('A12-7 · al primer vencimiento cae el aviso normal y el error sigue en pantalla',
+      vacio && !tNormal.isConnected && tError.isConnected,
+      'normalConectado=' + tNormal.isConnected + ' · errorConectado=' + tError.isConnected);
+    // Segundo vencimiento (6 s): cae también el error.
+    app.timers.run();
+    check('A12-8 · el error crítico dura más y acaba retirándose', !tError.isConnected);
   }
 
   console.log('\n' + (fallos ? 'FALLOS: ' + fallos + '/' + total : 'TODO OK: ' + total + ' comprobaciones')

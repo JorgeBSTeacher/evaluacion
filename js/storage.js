@@ -71,7 +71,7 @@ const Storage = {
     try {
       localStorage.setItem(this.KEY, JSON.stringify(this.db));
     } catch (e) {
-      if (typeof UI !== 'undefined' && UI.toast) UI.toast('Error al guardar: exporta tu backup ahora');
+      if (typeof UI !== 'undefined' && UI.toast) UI.toast('Error al guardar: exporta tu backup ahora', 'error');
     }
   },
 
