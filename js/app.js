@@ -159,12 +159,19 @@ const App = (() => {
           <b>Zona peligrosa</b>
           <p>Elimina <b>todos</b> los grupos, alumnos, clases, currículos, instrumentos y calificaciones guardados en este navegador.</p>
           <button class="btn btn-peligro" id="btn-reiniciar">Restablecer y vaciar todos los datos</button>
+        </div>
+        <div class="bloque-acerca">
+          <b>Acerca de</b>
+          <p><b>Evalora</b> · Evaluación por criterios · LOMLOE (Cantabria).</p>
+          <p>Califica con criterios ponderados, adaptaciones curriculares (ACI) e informes de análisis. Funciona <b>sin conexión</b>: tus datos no salen de este dispositivo.</p>
+          <p class="acerca-firma">Jorge Bourgon Salinero · © ${new Date().getFullYear()} · Todos los derechos reservados</p>
         </div>`
     });
     body.querySelector('#btn-exportar-ajustes').onclick = () =>
       Storage.exportar()
         .then(ok => { if (ok) { UI.toast('Backup exportado'); modalAjustes(); } })
-        .catch(e => alert('Error al exportar: ' + e.message));    body.querySelector('#btn-importar-ajustes').onclick = () =>
+        .catch(e => alert('Error al exportar: ' + e.message));
+    body.querySelector('#btn-importar-ajustes').onclick = () =>
       document.getElementById('input-importar').click();
     body.querySelector('#btn-reiniciar').onclick = () => {
       UI.openModal({

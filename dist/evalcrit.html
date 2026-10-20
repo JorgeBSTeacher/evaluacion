@@ -118,6 +118,14 @@ main { max-width: 1440px; margin: 0 auto; padding: 20px 18px 60px; }
 }
 .bloque-copias > b { display: block; margin-bottom: 4px; }
 .bloque-copias > p { margin: 0 0 10px; font-size: 13px; color: var(--tinta-suave); }
+/* Bloque informativo «Acerca de»: sin fondo destacado, es para leer. */
+.bloque-acerca {
+  margin-top: 14px; padding-top: 12px;
+  border-top: 1px solid var(--linea);
+}
+.bloque-acerca > b { display: block; margin-bottom: 6px; }
+.bloque-acerca > p { margin: 0 0 6px; font-size: 13px; color: var(--tinta-suave); }
+.bloque-acerca .acerca-firma { margin: 0; font-size: 12px; color: var(--tinta-suave); }
 .btn-ghost { border-color: transparent; background: transparent; color: var(--tinta-suave); }
 .btn-ghost:hover:not(:disabled) { background: var(--acento-suave); color: var(--acento); border-color: transparent; }
 .btn:disabled {
@@ -5114,12 +5122,19 @@ const App = (() => {
           <b>Zona peligrosa</b>
           <p>Elimina <b>todos</b> los grupos, alumnos, clases, currículos, instrumentos y calificaciones guardados en este navegador.</p>
           <button class="btn btn-peligro" id="btn-reiniciar">Restablecer y vaciar todos los datos</button>
+        </div>
+        <div class="bloque-acerca">
+          <b>Acerca de</b>
+          <p><b>Evalora</b> · Evaluación por criterios · LOMLOE (Cantabria).</p>
+          <p>Califica con criterios ponderados, adaptaciones curriculares (ACI) e informes de análisis. Funciona <b>sin conexión</b>: tus datos no salen de este dispositivo.</p>
+          <p class="acerca-firma">Jorge Bourgon Salinero · © ${new Date().getFullYear()} · Todos los derechos reservados</p>
         </div>`
     });
     body.querySelector('#btn-exportar-ajustes').onclick = () =>
       Storage.exportar()
         .then(ok => { if (ok) { UI.toast('Backup exportado'); modalAjustes(); } })
-        .catch(e => alert('Error al exportar: ' + e.message));    body.querySelector('#btn-importar-ajustes').onclick = () =>
+        .catch(e => alert('Error al exportar: ' + e.message));
+    body.querySelector('#btn-importar-ajustes').onclick = () =>
       document.getElementById('input-importar').click();
     body.querySelector('#btn-reiniciar').onclick = () => {
       UI.openModal({

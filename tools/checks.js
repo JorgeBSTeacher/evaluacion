@@ -1969,6 +1969,17 @@ async function main() {
       !!doc.getElementById('input-importar'));
     body.querySelector('#btn-importar-ajustes').click();
 
+    // Bloque «Acerca de»: identidad y licencia sin salir de Configuracion.
+    const acerca = body.querySelector('.bloque-acerca');
+    check('Configuracion incluye el bloque Acerca de', !!acerca);
+    check('Acerca de nombra el producto y el autor',
+      acerca.textContent.includes('Evalora') &&
+      acerca.textContent.includes('Jorge Bourgon Salinero'));
+    check('Acerca de declara los derechos reservados',
+      acerca.textContent.includes('Todos los derechos reservados'));
+    check('Acerca de avisa de que funciona sin conexion',
+      /sin conexi/i.test(acerca.textContent));
+
     body.querySelector('#btn-reiniciar').click();
     const confirmar = doc.querySelector('.guardar');
     check('antes de borrar pide confirmacion explicita',
