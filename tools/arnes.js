@@ -101,7 +101,7 @@ function cargarApp(opciones) {
   };
   vm.createContext(s);
   let code = ARCHIVOS.map(f => fs.readFileSync(path.join(raiz, f), 'utf8')).join('\n')
-    + '\nthis.__app = { Utils, Storage, Calc, PLANTILLAS_CURRICULO, CurriculoView, InstrumentosView, CuadriculaView, ClasesView, InformeView, App };';
+    + '\nthis.__app = { Utils, Storage, Calc, PLANTILLAS_CURRICULO, CurriculoView, InstrumentosView, CuadriculaView, ClasesView, InformeView, App, UI };';
   if (conDom) code += '\nthis.__dom = { document, alertas: this.__alertas };';
   vm.runInContext(code, s, { filename: 'app.bundle.js' });
   const app = s.__app;

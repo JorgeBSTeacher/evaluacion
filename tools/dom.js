@@ -113,6 +113,10 @@ function crearNodo(tag) {
   Object.defineProperty(el, 'innerHTML', {
     get() { return this._sucio ? serializa(this) : this._html; },
     set(v) {
+      // Desconecta los hijos que se van: en el navegador un nodo quitado del
+      // árbol tiene `parentNode === null` (y por tanto `isConnected === false`).
+      // Sin esto, el arnés diría que un nodo ya sustituido sigue vivo.
+      el.childNodes.forEach(hijo => { hijo.parentNode = null; });
       this.childNodes = [];
       this._html = String(v == null ? '' : v);
       this._sucio = false;
@@ -126,6 +130,7 @@ function crearNodo(tag) {
       return this.childNodes.map(n => n.textContent).join('');
     },
     set(v) {
+      el.childNodes.forEach(hijo => { hijo.parentNode = null; });
       this.childNodes = [];
       const t = String(v == null ? '' : v);
       if (t) this._meter(crearTexto(t));
@@ -137,7 +142,7 @@ function crearNodo(tag) {
   Object.defineProperty(el, 'value', {
     get() {
       if (this.tagName === 'SELECT') {
-        const ops = this.querySelectorAll('option');
+        const ops = Array.from(this.querySelectorAll('option'));
         const elegido = ops.find(o => o.selected) || ops[0];
         return elegido ? elegido.value : '';
       }
@@ -191,18 +196,55 @@ function crearNodo(tag) {
   };
   // Solo para las pruebas: dispara lo que el navegador dispararía al teclear,
   // marcar o cambiar (los manejadores esperan un evento con `target`).
-  el._dispara = tipo => {
+  // `extra` permite pasar campos como `key` o `shiftKey` (para Tab/Escape).
+  // El evento BURBUJEA hacia los padres (como el navegador), para que un
+  // manejador en el contenedor (p. ej. el trap de foco del modal) reciba el
+  // keydown disparado sobre un hijo. Devuelve true si algún manejador llamó a
+  // `preventDefault`.
+  el._dispara = (tipo, extra) => {
+    let cancelado = false;
     const ev = {
       type: tipo, target: el, currentTarget: el,
-      stopPropagation() {}, preventDefault() {}
+      stopPropagation() { ev._parado = true; },
+      preventDefault() { cancelado = true; }
     };
-    (el._oyentes[tipo] || []).forEach(fn => fn(ev));
-    const propio = el['on' + tipo];
-    if (typeof propio === 'function') propio(ev);
+    if (extra) Object.assign(ev, extra);
+    let n = el;
+    while (n && n.nodeType === 1 && !ev._parado) {
+      ev.currentTarget = n;
+      (n._oyentes[tipo] || []).forEach(fn => fn(ev));
+      const propio = n['on' + tipo];
+      if (typeof propio === 'function') propio(ev);
+      n = n.parentNode;
+    }
+    return cancelado;
   };
   el.click = () => el._dispara('click');
-  el.focus = () => {};
-  el.blur = () => {};
+  // `focus` registra el elemento activo en el documento para que las pruebas
+  // puedan comprobar el trap de foco de los modales y el retorno del foco. El
+  // documento simulado no enlaza `body.parentNode`, así que se considera
+  // "conectado" todo nodo que cuelgue del cuerpo.
+  const documentoDe = nodo => {
+    let n = nodo;
+    while (n.parentNode) n = n.parentNode;
+    return n; // el <body> simulado (o el #document, si algún día se enlaza)
+  };
+  el.focus = () => {
+    const raiz = documentoDe(el);
+    const doc = raiz.nodeType === 9 ? raiz : raiz._doc;
+    if (doc) doc.activeElement = el;
+  };
+  el.blur = () => {
+    const raiz = documentoDe(el);
+    const doc = raiz.nodeType === 9 ? raiz : raiz._doc;
+    if (doc && doc.activeElement === el) doc.activeElement = null;
+  };
+  Object.defineProperty(el, 'isConnected', {
+    get() {
+      const raiz = documentoDe(el);
+      return rootConnected(raiz);
+    }
+  });
   el.select = () => {};
   // No-op: el desplazamiento solo tiene sentido en un navegador real (no hay
   // layout que medir aquí). Sin esto, una vista que llame a `scrollIntoView`
@@ -391,7 +433,20 @@ function consulta(raiz, sel) {
       recorre(hijo);
     });
   })(raiz);
-  return fuera;
+  // El navegador devuelve un `NodeList`, que tiene `forEach`, `length` e índice
+  // numérico, pero NO los métodos de Array (`filter`, `map`, `find`...). Se
+  // devuelve un objeto con esa misma forma para que un uso ilegal falle aquí y
+  // no en el navegador: antes esto era un Array y `querySelectorAll(s).filter()`
+  // pasaba las comprobaciones pero reventaba en Opera con «filter is not a
+  // function», dejando el modal abierto a medias.
+  const nodeList = {
+    length: fuera.length,
+    forEach: cb => fuera.forEach(cb),
+    item: i => fuera[i] || null,
+    [Symbol.iterator]: () => fuera[Symbol.iterator]()
+  };
+  fuera.forEach((nodo, i) => { nodeList[i] = nodo; });
+  return nodeList;
 }
 
 // --- Documento -------------------------------------------------------------
@@ -406,6 +461,7 @@ function crearDocumento(opciones) {
     nodeType: 9,
     body: cuerpo,
     documentElement: crearNodo('html'),
+    activeElement: null,
     createElement: tag => crearNodo(tag),
     createTextNode: t => crearTexto(t),
     addEventListener() {},
@@ -424,7 +480,17 @@ function crearDocumento(opciones) {
     registro[id] = el;
   });
 
+  // Enlace del cuerpo a su documento: lo usan `focus`/`isConnected` para saber
+  // cuál es el "documento" de un nodo (en el navegador real basta con subir por
+  // `parentNode` hasta nodeType 9; aquí el cuerpo no está enlazado).
+  cuerpo._doc = doc;
+
   return doc;
+}
+
+// Un nodo está "conectado" si su raíz es el documento o el cuerpo simulado.
+function rootConnected(raiz) {
+  return !!raiz && (raiz.nodeType === 9 || raiz.tagName === 'BODY');
 }
 
 module.exports = { crearNodo, crearDocumento, crearTexto, parsea, serializa, consulta };

@@ -1086,6 +1086,7 @@ async function main() {
     // --- Asignaturas y clases (vista «Asignaturas y clases») ---
     app.App.ir('clases');
     const nAsig = db.asignaturas.length;
+
     v.querySelector('#add-asig').click();
     modal().querySelector('#f-modo').value = 'blanco';
     modal().querySelector('#f-modo')._dispara('change');
@@ -1466,7 +1467,7 @@ async function main() {
     // Filtrar oculta las filas de las demás asignaturas.
     sel.value = 'Matemáticas 4º';
     sel._dispara('change');
-    const visibles = body.querySelectorAll('.fila-banco').filter(f => f.style.display !== 'none');
+    const visibles = Array.from(body.querySelectorAll('.fila-banco')).filter(f => f.style.display !== 'none');
     check('filtrar por una asignatura deja solo sus instrumentos',
       visibles.length === 1 && visibles[0].dataset.asignatura === 'Matemáticas 4º',
       visibles.map(f => f.dataset.asignatura).join(', '));
@@ -1475,7 +1476,7 @@ async function main() {
     sel.value = '';
     sel._dispara('change');
     check('volver a «Todas» muestra de nuevo todo el banco',
-      body.querySelectorAll('.fila-banco').filter(f => f.style.display !== 'none').length === 2);
+      Array.from(body.querySelectorAll('.fila-banco')).filter(f => f.style.display !== 'none').length === 2);
   }
 
   console.log('\n== Borrado en cascada sin datos huérfanos ==');
@@ -2363,6 +2364,117 @@ async function main() {
         Calc.nivelesAciDeClase(c.id).some(n => n.codigo === Calc.nivelNorm(c.adaptaciones[al])))));
     check('I3 · la cuadrícula de cada clase no mezcla alumnado de otro grupo', clases.every(c =>
       Calc.alumnosDeClase(c.id).every(a => a.grupoId === c.grupoId)));
+  }
+
+  console.log('\n== Accesibilidad de modales: foco, Tab atrapado y Escape (A-11) ==');
+  {
+    const app = cargarApp({ dom: true });
+    app.Storage.load();
+    const doc = app.document;
+    const v = doc.getElementById('app');
+    const root = doc.getElementById('modal-root');
+    const modalEl = () => root.querySelector('.modal');
+
+    // Disparador real: un botón de la vista, para comprobar el retorno de foco.
+    const disparador = doc.createElement('button');
+    v.appendChild(disparador);
+    disparador.focus();
+    check('A11-1 · el foco arranca en el disparador', doc.activeElement === disparador);
+
+    const body = app.UI.openModal({
+      titulo: 'Prueba de foco',
+      cuerpo: '<input id="f-a"><input id="f-b">',
+      textoGuardar: 'Guardar',
+      alGuardar() { return true; }
+    });
+
+    check('A11-2 · el diálogo declara role="dialog" y aria-modal',
+      !!modalEl() && modalEl().getAttribute('role') === 'dialog' &&
+      modalEl().getAttribute('aria-modal') === 'true');
+    check('A11-3 · el diálogo está etiquetado por su título',
+      !!modalEl().getAttribute('aria-labelledby') &&
+      !!doc.getElementById(modalEl().getAttribute('aria-labelledby')));
+
+    const foc = Array.from(root.querySelectorAll('a,button,input,select,textarea,summary,[tabindex]'))
+      .filter(el => el.getAttribute('tabindex') !== '-1' && !el.hasAttribute('disabled'));
+    check('A11-4 · al abrir, el foco entra en el modal (no se queda detrás)',
+      foc.includes(doc.activeElement), 'activo=' + (doc.activeElement && doc.activeElement.id));
+
+    // Tab desde el ÚLTIMO focable debe volver al PRIMERO (trampa por delante).
+    const ultimo = foc[foc.length - 1];
+    const primero = foc[0];
+    ultimo.focus();
+    const canceladoDelante = ultimo._dispara('keydown', { key: 'Tab', shiftKey: false });
+    check('A11-5 · Tab en el último focable vuelve al primero (trampa delantera)',
+      doc.activeElement === primero && canceladoDelante, 'activo=' + (doc.activeElement && doc.activeElement.id));
+
+    // Shift+Tab desde el PRIMERO debe ir al ÚLTIMO (trampa por detrás).
+    primero.focus();
+    const canceladoDetras = primero._dispara('keydown', { key: 'Tab', shiftKey: true });
+    check('A11-6 · Shift+Tab en el primero va al último (trampa trasera)',
+      doc.activeElement === ultimo && canceladoDetras, 'activo=' + (doc.activeElement && doc.activeElement.id));
+
+    // Escape cierra y NO ejecuta alGuardar.
+    let guardadoConEsc = false;
+    const bodyPel = app.UI.openModal({
+      titulo: 'Destructivo',
+      cuerpo: '<p>¿Seguro?</p>',
+      textoGuardar: 'Borrar',
+      peligro: true,
+      alGuardar() { guardadoConEsc = true; return true; }
+    });
+    root.querySelector('.modal')._dispara('keydown', { key: 'Escape' });
+    check('A11-7 · Escape cierra el modal sin ejecutar alGuardar',
+      !guardadoConEsc && !doc.querySelector('.modal-body'));
+
+    // Un modal solo informativo (sin `alGuardar`): sus focables son «×» y
+    // «Cerrar». Comprobamos que el foco arranca dentro y que Tab desde el
+    // último NO escapa al fondo.
+    app.UI.openModal({ titulo: 'Solo texto', cuerpo: '<p>Nada que rellenar.</p>' });
+    const modalInfo = root.querySelector('.modal');
+    const cerrarBtn = root.querySelector('.cerrar');
+    const pieBtn = root.querySelector('.cancelar');
+    check('A11-8 · el foco de un modal informativo arranca en su primer control',
+      doc.activeElement === cerrarBtn, 'activo=' + (doc.activeElement && doc.activeElement.className));
+    const canceladoInfo = (pieBtn.focus(), pieBtn._dispara('keydown', { key: 'Tab', shiftKey: false }));
+    check('A11-8b · Tab desde el último control de un modal informativo no escapa al fondo',
+      canceladoInfo && doc.activeElement === cerrarBtn);
+    app.UI.closeModal();
+
+    // Cerrar devuelve el foco al disparador.
+    disparador.focus();
+    app.UI.openModal({ titulo: 'Y', cuerpo: '<input id="f-y">' });
+    app.UI.closeModal();
+    check('A11-9 · al cerrar, el foco vuelve al disparador',
+      doc.activeElement === disparador, 'activo=' + (doc.activeElement && doc.activeElement.tagName));
+
+    // Regresión del fallo que rompía TODOS los modales en el navegador:
+    // `focablesEn` hacía `.filter` sobre el resultado de `querySelectorAll`, que
+    // en el navegador es un NodeList (sin `.filter`). La excepción abortaba
+    // `openModal` a medias: el cuerpo se pintaba, pero el cableado posterior del
+    // modal (selects poblados, onchange) NO se ejecutaba — de ahí el «curso
+    // vacío» al dar de alta una asignatura. El arnés devolvía un Array, así que
+    // la batería no lo veía. Con el DOM endurecido esto falla si vuelve.
+    let abrioSinError = true;
+    let focablesAccesibles = false;
+    try {
+      app.UI.openModal({ titulo: 'Regresión focables', cuerpo: '<input id="f-reg">' });
+      focablesAccesibles = !!app.document.querySelector('#f-reg');
+    } catch (e) { abrioSinError = false; }
+    check('A11-11 · abrir un modal no lanza y deja el cuerpo usable (focablesEn no usa métodos de Array)',
+      abrioSinError && focablesAccesibles);
+    app.UI.closeModal();
+
+    // El foco NO vuelve a un nodo muerto (repintado): no debe lanzar.
+    const efimero = doc.createElement('button');
+    v.appendChild(efimero);
+    efimero.focus();
+    app.UI.openModal({ titulo: 'X', cuerpo: '<input id="f-x">' });
+    v.innerHTML = '';
+    let lanzo = false;
+    try { app.UI.closeModal(); } catch (e) { lanzo = true; }
+    check('A11-10 · cerrar tras un repintado no revienta ni enfoca un nodo huérfano',
+      !lanzo && doc.activeElement !== efimero);
   }
 
   console.log('\n' + (fallos ? 'FALLOS: ' + fallos + '/' + total : 'TODO OK: ' + total + ' comprobaciones')
