@@ -119,6 +119,10 @@ main { max-width: 1440px; margin: 0 auto; padding: 20px 18px 60px; }
   font-family: inherit; font-size: 16px; line-height: 1; color: var(--tinta-suave); border-radius: 8px;
 }
 .icon-btn:hover { background: var(--ko-suave); color: var(--ko); }
+/* Botón de icono grande (p. ej. el engranaje de Configuración): talla táctil
+   cómoda y el icono hereda el color del botón. */
+.icon-btn-lg { width: 44px; height: 44px; border-radius: 10px; }
+.icon-btn-lg svg { display: block; fill: currentColor; }
 
 .lista { list-style: none; margin: 0; padding: 0; }
 .lista li {

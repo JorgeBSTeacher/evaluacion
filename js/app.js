@@ -172,7 +172,12 @@ const App = (() => {
           <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
             <label class="campo" style="margin:0"><span>Curso escolar</span>
               <select id="sel-curso" style="max-width:150px">${opcionesCurso(db.cursoEscolar)}</select></label>
-            <button class="icon-btn" id="btn-ajustes" title="Configuración" aria-label="Configuración">⚙</button>
+            <button class="icon-btn icon-btn-lg" id="btn-ajustes" title="Configuración" aria-label="Configuración">
+              <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
+                <path d="M12 8.4a3.6 3.6 0 1 0 0 7.2 3.6 3.6 0 0 0 0-7.2Zm0 5.6a2 2 0 1 1 0-4 2 2 0 0 1 0 4Z"/>
+                <path d="M20.3 13.2a8.6 8.6 0 0 0 0-2.4l2-1.5a.6.6 0 0 0 .1-.7l-1.9-3.3a.6.6 0 0 0-.7-.3l-2.4 1a8.7 8.7 0 0 0-2-1.2l-.4-2.5a.6.6 0 0 0-.6-.5h-3.8a.6.6 0 0 0-.6.5l-.4 2.5a8.7 8.7 0 0 0-2 1.2l-2.4-1a.6.6 0 0 0-.7.3L2.6 8.6a.6.6 0 0 0 .1.7l2 1.5a8.6 8.6 0 0 0 0 2.4l-2 1.5a.6.6 0 0 0-.1.7l1.9 3.3a.6.6 0 0 0 .7.3l2.4-1a8.7 8.7 0 0 0 2 1.2l.4 2.5a.6.6 0 0 0 .6.5h3.8a.6.6 0 0 0 .6-.5l.4-2.5a8.7 8.7 0 0 0 2-1.2l2.4 1a.6.6 0 0 0 .7-.3l1.9-3.3a.6.6 0 0 0-.1-.7l-2-1.5Zm-2.1-.3-.1 1.6.1 1.6 1.8 1.4-.7 1.2-2.2-.9-1.4.8-1.2 1.4-.4 2.3h-1.4l-.4-2.3-1.2-1.4-1.4-.8-2.2.9-.7-1.2 1.8-1.4.1-1.6-.1-1.6-1.8-1.4.7-1.2 2.2.9 1.4-.8 1.2-1.4.4-2.3h1.4l.4 2.3 1.2 1.4 1.4.8 2.2-.9.7 1.2-1.8 1.4Z"/>
+              </svg>
+            </button>
           </div>
         </div>
         <p style="color:var(--tinta-suave)">Califica con criterios ponderados según la LOMLOE. Los datos se guardan en este navegador:
