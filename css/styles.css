@@ -130,6 +130,8 @@ main { max-width: 1440px; margin: 0 auto; padding: 20px 18px 60px; }
    cómoda y el icono hereda el color del botón. */
 .icon-btn-lg { width: 44px; height: 44px; border-radius: 10px; }
 .icon-btn-lg svg { display: block; fill: currentColor; }
+/* Los iconos dentro de un botón heredan su color y no se deforman. */
+.btn svg { flex: 0 0 auto; fill: currentColor; }
 
 .lista { list-style: none; margin: 0; padding: 0; }
 .lista li {

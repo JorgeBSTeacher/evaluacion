@@ -137,6 +137,8 @@ main { max-width: 1440px; margin: 0 auto; padding: 20px 18px 60px; }
    cómoda y el icono hereda el color del botón. */
 .icon-btn-lg { width: 44px; height: 44px; border-radius: 10px; }
 .icon-btn-lg svg { display: block; fill: currentColor; }
+/* Los iconos dentro de un botón heredan su color y no se deforman. */
+.btn svg { flex: 0 0 auto; fill: currentColor; }
 
 .lista { list-style: none; margin: 0; padding: 0; }
 .lista li {
@@ -422,7 +424,12 @@ input:focus, select:focus, textarea:focus { border-color: var(--acento); }
         <path d="M20.3 13.2a8.6 8.6 0 0 0 0-2.4l2-1.5a.6.6 0 0 0 .1-.7l-1.9-3.3a.6.6 0 0 0-.7-.3l-2.4 1a8.7 8.7 0 0 0-2-1.2l-.4-2.5a.6.6 0 0 0-.6-.5h-3.8a.6.6 0 0 0-.6.5l-.4 2.5a8.7 8.7 0 0 0-2 1.2l-2.4-1a.6.6 0 0 0-.7.3L2.6 8.6a.6.6 0 0 0 .1.7l2 1.5a8.6 8.6 0 0 0 0 2.4l-2 1.5a.6.6 0 0 0-.1.7l1.9 3.3a.6.6 0 0 0 .7.3l2.4-1a8.7 8.7 0 0 0 2 1.2l.4 2.5a.6.6 0 0 0 .6.5h3.8a.6.6 0 0 0 .6-.5l.4-2.5a8.7 8.7 0 0 0 2-1.2l2.4 1a.6.6 0 0 0 .7-.3l1.9-3.3a.6.6 0 0 0-.1-.7l-2-1.5Zm-2.1-.3-.1 1.6.1 1.6 1.8 1.4-.7 1.2-2.2-.9-1.4.8-1.2 1.4-.4 2.3h-1.4l-.4-2.3-1.2-1.4-1.4-.8-2.2.9-.7-1.2 1.8-1.4.1-1.6-.1-1.6-1.8-1.4.7-1.2 2.2.9 1.4-.8 1.2-1.4.4-2.3h1.4l.4 2.3 1.2 1.4 1.4.8 2.2-.9.7 1.2-1.8 1.4Z"/>
       </svg>
     </button>
-    <button id="btn-guardar" class="btn btn-primario">Guardar</button>
+    <button id="btn-guardar" class="btn btn-primario">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+        <path fill-rule="evenodd" d="M4 2h13a1 1 0 0 1 .7.3l4 4A1 1 0 0 1 22 7v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1Zm1 2v16h14V7.4L15.6 4H5Zm3 1h6v4H8V5Zm1 1.5V8h4V6.5H9Zm-1 8h8a1 1 0 0 1 1 1v4H7v-4a1 1 0 0 1 1-1Zm1 3h6v-1.5H9V17Z"/>
+      </svg>
+      Guardar
+    </button>
     <input type="file" id="input-importar" accept=".json,application/json" hidden>
   </div>
 </header>
