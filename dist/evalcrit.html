@@ -3293,21 +3293,51 @@ function columnasNivel(filas) {
       });
       return;
     }
+    // Las asignaturas del filtro salen de lo que hay guardado, no de un
+    // catálogo: si no hay moldes de Inglés, no aparece la opción. Si todos los
+    // moldes son de la misma asignatura, el filtro no aporta y no se pinta.
+    const asignaturas = [...new Set(banco
+      .map(m => (m.origen && m.origen.asignatura) || '')
+      .filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
+    const conFiltro = asignaturas.length > 1;
     const cuerpo = `
       <p class="hint">Instrumentos guardados para reutilizar. Al pulsar «Usar» se añade una copia a
         <b>${Utils.esc(destino)}</b>, con las notas en blanco y los mismos apartados y criterios.</p>
+      ${conFiltro ? `<label class="campo"><span>Ver los de</span>
+        <select id="banco-filtro">
+          <option value="">Todas las asignaturas (${banco.length})</option>
+          ${asignaturas.map(a => {
+            const n = banco.filter(m => m.origen && m.origen.asignatura === a).length;
+            return `<option value="${Utils.esc(a)}">${Utils.esc(a)} (${n})</option>`;
+          }).join('')}
+        </select></label>` : ''}
       <label class="campo"><span>Periodo del instrumento que se añada</span>
         <select id="banco-periodo">${PERIODOS.map(p => `<option ${p === 'T1' ? 'selected' : ''}>${p}</option>`).join('')}</select></label>
-      ${banco.map(m => `
-        <div class="fila-banco" data-molde="${Utils.esc(m.id)}">
+      <div id="banco-lista">${banco.map(m => `
+        <div class="fila-banco" data-molde="${Utils.esc(m.id)}" data-asignatura="${Utils.esc((m.origen && m.origen.asignatura) || '')}">
           <span class="fila-banco-txt">
             <b>${Utils.esc(m.titulo || '(sin título)')}</b>
             <small>${Utils.esc(m.tipo || '')}${m.unidad ? ' · ' + Utils.esc(m.unidad) : ''}${m.origen && m.origen.asignatura ? ' · de ' + Utils.esc(m.origen.asignatura) : ''} · ${(m.apartados || []).length} apartado${(m.apartados || []).length === 1 ? '' : 's'}</small>
           </span>
           <button type="button" class="btn btn-mini btn-primario banco-usar">Usar</button>
           <button type="button" class="icon-btn banco-quitar" title="Quitar del banco (no borra ningún instrumento del curso)">×</button>
-        </div>`).join('')}`;
+        </div>`).join('')}</div>
+      <div id="banco-vacio" class="aviso" style="display:none">No hay instrumentos de esa asignatura en el banco.</div>`;
     const mbody = UI.openModal({ titulo: 'Banco de instrumentos', cuerpo });
+
+    // Filtro por asignatura: oculta filas sin recargar el modal.
+    const selFiltro = mbody.querySelector('#banco-filtro');
+    if (selFiltro) selFiltro.addEventListener('change', () => {
+      const valor = selFiltro.value;
+      let visibles = 0;
+      mbody.querySelectorAll('.fila-banco').forEach(fila => {
+        const coincide = !valor || fila.dataset.asignatura === valor;
+        fila.style.display = coincide ? '' : 'none';
+        if (coincide) visibles++;
+      });
+      const vacio = mbody.querySelector('#banco-vacio');
+      if (vacio) vacio.style.display = visibles ? 'none' : '';
+    });
     mbody.querySelectorAll('.banco-usar').forEach(b => {
       b.onclick = () => {
         const moldeId = b.closest('[data-molde]').dataset.molde;

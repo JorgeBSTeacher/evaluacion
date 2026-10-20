@@ -1423,6 +1423,61 @@ async function main() {
       !S.db.bancoInstrumentos.some(m => m.id === molde.id) && S.db.instrumentos.length === nInst);
   }
 
+  console.log('\n== Banco de instrumentos: filtro por asignatura (UI) ==');
+  {
+    // El filtro vive en el modal, así que necesita el DOM real. Las opciones
+    // salen de lo guardado: si no hay moldes de una asignatura, no aparece.
+    const app = cargarApp({ dom: true });
+    app.Storage.load();
+    await importarJson(app, estadoBanco());
+    const S = app.Storage;
+    const el = app.document.createElement('div');
+    const abre = () => {
+      app.Storage.db.bancoInstrumentos = app.Storage.db.bancoInstrumentos || [];
+      app.InstrumentosView.modalBanco(el);
+      return app.document.querySelector('.modal-body');
+    };
+
+    // Banco vacío: ni filtro ni filas, pero sí el aviso de cómo llenarlo.
+    const bodyVacio = abre();
+    check('con el banco vacío no hay filtro y se explica cómo llenarlo',
+      !bodyVacio.querySelector('#banco-filtro') &&
+      bodyVacio.textContent.includes('Todavía no has guardado'));
+
+    // Un solo molde (una sola asignatura): el filtro no aporta y no se pinta.
+    S.guardarEnBanco(S.db.instrumentos.find(i => i.id === 'i1')); // Matemáticas 6º
+    const bodyUno = abre();
+    check('con una sola asignatura el filtro no aparece',
+      !bodyUno.querySelector('#banco-filtro'), bodyUno.querySelector('#banco-filtro') ? 'aparece' : 'no aparece');
+
+    // Dos asignaturas distintas: aparece el filtro, con conteo por asignatura.
+    const molde4 = JSON.parse(JSON.stringify(S.db.bancoInstrumentos[0]));
+    molde4.id = 'm4f';
+    molde4.titulo = 'Control 4º';
+    molde4.origen.asignatura = 'Matemáticas 4º';
+    S.db.bancoInstrumentos.push(molde4);
+    const body = abre();
+    const sel = body.querySelector('#banco-filtro');
+    check('con dos asignaturas aparece el filtro', !!sel);
+    check('las opciones del filtro salen de lo guardado, con su conteo',
+      sel && [...sel.children].map(o => o.textContent).join(' | ') === 'Todas las asignaturas (2) | Matemáticas 4º (1) | Matemáticas 6º (1)',
+      sel ? [...sel.children].map(o => o.textContent).join(' | ') : '(sin filtro)');
+
+    // Filtrar oculta las filas de las demás asignaturas.
+    sel.value = 'Matemáticas 4º';
+    sel._dispara('change');
+    const visibles = body.querySelectorAll('.fila-banco').filter(f => f.style.display !== 'none');
+    check('filtrar por una asignatura deja solo sus instrumentos',
+      visibles.length === 1 && visibles[0].dataset.asignatura === 'Matemáticas 4º',
+      visibles.map(f => f.dataset.asignatura).join(', '));
+
+    // Volver a «Todas» las muestra otra vez.
+    sel.value = '';
+    sel._dispara('change');
+    check('volver a «Todas» muestra de nuevo todo el banco',
+      body.querySelectorAll('.fila-banco').filter(f => f.style.display !== 'none').length === 2);
+  }
+
   console.log('\n== Borrado en cascada sin datos huérfanos ==');
   {
     const estado = async () => {
