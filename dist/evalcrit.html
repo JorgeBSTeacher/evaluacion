@@ -111,6 +111,13 @@ main { max-width: 1440px; margin: 0 auto; padding: 20px 18px 60px; }
 }
 .zona-peligro > b { display: block; color: var(--ko); margin-bottom: 4px; }
 .zona-peligro > p { margin: 0 0 10px; font-size: 13px; color: var(--tinta-suave); }
+/* Bloque de copias de seguridad del modal Configuración. */
+.bloque-copias {
+  margin-top: 14px; padding: 12px 14px;
+  border: 1px solid var(--linea); border-radius: 10px; background: var(--papel);
+}
+.bloque-copias > b { display: block; margin-bottom: 4px; }
+.bloque-copias > p { margin: 0 0 10px; font-size: 13px; color: var(--tinta-suave); }
 .btn-ghost { border-color: transparent; background: transparent; color: var(--tinta-suave); }
 .btn-ghost:hover:not(:disabled) { background: var(--acento-suave); color: var(--acento); border-color: transparent; }
 .btn:disabled {
@@ -409,9 +416,13 @@ input:focus, select:focus, textarea:focus { border-color: var(--acento); }
   <nav id="nav" class="nav"></nav>
   <div class="actions">
     <span id="estado-guardado" class="save-dot" title="Guardado"></span>
+    <button id="btn-ajustes" class="icon-btn icon-btn-lg" title="Configuración" aria-label="Configuración">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
+        <path d="M12 8.4a3.6 3.6 0 1 0 0 7.2 3.6 3.6 0 0 0 0-7.2Zm0 5.6a2 2 0 1 1 0-4 2 2 0 0 1 0 4Z"/>
+        <path d="M20.3 13.2a8.6 8.6 0 0 0 0-2.4l2-1.5a.6.6 0 0 0 .1-.7l-1.9-3.3a.6.6 0 0 0-.7-.3l-2.4 1a8.7 8.7 0 0 0-2-1.2l-.4-2.5a.6.6 0 0 0-.6-.5h-3.8a.6.6 0 0 0-.6.5l-.4 2.5a8.7 8.7 0 0 0-2 1.2l-2.4-1a.6.6 0 0 0-.7.3L2.6 8.6a.6.6 0 0 0 .1.7l2 1.5a8.6 8.6 0 0 0 0 2.4l-2 1.5a.6.6 0 0 0-.1.7l1.9 3.3a.6.6 0 0 0 .7.3l2.4-1a8.7 8.7 0 0 0 2 1.2l.4 2.5a.6.6 0 0 0 .6.5h3.8a.6.6 0 0 0 .6-.5l.4-2.5a8.7 8.7 0 0 0 2-1.2l2.4 1a.6.6 0 0 0 .7-.3l1.9-3.3a.6.6 0 0 0-.1-.7l-2-1.5Zm-2.1-.3-.1 1.6.1 1.6 1.8 1.4-.7 1.2-2.2-.9-1.4.8-1.2 1.4-.4 2.3h-1.4l-.4-2.3-1.2-1.4-1.4-.8-2.2.9-.7-1.2 1.8-1.4.1-1.6-.1-1.6-1.8-1.4.7-1.2 2.2.9 1.4-.8 1.2-1.4.4-2.3h1.4l.4 2.3 1.2 1.4 1.4.8 2.2-.9.7 1.2-1.8 1.4Z"/>
+      </svg>
+    </button>
     <button id="btn-guardar" class="btn btn-primario">Guardar</button>
-    <button id="btn-exportar" class="btn btn-ghost">Exportar backup</button>
-    <button id="btn-importar" class="btn btn-ghost">Importar backup</button>
     <input type="file" id="input-importar" accept=".json,application/json" hidden>
   </div>
 </header>
@@ -5072,19 +5083,37 @@ const App = (() => {
       </section>`;
   }
 
-  // Configuración (⚙): acciones poco frecuentes y, por ahora, el borrado
-  // total. Se mantiene como modal para no ocupar un sitio fijo en la nav.
+  // Configuración (⚙): las acciones de administración poco frecuentes —
+  // copias de seguridad y borrado total. Es un modal y vive en la cabecera
+  // global, así que está disponible desde cualquier vista.
   function modalAjustes() {
+    const db = Storage.db;
+    const ultima = db.meta && db.meta.ultimaExportacion
+      ? Utils.fechaLegible(new Date(db.meta.ultimaExportacion)) + ' a las ' + new Date(db.meta.ultimaExportacion).toTimeString().slice(0, 5)
+      : 'nunca';
     const body = UI.openModal({
       titulo: 'Configuración',
       cuerpo: `
         <p class="hint">Acciones poco frecuentes. Tus datos viven solo en este navegador.</p>
+        <div class="bloque-copias">
+          <b>Copias de seguridad</b>
+          <p>Última copia: <b>${ultima}</b>. El backup guarda <b>todo</b> (grupos, alumnos, clases, currículos, instrumentos y notas).</p>
+          <div class="acciones">
+            <button class="btn btn-primario btn-mini" id="btn-exportar-ajustes">Exportar backup</button>
+            <button class="btn btn-mini" id="btn-importar-ajustes">Importar backup</button>
+          </div>
+        </div>
         <div class="zona-peligro">
           <b>Zona peligrosa</b>
           <p>Elimina <b>todos</b> los grupos, alumnos, clases, currículos, instrumentos y calificaciones guardados en este navegador.</p>
           <button class="btn btn-peligro" id="btn-reiniciar">Restablecer y vaciar todos los datos</button>
         </div>`
     });
+    body.querySelector('#btn-exportar-ajustes').onclick = () =>
+      Storage.exportar()
+        .then(ok => { if (ok) { UI.toast('Backup exportado'); modalAjustes(); } })
+        .catch(e => alert('Error al exportar: ' + e.message));    body.querySelector('#btn-importar-ajustes').onclick = () =>
+      document.getElementById('input-importar').click();
     body.querySelector('#btn-reiniciar').onclick = () => {
       UI.openModal({
         titulo: 'Restablecer aplicación',
@@ -5106,16 +5135,8 @@ const App = (() => {
       <section class="card">
         <div class="card-head">
           <h1>Bienvenido a EvalCrit</h1>
-          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
-            <label class="campo" style="margin:0"><span>Curso escolar</span>
-              <select id="sel-curso" style="max-width:150px">${opcionesCurso(db.cursoEscolar)}</select></label>
-            <button class="icon-btn icon-btn-lg" id="btn-ajustes" title="Configuración" aria-label="Configuración">
-              <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
-                <path d="M12 8.4a3.6 3.6 0 1 0 0 7.2 3.6 3.6 0 0 0 0-7.2Zm0 5.6a2 2 0 1 1 0-4 2 2 0 0 1 0 4Z"/>
-                <path d="M20.3 13.2a8.6 8.6 0 0 0 0-2.4l2-1.5a.6.6 0 0 0 .1-.7l-1.9-3.3a.6.6 0 0 0-.7-.3l-2.4 1a8.7 8.7 0 0 0-2-1.2l-.4-2.5a.6.6 0 0 0-.6-.5h-3.8a.6.6 0 0 0-.6.5l-.4 2.5a8.7 8.7 0 0 0-2 1.2l-2.4-1a.6.6 0 0 0-.7.3L2.6 8.6a.6.6 0 0 0 .1.7l2 1.5a8.6 8.6 0 0 0 0 2.4l-2 1.5a.6.6 0 0 0-.1.7l1.9 3.3a.6.6 0 0 0 .7.3l2.4-1a8.7 8.7 0 0 0 2 1.2l.4 2.5a.6.6 0 0 0 .6.5h3.8a.6.6 0 0 0 .6-.5l.4-2.5a8.7 8.7 0 0 0 2-1.2l2.4 1a.6.6 0 0 0 .7-.3l1.9-3.3a.6.6 0 0 0-.1-.7l-2-1.5Zm-2.1-.3-.1 1.6.1 1.6 1.8 1.4-.7 1.2-2.2-.9-1.4.8-1.2 1.4-.4 2.3h-1.4l-.4-2.3-1.2-1.4-1.4-.8-2.2.9-.7-1.2 1.8-1.4.1-1.6-.1-1.6-1.8-1.4.7-1.2 2.2.9 1.4-.8 1.2-1.4.4-2.3h1.4l.4 2.3 1.2 1.4 1.4.8 2.2-.9.7 1.2-1.8 1.4Z"/>
-              </svg>
-            </button>
-          </div>
+          <label class="campo" style="margin:0"><span>Curso escolar</span>
+            <select id="sel-curso" style="max-width:150px">${opcionesCurso(db.cursoEscolar)}</select></label>
         </div>
         <p style="color:var(--tinta-suave)">Califica con criterios ponderados según la LOMLOE. Los datos se guardan en este navegador:
           <b>exporta tu backup al USB con frecuencia</b>.</p>
@@ -5124,8 +5145,6 @@ const App = (() => {
           <small>Con Chrome/Edge en Windows puedes guardar directamente en la carpeta <code>backups/</code> del proyecto; en Android irán a Descargas.</small>
           <div id="aviso-copia" class="no-print"></div>
           <div class="acciones no-print" style="margin-top:8px">
-            <button class="btn btn-primario btn-mini" id="btn-guardar-ini">Guardar (evalcrit.json)</button>
-            <button class="btn btn-mini" id="btn-exportar-ini">Exportar backup ahora</button>
             ${Storage.puedeCarpeta() ? '<button class="btn btn-mini" id="btn-carpeta">Elegir carpeta de backups…</button>' : ''}
           </div>
           ${Storage.copiaPrevia() ? '<div class="no-print" style="margin-top:8px"><button class="btn btn-mini" id="btn-restaurar-previa">↩ Recuperar los datos anteriores a la última importación</button></div>' : ''}
@@ -5171,14 +5190,6 @@ const App = (() => {
     pintaInfo(null);
     Storage.idbLeer('dir').then(pintaInfo).catch(() => {});
 
-    const btnExpIni = el.querySelector('#btn-exportar-ini');
-    btnExpIni.onclick = () => Storage.exportar()
-      .then(ok => { if (ok) pintaInfo(); })
-      .catch(e => alert('Error al exportar: ' + e.message));
-    const btnGuardarIni = el.querySelector('#btn-guardar-ini');
-    btnGuardarIni.onclick = () => Storage.guardar()
-      .then(ok => { if (ok) pintaInfo(); })
-      .catch(e => alert('Error al guardar: ' + e.message));
     const btnCarpeta = el.querySelector('#btn-carpeta');
     if (btnCarpeta) {
       btnCarpeta.onclick = async () => {
@@ -5205,8 +5216,6 @@ const App = (() => {
       UI.toast('Datos de ejemplo cargados');
       App.ir('inicio');
     };
-    const ajustes = el.querySelector('#btn-ajustes');
-    if (ajustes) ajustes.onclick = () => modalAjustes();
 
     // Paneles de estado: cada fila de clase abre Calificaciones de esa clase.
     el.querySelectorAll('.fila-inicio').forEach(tr => {
@@ -5246,10 +5255,11 @@ const App = (() => {
         : 'Se han corregido los criterios de ' + Storage.reparadosCriterios + ' instrumentos para que coincidan con su nivel.');
     }
     document.getElementById('btn-guardar').onclick = () => Storage.guardar().catch(e => alert('Error al guardar: ' + e.message));
-    document.getElementById('btn-exportar').onclick = () => Storage.exportar().catch(e => alert('Error al exportar: ' + e.message));
+    document.getElementById('btn-ajustes').onclick = () => modalAjustes();
 
+    // La importación se lanza desde «Configuración → Importar backup», pero el
+    // selector de archivos sigue en la cabecera para que viva en todo momento.
     const input = document.getElementById('input-importar');
-    document.getElementById('btn-importar').onclick = () => input.click();
     input.onchange = () => {
       const archivo = input.files[0];
       input.value = '';
@@ -5260,6 +5270,7 @@ const App = (() => {
           UI.toast(copiada
             ? 'Backup importado. Guardé una copia de tus datos anteriores por si quieres deshacerlo.'
             : 'Backup importado');
+          UI.closeModal();
           ir(actual);
         })
         .catch(() => alert('El archivo no es un backup válido de EvalCrit'));
@@ -5282,7 +5293,9 @@ const App = (() => {
     arrancar,
     refrescar() { ir(actual); },
     // Paneles de Inicio expuestos para poder comprobarlos sin navegador.
-    panelesInicio: { estado: panelesEstadoHtml, cobertura: panelesCoberturaHtml, aci: panelesAciHtml }
+    panelesInicio: { estado: panelesEstadoHtml, cobertura: panelesCoberturaHtml, aci: panelesAciHtml },
+    // Configuración expuesta por el mismo motivo (la cabecera no existe en el arnés).
+    abrirAjustes: modalAjustes
   };
 })();
 

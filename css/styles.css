@@ -104,6 +104,13 @@ main { max-width: 1440px; margin: 0 auto; padding: 20px 18px 60px; }
 }
 .zona-peligro > b { display: block; color: var(--ko); margin-bottom: 4px; }
 .zona-peligro > p { margin: 0 0 10px; font-size: 13px; color: var(--tinta-suave); }
+/* Bloque de copias de seguridad del modal Configuración. */
+.bloque-copias {
+  margin-top: 14px; padding: 12px 14px;
+  border: 1px solid var(--linea); border-radius: 10px; background: var(--papel);
+}
+.bloque-copias > b { display: block; margin-bottom: 4px; }
+.bloque-copias > p { margin: 0 0 10px; font-size: 13px; color: var(--tinta-suave); }
 .btn-ghost { border-color: transparent; background: transparent; color: var(--tinta-suave); }
 .btn-ghost:hover:not(:disabled) { background: var(--acento-suave); color: var(--acento); border-color: transparent; }
 .btn:disabled {

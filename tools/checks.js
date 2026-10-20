@@ -1928,7 +1928,7 @@ async function main() {
     check('sin clases no se muestra el panel ACI', P.aci() === '');
   }
 
-  console.log('\n== Configuracion: borrado total fuera del alcance ==');
+  console.log('\n== Configuracion: engranaje global, copias y borrado ==');
   {
     const app = cargarApp({ dom: true });
     app.Storage.load();
@@ -1936,16 +1936,38 @@ async function main() {
     const doc = app.document;
     const appEl = doc.getElementById('app');
 
+    // La cabecera vive en index.html (el arnés simula #app y los avisos, no la
+    // cabecera), así que su estructura se comprueba sobre el HTML real.
+    const html = fs.readFileSync(path.join(raiz, 'index.html'), 'utf8');
+    const topbar = html.slice(html.indexOf('<header class="topbar"'), html.indexOf('</header>'));
+    check('la cabecera ofrece el engranaje de Configuracion', /id="btn-ajustes"/.test(topbar));
+    check('la cabecera ya no lleva exportar ni importar',
+      !/id="btn-exportar"/.test(topbar) && !/id="btn-importar"/.test(topbar));
+    check('la cabecera conserva Guardar y el selector de importacion',
+      /id="btn-guardar"/.test(topbar) && /id="input-importar"/.test(topbar));
+    // El engranaje está fuera de #app: no se destruye al cambiar de vista.
+    check('el engranaje vive fuera del contenido de la vista',
+      html.indexOf('id="btn-ajustes"') < html.indexOf('<main id="app"'));
+
     app.App.ir('inicio');
-    check('Inicio ofrece el engranaje de Configuracion', !!appEl.querySelector('#btn-ajustes'));
+    check('Inicio ya no duplica los botones de copia',
+      !appEl.querySelector('#btn-exportar-ini') && !appEl.querySelector('#btn-guardar-ini'));
     check('el borrado total ya no esta suelto en Inicio', !appEl.querySelector('#btn-reiniciar'));
 
-    appEl.querySelector('#btn-ajustes').click();
+    // El engranaje llama a esta misma acción; se invoca directamente porque la
+    // cabecera no existe en el arnés.
+    app.App.abrirAjustes();
     const body = doc.querySelector('.modal-body');
-    check('el engranaje abre el modal de Configuracion',
-      doc.querySelector('.modal-head h3').textContent === 'Configuración');
+    check('Configuracion abre su modal', doc.querySelector('.modal-head h3').textContent === 'Configuración');
+    check('Configuracion ofrece exportar e importar en su bloque de copias',
+      !!body.querySelector('.bloque-copias #btn-exportar-ajustes') &&
+      !!body.querySelector('.bloque-copias #btn-importar-ajustes'));
     check('el borrado total vive dentro de la zona peligrosa',
       !!body.querySelector('.zona-peligro') && !!body.querySelector('.zona-peligro #btn-reiniciar'));
+    // Importar reutiliza el selector que sigue en la cabecera.
+    check('importar desde Configuracion usa el selector de la cabecera',
+      !!doc.getElementById('input-importar'));
+    body.querySelector('#btn-importar-ajustes').click();
 
     body.querySelector('#btn-reiniciar').click();
     const confirmar = doc.querySelector('.guardar');
