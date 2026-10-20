@@ -204,6 +204,10 @@ function crearNodo(tag) {
   el.focus = () => {};
   el.blur = () => {};
   el.select = () => {};
+  // No-op: el desplazamiento solo tiene sentido en un navegador real (no hay
+  // layout que medir aquí). Sin esto, una vista que llame a `scrollIntoView`
+  // reventaría en el arnés con un TypeError aunque el navegador sí lo soporte.
+  el.scrollIntoView = () => {};
   el.setAttribute = (n, v) => {
     el._attrs[String(n).toLowerCase()] = String(v);
     if (String(n).toLowerCase() === 'value') el._valor = String(v);
