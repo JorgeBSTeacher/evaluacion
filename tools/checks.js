@@ -649,6 +649,56 @@ async function main() {
     check('la celda de la cuadrícula lleva su alumno para poder saltar a él',
       !!celda && celda.dataset.alumno === 'a1',
       celda ? 'data-alumno=' + celda.dataset.alumno : '(sin celda)');
+
+    // --- Nota por encima del máximo: NUNCA se acepta (bug del valor fantasma) ---
+    // El caso que la batería no cubría: todos los apartados de prueba valían 10, así
+    // que teclear de más no se probaba nunca. Un 7 en un apartado de 1 punto hacía
+    // que el motor calculase (7/1)*10 = 70.
+    const appMax = cargarApp({ dom: true });
+    appMax.Storage.load();
+    await importarJson(appMax, estadoAci());
+    const instMax = appMax.Storage.db.instrumentos.find(i => i.id === 'iBase');
+    instMax.apartados[0].maxPts = 1;
+    const elMax = appMax.document.createElement('div');
+    appMax.document.getElementById('app').appendChild(elMax);
+    appMax.InstrumentosView.renderCorreccion(elMax, 'iBase');
+    const inpMax = elMax.querySelector('tbody tr[data-alumno="a1"] .inp-nota');
+    const apIdMax = inpMax.closest('td').dataset.apartado;
+    const regDe = () => ((appMax.Storage.db.registros.iBase || {})['a1'] || {})[apIdMax];
+
+    inpMax.value = '7';
+    inpMax._dispara('input');
+    check('G-max · teclear 7 en un apartado de 1 punto guarda 1, nunca 7',
+      regDe() === 1, 'modelo=' + JSON.stringify(regDe()));
+    check('G-max · la celda muestra el valor recortado del modelo (sin fantasma)',
+      inpMax.value === 1 || inpMax.value === '1', 'celda=' + JSON.stringify(inpMax.value));
+    check('G-max · la nota del instrumento no se dispara con un valor imposible',
+      appMax.Calc.notaInstrumento(instMax, 'a1') === 10,
+      'nota=' + appMax.Calc.notaInstrumento(instMax, 'a1'));
+
+    // Un estado realmente inválido (no numérico) no pisa lo guardado.
+    inpMax.value = 'abc';
+    inpMax._dispara('input');
+    check('G-max · un valor no numérico no pisa lo ya guardado y marca la celda',
+      regDe() === 1 && inpMax.classList.contains('nota-invalida'),
+      'modelo=' + JSON.stringify(regDe()) + ' · invalida=' + inpMax.classList.contains('nota-invalida'));
+
+    // Vaciar la celda borra la nota (y quita la marca de inválida).
+    inpMax.value = '';
+    inpMax._dispara('input');
+    check('G-max · vaciar la celda borra la nota del modelo',
+      regDe() === undefined, 'modelo=' + JSON.stringify(regDe()));
+
+    // Escape suelta el foco de la celda sin tocar la nota ni mover de alumno.
+    const inpEsc = elMax.querySelector('tbody tr[data-alumno="a1"] .inp-nota');
+    inpEsc.value = '1';
+    inpEsc._dispara('input');
+    inpEsc.focus();
+    const teniaFoco = appMax.document.activeElement === inpEsc;
+    const canceladoEsc = inpEsc._dispara('keydown', { key: 'Escape' });
+    check('G-max · Escape sale de la celda (le quita el foco) sin borrar la nota',
+      canceladoEsc && teniaFoco && appMax.document.activeElement !== inpEsc && regDe() === 1,
+      'cancelado=' + canceladoEsc + ' · foco=' + (appMax.document.activeElement && appMax.document.activeElement.tagName) + ' · modelo=' + JSON.stringify(regDe()));
   }
 
   console.log('\n== Importador de currículo ==');

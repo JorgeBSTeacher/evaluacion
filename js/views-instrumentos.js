@@ -636,34 +636,71 @@ function columnasNivel(filas) {
     }
 
     const persistir = Utils.debounce(() => Storage.save(), 400);
+    // El aviso se agrupa: si alguien teclea «77» en un apartado de 1 punto, el
+    // recorte salta en la primera tecla y no queremos un toast por tecla.
+    const avisarRecorte = Utils.debounce((max) => {
+      UI.toast('Esta pregunta vale como máximo ' + Utils.fmt(max) + '; se ha ajustado a esa puntuación');
+    }, 800);
+
+    // Escape cierra la edición de la celda: suelta el foco (desaparece el cursor)
+    // y vuelve a la tabla, sin mover de alumno ni perder nada, porque cada tecla
+    // ya quedó guardada. No repinta: repintar aquí mataría el foco y el flujo.
+    tabla.addEventListener('keydown', ev => {
+      if (ev.key !== 'Escape') return;
+      const inp = ev.target && ev.target.classList && ev.target.classList.contains('inp-nota') ? ev.target : null;
+      if (!inp) return;
+      ev.preventDefault();
+      inp.blur();
+    });
 
     tabla.querySelectorAll('tbody tr[data-alumno]').forEach(tr => {
       const alumnoId = tr.dataset.alumno;
 
       tr.querySelectorAll('.inp-nota').forEach(inp => {
+        // Único camino para escribir una nota: leer, validar, recortar y guardar
+        // EN EL MODELO, y por último pintar desde el modelo. El `max` del HTML es
+        // solo una pista del navegador (no impide teclear de más) y `calc.js` NO
+        // recorta: si aquí entrara un 7 en un apartado de 1, la nota del
+        // instrumento saldría disparada ((7/1)*10 = 70). Por eso el recorte vive
+        // aquí, en la única puerta de entrada.
         inp.addEventListener('input', () => {
-          const apartadoId = inp.closest('td').dataset.apartado;
-          const v = inp.value.trim();
+          const td = inp.closest('td');
+          const apartadoId = td.dataset.apartado;
+          // El máximo se lee del MODELO (ap.maxPts), no de la propiedad `max` del
+          // input: la propiedad no es fiable en todos los entornos y el modelo es
+          // la fuente de verdad.
+          const ap = inst.apartados.find(a => a.id === apartadoId);
+          const max = ap ? parseFloat(ap.maxPts) : NaN;
+          const texto = inp.value.trim();
           if (!Storage.db.registros[inst.id]) Storage.db.registros[inst.id] = {};
           if (!Storage.db.registros[inst.id][alumnoId]) Storage.db.registros[inst.id][alumnoId] = {};
           const regAlu = Storage.db.registros[inst.id][alumnoId];
-          if (v === '') delete regAlu[apartadoId];
-          else {
-            const num = parseFloat(v.replace(',', '.'));
-            if (isNaN(num) || num < 0) return;
-            regAlu[apartadoId] = num;
+          if (texto === '') {
+            delete regAlu[apartadoId];
+          } else {
+            const num = parseFloat(texto.replace(',', '.'));
+            // Un texto que no es un número («-», letras) no es un dato: no se
+            // guarda ni se pisa lo que ya hubiera. La celda se marca mientras
+            // dure, para no dejar un valor fantasma sin avisar.
+            if (isNaN(num) || num < 0) {
+              inp.classList.add('nota-invalida');
+              notaFila(tr);
+              return;
+            }
+            inp.classList.remove('nota-invalida');
+            if (!isNaN(max) && num > max) {
+              // No se acepta nunca un valor por encima del máximo: se recorta en
+              // el MODELO (no solo en el DOM, que era el fallo del valor fantasma)
+              // y se avisa una vez, no en cada tecla.
+              regAlu[apartadoId] = max;
+              inp.value = max;
+              avisarRecorte(max);
+            } else {
+              regAlu[apartadoId] = num;
+            }
           }
           persistir();
           notaFila(tr);
-        });
-        inp.addEventListener('change', () => {
-          if (inp.value.trim() !== '') {
-            const num = parseFloat(inp.value.replace(',', '.'));
-            if (!isNaN(num) && num >= 0) {
-              const max = parseFloat(inp.max);
-              if (!isNaN(max) && num > max) inp.value = max;
-            }
-          }
         });
       });
 

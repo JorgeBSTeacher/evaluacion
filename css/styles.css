@@ -160,6 +160,10 @@ main { max-width: 1440px; margin: 0 auto; padding: 20px 18px 60px; }
 .tabla .num { text-align: right; font-variant-numeric: tabular-nums; }
 .tabla tbody tr:hover { background: #faf9f4; }
 
+/* Nota tecleada que todavía no es un número válido (p. ej. «-» o texto suelto): se
+   marca mientras dure, para que no se guarde un valor a medias sin que el docente lo vea. */
+.inp-nota.nota-invalida { border-color: var(--ko); background: var(--ko-suave); }
+
 .scroll-x { overflow-x: auto; }
 
 /* Filas de los paneles de Inicio: al tocarlas se abre la vista correspondiente. */
