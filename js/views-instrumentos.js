@@ -524,7 +524,9 @@ function columnasNivel(filas) {
 
   // `volverA` permite volver a la vista desde la que se abrió (p. ej. la
   // Cuadrícula) en lugar de ir siempre al listado de Instrumentos.
-  function renderCorreccion(el, instId, volverA) {
+  // `alumnoId` arranca la corrección en ese alumno (por ejemplo, al tocar su
+  // nota en la Cuadrícula) en lugar de en el primero de la lista.
+  function renderCorreccion(el, instId, volverA, alumnoId) {
     const inst = Calc.instrumento(instId);
     if (!inst) { render(el); return; }
     const alumnos = Calc.alumnosDeInstrumento(inst);
@@ -662,6 +664,15 @@ function columnasNivel(filas) {
     const navInfo = el.querySelector('#nav-info');
     let idx = 0;
 
+    // Al llegar desde fuera (tocar una nota en la Cuadrícula) se arranca en el
+    // alumno tocado, no en el primero. Si el id no está en este instrumento
+    // (no aplica a ese alumno, p. ej. un nivel ACI) se cae al primero.
+    const idxInicial = () => {
+      if (!alumnoId) return 0;
+      const k = filas.findIndex(tr => tr.dataset.alumno === alumnoId);
+      return k < 0 ? 0 : k;
+    };
+
     function pintaNav() {
       if (!filas.length) return;
       const a = alumnos[idx];
@@ -673,7 +684,7 @@ function columnasNivel(filas) {
       if (!filas.length) return;
       idx = Math.max(0, Math.min(filas.length - 1, i));
       filas.forEach((tr, k) => tr.classList.toggle('fila-actual', k === idx));
-      if (op.scroll !== false) filas[idx].scrollIntoView({ block: 'center', behavior: 'smooth' });
+      if (op.scroll !== false && filas[idx].scrollIntoView) filas[idx].scrollIntoView({ block: 'center', behavior: 'smooth' });
       const primer = filas[idx].querySelector('.inp-nota');
       if (primer && op.foco !== false) primer.focus({ preventScroll: true });
       pintaNav();
@@ -687,7 +698,9 @@ function columnasNivel(filas) {
         irA(idx + 1);
       };
       filas.forEach((tr, k) => tr.addEventListener('click', () => irA(k, { scroll: false, foco: false })));
-      irA(0, { scroll: false, foco: false });
+      // Si venimos de tocar una nota concreta, hay que dejar visible ese alumno
+      // (puede ser el 20 de 25); si no, se mantiene el arranque sin scroll.
+      irA(idxInicial(), alumnoId ? { foco: false } : { scroll: false, foco: false });
     } else {
       const barra = el.querySelector('#barra-nav');
       if (barra) barra.remove();

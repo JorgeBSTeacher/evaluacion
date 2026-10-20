@@ -611,6 +611,44 @@ async function main() {
     app.InstrumentosView.renderCorreccion(el2, 'iBase');
     check('la corrección ofrece abrir el enlace del instrumento',
       el2.innerHTML.includes('Abrir enlace') && el2.innerHTML.includes('href="https://ejemplo.test/control"'), el2.innerHTML.slice(0, 80));
+
+    // Al llegar desde la Cuadrícula se arranca en el alumno tocado, no en el
+    // primero. Necesita el DOM real: la fila activa se marca con una CLASE
+    // (`fila-actual`), y el arnés sin DOM no simula `classList`.
+    // `iBase` es de nivel BASE: solo lo corrigen a1 y a2 (c2al es ACI).
+    const appDom = cargarApp({ dom: true });
+    appDom.Storage.load();
+    await importarJson(appDom, estadoAci());
+    const filaActiva = el2 => {
+      const tr = el2.querySelector('tbody tr.fila-actual');
+      return tr ? tr.dataset.alumno : null;
+    };
+    const elDom = appDom.document.createElement('div');
+    appDom.InstrumentosView.renderCorreccion(elDom, 'iBase', null, 'a2');
+    check('la corrección arranca en el alumno tocado, no en el primero',
+      filaActiva(elDom) === 'a2',
+      'fila-actual=' + filaActiva(elDom) + ' · ' + elDom.querySelector('#nav-info').textContent.trim());
+
+    // Sin alumno indicado se mantiene el comportamiento de siempre: el primero.
+    const elDom2 = appDom.document.createElement('div');
+    appDom.InstrumentosView.renderCorreccion(elDom2, 'iBase');
+    check('sin alumno indicado la corrección arranca en el primero',
+      filaActiva(elDom2) === 'a1', 'fila-actual=' + filaActiva(elDom2));
+
+    // Un alumno ajeno al instrumento (nivel ACI) no rompe: cae al primero.
+    const elDom3 = appDom.document.createElement('div');
+    appDom.InstrumentosView.renderCorreccion(elDom3, 'iBase', null, 'c2al');
+    check('un alumno ajeno al instrumento cae al primero sin romper',
+      filaActiva(elDom3) === 'a1', 'fila-actual=' + filaActiva(elDom3));
+
+    // La celda de la Cuadrícula lleva el alumno, que es lo que permite el salto.
+    // Las columnas por unidad nacen plegadas, así que se abren UD1 y UD2.
+    const elCuad = appDom.document.createElement('div');
+    appDom.CuadriculaView.render(elCuad, { claseId: 'c1', tab: 'notas', unidadesAbiertas: ['UD1', 'UD2'] });
+    const celda = elCuad.querySelector('td.celda-nota[data-inst="iBase"]');
+    check('la celda de la cuadrícula lleva su alumno para poder saltar a él',
+      !!celda && celda.dataset.alumno === 'a1',
+      celda ? 'data-alumno=' + celda.dataset.alumno : '(sin celda)');
   }
 
   console.log('\n== Importador de currículo ==');

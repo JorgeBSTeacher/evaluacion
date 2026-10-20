@@ -44,7 +44,7 @@ const CuadriculaView = (() => {
           return `<td class="celda-nota num" ${ud} style="color:var(--tinta-suave);opacity:.35" title="No aplica a este alumno">—</td>`;
         }
         const n = Calc.notaInstrumento(i, a.id);
-        return `<td class="celda-nota num" ${ud} data-inst="${i.id}">${n == null ? '<span class="badge na">—</span>' : Calc.badgeHtml(n)}</td>`;
+        return `<td class="celda-nota num" ${ud} data-inst="${i.id}" data-alumno="${Utils.esc(a.id)}">${n == null ? '<span class="badge na">—</span>' : Calc.badgeHtml(n)}</td>`;
       }).join('');
     const thead = conBarra
       ? `<tr class="fila-ud"><th rowspan="2">Alumno</th>${grupos.map(barraUd).join('')}<th rowspan="2">Evaluación</th></tr>
@@ -488,7 +488,7 @@ const CuadriculaView = (() => {
     });
 
     el.querySelectorAll('.celda-nota[data-inst]').forEach(td => {
-      td.onclick = () => InstrumentosView.renderCorreccion(el, td.dataset.inst, () => render(el));
+      td.onclick = () => InstrumentosView.renderCorreccion(el, td.dataset.inst, () => render(el), td.dataset.alumno);
     });
     el.querySelectorAll('th[data-edit]').forEach(th => {
       th.onclick = () => {
