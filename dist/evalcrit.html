@@ -9,16 +9,16 @@
   --papel: #f5f3ec;
   --tinta: #2b2a26;
   --tinta-suave: #6b685e;
-  --linea: #e3dfd3;
+  --linea: #d5d0c0;
   --acento: #4f46e5;
   --acento-suave: #eceafd;
-  --ok: #16a34a;
+  --ok: #15803d;
   --ok-suave: #e8f7ee;
-  --ko: #dc2626;
+  --ko: #b91c1c;
   --ko-suave: #fdecec;
-  --na: #9ca3af;
+  --na: #5f6672;
   --na-suave: #f1f2f4;
-  --aviso: #d97706;
+  --aviso: #b45309;
   --aviso-suave: #fdf3e7;
   --radio: 14px;
   --sombra: 0 1px 3px rgba(43, 42, 38, .08), 0 8px 24px rgba(43, 42, 38, .06);
@@ -29,6 +29,7 @@
 body {
   margin: 0;
   font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.45;
   background: var(--papel);
   color: var(--tinta);
   min-height: 100vh;
@@ -55,9 +56,10 @@ body {
 
 .nav { display: flex; gap: 4px; flex-wrap: wrap; flex: 1; }
 .nav button {
+  display: inline-flex; align-items: center; justify-content: center;
   border: none; background: transparent; cursor: pointer;
-  font-size: 14px; font-weight: 600; color: var(--tinta-suave);
-  padding: 9px 13px; border-radius: 999px; min-height: 40px;
+  font-family: inherit; font-size: 14px; font-weight: 600; line-height: 1.1; color: var(--tinta-suave);
+  padding: 10px 14px; border-radius: 999px; min-height: 40px;
 }
 .nav button:hover { background: var(--acento-suave); color: var(--acento); }
 .nav button.activo { background: var(--acento); color: #fff; }
@@ -74,31 +76,47 @@ main { max-width: 1440px; margin: 0 auto; padding: 20px 18px 60px; }
   border-radius: var(--radio); box-shadow: var(--sombra);
   padding: 18px; margin-bottom: 18px;
 }
-.card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
-.card h1, .card h2 { margin: 0; font-size: 18px; }
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+.card h1 { margin: 0; font-size: 24px; font-weight: 800; line-height: 1.2; }
+.card h2 { margin: 0; font-size: 18px; font-weight: 700; line-height: 1.25; }
+.card .subtitulo { font-size: 15px; font-weight: 700; }
 .card-head .sub { color: var(--tinta-suave); font-size: 13px; width: 100%; margin-top: -6px; }
+
+/* Grupo único de acciones: mismo gap y alineación en cabeceras y tablas. */
+.acciones { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.card-head .acciones { margin-left: auto; }
+.tabla .acciones { flex-wrap: nowrap; }
+.flujo { line-height: 1.6; }
 
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
 @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
 
 .btn {
-  appearance: none; border: 1px solid var(--linea); background: #fff;
-  color: var(--tinta); font-weight: 600; font-size: 14px;
-  padding: 9px 14px; border-radius: 10px; cursor: pointer; min-height: 40px;
+  appearance: none;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  border: 1px solid var(--linea); background: #fff;
+  color: var(--tinta); font-family: inherit; font-weight: 600; font-size: 14px; line-height: 1.1;
+  padding: 10px 16px; border-radius: 10px; cursor: pointer; min-height: 40px;
+  text-decoration: none;
 }
-.btn:hover { border-color: var(--acento); color: var(--acento); }
-.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn:hover:not(:disabled) { border-color: var(--acento); color: var(--acento); }
 .btn-primario { background: var(--acento); border-color: var(--acento); color: #fff; }
-.btn-primario:hover { filter: brightness(1.07); color: #fff; }
+.btn-primario:hover:not(:disabled) { filter: brightness(1.07); color: #fff; }
 .btn-peligro { color: var(--ko); border-color: #f3caca; }
-.btn-peligro:hover { background: var(--ko-suave); border-color: var(--ko); color: var(--ko); }
+.btn-peligro:hover:not(:disabled) { background: var(--ko-suave); border-color: var(--ko); color: var(--ko); }
 .btn-ghost { border-color: transparent; background: transparent; color: var(--tinta-suave); }
-.btn-ghost:hover { background: var(--acento-suave); color: var(--acento); border-color: transparent; }
-.btn-mini { padding: 4px 9px; min-height: 30px; font-size: 12px; border-radius: 8px; }
+.btn-ghost:hover:not(:disabled) { background: var(--acento-suave); color: var(--acento); border-color: transparent; }
+.btn:disabled {
+  background: var(--na-suave); border-color: var(--linea); color: var(--tinta-suave);
+  opacity: 1; cursor: not-allowed;
+}
+.btn-mini { padding: 6px 12px; min-height: 32px; font-size: 12px; border-radius: 8px; }
 
 .icon-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; padding: 0;
   border: none; background: transparent; cursor: pointer;
-  font-size: 16px; line-height: 1; color: var(--na); padding: 6px; border-radius: 8px;
+  font-family: inherit; font-size: 16px; line-height: 1; color: var(--tinta-suave); border-radius: 8px;
 }
 .icon-btn:hover { background: var(--ko-suave); color: var(--ko); }
 
@@ -114,7 +132,7 @@ main { max-width: 1440px; margin: 0 auto; padding: 20px 18px 60px; }
 .lista li small { color: var(--tinta-suave); }
 .lista li.vacio, td.vacio { color: var(--na); text-align: center; padding: 18px !important; cursor: default !important; }
 
-.tabla { width: 100%; border-collapse: collapse; font-size: 14px; }
+.tabla { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
 .tabla th, .tabla td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--linea); vertical-align: middle; }
 .tabla th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--tinta-suave); }
 .tabla tr:last-child td { border-bottom: none; }
@@ -133,6 +151,11 @@ main { max-width: 1440px; margin: 0 auto; padding: 20px 18px 60px; }
   box-shadow: 1px 0 0 var(--linea);
 }
 .tabla-cuadricula tbody tr:hover td:first-child { background: #faf9f4; }
+/* En la cuadrícula solo la columna del alumno va a la izquierda: cabeceras y
+   notas se centran para que cada cifra quede bajo su columna. */
+.tabla-cuadricula th:not(:first-child),
+.tabla-cuadricula td:not(:first-child) { text-align: center; }
+.tabla-cuadricula .num { text-align: center; }
 .tabla-cuadricula .fila-ud .ud-grupo { text-align: center; background: var(--acento-suave); color: var(--acento); }
 .tabla-cuadricula .fila-ud th { border-bottom: 2px solid var(--linea); }
 
@@ -141,7 +164,10 @@ input[type="text"], input[type="number"], input[type="date"], select, textarea {
   border: 1px solid var(--linea); border-radius: 10px;
   padding: 8px 10px; background: #fff; min-height: 40px; width: 100%;
 }
-input:focus, select:focus, textarea:focus { outline: 2px solid var(--acento-suave); border-color: var(--acento); }
+input:focus, select:focus, textarea:focus { border-color: var(--acento); }
+:where(button, a, input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--acento); outline-offset: 2px;
+}
 .campo { display: block; margin-bottom: 12px; }
 .campo > span { display: block; font-size: 12px; font-weight: 700; color: var(--tinta-suave); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .04em; }
 .fila-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
@@ -159,7 +185,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--acento-suav
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .hint { display: block; color: var(--tinta-suave); font-size: 12px; margin-bottom: 6px; }
 .chip {
-  display: inline-flex; align-items: center; gap: 6px;
+  display: inline-flex; align-items: center; gap: 6px; min-height: 32px;
   border: 1px solid var(--linea); border-radius: 999px;
   padding: 6px 12px; font-size: 13px; cursor: pointer; user-select: none; background: #fff;
 }
@@ -182,7 +208,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--acento-suav
   width: min(720px, 100%); max-height: 90vh; display: flex; flex-direction: column;
 }
 .modal-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--linea); }
-.modal-head h3 { margin: 0; font-size: 16px; }
+.modal-head h3 { margin: 0; font-size: 18px; line-height: 1.25; }
 .modal-body { padding: 18px; overflow: auto; }
 /* La cuadrícula de rúbrica necesita más ancho para sus columnas de nivel */
 .modal:has(.rub-head) { width: min(1080px, 100%); }
@@ -222,9 +248,11 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--acento-suav
 
 .segmentos { display: inline-flex; border: 1px solid var(--linea); border-radius: 999px; overflow: hidden; }
 .segmentos button {
-  border: none; background: #fff; cursor: pointer; font-size: 12px; font-weight: 600;
-  padding: 7px 10px; min-width: 52px; color: var(--tinta-suave);
+  display: inline-flex; align-items: center; justify-content: center;
+  border: none; background: #fff; cursor: pointer; font-family: inherit; font-size: 12px; font-weight: 600; line-height: 1.1;
+  padding: 7px 12px; min-height: 38px; min-width: 52px; color: var(--tinta-suave);
 }
+.segmentos button:focus-visible { outline-offset: -2px; }
 .segmentos button + button { border-left: 1px solid var(--linea); }
 .segmentos button.on { background: var(--acento); color: #fff; }
 
@@ -2178,8 +2206,8 @@ const AlumnosView = (() => {
         <section class="card">
           <div class="card-head">
             <h2>Alumnos${grupoSel ? ' · ' + Utils.esc(nombreGrupo()) : ''}</h2>
-            <div style="display:flex;gap:8px">
-              <button class="btn btn-mini" id="add-varios" ${grupoSel ? '' : 'disabled'}>Añadir varios</button>
+            <div class="acciones">
+              <button class="btn" id="add-varios" ${grupoSel ? '' : 'disabled'}>Añadir varios</button>
               <button class="btn btn-primario" id="add-alumno" ${grupoSel ? '' : 'disabled'}>Nuevo alumno</button>
             </div>
           </div>
@@ -2190,9 +2218,11 @@ const AlumnosView = (() => {
                 <tr>
                   <td>${Utils.esc(a.apellidos)}</td>
                   <td>${Utils.esc(a.nombre)}</td>
-                  <td style="width:36px;white-space:nowrap">
-                    <button class="btn btn-mini editar-alumno" data-id="${a.id}">Editar</button>
-                    <button class="icon-btn borrar-alumno" data-id="${a.id}" title="Eliminar">×</button></td>
+                  <td>
+                    <div class="acciones">
+                      <button class="btn btn-mini editar-alumno" data-id="${a.id}">Editar</button>
+                      <button class="icon-btn borrar-alumno" data-id="${a.id}" title="Eliminar">×</button>
+                    </div></td>
                 </tr>`).join('') || '<tr><td colspan="3" class="vacio">Este grupo no tiene alumnos aún.</td></tr>'
                 : '<tr><td colspan="3" class="vacio">Selecciona un grupo para ver sus alumnos.</td></tr>'}
             </tbody>
@@ -2530,7 +2560,7 @@ const ClasesView = (() => {
         <section class="card">
           <div class="card-head">
             <h2>Asignaturas</h2>
-            <button class="btn btn-primario" id="add-asig">Nueva asignatura</button>
+            <div class="acciones"><button class="btn btn-primario" id="add-asig">Nueva asignatura</button></div>
           </div>
           <ul class="lista" id="lista-asig">
             ${db.asignaturas.map(a => {
@@ -2549,7 +2579,7 @@ const ClasesView = (() => {
         <section class="card">
           <div class="card-head">
             <h2>Clases <small class="sub" style="margin:0">asignatura · grupo</small></h2>
-            <button class="btn btn-primario" id="add-clase">Nueva clase</button>
+            <div class="acciones"><button class="btn btn-primario" id="add-clase">Nueva clase</button></div>
           </div>
           <table class="tabla">
             <thead><tr><th>Asignatura</th><th>Grupo</th><th>Alumnos</th><th></th></tr></thead>
@@ -2563,7 +2593,7 @@ const ClasesView = (() => {
                   <td>${Utils.esc(asig.nombre)}</td>
                   <td>${Utils.esc(gru.nombre)}</td>
                   <td>${nAlu}${nAci ? ` · <span class="badge info">ACI ${nAci}</span>` : ''}</td>
-                  <td style="white-space:nowrap"><button class="btn btn-mini aci-clase" data-id="${c.id}" title="Niveles ACI (adaptaciones)">ACI</button> <button class="icon-btn borrar-clase" data-id="${c.id}" title="Eliminar">×</button></td>
+                  <td><div class="acciones"><button class="btn btn-mini aci-clase" data-id="${c.id}" title="Niveles ACI (adaptaciones)">ACI</button><button class="icon-btn borrar-clase" data-id="${c.id}" title="Eliminar">×</button></div></td>
                 </tr>`;
               }).join('') || '<tr><td colspan="4" class="vacio">Crea una clase combinando asignatura y grupo.</td></tr>'}
             </tbody>
@@ -2748,8 +2778,8 @@ const CurriculoView = (() => {
         </div>
         <div class="grid-2">
           <div>
-            <div class="card-head"><h2 style="font-size:15px">Competencias específicas</h2>
-              <button class="btn btn-mini btn-primario" id="add-esp">Añadir</button></div>
+            <div class="card-head"><h2 class="subtitulo">Competencias específicas</h2>
+              <div class="acciones"><button class="btn btn-primario" id="add-esp">Añadir</button></div></div>
             <ul class="lista">
               ${espDe().map(e => `
                 <li style="cursor:default">
@@ -2759,8 +2789,8 @@ const CurriculoView = (() => {
             </ul>
           </div>
           <div>
-            <div class="card-head"><h2 style="font-size:15px">Criterios y ponderaciones</h2>
-              <button class="btn btn-mini btn-primario" id="add-crit">Nuevo criterio</button></div>
+            <div class="card-head"><h2 class="subtitulo">Criterios y ponderaciones</h2>
+              <div class="acciones"><button class="btn btn-primario" id="add-crit">Nuevo criterio</button></div></div>
             <table class="tabla">
               <thead><tr><th>Código</th><th>Descripción</th><th>Peso</th><th>Comp.</th><th></th></tr></thead>
               <tbody>
@@ -2770,9 +2800,11 @@ const CurriculoView = (() => {
                     <td>${Utils.esc(c.descripcion)}</td>
                     <td class="num">${Utils.fmt(c.peso)}%</td>
                     <td>${c.espIds.map(id => { const e = Calc.byId(db.competenciasEspecificas, id); return e ? `<span class="badge info">${Utils.esc(e.codigo)}</span>` : ''; }).join(' ')}</td>
-                    <td style="white-space:nowrap">
-                      <button class="btn btn-mini editar-crit">Editar</button>
-                      <button class="icon-btn borrar-crit" title="Eliminar">×</button>
+                    <td>
+                      <div class="acciones">
+                        <button class="btn btn-mini editar-crit">Editar</button>
+                        <button class="icon-btn borrar-crit" title="Eliminar">×</button>
+                      </div>
                     </td>
                   </tr>`).join('') || '<tr><td colspan="5" class="vacio">Sin criterios. Añade el primero para poder calificar.</td></tr>'}
               </tbody>
@@ -2854,12 +2886,14 @@ const InstrumentosView = (() => {
       <td>${Utils.esc(i.fecha)}</td>
       <td>${i.apartados.length} ${i.tipo === 'Proyecto' ? 'partes/fases' : 'apartados'}</td>
       <td>${Calc.badgeHtml(media)}</td>
-      <td style="white-space:nowrap">
-        <button class="btn btn-mini btn-primario corregir">Corregir</button>
-        <button class="btn btn-mini editar">Editar</button>
-        <button class="btn btn-mini duplicar" title="Crear examen paralelo para un nivel ACI">Duplicar</button>
-        <button class="btn btn-mini al-banco" title="Guardar una copia en el banco para reutilizarla en otra clase o el curso siguiente">Al banco</button>
-        <button class="icon-btn borrar-inst" title="Eliminar">×</button>
+      <td>
+        <div class="acciones">
+          <button class="btn btn-mini btn-primario corregir">Corregir</button>
+          <button class="btn btn-mini editar">Editar</button>
+          <button class="btn btn-mini duplicar" title="Crear examen paralelo para un nivel ACI">Duplicar</button>
+          <button class="btn btn-mini al-banco" title="Guardar una copia en el banco para reutilizarla en otra clase o el curso siguiente">Al banco</button>
+          <button class="icon-btn borrar-inst" title="Eliminar">×</button>
+        </div>
       </td>
     </tr>`;
   }
@@ -3346,7 +3380,7 @@ function columnasNivel(filas) {
       <section class="card no-print">
         <div class="card-head">
           <h2>${Utils.esc(inst.titulo)}</h2>
-          <div style="display:flex;gap:8px;align-items:center">
+          <div class="acciones">
             ${url ? `<a class="btn" href="${Utils.esc(url)}" target="_blank" rel="noopener" title="${Utils.esc(url)}">Abrir enlace</a>` : ''}
             <button class="btn" id="volver">Volver</button>
           </div>
@@ -3647,7 +3681,7 @@ ${codigos}`;
         </div>
         <label class="campo"><span>1 · Instrucciones para la IA (rellena los huecos)</span>
           <textarea id="ia-prompt" rows="9" readonly></textarea></label>
-        <div style="display:flex;gap:8px;margin:-6px 0 12px;flex-wrap:wrap">
+        <div class="acciones" style="margin:-6px 0 12px">
           <button type="button" class="btn btn-mini btn-primario" id="btn-copiar-prompt">Copiar instrucciones</button>
           <button type="button" class="btn btn-mini" id="btn-descargar-prompt">Descargar .txt</button>
           ${criterios.length ? '' : '<small style="align-self:center;color:var(--ko)">No hay criterios en esta asignatura: impórtalos antes desde Currículo.</small>'}
@@ -3745,7 +3779,7 @@ ${codigos}`;
             nombre: `${Calc.asignaturaDeClase(c.id)?.nombre || '?'} · ${(Calc.byId(db.grupos, c.grupoId) || {}).nombre || '?'}`
           })), claseSel, 'id', 'nombre')}</select>
           ${lista.length ? selPer : ''}
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <div class="acciones">
             <button class="btn btn-primario" id="add-inst">Nuevo instrumento</button>
             <button class="btn" id="btn-banco" title="Reutilizar un instrumento guardado (otra clase o el curso siguiente)">Añadir desde el banco${(db.bancoInstrumentos || []).length ? ' (' + db.bancoInstrumentos.length + ')' : ''}</button>
           </div>
@@ -3798,12 +3832,16 @@ const InformeView = (function () {
   let subVista = 'hallazgos'; // 'hallazgos' | 'criterios' | 'distribucion' | 'alumnos'
   let contenedor = null;
 
-  // El selector de la Cuadrícula envía '__todas__' para «Todos los niveles»
-  // (se acepta también 'TODAS' por compatibilidad con enlaces o datos viejos).
-  function esTodas(nv) { return nv === '__todas__' || nv === 'TODAS'; }
+  function esTodas(nv) {
+    const v = String(nv == null ? '' : nv).trim();
+    if (!v) return false;
+    return v === '__todas__' || v === 'TODAS' || v === 'todos' || v === 'Todos' || v === 'TODO' || v === 'todo';
+  }
 
   // ---------------------------------------------------------------- alcance
-  // Selector en cascada: trimestre → unidad didáctica → instrumento.
+  // Selector en cascada: trimestre → unidad didáctica → instrumento. Encima
+  // va la clase analizada, para que el selector de clase de la cabecera de
+  // la cuadrícula tenga una respuesta visible en el propio informe.
   function htmlAlcance(claseId) {
     const f = {};
     if (alcance.periodo) f.periodo = alcance.periodo;
@@ -3814,7 +3852,18 @@ const InformeView = (function () {
       ? instsBase.filter(i => i.unidad === alcance.unidad)
       : instsBase;
 
+    const asig = Calc.asignaturaDeClase(claseId);
+    const cl = Calc.clase(claseId);
+    const gru = cl ? Calc.byId(Storage.db.grupos, cl.grupoId) : null;
+    const nivelTxt = esTodas(nivelSel)
+      ? 'todos los niveles'
+      : (Calc.etiquetaNivel(claseId, nivelSel) || 'Base');
+
     return `
+      <div class="no-print" style="color:var(--tinta-suave);font-size:13px;margin-bottom:8px">
+        <b style="color:var(--tinta)">${Utils.esc(asig ? asig.nombre : '¿?')}</b>
+        · ${Utils.esc(gru ? gru.nombre : '¿?')} · ${Utils.esc(nivelTxt)}
+      </div>
       <div class="no-print" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
         <select id="alc-periodo" title="Analizar todo el curso o un trimestre" style="max-width:160px">
           <option value="">Todo el curso</option>
@@ -3864,24 +3913,35 @@ const InformeView = (function () {
 
   // ------------------------------------------------------------ hallazgos
   // Cada nivel (base + cada ACI) se analiza por separado y cada hallazgo lleva
-  // su etiqueta de nivel. Se presentan en dos tablas —criterios y preguntas—
-  // con barra de porcentaje y filtro de severidad, más legible que tarjetas de
-  // texto.
+  // su etiqueta de nivel. El nivel activo decide qué niveles se analizan —igual
+  // que en Criterios o Distribución— así que el selector de nivel de la
+  // cabecera de la cuadrícula también vale aquí. Se presentan en dos tablas
+  // —criterios y preguntas— con barra de porcentaje y filtro de severidad,
+  // más legible que tarjetas de texto.
   let filtroSev = 'todos'; // 'todos' | 'critico' | 'atencion'
 
+  // El nivel del selector puede llegar como código ACI (p. ej. '3', '4') o
+  // ya normalizado; se compara siempre normalizado para no fallar por mayúsculas
+  // o espacios (misma regla que el resto de la app: Calc.nivelNorm).
   function htmlHallazgos(claseId, insts) {
     const nivelesAci = Calc.nivelesAciDeClase(claseId);
     const niveles = [
-      { etiqueta: 'Base', criterios: Calc.criteriosDeClase(claseId) }
+      { codigo: '', etiqueta: 'Base', criterios: Calc.criteriosDeClase(claseId) }
     ].concat(nivelesAci.map(nv => ({
+      codigo: nv.codigo,
       etiqueta: nv.etiqueta || nv.codigo,
       criterios: Calc.criteriosDeNivel(claseId, nv.codigo)
     })));
-
-
+    const nvNormSel = Calc.nivelNorm ? Calc.nivelNorm(nivelSel) : String(nivelSel || '').trim().toUpperCase();
+    const seleccion = esTodas(nivelSel)
+      ? niveles
+      : niveles.filter(nv => {
+          const nvNorm = Calc.nivelNorm ? Calc.nivelNorm(nv.codigo) : String(nv.codigo || '').trim().toUpperCase();
+          return nvNorm === nvNormSel;
+        });
 
     const critsPorNivel = [];
-    for (const nv of niveles) {
+    for (const nv of seleccion) {
       Calc.hallazgos(claseId, insts, nv.criterios).forEach(h => {
         if (h.tipo === 'criterio') {
           h.nivelEtiqueta = nv.etiqueta;
@@ -4234,6 +4294,14 @@ const InformeView = (function () {
       claseSel = opciones.claseSel;
       alcance = { periodo: '', unidad: '', instrumentoId: '' };
     }
+    // Si la cuadrícula nos pasa un periodo (T1/T2/T3/Final), sincronízalo con
+    // el alcance del informe. «Final» no es un periodo propio del informe: se
+    // trata como «todo el curso» (sin filtro por trimestre).
+    if (typeof opciones.periodo === 'string') {
+      alcance.periodo = ['T1', 'T2', 'T3'].indexOf(opciones.periodo) !== -1
+        ? opciones.periodo
+        : '';
+    }
     nivelSel = opciones.nivelSel || '';
     contenedor = el;
 
@@ -4246,8 +4314,9 @@ const InformeView = (function () {
     const todas = esTodas(nivelSel);
 
     // Criterios decide sus tablas según el nivel; Distribución filtra el
-    // alumnado por el mismo nivel; Hallazgos analiza todos los niveles y los
-    // etiqueta; Alumnos ordena por riesgo.
+    // alumnado por el mismo nivel; Hallazgos analiza cada nivel seleccionado
+    // y lo etiqueta (las preguntas globales no tienen nivel); Alumnos ordena
+    // por riesgo.
     el.innerHTML = `
       ${htmlAlcance(claseSel)}
       ${htmlSubVista()}
@@ -4264,6 +4333,10 @@ const InformeView = (function () {
       alcance.periodo = e.target.value;
       alcance.unidad = '';
       alcance.instrumentoId = '';
+      // Mantener sincronizado el periodo de la cuadrícula con el del informe.
+      if (opciones && typeof opciones.onPeriodo === 'function') {
+        opciones.onPeriodo(e.target.value || '');
+      }
       render(el, opciones);
     };
     const su = el.querySelector('#alc-unidad');
@@ -4675,6 +4748,9 @@ const CuadriculaView = (() => {
       <span>${Utils.esc(asigImp)} · ${Utils.esc(grupoImp)} · ${periodo} · ${nivelImp} · impreso el ${Utils.hoy().split('-').reverse().join('/')}</span>
     </div>`;
 
+    // En la pestaña Informe el buscador de la cabecera queda oculto (el informe
+    // tiene su subvista «Alumnos»), pero el selector de periodo debe seguir
+    // presente y gobernando el alcance del informe.
     el.innerHTML = `
       <section class="card">
         ${cabeceraImp}
@@ -4693,7 +4769,7 @@ const CuadriculaView = (() => {
               nombre: `${Calc.asignaturaDeClase(c.id)?.nombre || '?'} · ${(Calc.byId(db.grupos, c.grupoId) || {}).nombre || '?'}`
             })), claseSel, 'id', 'nombre')}</select>
             ${selNivel}
-            ${buscaAlumno}
+            ${tab === 'informe' ? '' : buscaAlumno}
             <select id="sel-periodo" style="max-width:130px">
               ${['T1', 'T2', 'T3', 'Final'].map(p => `<option ${p === periodo ? 'selected' : ''}>${p}</option>`).join('')}
             </select>
@@ -4720,14 +4796,24 @@ const CuadriculaView = (() => {
         </div>
       </section>`;
 
-    // La pestaña Informe renderiza su propio contenido (D-59).
+    // La pestaña Informe renderiza su propio contenido (D-59) y hereda clase,
+    // nivel y periodo de la cabecera. El informe tiene su propio #alc-periodo;
+    // cuando se cambia allí, se refleja en el selector de arriba vía onPeriodo.
     if (tab === 'informe') {
       const infEl = el.querySelector('#informe-contenido');
-      if (infEl) InformeView.render(infEl, { claseSel, nivelSel, periodo, imprimir: imprimirInforme });
+      if (infEl) InformeView.render(infEl, {
+        claseSel, nivelSel, periodo,
+        imprimir: imprimirInforme,
+        onPeriodo: (p) => {
+          periodo = (p === 'T1' || p === 'T2' || p === 'T3') ? p : 'Final';
+          render(el);
+        }
+      });
     }
 
     el.querySelector('#sel-clase').onchange = e => { claseSel = e.target.value; nivelSel = ''; render(el); };
-    el.querySelector('#sel-periodo').onchange = e => { periodo = e.target.value; render(el); };
+    const selPeriodo = el.querySelector('#sel-periodo');
+    if (selPeriodo) selPeriodo.onchange = e => { periodo = e.target.value; render(el); };
     if (el.querySelector('#sel-nivel')) {
       el.querySelector('#sel-nivel').onchange = e => { nivelSel = e.target.value; render(el); };
     }
@@ -4893,7 +4979,7 @@ const App = (() => {
       if (sinClave) incidencias.push(['warn', nombre, `${sinClave} criterio${sinClave === 1 ? '' : 's'} sin competencias clave asignadas`]);
     });
     const cuerpo = incidencias.length
-      ? `<ul style="margin:0;padding-left:18px;color:var(--tinta-suave);line-height:1.9">${incidencias.map(([nivel, nombre, txt]) =>
+      ? `<ul class="flujo" style="margin:0;padding-left:18px;color:var(--tinta-suave)">${incidencias.map(([nivel, nombre, txt]) =>
           `<li><span class="badge ${nivel}">${nivel === 'ko' ? 'Falta' : 'Revisar'}</span> <b>${Utils.esc(nombre)}</b> — ${Utils.esc(txt)}</li>`).join('')}</ul>`
       : '<p style="margin:0"><span class="badge ok">Todo en orden</span> Criterios, pesos y competencias clave completos en las asignaturas en uso.</p>';
     return `
@@ -4947,7 +5033,7 @@ const App = (() => {
           <b>Copias de seguridad</b> · <span id="info-backup">…</span><br>
           <small>Con Chrome/Edge en Windows puedes guardar directamente en la carpeta <code>backups/</code> del proyecto; en Android irán a Descargas.</small>
           <div id="aviso-copia" class="no-print"></div>
-          <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap" class="no-print">
+          <div class="acciones no-print" style="margin-top:8px">
             <button class="btn btn-primario btn-mini" id="btn-guardar-ini">Guardar (evalcrit.json)</button>
             <button class="btn btn-mini" id="btn-exportar-ini">Exportar backup ahora</button>
             ${Storage.puedeCarpeta() ? '<button class="btn btn-mini" id="btn-carpeta">Elegir carpeta de backups…</button>' : ''}
@@ -4965,8 +5051,8 @@ const App = (() => {
       ${panelesCoberturaHtml()}
       ${panelesAciHtml()}
       <section class="card">
-        <h2 style="font-size:15px;margin:0 0 8px">Flujo recomendado</h2>
-        <ol style="color:var(--tinta-suave);line-height:1.9;margin:0;padding-left:20px">
+        <h2 class="subtitulo" style="margin:0 0 8px">Flujo recomendado</h2>
+        <ol class="flujo" style="color:var(--tinta-suave);margin:0;padding-left:20px">
           <li>Crea <b>grupos</b> e inscribe <b>alumnos</b>.</li>
           <li>Crea <b>asignaturas</b> y sus <b>clases</b> (asignatura · grupo). Si vas a trabajar con adaptaciones, crea en la clase sus <b>niveles ACI</b>.</li>
           <li>Define en <b>Currículo</b> las competencias específicas, los criterios y sus ponderaciones (suman 100%).</li>
