@@ -12,12 +12,16 @@ const InformeView = (function () {
   let subVista = 'hallazgos'; // 'hallazgos' | 'criterios' | 'distribucion' | 'alumnos'
   let contenedor = null;
 
-  // El selector de la Cuadrícula envía '__todas__' para «Todos los niveles»
-  // (se acepta también 'TODAS' por compatibilidad con enlaces o datos viejos).
-  function esTodas(nv) { return nv === '__todas__' || nv === 'TODAS'; }
+  function esTodas(nv) {
+    const v = String(nv == null ? '' : nv).trim();
+    if (!v) return false;
+    return v === '__todas__' || v === 'TODAS' || v === 'todos' || v === 'Todos' || v === 'TODO' || v === 'todo';
+  }
 
   // ---------------------------------------------------------------- alcance
-  // Selector en cascada: trimestre → unidad didáctica → instrumento.
+  // Selector en cascada: trimestre → unidad didáctica → instrumento. Encima
+  // va la clase analizada, para que el selector de clase de la cabecera de
+  // la cuadrícula tenga una respuesta visible en el propio informe.
   function htmlAlcance(claseId) {
     const f = {};
     if (alcance.periodo) f.periodo = alcance.periodo;
@@ -28,7 +32,18 @@ const InformeView = (function () {
       ? instsBase.filter(i => i.unidad === alcance.unidad)
       : instsBase;
 
+    const asig = Calc.asignaturaDeClase(claseId);
+    const cl = Calc.clase(claseId);
+    const gru = cl ? Calc.byId(Storage.db.grupos, cl.grupoId) : null;
+    const nivelTxt = esTodas(nivelSel)
+      ? 'todos los niveles'
+      : (Calc.etiquetaNivel(claseId, nivelSel) || 'Base');
+
     return `
+      <div class="no-print" style="color:var(--tinta-suave);font-size:13px;margin-bottom:8px">
+        <b style="color:var(--tinta)">${Utils.esc(asig ? asig.nombre : '¿?')}</b>
+        · ${Utils.esc(gru ? gru.nombre : '¿?')} · ${Utils.esc(nivelTxt)}
+      </div>
       <div class="no-print" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
         <select id="alc-periodo" title="Analizar todo el curso o un trimestre" style="max-width:160px">
           <option value="">Todo el curso</option>
@@ -78,24 +93,35 @@ const InformeView = (function () {
 
   // ------------------------------------------------------------ hallazgos
   // Cada nivel (base + cada ACI) se analiza por separado y cada hallazgo lleva
-  // su etiqueta de nivel. Se presentan en dos tablas —criterios y preguntas—
-  // con barra de porcentaje y filtro de severidad, más legible que tarjetas de
-  // texto.
+  // su etiqueta de nivel. El nivel activo decide qué niveles se analizan —igual
+  // que en Criterios o Distribución— así que el selector de nivel de la
+  // cabecera de la cuadrícula también vale aquí. Se presentan en dos tablas
+  // —criterios y preguntas— con barra de porcentaje y filtro de severidad,
+  // más legible que tarjetas de texto.
   let filtroSev = 'todos'; // 'todos' | 'critico' | 'atencion'
 
+  // El nivel del selector puede llegar como código ACI (p. ej. '3', '4') o
+  // ya normalizado; se compara siempre normalizado para no fallar por mayúsculas
+  // o espacios (misma regla que el resto de la app: Calc.nivelNorm).
   function htmlHallazgos(claseId, insts) {
     const nivelesAci = Calc.nivelesAciDeClase(claseId);
     const niveles = [
-      { etiqueta: 'Base', criterios: Calc.criteriosDeClase(claseId) }
+      { codigo: '', etiqueta: 'Base', criterios: Calc.criteriosDeClase(claseId) }
     ].concat(nivelesAci.map(nv => ({
+      codigo: nv.codigo,
       etiqueta: nv.etiqueta || nv.codigo,
       criterios: Calc.criteriosDeNivel(claseId, nv.codigo)
     })));
-
-
+    const nvNormSel = Calc.nivelNorm ? Calc.nivelNorm(nivelSel) : String(nivelSel || '').trim().toUpperCase();
+    const seleccion = esTodas(nivelSel)
+      ? niveles
+      : niveles.filter(nv => {
+          const nvNorm = Calc.nivelNorm ? Calc.nivelNorm(nv.codigo) : String(nv.codigo || '').trim().toUpperCase();
+          return nvNorm === nvNormSel;
+        });
 
     const critsPorNivel = [];
-    for (const nv of niveles) {
+    for (const nv of seleccion) {
       Calc.hallazgos(claseId, insts, nv.criterios).forEach(h => {
         if (h.tipo === 'criterio') {
           h.nivelEtiqueta = nv.etiqueta;
@@ -448,6 +474,14 @@ const InformeView = (function () {
       claseSel = opciones.claseSel;
       alcance = { periodo: '', unidad: '', instrumentoId: '' };
     }
+    // Si la cuadrícula nos pasa un periodo (T1/T2/T3/Final), sincronízalo con
+    // el alcance del informe. «Final» no es un periodo propio del informe: se
+    // trata como «todo el curso» (sin filtro por trimestre).
+    if (typeof opciones.periodo === 'string') {
+      alcance.periodo = ['T1', 'T2', 'T3'].indexOf(opciones.periodo) !== -1
+        ? opciones.periodo
+        : '';
+    }
     nivelSel = opciones.nivelSel || '';
     contenedor = el;
 
@@ -460,8 +494,9 @@ const InformeView = (function () {
     const todas = esTodas(nivelSel);
 
     // Criterios decide sus tablas según el nivel; Distribución filtra el
-    // alumnado por el mismo nivel; Hallazgos analiza todos los niveles y los
-    // etiqueta; Alumnos ordena por riesgo.
+    // alumnado por el mismo nivel; Hallazgos analiza cada nivel seleccionado
+    // y lo etiqueta (las preguntas globales no tienen nivel); Alumnos ordena
+    // por riesgo.
     el.innerHTML = `
       ${htmlAlcance(claseSel)}
       ${htmlSubVista()}
@@ -478,6 +513,10 @@ const InformeView = (function () {
       alcance.periodo = e.target.value;
       alcance.unidad = '';
       alcance.instrumentoId = '';
+      // Mantener sincronizado el periodo de la cuadrícula con el del informe.
+      if (opciones && typeof opciones.onPeriodo === 'function') {
+        opciones.onPeriodo(e.target.value || '');
+      }
       render(el, opciones);
     };
     const su = el.querySelector('#alc-unidad');
