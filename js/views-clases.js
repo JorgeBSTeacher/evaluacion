@@ -281,7 +281,7 @@ const ClasesView = (() => {
         <section class="card">
           <div class="card-head">
             <h2>Asignaturas</h2>
-            <button class="btn btn-primario" id="add-asig">Nueva asignatura</button>
+            <div class="acciones"><button class="btn btn-primario" id="add-asig">Nueva asignatura</button></div>
           </div>
           <ul class="lista" id="lista-asig">
             ${db.asignaturas.map(a => {
@@ -300,7 +300,7 @@ const ClasesView = (() => {
         <section class="card">
           <div class="card-head">
             <h2>Clases <small class="sub" style="margin:0">asignatura · grupo</small></h2>
-            <button class="btn btn-primario" id="add-clase">Nueva clase</button>
+            <div class="acciones"><button class="btn btn-primario" id="add-clase">Nueva clase</button></div>
           </div>
           <table class="tabla">
             <thead><tr><th>Asignatura</th><th>Grupo</th><th>Alumnos</th><th></th></tr></thead>
@@ -314,7 +314,7 @@ const ClasesView = (() => {
                   <td>${Utils.esc(asig.nombre)}</td>
                   <td>${Utils.esc(gru.nombre)}</td>
                   <td>${nAlu}${nAci ? ` · <span class="badge info">ACI ${nAci}</span>` : ''}</td>
-                  <td style="white-space:nowrap"><button class="btn btn-mini aci-clase" data-id="${c.id}" title="Niveles ACI (adaptaciones)">ACI</button> <button class="icon-btn borrar-clase" data-id="${c.id}" title="Eliminar">×</button></td>
+                  <td><div class="acciones"><button class="btn btn-mini aci-clase" data-id="${c.id}" title="Niveles ACI (adaptaciones)">ACI</button><button class="icon-btn borrar-clase" data-id="${c.id}" title="Eliminar">×</button></div></td>
                 </tr>`;
               }).join('') || '<tr><td colspan="4" class="vacio">Crea una clase combinando asignatura y grupo.</td></tr>'}
             </tbody>

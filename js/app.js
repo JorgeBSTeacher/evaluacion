@@ -96,7 +96,7 @@ const App = (() => {
       if (sinClave) incidencias.push(['warn', nombre, `${sinClave} criterio${sinClave === 1 ? '' : 's'} sin competencias clave asignadas`]);
     });
     const cuerpo = incidencias.length
-      ? `<ul style="margin:0;padding-left:18px;color:var(--tinta-suave);line-height:1.9">${incidencias.map(([nivel, nombre, txt]) =>
+      ? `<ul class="flujo" style="margin:0;padding-left:18px;color:var(--tinta-suave)">${incidencias.map(([nivel, nombre, txt]) =>
           `<li><span class="badge ${nivel}">${nivel === 'ko' ? 'Falta' : 'Revisar'}</span> <b>${Utils.esc(nombre)}</b> — ${Utils.esc(txt)}</li>`).join('')}</ul>`
       : '<p style="margin:0"><span class="badge ok">Todo en orden</span> Criterios, pesos y competencias clave completos en las asignaturas en uso.</p>';
     return `
@@ -150,7 +150,7 @@ const App = (() => {
           <b>Copias de seguridad</b> · <span id="info-backup">…</span><br>
           <small>Con Chrome/Edge en Windows puedes guardar directamente en la carpeta <code>backups/</code> del proyecto; en Android irán a Descargas.</small>
           <div id="aviso-copia" class="no-print"></div>
-          <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap" class="no-print">
+          <div class="acciones no-print" style="margin-top:8px">
             <button class="btn btn-primario btn-mini" id="btn-guardar-ini">Guardar (evalcrit.json)</button>
             <button class="btn btn-mini" id="btn-exportar-ini">Exportar backup ahora</button>
             ${Storage.puedeCarpeta() ? '<button class="btn btn-mini" id="btn-carpeta">Elegir carpeta de backups…</button>' : ''}
@@ -168,8 +168,8 @@ const App = (() => {
       ${panelesCoberturaHtml()}
       ${panelesAciHtml()}
       <section class="card">
-        <h2 style="font-size:15px;margin:0 0 8px">Flujo recomendado</h2>
-        <ol style="color:var(--tinta-suave);line-height:1.9;margin:0;padding-left:20px">
+        <h2 class="subtitulo" style="margin:0 0 8px">Flujo recomendado</h2>
+        <ol class="flujo" style="color:var(--tinta-suave);margin:0;padding-left:20px">
           <li>Crea <b>grupos</b> e inscribe <b>alumnos</b>.</li>
           <li>Crea <b>asignaturas</b> y sus <b>clases</b> (asignatura · grupo). Si vas a trabajar con adaptaciones, crea en la clase sus <b>niveles ACI</b>.</li>
           <li>Define en <b>Currículo</b> las competencias específicas, los criterios y sus ponderaciones (suman 100%).</li>

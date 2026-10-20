@@ -41,12 +41,14 @@ const InstrumentosView = (() => {
       <td>${Utils.esc(i.fecha)}</td>
       <td>${i.apartados.length} ${i.tipo === 'Proyecto' ? 'partes/fases' : 'apartados'}</td>
       <td>${Calc.badgeHtml(media)}</td>
-      <td style="white-space:nowrap">
-        <button class="btn btn-mini btn-primario corregir">Corregir</button>
-        <button class="btn btn-mini editar">Editar</button>
-        <button class="btn btn-mini duplicar" title="Crear examen paralelo para un nivel ACI">Duplicar</button>
-        <button class="btn btn-mini al-banco" title="Guardar una copia en el banco para reutilizarla en otra clase o el curso siguiente">Al banco</button>
-        <button class="icon-btn borrar-inst" title="Eliminar">×</button>
+      <td>
+        <div class="acciones">
+          <button class="btn btn-mini btn-primario corregir">Corregir</button>
+          <button class="btn btn-mini editar">Editar</button>
+          <button class="btn btn-mini duplicar" title="Crear examen paralelo para un nivel ACI">Duplicar</button>
+          <button class="btn btn-mini al-banco" title="Guardar una copia en el banco para reutilizarla en otra clase o el curso siguiente">Al banco</button>
+          <button class="icon-btn borrar-inst" title="Eliminar">×</button>
+        </div>
       </td>
     </tr>`;
   }
@@ -533,7 +535,7 @@ function columnasNivel(filas) {
       <section class="card no-print">
         <div class="card-head">
           <h2>${Utils.esc(inst.titulo)}</h2>
-          <div style="display:flex;gap:8px;align-items:center">
+          <div class="acciones">
             ${url ? `<a class="btn" href="${Utils.esc(url)}" target="_blank" rel="noopener" title="${Utils.esc(url)}">Abrir enlace</a>` : ''}
             <button class="btn" id="volver">Volver</button>
           </div>
@@ -834,7 +836,7 @@ ${codigos}`;
         </div>
         <label class="campo"><span>1 · Instrucciones para la IA (rellena los huecos)</span>
           <textarea id="ia-prompt" rows="9" readonly></textarea></label>
-        <div style="display:flex;gap:8px;margin:-6px 0 12px;flex-wrap:wrap">
+        <div class="acciones" style="margin:-6px 0 12px">
           <button type="button" class="btn btn-mini btn-primario" id="btn-copiar-prompt">Copiar instrucciones</button>
           <button type="button" class="btn btn-mini" id="btn-descargar-prompt">Descargar .txt</button>
           ${criterios.length ? '' : '<small style="align-self:center;color:var(--ko)">No hay criterios en esta asignatura: impórtalos antes desde Currículo.</small>'}
@@ -932,7 +934,7 @@ ${codigos}`;
             nombre: `${Calc.asignaturaDeClase(c.id)?.nombre || '?'} · ${(Calc.byId(db.grupos, c.grupoId) || {}).nombre || '?'}`
           })), claseSel, 'id', 'nombre')}</select>
           ${lista.length ? selPer : ''}
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <div class="acciones">
             <button class="btn btn-primario" id="add-inst">Nuevo instrumento</button>
             <button class="btn" id="btn-banco" title="Reutilizar un instrumento guardado (otra clase o el curso siguiente)">Añadir desde el banco${(db.bancoInstrumentos || []).length ? ' (' + db.bancoInstrumentos.length + ')' : ''}</button>
           </div>

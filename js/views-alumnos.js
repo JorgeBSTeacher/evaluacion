@@ -100,8 +100,8 @@ const AlumnosView = (() => {
         <section class="card">
           <div class="card-head">
             <h2>Alumnos${grupoSel ? ' · ' + Utils.esc(nombreGrupo()) : ''}</h2>
-            <div style="display:flex;gap:8px">
-              <button class="btn btn-mini" id="add-varios" ${grupoSel ? '' : 'disabled'}>Añadir varios</button>
+            <div class="acciones">
+              <button class="btn" id="add-varios" ${grupoSel ? '' : 'disabled'}>Añadir varios</button>
               <button class="btn btn-primario" id="add-alumno" ${grupoSel ? '' : 'disabled'}>Nuevo alumno</button>
             </div>
           </div>
@@ -112,9 +112,11 @@ const AlumnosView = (() => {
                 <tr>
                   <td>${Utils.esc(a.apellidos)}</td>
                   <td>${Utils.esc(a.nombre)}</td>
-                  <td style="width:36px;white-space:nowrap">
-                    <button class="btn btn-mini editar-alumno" data-id="${a.id}">Editar</button>
-                    <button class="icon-btn borrar-alumno" data-id="${a.id}" title="Eliminar">×</button></td>
+                  <td>
+                    <div class="acciones">
+                      <button class="btn btn-mini editar-alumno" data-id="${a.id}">Editar</button>
+                      <button class="icon-btn borrar-alumno" data-id="${a.id}" title="Eliminar">×</button>
+                    </div></td>
                 </tr>`).join('') || '<tr><td colspan="3" class="vacio">Este grupo no tiene alumnos aún.</td></tr>'
                 : '<tr><td colspan="3" class="vacio">Selecciona un grupo para ver sus alumnos.</td></tr>'}
             </tbody>

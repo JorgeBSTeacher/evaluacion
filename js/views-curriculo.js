@@ -114,8 +114,8 @@ const CurriculoView = (() => {
         </div>
         <div class="grid-2">
           <div>
-            <div class="card-head"><h2 style="font-size:15px">Competencias específicas</h2>
-              <button class="btn btn-mini btn-primario" id="add-esp">Añadir</button></div>
+            <div class="card-head"><h2 class="subtitulo">Competencias específicas</h2>
+              <div class="acciones"><button class="btn btn-primario" id="add-esp">Añadir</button></div></div>
             <ul class="lista">
               ${espDe().map(e => `
                 <li style="cursor:default">
@@ -125,8 +125,8 @@ const CurriculoView = (() => {
             </ul>
           </div>
           <div>
-            <div class="card-head"><h2 style="font-size:15px">Criterios y ponderaciones</h2>
-              <button class="btn btn-mini btn-primario" id="add-crit">Nuevo criterio</button></div>
+            <div class="card-head"><h2 class="subtitulo">Criterios y ponderaciones</h2>
+              <div class="acciones"><button class="btn btn-primario" id="add-crit">Nuevo criterio</button></div></div>
             <table class="tabla">
               <thead><tr><th>Código</th><th>Descripción</th><th>Peso</th><th>Comp.</th><th></th></tr></thead>
               <tbody>
@@ -136,9 +136,11 @@ const CurriculoView = (() => {
                     <td>${Utils.esc(c.descripcion)}</td>
                     <td class="num">${Utils.fmt(c.peso)}%</td>
                     <td>${c.espIds.map(id => { const e = Calc.byId(db.competenciasEspecificas, id); return e ? `<span class="badge info">${Utils.esc(e.codigo)}</span>` : ''; }).join(' ')}</td>
-                    <td style="white-space:nowrap">
-                      <button class="btn btn-mini editar-crit">Editar</button>
-                      <button class="icon-btn borrar-crit" title="Eliminar">×</button>
+                    <td>
+                      <div class="acciones">
+                        <button class="btn btn-mini editar-crit">Editar</button>
+                        <button class="icon-btn borrar-crit" title="Eliminar">×</button>
+                      </div>
                     </td>
                   </tr>`).join('') || '<tr><td colspan="5" class="vacio">Sin criterios. Añade el primero para poder calificar.</td></tr>'}
               </tbody>
