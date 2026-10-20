@@ -97,6 +97,13 @@ main { max-width: 1440px; margin: 0 auto; padding: 20px 18px 60px; }
 .btn-primario:hover:not(:disabled) { filter: brightness(1.07); color: #fff; }
 .btn-peligro { color: var(--ko); border-color: #f3caca; }
 .btn-peligro:hover:not(:disabled) { background: var(--ko-suave); border-color: var(--ko); color: var(--ko); }
+/* Bloque para acciones irreversibles (p. ej. borrar todo), separado del resto. */
+.zona-peligro {
+  margin-top: 14px; padding: 12px 14px;
+  border: 1px solid #f3caca; border-radius: 10px; background: var(--ko-suave);
+}
+.zona-peligro > b { display: block; color: var(--ko); margin-bottom: 4px; }
+.zona-peligro > p { margin: 0 0 10px; font-size: 13px; color: var(--tinta-suave); }
 .btn-ghost { border-color: transparent; background: transparent; color: var(--tinta-suave); }
 .btn-ghost:hover:not(:disabled) { background: var(--acento-suave); color: var(--acento); border-color: transparent; }
 .btn:disabled {

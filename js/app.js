@@ -135,14 +135,45 @@ const App = (() => {
       </section>`;
   }
 
+  // Configuración (⚙): acciones poco frecuentes y, por ahora, el borrado
+  // total. Se mantiene como modal para no ocupar un sitio fijo en la nav.
+  function modalAjustes() {
+    const body = UI.openModal({
+      titulo: 'Configuración',
+      cuerpo: `
+        <p class="hint">Acciones poco frecuentes. Tus datos viven solo en este navegador.</p>
+        <div class="zona-peligro">
+          <b>Zona peligrosa</b>
+          <p>Elimina <b>todos</b> los grupos, alumnos, clases, currículos, instrumentos y calificaciones guardados en este navegador.</p>
+          <button class="btn btn-peligro" id="btn-reiniciar">Restablecer y vaciar todos los datos</button>
+        </div>`
+    });
+    body.querySelector('#btn-reiniciar').onclick = () => {
+      UI.openModal({
+        titulo: 'Restablecer aplicación',
+        cuerpo: `<p>Se eliminarán <b>todos</b> los grupos, alumnos, clases, currículos, instrumentos y calificaciones guardados en este navegador.</p>
+          <div class="aviso">Si quieres conservar algo, exporta tu backup antes de continuar.</div>`,
+        textoGuardar: 'Sí, vaciar todo',
+        peligro: true,
+        alGuardar() {
+          Storage.reiniciar();
+          UI.toast('Datos eliminados');
+        }
+      });
+    };
+  }
+
   function renderInicio(el) {
     const db = Storage.db;
     el.innerHTML = `
       <section class="card">
         <div class="card-head">
           <h1>Bienvenido a EvalCrit</h1>
-          <label class="campo" style="margin:0"><span>Curso escolar</span>
-            <select id="sel-curso" style="max-width:150px">${opcionesCurso(db.cursoEscolar)}</select></label>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
+            <label class="campo" style="margin:0"><span>Curso escolar</span>
+              <select id="sel-curso" style="max-width:150px">${opcionesCurso(db.cursoEscolar)}</select></label>
+            <button class="icon-btn" id="btn-ajustes" title="Configuración" aria-label="Configuración">⚙</button>
+          </div>
         </div>
         <p style="color:var(--tinta-suave)">Califica con criterios ponderados según la LOMLOE. Los datos se guardan en este navegador:
           <b>exporta tu backup al USB con frecuencia</b>.</p>
@@ -159,10 +190,7 @@ const App = (() => {
         </div>
         ${Storage.vacio() ? `
           <div class="aviso">Tu aplicación está vacía. Puedes cargar datos de ejemplo para probarla.</div>
-          <button class="btn btn-primario" id="btn-demo">Cargar datos de ejemplo</button>` : `
-          <div style="margin-top:14px">
-            <button class="btn btn-peligro" id="btn-reiniciar">Restablecer y vaciar todos los datos</button>
-          </div>`}
+          <button class="btn btn-primario" id="btn-demo">Cargar datos de ejemplo</button>` : ''}
       </section>
       ${panelesEstadoHtml()}
       ${panelesCoberturaHtml()}
@@ -235,20 +263,8 @@ const App = (() => {
       UI.toast('Datos de ejemplo cargados');
       App.ir('inicio');
     };
-    const reiniciar = el.querySelector('#btn-reiniciar');
-    if (reiniciar) reiniciar.onclick = () => {
-      UI.openModal({
-        titulo: 'Restablecer aplicación',
-        cuerpo: `<p>Se eliminarán <b>todos</b> los grupos, alumnos, clases, currículos, instrumentos y calificaciones guardados en este navegador.</p>
-          <div class="aviso">Si quieres conservar algo, exporta tu backup antes de continuar.</div>`,
-        textoGuardar: 'Sí, vaciar todo',
-        peligro: true,
-        alGuardar() {
-          Storage.reiniciar();
-          UI.toast('Datos eliminados');
-        }
-      });
-    };
+    const ajustes = el.querySelector('#btn-ajustes');
+    if (ajustes) ajustes.onclick = () => modalAjustes();
 
     // Paneles de estado: cada fila de clase abre Calificaciones de esa clase.
     el.querySelectorAll('.fila-inicio').forEach(tr => {

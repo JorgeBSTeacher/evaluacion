@@ -1928,6 +1928,36 @@ async function main() {
     check('sin clases no se muestra el panel ACI', P.aci() === '');
   }
 
+  console.log('\n== Configuracion: borrado total fuera del alcance ==');
+  {
+    const app = cargarApp({ dom: true });
+    app.Storage.load();
+    await importarJson(app, estadoBanco());
+    const doc = app.document;
+    const appEl = doc.getElementById('app');
+
+    app.App.ir('inicio');
+    check('Inicio ofrece el engranaje de Configuracion', !!appEl.querySelector('#btn-ajustes'));
+    check('el borrado total ya no esta suelto en Inicio', !appEl.querySelector('#btn-reiniciar'));
+
+    appEl.querySelector('#btn-ajustes').click();
+    const body = doc.querySelector('.modal-body');
+    check('el engranaje abre el modal de Configuracion',
+      doc.querySelector('.modal-head h3').textContent === 'Configuración');
+    check('el borrado total vive dentro de la zona peligrosa',
+      !!body.querySelector('.zona-peligro') && !!body.querySelector('.zona-peligro #btn-reiniciar'));
+
+    body.querySelector('#btn-reiniciar').click();
+    const confirmar = doc.querySelector('.guardar');
+    check('antes de borrar pide confirmacion explicita',
+      !!confirmar && confirmar.textContent === 'Sí, vaciar todo' && confirmar.className.includes('btn-peligro'));
+
+    const nAntes = app.Storage.db.instrumentos.length;
+    confirmar.click();
+    check('confirmar vacia los datos y cierra el modal',
+      app.Storage.db.instrumentos.length === 0 && nAntes > 0 && doc.querySelector('#modal-root').innerHTML === '');
+  }
+
   console.log('\n== Auditoría del curso de prueba (3 grupos · 6 clases · ACI · 9 UD) ==');
   {
     const estado = estadoPrueba();
