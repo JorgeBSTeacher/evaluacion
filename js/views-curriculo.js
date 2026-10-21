@@ -96,12 +96,31 @@ const CurriculoView = (() => {
 
     const sumaPesos = criteriosDe().reduce((s, c) => s + (Number(c.peso) || 0), 0);
     const asig = Calc.asignatura(asigSel) || {};
+    // Agrupado por area del decreto. Las asignaturas creadas antes de que
+    // existiera el campo `area` (o a mano, sin area) caen en «Otras
+    // asignaturas»: preferimos que se vean raro a esconderlas del desplegable.
+    const SIN_AREA = 'Otras asignaturas';
+    const grupos = [];
+    db.asignaturas.forEach(a => {
+      const clave = String(a.area || '').trim() || SIN_AREA;
+      let g = grupos.find(x => x.area === clave);
+      if (!g) { g = { area: clave, lista: [] }; grupos.push(g); }
+      g.lista.push(a);
+    });
+    grupos.sort((x, y) => (x.area === SIN_AREA) - (y.area === SIN_AREA)
+      || x.area.localeCompare(y.area, 'es'));
+    const opcionesAsig = grupos.map(g =>
+      `<optgroup label="${Utils.esc(g.area)}">`
+      + g.lista.map(a =>
+        `<option value="${a.id}" ${a.id === asigSel ? 'selected' : ''}>${Utils.esc(a.nombre)}</option>`
+      ).join('')
+      + '</optgroup>').join('');
     el.innerHTML = `
       <section class="card">
         <div class="card-head">
           <h2>Currículo</h2>
           <div style="display:flex;gap:8px;align-items:center">
-            <select id="sel-asig" style="max-width:280px">${UI.selectHtml(db.asignaturas, asigSel, 'id', 'nombre')}</select>
+            <select id="sel-asig" style="max-width:280px">${opcionesAsig}</select>
           </div>
         </div>
         <div class="aviso">

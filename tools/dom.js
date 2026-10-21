@@ -139,6 +139,17 @@ function crearNodo(tag) {
     }
   });
 
+  // `label` es una PROPIEDAD reflejada del atributo en `<optgroup>`,
+  // `<option>` y `<track>` (igual que en el navegador): leerla o asignarla no
+  // toca el atributo, y asignarla no cambia el texto visible.
+  if (el.tagName === 'OPTGROUP' || el.tagName === 'OPTION') {
+    Object.defineProperty(el, 'label', {
+      get() { return 'label' in this._attrs ? this._attrs.label : ''; },
+      set(v) { this._attrs.label = String(v == null ? '' : v); },
+      configurable: true
+    });
+  }
+
   Object.defineProperty(el, 'value', {
     get() {
       if (this.tagName === 'SELECT') {

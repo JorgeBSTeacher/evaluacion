@@ -30,6 +30,14 @@ const ClasesView = (() => {
       ((p.asignatura || {}).cursos || []).map(String).includes(String(curso)));
   }
 
+  // Solo dos áreas del decreto se desdoblan en la práctica, y el currículo es el
+  // mismo en las dos: Lengua Extranjera (Inglés o Francés) y Educación Artística
+  // (Plástica o Música). Son ETIQUETAS del nombre visible, no áreas distintas.
+  const VARIANTES = {
+    'Lengua Extranjera': ['Inglés', 'Francés'],
+    'Educación Artística': ['Plástica', 'Música']
+  };
+
   // Alta de asignatura. Sin argumentos deja elegir entre recuperar el currículo
   // oficial de un curso o crearla en blanco. Si recibe una asignatura existente
   // (creada a mano), solo ofrece recuperar el currículo sobre ella.
@@ -46,9 +54,16 @@ const ClasesView = (() => {
       <div id="bloque-oficial">
         <label class="campo"><span>Área / asignatura</span>
           <select id="f-area">${areas.map(a => `<option>${Utils.esc(a)}</option>`).join('')}</select></label>
+        <label class="campo" id="campo-variante"><span>Variante</span>
+          <select id="f-variante"></select></label>
         <label class="campo"><span>Curso</span>
           <select id="f-curso"></select></label>
         <div class="aviso" id="f-resumen"></div>
+        <div class="aviso">
+          La asignatura se llamará <b>como en el Decreto 66/2022</b>. Si necesitas otro
+          nombre (por ejemplo porque das Plástica y Música por separado), cámbialo después
+          en <b>Editar asignatura</b>: el currículo y las notas no se tocan.
+        </div>
       </div>
       <div id="bloque-blanco">
         <label class="campo"><span>Nombre</span>
@@ -66,11 +81,14 @@ const ClasesView = (() => {
         if (modo === 'oficial') {
           const area = body.querySelector('#f-area').value;
           const curso = body.querySelector('#f-curso').value;
+          const variante = body.querySelector('#f-variante');
+          const etiqueta = variante && variante.value ? variante.value : '';
           const pl = plantillaDe(area, curso);
           if (!pl) { alert(`No hay currículo oficial para «${area}» en ${curso}.`); return false; }
           try {
             const r = Storage.importarCurriculo(pl, {
               cursos: [curso],
+              etiqueta,
               asignaturaId: recuperar ? recuperar.id : null
             });
             UI.toast('Currículo cargado: ' + r.asignaturas.join(', '));
@@ -88,6 +106,8 @@ const ClasesView = (() => {
 
     const selModo = mbody.querySelector('#f-modo');
     const selArea = mbody.querySelector('#f-area');
+    const selVariante = mbody.querySelector('#f-variante');
+    const campoVariante = mbody.querySelector('#campo-variante');
     const selCurso = mbody.querySelector('#f-curso');
     const bloqueOficial = mbody.querySelector('#bloque-oficial');
     const bloqueBlanco = mbody.querySelector('#bloque-blanco');
@@ -95,11 +115,23 @@ const ClasesView = (() => {
 
     function pintaResumen() {
       const pl = plantillaDe(selArea.value, selCurso.value);
+      const nombreVisible = nombreElegido();
       resumen.innerHTML = pl
-        ? `Se creará <b>${Utils.esc(selArea.value)} ${Utils.esc(selCurso.value)}</b> con `
+        ? `Se creará <b>${Utils.esc(nombreVisible)}</b> con `
           + `${(pl.competenciasEspecificas || []).length} competencias y ${(pl.criterios || []).length} criterios`
           + `${pl.asignatura.ciclo ? ' (' + Utils.esc(pl.asignatura.ciclo) + ')' : ''}.`
         : 'No hay currículo oficial para esa combinación.';
+    }
+    // Nombre visible de la asignatura que se va a crear: «área + curso», o
+    // «variante + curso» en las áreas que se desdoblan.
+    function nombreElegido() {
+      const base = (selVariante && selVariante.value) ? selVariante.value : selArea.value;
+      return selCurso.value ? `${base} ${selCurso.value}` : base;
+    }
+    function pintaVariante() {
+      const variantes = VARIANTES[selArea.value] || [];
+      campoVariante.style.display = variantes.length ? '' : 'none';
+      selVariante.innerHTML = variantes.map(v => `<option>${Utils.esc(v)}</option>`).join('');
     }
     function pintaCursos() {
       selCurso.innerHTML = cursosDeArea(selArea.value).map(c => `<option>${Utils.esc(c)}</option>`).join('');
@@ -110,20 +142,32 @@ const ClasesView = (() => {
       bloqueOficial.style.display = oficial ? '' : 'none';
       bloqueBlanco.style.display = oficial ? 'none' : '';
     }
-    if (selArea) selArea.onchange = pintaCursos;
+    function alCambiarArea() {
+      pintaVariante();
+      pintaCursos();
+    }
+    if (selArea) selArea.onchange = alCambiarArea;
+    if (selVariante) selVariante.onchange = pintaResumen;
     if (selCurso) selCurso.onchange = pintaResumen;
     if (recuperar) {
       bloqueBlanco.style.display = 'none';
-      const area = areas.find(a => recuperar.nombre.toLowerCase().indexOf(a.toLowerCase()) === 0);
+      const area = areas.find(a => (recuperar.area || recuperar.nombre).toLowerCase().indexOf(a.toLowerCase()) === 0);
       if (area) selArea.value = area;
+      pintaVariante();
       pintaCursos();
       if (recuperar.curso && Array.from(selCurso.options).some(o => o.value === recuperar.curso)) {
         selCurso.value = recuperar.curso;
       }
+      // Si la asignatura ya lleva la etiqueta en el nombre («Inglés 3º»),
+      // preselecciona su variante para no renombrarla sin querer.
+      const varianteActual = selVariante && Array.from(selVariante.options)
+        .find(o => new RegExp('^' + o.value + '\\b', 'i').test(String(recuperar.nombre || '')));
+      if (varianteActual) selVariante.value = varianteActual.value;
       pintaResumen();
     } else if (selModo) {
       selModo.onchange = pintaModo;
       pintaModo();
+      pintaVariante();
       // El desplegable de curso se rellena al elegir área, pero si el docente
       // abre el modal y va directo a Guardar sin tocar nada, quedaría vacío y
       // el alta oficial fallaría con «No hay currículo» sin motivo. Se puebla

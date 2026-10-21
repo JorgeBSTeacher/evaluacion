@@ -1156,7 +1156,76 @@ async function main() {
       asigOficial.curso === cursoAlAbrir &&
       asigOficial.nombre.includes(cursoAlAbrir) &&
       db.criterios.some(c => c.asignaturaId === asigOficial.id));
+    // El área se guarda APARTE del nombre: es lo que permite agrupar el
+    // desplegable de Currículo aunque la asignatura se renombre después.
+    check('P-07 · el alta oficial guarda el área de la plantilla, no solo el nombre',
+      asigOficial.area === areaAlAbrir && asigOficial.nombre === areaAlAbrir + ' ' + cursoAlAbrir);
     app.alertas.length = 0;
+
+    // --- Lengua Extranjera y Ed. Artística se desdoblan en la práctica ---
+    // El currículo es UNO (el del decreto); lo único que cambia es la etiqueta
+    // visible. Inglés 3º y Francés 3º son asignaturas distintas con los mismos
+    // criterios, que es lo que el docente necesita para llevar una u otra.
+    const abrirOficial = (area, curso, variante) => {
+      v.querySelector('#add-asig').click();
+      const m = modal();
+      const selA = m.querySelector('#f-area');
+      selA.value = area;
+      selA._dispara('change');
+      if (variante) {
+        const selV = m.querySelector('#f-variante');
+        selV.value = variante;
+        selV._dispara('change');
+      }
+      const selC = m.querySelector('#f-curso');
+      selC.value = curso;
+      selC._dispara('change');
+      return m;
+    };
+    const nIngles = db.asignaturas.length;
+    abrirOficial('Lengua Extranjera', '3º', 'Inglés');
+    check('P-07 · el área con variante pide la variante y la anuncia en el resumen',
+      modal().querySelector('#campo-variante').style.display !== 'none' &&
+      modal().querySelector('#f-resumen').innerHTML.includes('Inglés 3º'));
+    guardar();
+    const ingles = db.asignaturas[db.asignaturas.length - 1];
+    check('P-07 · Inglés 3º se crea con la etiqueta y con el área del decreto',
+      db.asignaturas.length === nIngles + 1 &&
+      ingles.nombre === 'Inglés 3º' &&
+      ingles.area === 'Lengua Extranjera' &&
+      ingles.curso === '3º' &&
+      db.criterios.some(c => c.asignaturaId === ingles.id));
+    // El área sin variante no muestra el campo, para no confundir al docente.
+    const mSinVar = abrirOficial('Matemáticas', '3º', null);
+    check('P-07 · un área sin variante no muestra el desplegable de variante',
+      mSinVar.querySelector('#campo-variante').style.display === 'none');
+    app.alertas.length = 0;
+
+    // --- El desplegable de Currículo agrupa por área ---
+    app.App.ir('curriculo');
+    const selAsig = v.querySelector('#sel-asig');
+    const grupos = Array.from(selAsig.querySelectorAll('optgroup')).map(g => g.label);
+    // El estado de prueba ya trae currículos oficiales: todos con área. Se
+    // confecciona a mano una asignatura sin área (como las creadas antes de que
+    // el campo existiera) para comprobar que no desaparece del desplegable.
+    app.Storage.guardarAsignatura({ nombre: 'Taller de ajedrez', etapa: 'Primaria' });
+    const sinArea = app.Storage.db.asignaturas[app.Storage.db.asignaturas.length - 1];
+    app.App.ir('curriculo');
+    const selAsig2 = v.querySelector('#sel-asig');
+    const grupos2 = Array.from(selAsig2.querySelectorAll('optgroup')).map(g => g.label);
+    const opciones2 = Array.from(selAsig2.querySelectorAll('option'));
+    const opSinArea = opciones2.find(o => o.value === sinArea.id);
+    const opIngles = opciones2.find(o => o.value === ingles.id);
+    check('P-07 · el desplegable de Currículo agrupa por área del decreto',
+      grupos.includes('Lengua Extranjera') && grupos.includes('Matemáticas'));
+    check('P-07 · una asignatura sin área no desaparece: cae en «Otras asignaturas»',
+      grupos2[grupos2.length - 1] === 'Otras asignaturas' && !!opSinArea &&
+      opSinArea.closest('optgroup').label === 'Otras asignaturas');
+    check('P-07 · la asignatura aparece bajo su área con su nombre visible',
+      !!opIngles && opIngles.textContent === 'Inglés 3º' &&
+      opIngles.closest('optgroup') && opIngles.closest('optgroup').label === 'Lengua Extranjera');
+    app.Storage.db.asignaturas = app.Storage.db.asignaturas.filter(a => a.id !== sinArea.id);
+    app.App.ir('clases');
 
     const nAsig2 = db.asignaturas.length;
     v.querySelector('#add-asig').click();

@@ -251,6 +251,14 @@ const Storage = {
     db.asignaturas.forEach(a => {
       if (a.curso == null) a.curso = '';
       if (a.fuente == null) a.fuente = '';
+      // El area es de que asignatura del decreto sale, y va APARTE del nombre
+      // visible: asi el desplegable agrupa por area aunque el docente renombre
+      // la asignatura (o le ponga «Ingles 3º»). Backups antiguos no la traen, y
+      // no se puede derivar del nombre sin ambiguedad («Conocimiento del Medio
+      // Natural, Social y Cultural 5º»), asi que se migra a vacio y el
+      // desplegable cae en «Otras asignaturas». Las creadas a partir de ahora
+      // si la llevan.
+      if (a.area == null) a.area = '';
     });
     // Códigos de nivel ACI y asignaciones de alumnado: se guardan siempre
     // normalizados (sin espacios, en mayúsculas) para que un «b» tecleado por
@@ -432,6 +440,7 @@ const Storage = {
     const nueva = {
       id: Utils.uid(),
       nombre,
+      area: String(datos.area || ''),
       etapa: datos.etapa || 'Primaria',
       curso: datos.curso != null ? String(datos.curso) : '',
       fuente: datos.fuente != null ? String(datos.fuente) : ''
@@ -729,6 +738,10 @@ const Storage = {
       // duplicarla. Sirve para arreglar las creadas a mano sin currículo.
       const target = this.db.asignaturas.find(a => a.id === opts.asignaturaId);
       if (!target) throw new Error('La asignatura indicada ya no existe');
+      if (!target.area) target.area = nombre;
+      const etiqueta = String(opts.etiqueta || '').trim();
+      const cursoTarget = String(opts.curso || target.curso || '').trim();
+      if (etiqueta) target.nombre = cursoTarget ? `${etiqueta} ${cursoTarget}` : etiqueta;
       rellenar(target, String(opts.curso || target.curso || cursos[0] || '').trim());
       creadas.push(target.nombre);
       ids.push(target.id);
@@ -738,7 +751,19 @@ const Storage = {
         let target = this.db.asignaturas.find(a =>
           a.nombre.toLowerCase() === nombreCompleto.toLowerCase() && (a.etapa || '') === etapa);
         if (!target) {
-          target = { id: Utils.uid(), nombre: nombreCompleto, etapa, curso, fuente };
+          // El nombre del área va aparte del nombre visible: así el desplegable
+          // puede agrupar por área aunque el docente renombre la asignatura. Si
+          // no se indica etiqueta (Inglés/Francés, Plástica/Música), es el del
+          // decreto y el nombre visible es «área + curso», como siempre.
+          const etiqueta = String(opts.etiqueta || '').trim();
+          target = {
+            id: Utils.uid(),
+            nombre: etiqueta ? (curso ? `${etiqueta} ${curso}` : etiqueta) : nombreCompleto,
+            area: nombre,
+            etapa,
+            curso,
+            fuente
+          };
           this.db.asignaturas.push(target);
         }
         rellenar(target, curso);
