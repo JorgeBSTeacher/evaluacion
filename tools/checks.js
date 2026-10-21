@@ -1292,7 +1292,11 @@ async function main() {
     filaAci.querySelector('.nv-cod').value = 'b';
     filaAci.querySelector('.nv-cod')._dispara('input');
     filaAci.querySelector('.nv-etq').value = '5º';
-    const asigAci = db.asignaturas.find(a => a.id !== claseAci.asignaturaId);
+    // La lista solo ofrece currículos de la MISMA área que la clase: se elige uno
+    // de esa área (si no lo hubiera, la salvaguarda dejaría la lista completa).
+    const areaClaseAci = app.ClasesView.areaDeAsignatura(app.Calc.asignaturaDeClase(claseAci.id));
+    const asigAci = db.asignaturas.find(a => a.id !== claseAci.asignaturaId
+      && (!areaClaseAci || app.ClasesView.areaDeAsignatura(a) === areaClaseAci));
     filaAci.querySelector('.nv-asig').value = asigAci.id;
     bodyAci.querySelector('.alu-nivel').value = 'B';
     guardar();
@@ -1301,6 +1305,113 @@ async function main() {
       claseGuardada.nivelesAci.some(n => n.codigo === 'B' && n.etiqueta === '5º' && n.asignaturaId === asigAci.id));
     check('P-09 · el modal ACI asigna el alumnado al nivel elegido',
       claseGuardada.adaptaciones[alumnoAci.id] === 'B');
+
+    // --- Niveles ACI: la lista solo ofrece currículos de la MISMA área (D-62) ---
+    // Escenario con áreas de verdad: se importan dos currículos oficiales de
+    // áreas distintas y se comprueba que una clase de Matemáticas NO puede
+    // apuntar a Lengua. Es la verificación que importa: la del caso negativo.
+    //
+    // El escenario cambia Storage.db, así que se guarda la referencia ORIGINAL
+    // y se restaura tal cual al final: los checks que vienen detrás leen `db`,
+    // capturado al principio del bloque, y deben seguir viendo el mismo objeto.
+    const dbOriginal = app.Storage.db;
+    const escAci = app.Storage.defaults();
+    escAci.cursoEscolar = '2025/2026';
+    escAci.grupos = [{ id: 'gA', nombre: '6ºA', etapa: 'Primaria' }];
+    escAci.alumnos = [
+      { id: 'aA', nombre: 'Ana', apellidos: 'Base', grupoId: 'gA' },
+      { id: 'aB', nombre: 'Beto', apellidos: 'Aci', grupoId: 'gA' }
+    ];
+    importarJson(app, escAci);
+    // `importarJson` sustituye Storage.db por un objeto nuevo: hay que releerlo,
+    // porque la referencia capturada al principio del bloque ya está muerta.
+    const dbAci = app.Storage.db;
+    const tplMat = app.PLANTILLAS_CURRICULO.find(p => (p.asignatura || {}).nombre === 'Matemáticas' && (p.asignatura.cursos || []).includes('6º'));
+    const tplLcl = app.PLANTILLAS_CURRICULO.find(p => (p.asignatura || {}).nombre === 'Lengua Castellana y Literatura' && (p.asignatura.cursos || []).includes('6º'));
+    const rMat = app.Storage.importarCurriculo(tplMat, { cursos: ['6º'] });
+    const matId = rMat.ids[0];
+    // Un segundo curso del área, que es el que un nivel ACI puede apuntar.
+    const tplMat3 = app.PLANTILLAS_CURRICULO.find(p => (p.asignatura || {}).nombre === 'Matemáticas' && (p.asignatura.cursos || []).includes('3º'));
+    const mat3Id = app.Storage.importarCurriculo(tplMat3, { cursos: ['3º'] }).ids[0];
+    const rLcl = app.Storage.importarCurriculo(tplLcl, { cursos: ['6º'] });
+    const lclId = rLcl.ids[0];
+    app.Storage.guardarAsignatura({ nombre: 'Taller de ajedrez', etapa: 'Primaria' });
+    const manual = dbAci.asignaturas.find(a => a.nombre === 'Taller de ajedrez');
+    const claseMat = { id: 'cMat', asignaturaId: matId, grupoId: 'gA', nivelesAci: [], adaptaciones: {} };
+    dbAci.clases.push(claseMat);
+    app.App.ir('clases');
+
+    // El área se deduce del prefijo del criterio, sin depender del campo guardado.
+    check('D-62 · el área se deduce del prefijo de los criterios',
+      app.ClasesView.areaDeAsignatura(app.Calc.asignatura(matId)) === 'Matemáticas'
+      && app.ClasesView.areaDeAsignatura(app.Calc.asignatura(lclId)) === 'Lengua Castellana y Literatura');
+    // Y también cuando el campo `area` NO está (asignaturas anteriores a 641585d).
+    dbAci.asignaturas.forEach(a => { a.area = ''; });
+    check('D-62 · el área se deduce igual con el campo `area` vacío (datos anteriores)',
+      app.ClasesView.areaDeAsignatura(app.Calc.asignatura(matId)) === 'Matemáticas');
+    check('D-62 · una asignatura sin currículo no tiene área',
+      app.ClasesView.areaDeAsignatura(manual) === '');
+
+    v.querySelector('.aci-clase[data-id="cMat"]').click();
+    const bodyFiltro = modal();
+    bodyFiltro.querySelector('#add-nivel-aci').click();
+    const filaFiltro = bodyFiltro.querySelector('.nivel-aci-fila:last-child');
+    const opcionesFiltro = Array.from(filaFiltro.querySelector('.nv-asig').querySelectorAll('option'))
+      .map(o => o.value).filter(Boolean);
+    check('D-62 · el desplegable de la ACI solo ofrece la misma área',
+      opcionesFiltro.includes(matId) && !opcionesFiltro.includes(lclId),
+      opcionesFiltro.join(','));
+    check('D-62 · la asignatura a mano (sin currículo) tampoco se ofrece',
+      !opcionesFiltro.includes(manual.id));
+    check('D-62 · con otro currículo del área NO se avisa: hay a qué apuntar',
+      !bodyFiltro.querySelector('#aviso-curriculo-area'));
+    check('D-62 · el nivel ACI puede apuntar al otro curso del área',
+      opcionesFiltro.includes(mat3Id));
+    doc.querySelector('.cancelar').click();
+
+    // Salvaguarda: si el filtro deja la lista VACÍA, la ACI no se bloquea; se
+    // ofrecen todas y se explica por qué. «Prefiero una lista larga que un
+    // callejón sin salida.»
+    const claseManual = { id: 'cMan', asignaturaId: manual.id, grupoId: 'gA', nivelesAci: [], adaptaciones: {} };
+    dbAci.clases.push(claseManual);
+    app.App.ir('clases');
+    v.querySelector('.aci-clase[data-id="cMan"]').click();
+    const bodyVacio = modal();
+    bodyVacio.querySelector('#add-nivel-aci').click();
+    const filaVacio = bodyVacio.querySelector('.nivel-aci-fila:last-child');
+    const opcionesVacio = Array.from(filaVacio.querySelector('.nv-asig').querySelectorAll('option'))
+      .map(o => o.value).filter(Boolean);
+    check('D-62 · sin área (asignatura a mano) la lista NO se bloquea: ofrece todas',
+      opcionesVacio.includes(matId) && opcionesVacio.includes(lclId));
+    check('D-62 · una asignatura sin área no muestra el aviso: no hay área que reclamar',
+      !bodyVacio.querySelector('#aviso-curriculo-area'));
+    doc.querySelector('.cancelar').click();
+
+    // Aviso en gris: la clase tiene área pero NO hay otro currículo de esa área
+    // al que apuntar (solo el suyo). Se dice qué falta sin bloquear nada.
+    // Se borra por completo la asignatura de Lengua y se crea sola, de nuevo,
+    // como único currículo de su área.
+    app.Storage.borrarAsignatura(lclId);
+    const lclSolaId = app.Storage.importarCurriculo(tplLcl, { cursos: ['6º'] }).ids[0];
+    // borrarAsignatura sustituye db.clases por un array NUEVO: hay que releer la
+    // referencia viva o el push cae en un array muerto.
+    app.Storage.db.clases.push({ id: 'cLcl', asignaturaId: lclSolaId, grupoId: 'gA', nivelesAci: [], adaptaciones: {} });
+    app.App.ir('clases');
+    v.querySelector('.aci-clase[data-id="cLcl"]').click();
+    const bodyAviso = modal();
+    check('D-62 · con área pero sin otro currículo de esa área se muestra el aviso en gris',
+      !!bodyAviso.querySelector('#aviso-curriculo-area')
+      && /Genera un currículo personalizado primero/.test(bodyAviso.querySelector('#aviso-curriculo-area').textContent));
+    doc.querySelector('.cancelar').click();
+
+    // Se restaura la referencia ORIGINAL de Storage.db para no contaminar los
+    // checks que vienen detrás (importarJson sustituye el objeto).
+    app.Storage.db = dbOriginal;
+
+    // La tarjeta ya no se llama «Asignaturas»: cada fila es un currículo.
+    app.App.ir('clases');
+    check('D-62 · la tarjeta se rotula «Currículos y asignaturas»',
+      /Currículos y asignaturas/.test(v.innerHTML));
 
     // --- Currículo: competencia específica y criterio ---
     app.App.ir('curriculo');

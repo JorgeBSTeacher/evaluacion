@@ -2439,6 +2439,42 @@ const ClasesView = (() => {
       ((p.asignatura || {}).cursos || []).map(String).includes(String(curso)));
   }
 
+  // Área del decreto de una asignatura. Es lo que permite ofrecer, en los
+  // niveles ACI, solo currículos de la MISMA área que la clase: una clase de
+  // Matemáticas no debe poder apuntar a un currículo de Lengua.
+  //
+  // El campo `asignatura.area` solo lo llevan las asignaturas creadas desde el
+  // alta oficial (641585d); las anteriores lo tienen vacío, así que NO se puede
+  // usar como única fuente. Se deduce EN EL MOMENTO del prefijo de los códigos
+  // de criterio («MAT 1.1» → «Matemáticas»), que es el dato vivo: si el
+  // currículo cambia o se recupera después, el área se recalcula sola. No se
+  // escribe nada, así que no hay migración ni botón de rescate.
+  //
+  // Los prefijos salen de tools/extract-decreto.py (AREAS) y las 19 plantillas
+  // los cumplen sin colisión.
+  const AREA_POR_PREFIJO = {
+    CMNSC: 'Conocimiento del Medio Natural, Social y Cultural',
+    EART: 'Educación Artística',
+    EFIS: 'Educación Física',
+    EVCE: 'Educación en Valores Cívicos y Éticos',
+    LCL: 'Lengua Castellana y Literatura',
+    LEXT: 'Lengua Extranjera',
+    MAT: 'Matemáticas'
+  };
+
+  function areaDeAsignatura(asig) {
+    if (!asig) return '';
+    // El campo guardado manda cuando existe (asignaturas creadas desde 641585d).
+    if (asig.area) return asig.area;
+    const criterios = Storage.db.criterios.filter(c => c.asignaturaId === asig.id);
+    for (const c of criterios) {
+      const pref = String(c.codigo || '').trim().split(/[\s.]+/)[0].toUpperCase();
+      if (AREA_POR_PREFIJO[pref]) return AREA_POR_PREFIJO[pref];
+    }
+    // Sin currículo no hay prefijo: es una asignatura hecha a mano, sin área.
+    return '';
+  }
+
   // Solo dos áreas del decreto se desdoblan en la práctica, y el currículo es el
   // mismo en las dos: Lengua Extranjera (Inglés o Francés) y Educación Artística
   // (Plástica o Música). Son ETIQUETAS del nombre visible, no áreas distintas.
@@ -2656,13 +2692,51 @@ const ClasesView = (() => {
     const opcionesAsig = asignaturaId => '<option value="">— asignatura —</option>'
       + UI.selectHtml(db.asignaturas, asignaturaId, 'id', 'nombre');
 
+    // Currículos que se ofrecen en cada nivel ACI: solo los de la MISMA área que
+    // la clase. Una clase de Matemáticas no puede apuntar a Lengua. El área se
+    // deduce del currículo de la propia clase (su asignatura base), no del campo
+    // guardado, para que funcione también con las asignaturas anteriores.
+    //
+    // SALVAGUARDA: si el filtro deja la lista VACÍA, la ACI NO se bloquea: se
+    // ofrecen todas. «Prefiero una lista larga que un callejón sin salida.»
+    // Pasa con las asignaturas hechas a mano (sin área) y con las clases sin
+    // currículo propio.
+    function otrasDelArea() {
+      const areaClase = areaDeAsignatura(Calc.asignaturaDeClase(clase.id));
+      if (!areaClase) return null; // sin área: no se puede filtrar
+      return db.asignaturas.filter(a => areaDeAsignatura(a) === areaClase);
+    }
+
+    function opcionesAsignatura(asignaturaId) {
+      const mismas = otrasDelArea();
+      if (!mismas || !mismas.length) return opcionesAsig(asignaturaId);
+      return '<option value="">— asignatura —</option>'
+        + UI.selectHtml(mismas, asignaturaId, 'id', 'nombre');
+    }
+
+    // Aviso en gris: la clase tiene área pero NO hay otro currículo de esa área
+    // al que apuntar un nivel ACI (solo el suyo propio, o ninguno). Entonces no
+    // se puede montar un nivel de otro curso y se dice en gris qué falta, sin
+    // bloquear nada. Es el caso en que el docente aún no ha generado el currículo
+    // del curso del que viene el alumnado con adaptación.
+    function avisoSinCurriculo() {
+      const mismas = otrasDelArea();
+      if (!mismas) return ''; // sin área no hay nada que reclamar
+      const propias = new Set(
+        Calc.nivelesAciDeClase(clase.id).map(n => n.asignaturaId).filter(Boolean)
+      );
+      const candidatas = mismas.filter(a => a.id !== clase.asignaturaId && !propias.has(a.id));
+      if (candidatas.length) return '';
+      return `<div class="aviso" id="aviso-curriculo-area">Genera un currículo personalizado primero: no hay ningún otro currículo de <b>${Utils.esc(areaDeAsignatura(Calc.asignaturaDeClase(clase.id)))}</b> al que apuntar el nivel.</div>`;
+    }
+
     function filaNivel(n) {
       const div = document.createElement('div');
       div.className = 'nivel-aci-fila fila-campos';
       div.innerHTML = `
         <label class="campo"><span>Código</span><input type="text" class="nv-cod" value="${Utils.esc(n.codigo || '')}" placeholder="B" style="max-width:80px"></label>
         <label class="campo"><span>Etiqueta</span><input type="text" class="nv-etq" value="${Utils.esc(n.etiqueta || '')}" placeholder="4º"></label>
-        <label class="campo"><span>Currículo (asignatura)</span><select class="nv-asig">${opcionesAsig(n.asignaturaId)}</select></label>
+        <label class="campo"><span>Currículo (asignatura)</span><select class="nv-asig">${opcionesAsignatura(n.asignaturaId)}</select></label>
         <button type="button" class="icon-btn quitar-nivel-aci">×</button>`;
       div.querySelector('.quitar-nivel-aci').onclick = () => { div.remove(); pintarAsignacion(); };
       div.querySelector('.nv-cod').addEventListener('input', pintarAsignacion);
@@ -2693,6 +2767,7 @@ const ClasesView = (() => {
       titulo: 'Niveles ACI · ' + (Calc.asignaturaDeClase(clase.id) || {}).nombre + ' · ' + ((Calc.byId(db.grupos, clase.grupoId) || {}).nombre || ''),
       cuerpo: `
         <div class="aviso">Un <b>nivel ACI</b> agrupa al alumnado que trabaja un currículo de otro curso (p. ej. 4º o 2º). Cada nivel apunta a la asignatura que se usará para corregirlo. Los exámenes de cada nivel se crean en «Instrumentos» eligiendo el nivel y una misma <b>unidad</b>.</div>
+        ${avisoSinCurriculo()}
         <label class="campo"><span>Niveles ACI</span><div id="lista-niveles-aci"></div></label>
         <button class="btn btn-mini" type="button" id="add-nivel-aci">Añadir nivel</button>
         <label class="campo" style="margin-top:14px"><span>Asignación de alumnado</span><div id="lista-asignacion"></div></label>`,
@@ -2738,9 +2813,10 @@ const ClasesView = (() => {
       <div class="grid-2">
         <section class="card">
           <div class="card-head">
-            <h2>Asignaturas</h2>
+            <h2>Currículos y asignaturas</h2>
             <div class="acciones"><button class="btn btn-primario" id="add-asig">Nueva asignatura</button></div>
           </div>
+          <div class="aviso" style="margin:0 0 10px">Cada fila es un <b>currículo de un área en un curso</b>: «Matemáticas 3º» y «Matemáticas 6º» son dos filas distintas. Es lo que después eligen las clases y los niveles ACI.</div>
           <ul class="lista" id="lista-asig">
             ${db.asignaturas.map(a => {
               const conCurriculo = db.criterios.some(c => c.asignaturaId === a.id);
@@ -2829,7 +2905,7 @@ const ClasesView = (() => {
     });
   }
 
-  return { render };
+  return { render, areaDeAsignatura };
 })();
 
 </script>
