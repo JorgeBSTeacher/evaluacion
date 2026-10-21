@@ -1217,13 +1217,43 @@ async function main() {
     const opSinArea = opciones2.find(o => o.value === sinArea.id);
     const opIngles = opciones2.find(o => o.value === ingles.id);
     check('P-07 · el desplegable de Currículo agrupa por área del decreto',
-      grupos.includes('Lengua Extranjera') && grupos.includes('Matemáticas'));
+      grupos.includes('LEXT') && grupos.includes('MAT'));
     check('P-07 · una asignatura sin área no desaparece: cae en «Otras asignaturas»',
       grupos2[grupos2.length - 1] === 'Otras asignaturas' && !!opSinArea &&
       opSinArea.closest('optgroup').label === 'Otras asignaturas');
     check('P-07 · la asignatura aparece bajo su área con su nombre visible',
       !!opIngles && opIngles.textContent === 'Inglés 3º' &&
-      opIngles.closest('optgroup') && opIngles.closest('optgroup').label === 'Lengua Extranjera');
+      opIngles.closest('optgroup') && opIngles.closest('optgroup').label === 'LEXT');
+
+    // --- Abreviaturas del área (D-63) ---
+    // Se usan las MISMAS siglas que los códigos de criterio del decreto, para
+    // que «MAT 4º» del desplegable case con «MAT 1.1» del criterio. Y solo
+    // ABREVIAN lo que se conoce: un área fuera de la tabla se deja entera.
+    const abre = app.ClasesView.abreviaturaArea;
+    check('D-63 · las siete áreas del decreto tienen su abreviatura',
+      abre('Matemáticas') === 'MAT' && abre('Lengua Castellana y Literatura') === 'LCL' &&
+      abre('Conocimiento del Medio Natural, Social y Cultural') === 'CMNSC' &&
+      abre('Educación Artística') === 'EART' && abre('Educación Física') === 'EFIS' &&
+      abre('Educación en Valores Cívicos y Éticos') === 'EVCE' &&
+      abre('Lengua Extranjera') === 'LEXT');
+    check('D-63 · un área desconocida NO se abrevia a ciegas',
+      abre('Otras asignaturas') === 'Otras asignaturas' && abre('') === '' && abre(null) === '');
+    // La abreviatura es solo para MOSTRAR: el nombre de la asignatura no cambia.
+    const nombreCorto = app.ClasesView.nombreCortoAsignatura;
+    const asigMat = app.Storage.db.asignaturas.find(a => a.id !== ingles.id
+      && app.ClasesView.areaDeAsignatura(a) === 'Matemáticas');
+    check('D-63 · el nombre corto de un currículo oficial es «abreviatura + curso»',
+      nombreCorto(asigMat) === 'MAT ' + asigMat.curso, nombreCorto(asigMat));
+    check('D-63 · una asignatura sin área conserva su nombre entero',
+      nombreCorto(sinArea) === 'Taller de ajedrez', nombreCorto(sinArea));
+    check('D-63 · abreviar NO toca el nombre guardado de la asignatura',
+      asigMat.nombre.indexOf('MAT ') !== 0 && asigMat.nombre.indexOf('Matemáticas') === 0,
+      asigMat.nombre);
+    // El informe es documentación: debe llevar el nombre completo, no la sigla.
+    app.App.ir('cuadricula');
+    check('D-63 · el nombre completo sigue disponible para informes y boletín',
+      app.Calc.asignatura(asigMat.id).nombre === asigMat.nombre);
+    app.App.ir('curriculo');
     app.Storage.db.asignaturas = app.Storage.db.asignaturas.filter(a => a.id !== sinArea.id);
     app.App.ir('clases');
 

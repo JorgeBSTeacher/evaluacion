@@ -110,7 +110,7 @@ const CurriculoView = (() => {
     grupos.sort((x, y) => (x.area === SIN_AREA) - (y.area === SIN_AREA)
       || x.area.localeCompare(y.area, 'es'));
     const opcionesAsig = grupos.map(g =>
-      `<optgroup label="${Utils.esc(g.area)}">`
+      `<optgroup label="${Utils.esc(ClasesView.abreviaturaArea(g.area) || g.area)}">`
       + g.lista.map(a =>
         `<option value="${a.id}" ${a.id === asigSel ? 'selected' : ''}>${Utils.esc(a.nombre)}</option>`
       ).join('')

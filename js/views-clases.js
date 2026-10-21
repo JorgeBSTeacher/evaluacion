@@ -66,6 +66,40 @@ const ClasesView = (() => {
     return '';
   }
 
+  // Abreviatura del área para los desplegables, donde el nombre completo
+  // («Conocimiento del Medio Natural, Social y Cultural 5º») no cabe: el
+  // desplegable de la ACI está clavado a 280px y el nombre se corta. Se usan
+  // las MISMAS siglas que los códigos de criterio del decreto (no unas
+  // inventadas), para que «MAT 4º» en el desplegable case con «MAT 1.1» en el
+  // criterio y el docente no tenga que traducir. Si el área no está en la
+  // tabla, se devuelve el nombre completo: mejor largo que abreviado a ciegas.
+  //
+  // Solo para MOSTRAR. Nunca se escribe en `asignatura.nombre`: esa es la
+  // etiqueta del boletín, y el informe debe llevar el nombre como en el decreto.
+  const ABREVIATURA_POR_AREA = Object.keys(AREA_POR_PREFIJO).reduce((acc, pref) => {
+    acc[AREA_POR_PREFIJO[pref]] = pref;
+    return acc;
+  }, {});
+
+  function abreviaturaArea(area) {
+    const a = String(area || '').trim();
+    if (!a) return '';
+    return ABREVIATURA_POR_AREA[a] || a;
+  }
+
+  // Nombre corto de una asignatura para un desplegable: «MAT 4º» si su área se
+  // conoce (currículo oficial), y su nombre visible entero si es una asignatura
+  // hecha a mano, sin área. Las manuales no compiten en el mismo desplegable
+  // que las oficiales, así que el nombre largo solo aparece cuando es lo único
+  // que identifica a la asignatura.
+  function nombreCortoAsignatura(a) {
+    if (!a) return '';
+    const area = areaDeAsignatura(a);
+    if (!area) return String(a.nombre || '');
+    const curso = String(a.curso || '').trim();
+    return abreviaturaArea(area) + (curso ? ' ' + curso : '');
+  }
+
   // Solo dos áreas del decreto se desdoblan en la práctica, y el currículo es el
   // mismo en las dos: Lengua Extranjera (Inglés o Francés) y Educación Artística
   // (Plástica o Música). Son ETIQUETAS del nombre visible, no áreas distintas.
@@ -280,9 +314,6 @@ const ClasesView = (() => {
       asignaturaId: (f.querySelector('.nv-asig') || {}).value || ''
     }));
 
-    const opcionesAsig = asignaturaId => '<option value="">— asignatura —</option>'
-      + UI.selectHtml(db.asignaturas, asignaturaId, 'id', 'nombre');
-
     // Currículos que se ofrecen en cada nivel ACI: solo los de la MISMA área que
     // la clase. Una clase de Matemáticas no puede apuntar a Lengua. El área se
     // deduce del currículo de la propia clase (su asignatura base), no del campo
@@ -298,11 +329,17 @@ const ClasesView = (() => {
       return db.asignaturas.filter(a => areaDeAsignatura(a) === areaClase);
     }
 
+    // Opciones del desplegable de currículo de un nivel ACI. El texto visible es
+    // el nombre CORTO («MAT 4º») cuando el área se conoce; para las asignaturas
+    // hechas a mano, sin área, se deja el nombre entero (es lo único que las
+    // identifica). El `value` sigue siendo el id: solo cambia lo que se lee.
+    const opcionesDe = lista => asignaturaId => '<option value="">— asignatura —</option>'
+      + lista.map(a => `<option value="${Utils.esc(a.id)}"${a.id === asignaturaId ? ' selected' : ''}>${Utils.esc(nombreCortoAsignatura(a))}</option>`).join('');
+
     function opcionesAsignatura(asignaturaId) {
       const mismas = otrasDelArea();
-      if (!mismas || !mismas.length) return opcionesAsig(asignaturaId);
-      return '<option value="">— asignatura —</option>'
-        + UI.selectHtml(mismas, asignaturaId, 'id', 'nombre');
+      const lista = (mismas && mismas.length) ? mismas : db.asignaturas;
+      return opcionesDe(lista)(asignaturaId);
     }
 
     // Aviso en gris: la clase tiene área pero NO hay otro currículo de esa área
@@ -496,5 +533,5 @@ const ClasesView = (() => {
     });
   }
 
-  return { render, areaDeAsignatura };
+  return { render, areaDeAsignatura, abreviaturaArea, nombreCortoAsignatura };
 })();
