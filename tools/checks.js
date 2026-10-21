@@ -1216,6 +1216,20 @@ async function main() {
     const opciones2 = Array.from(selAsig2.querySelectorAll('option'));
     const opSinArea = opciones2.find(o => o.value === sinArea.id);
     const opIngles = opciones2.find(o => o.value === ingles.id);
+    // El agrupado debe usar la MISMA fuente que el filtro de la ACI (el área
+    // deducida), no el campo guardado: si no, las asignaturas creadas antes de
+    // que el campo existiera caen en «Otras asignaturas» aunque su currículo sea
+    // oficial. Se vacía el campo `area` de TODAS y se comprueba que el agrupado
+    // no se rompe.
+    app.Storage.db.asignaturas.forEach(a => { a.area = ''; });
+    app.App.ir('curriculo');
+    const gruposSinCampo = Array.from(v.querySelector('#sel-asig').querySelectorAll('optgroup')).map(g => g.label);
+    check('D-64 · sin el campo `area` el agrupado sigue siendo el del decreto',
+      gruposSinCampo.includes('LEXT') && gruposSinCampo.includes('MAT') &&
+      gruposSinCampo.indexOf('Otras asignaturas') === gruposSinCampo.length - 1
+      && gruposSinCampo.indexOf('LEXT') < gruposSinCampo.indexOf('Otras asignaturas'),
+      gruposSinCampo.join(','));
+    app.App.ir('curriculo');
     check('P-07 · el desplegable de Currículo agrupa por área del decreto',
       grupos.includes('LEXT') && grupos.includes('MAT'));
     check('P-07 · una asignatura sin área no desaparece: cae en «Otras asignaturas»',

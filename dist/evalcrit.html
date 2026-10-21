@@ -3052,13 +3052,16 @@ const CurriculoView = (() => {
 
     const sumaPesos = criteriosDe().reduce((s, c) => s + (Number(c.peso) || 0), 0);
     const asig = Calc.asignatura(asigSel) || {};
-    // Agrupado por area del decreto. Las asignaturas creadas antes de que
-    // existiera el campo `area` (o a mano, sin area) caen en «Otras
-    // asignaturas»: preferimos que se vean raro a esconderlas del desplegable.
+    // Agrupado por area del decreto. El area sale de ClasesView.areaDeAsignatura,
+    // la MISMA fuente que usa el filtro de los niveles ACI: deducida del prefijo
+    // de los criterios cuando el campo guardado esta vacio. Antes se leia
+    // `a.area` directamente, asi que las asignaturas creadas antes de que el
+    // campo existiera (todas con area='') caian enteras en «Otras asignaturas»
+    // aunque su curriculo fuera oficial. Una sola verdad para el area.
     const SIN_AREA = 'Otras asignaturas';
     const grupos = [];
     db.asignaturas.forEach(a => {
-      const clave = String(a.area || '').trim() || SIN_AREA;
+      const clave = ClasesView.areaDeAsignatura(a) || SIN_AREA;
       let g = grupos.find(x => x.area === clave);
       if (!g) { g = { area: clave, lista: [] }; grupos.push(g); }
       g.lista.push(a);
