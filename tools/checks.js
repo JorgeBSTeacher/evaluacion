@@ -1137,6 +1137,28 @@ async function main() {
     app.App.ir('clases');
     const nAsig = db.asignaturas.length;
 
+    // Regresión: al abrir «Nueva asignatura» el desplegable de curso debe estar
+    // YA relleno con los cursos del área que viene preseleccionada. Si no se
+    // rellena hasta que el docente toca el área, guardar directamente deja el
+    // curso vacío y salta «No hay currículo oficial» sin haber hecho nada mal.
+    v.querySelector('#add-asig').click();
+    const selCurso = modal().querySelector('#f-curso');
+    const cursosAlAbrir = Array.from(selCurso.querySelectorAll('option')).map(o => o.value);
+    check('P-09 · el modal de asignatura rellena los cursos del área al abrirse',
+      cursosAlAbrir.length > 0 && cursosAlAbrir.includes(selCurso.value));
+    const areaAlAbrir = modal().querySelector('#f-area').value;
+    const cursoAlAbrir = selCurso.value;
+    const nAsigOficial = db.asignaturas.length;
+    guardar();
+    const asigOficial = db.asignaturas[db.asignaturas.length - 1];
+    check('P-09 · el alta oficial recupera el currículo sin tocar el área',
+      db.asignaturas.length === nAsigOficial + 1 && asigOficial &&
+      asigOficial.curso === cursoAlAbrir &&
+      asigOficial.nombre.includes(cursoAlAbrir) &&
+      db.criterios.some(c => c.asignaturaId === asigOficial.id));
+    app.alertas.length = 0;
+
+    const nAsig2 = db.asignaturas.length;
     v.querySelector('#add-asig').click();
     modal().querySelector('#f-modo').value = 'blanco';
     modal().querySelector('#f-modo')._dispara('change');
@@ -1145,7 +1167,7 @@ async function main() {
     guardar();
     const asigNueva = db.asignaturas[db.asignaturas.length - 1];
     check('P-09 · «Nueva asignatura» en blanco usa el nombre del formulario',
-      db.asignaturas.length === nAsig + 1 && asigNueva.nombre === 'Taller de ajedrez' &&
+      db.asignaturas.length === nAsig2 + 1 && asigNueva.nombre === 'Taller de ajedrez' &&
       asigNueva.curso === '');
 
     const asig0 = db.asignaturas[0];

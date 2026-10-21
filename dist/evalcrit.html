@@ -2508,6 +2508,11 @@ const ClasesView = (() => {
     } else if (selModo) {
       selModo.onchange = pintaModo;
       pintaModo();
+      // El desplegable de curso se rellena al elegir área, pero si el docente
+      // abre el modal y va directo a Guardar sin tocar nada, quedaría vacío y
+      // el alta oficial fallaría con «No hay currículo» sin motivo. Se puebla
+      // ya con el área preseleccionada.
+      pintaCursos();
     }
   }
 
