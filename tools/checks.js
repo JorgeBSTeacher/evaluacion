@@ -1201,44 +1201,110 @@ async function main() {
       mSinVar.querySelector('#campo-variante').style.display === 'none');
     app.alertas.length = 0;
 
-    // --- El desplegable de Currículo agrupa por CURSO ---
-    // El docente piensa «estoy en 4º y reviso sus áreas»: seis bloques por curso
-    // se leen mejor que siete bloques por área, y el bloque que interesa está
-    // siempre en el mismo sitio. El texto de la opción es el nombre corto
-    // («MAT 4º») porque al cerrarse el desplegable se ve SOLO la opción, sin su
-    // grupo: ahí no se puede dar el curso por sabido.
+    // --- Currículo: dos desplegables cuando hay cursos que elegir (D-68) ---
+    // El docente piensa «estoy en 4º y reviso sus áreas». El curso se elige en
+    // un control propio y el segundo desplegable enseña SOLO las asignaturas de
+    // ese curso: 7 opciones en vez de las 42 del decreto entero. Si todas son
+    // del mismo curso, el primero desaparece: tendría una única opción y no
+    // elegiría nada.
     app.App.ir('curriculo');
-    const selAsig = v.querySelector('#sel-asig');
-    const grupos = Array.from(selAsig.querySelectorAll('optgroup')).map(g => g.label);
     const ordenCursos = app.ClasesView.ordenCursos();
-    const conocidos = grupos.filter(c => c !== 'Sin curso');
-    check('P-07 · el desplegable de Currículo agrupa por curso y en orden',
-      conocidos.length > 0 && conocidos.every(c => ordenCursos.includes(c)) &&
+    const cursoDeAsignatura = app.ClasesView.cursoDeAsignatura;
+    const selCursoEl = () => v.querySelector('#sel-curso');
+    const selAsigEl = () => v.querySelector('#sel-asig');
+    // Si falta un control, el check tiene que fallar con un mensaje, no tumbar
+    // la batería entera con un TypeError: los negativos también se leen.
+    const opcionesDe = sel => sel ? Array.from(sel.querySelectorAll('option')) : [];
+    const elegirCurso = curso => {
+      const s = selCursoEl();
+      if (!s) return selAsigEl();
+      s.value = curso;
+      s.onchange({ target: { value: curso } });
+      return selAsigEl();
+    };
+    check('D-68 · con varios cursos hay dos desplegables',
+      !!selCursoEl() && !!selAsigEl());
+    const cursos = opcionesDe(selCursoEl()).map(o => o.textContent);
+    const conocidos = cursos.filter(c => c !== 'Sin curso');
+    check('D-68 · el desplegable de curso los lista en orden, sin repetirlos',
+      conocidos.length > 1 && conocidos.every(c => ordenCursos.includes(c)) &&
       conocidos.every((c, i) => i === 0 || ordenCursos.indexOf(conocidos[i - 1]) < ordenCursos.indexOf(c)),
-      grupos.join(','));
+      cursos.join(','));
+    const cursoAbierto = selCursoEl() ? selCursoEl().value : '';
+    const abiertas = opcionesDe(selAsigEl())
+      .map(o => app.Calc.asignatura(o.value));
+    check('D-68 · el segundo desplegable solo enseña las asignaturas del curso elegido',
+      abiertas.length > 0 &&
+      abiertas.every(a => a && cursoDeAsignatura(a) === cursoAbierto),
+      cursoAbierto + ': ' + abiertas.map(a => a && a.nombre).join(', '));
+    const abierta = opcionesDe(selAsigEl()).find(o => o.selected);
+    check('D-68 · el desplegable de curso arranca en el de la asignatura abierta',
+      !!abierta && selCursoEl() &&
+      cursoDeAsignatura(app.Calc.asignatura(abierta.value)) === selCursoEl().value);
+
     // Asignatura hecha a mano, sin curso ni área: no desaparece, cae en «Sin
-    // curso», que va al final.
+    // curso», que va al final. Sin ese grupo sería inalcanzable (D-68).
     app.Storage.guardarAsignatura({ nombre: 'Taller de ajedrez', etapa: 'Primaria' });
     const sinArea = app.Storage.db.asignaturas[app.Storage.db.asignaturas.length - 1];
     app.App.ir('curriculo');
-    const selAsig2 = v.querySelector('#sel-asig');
-    const grupos2 = Array.from(selAsig2.querySelectorAll('optgroup')).map(g => g.label);
-    const opciones2 = Array.from(selAsig2.querySelectorAll('option'));
-    const opSinArea = opciones2.find(o => o.value === sinArea.id);
-    const opIngles = opciones2.find(o => o.value === ingles.id);
-    check('P-07 · una asignatura sin curso no desaparece: cae en «Sin curso», al final',
-      grupos2[grupos2.length - 1] === 'Sin curso' && !!opSinArea &&
-      opSinArea.closest('optgroup').label === 'Sin curso');
-    check('P-07 · la asignatura aparece en su curso con el nombre corto',
-      !!opIngles && opIngles.textContent === 'Inglés 3º' &&
-      opIngles.closest('optgroup') && opIngles.closest('optgroup').label === '3º');
+    const cursos2 = opcionesDe(selCursoEl()).map(o => o.textContent);
+    check('D-68 · una asignatura sin curso se alcanza por «Sin curso», al final',
+      cursos2[cursos2.length - 1] === 'Sin curso' &&
+      cursos2.filter(c => c === 'Sin curso').length === 1,
+      cursos2.join(','));
+    const selSinCurso = elegirCurso('Sin curso');
+    const opSinArea = opcionesDe(selSinCurso)
+      .find(o => o.value === sinArea.id);
+    check('D-68 · «Sin curso» enseña las asignaturas hechas a mano, con su nombre',
+      !!opSinArea && opSinArea.textContent === 'Taller de ajedrez',
+      opSinArea ? opSinArea.textContent : 'sin opción');
+
+    // Dentro de un curso ya elegido, repetirlo en cada opción es ruido: la
+    // opción es «MAT» y «Inglés», no «MAT 3º» e «Inglés 3º».
+    const sel3 = elegirCurso('3º');
+    const opIngles = opcionesDe(sel3).find(o => o.value === ingles.id);
+    check('D-68 · dentro de un curso, la opción no repite el curso',
+      !!opIngles && opIngles.textContent === 'Inglés', opIngles && opIngles.textContent);
+    const opMat3 = opcionesDe(sel3).find(o => {
+      const a = app.Calc.asignatura(o.value);
+      return a && app.ClasesView.areaDeAsignatura(a) === 'Matemáticas';
+    });
+    check('D-68 · el currículo oficial se abrevia sin el curso',
+      !!opMat3 && opMat3.textContent === 'MAT', opMat3 && opMat3.textContent);
+
+    // Cambiar de curso resuelve SIEMPRE a una asignatura concreta: la primera
+    // de ese curso. Si no, el cuerpo enseñaría criterios de otro curso mientras
+    // el desplegable dice este, y la pantalla mentiría.
+    const primeraDe3 = app.Storage.db.asignaturas.filter(a => cursoDeAsignatura(a) === '3º')[0];
+    const elegida3 = opcionesDe(sel3).find(o => o.selected);
+    const critsPintados = Array.from(v.querySelectorAll('table.tabla tbody tr[data-id]'))
+      .map(tr => tr.dataset.id);
+    check('D-68 · al cambiar de curso se abre su primera asignatura y el cuerpo la sigue',
+      !!elegida3 && elegida3.value === primeraDe3.id && critsPintados.length > 0 &&
+      critsPintados.every(id => (app.Calc.criterio(id) || {}).asignaturaId === primeraDe3.id),
+      (elegida3 ? app.Calc.asignatura(elegida3.value).nombre : 'sin opción') +
+      ' · ' + critsPintados.length + ' criterios');
+
+    // Con un solo curso, el desplegable de curso sobra: una única opción no
+    // elige nada. Se quita y el curso vuelve al texto de la opción, que es lo
+    // único que lo diría.
+    const todasAsig = app.Storage.db.asignaturas;
+    app.Storage.db.asignaturas = todasAsig.filter(a => cursoDeAsignatura(a) === '4º');
+    app.App.ir('curriculo');
+    check('D-68 · con un solo curso no se enseña el desplegable de curso',
+      !selCursoEl());
+    const opsSolo = opcionesDe(selAsigEl()).map(o => o.textContent);
+    check('D-68 · con un solo curso el curso vuelve al texto de la opción',
+      opsSolo.length > 0 && opsSolo.every(t => t.endsWith('4º')), opsSolo.join(','));
+    app.Storage.db.asignaturas = todasAsig;
+    app.App.ir('curriculo');
+
     // Las asignaturas de la generación anterior (v0.1–v0.5) no guardan `curso`:
     // el curso vive SOLO en el nombre («Matemáticas 6º»). Se deduce de ahí, sin
     // migrar ni escribir nada (D-67). Sin esto caen todas en «Sin curso» y el
     // filtro ACI no sabe de qué curso es la clase.
     const asigMat = app.Storage.db.asignaturas.find(a => a.id !== ingles.id
       && app.ClasesView.areaDeAsignatura(a) === 'Matemáticas');
-    const cursoDeAsignatura = app.ClasesView.cursoDeAsignatura;
     check('D-67 · el curso se deduce del nombre cuando el campo está vacío',
       cursoDeAsignatura({ nombre: 'Matemáticas 6º', curso: '' }) === '6º');
     check('D-67 · el campo `curso` manda cuando existe',
@@ -1247,27 +1313,29 @@ async function main() {
       cursoDeAsignatura({ nombre: 'Taller de ajedrez' }) === '');
     check('D-67 · «4º de Primaria» también se entiende',
       cursoDeAsignatura({ nombre: 'Matemáticas 4º de Primaria' }) === '4º');
-    // Integración: una asignatura heredada se agrupa por el curso de su nombre,
-    // con su nombre corto, y no en «Sin curso».
+    // Integración: una asignatura heredada sigue en el curso de su nombre, y no
+    // en «Sin curso».
     const cursoAsigMat = asigMat.curso;
     asigMat.curso = '';
     app.App.ir('curriculo');
-    const opMatHeredada = Array.from(v.querySelector('#sel-asig').querySelectorAll('option'))
+    const selHeredada = elegirCurso(cursoDeAsignatura(asigMat));
+    const opMatHeredada = opcionesDe(selHeredada)
       .find(o => o.value === asigMat.id);
-    check('D-67 · una asignatura heredada se agrupa por el curso de su nombre',
-      !!opMatHeredada && opMatHeredada.closest('optgroup').label === cursoAsigMat &&
-      opMatHeredada.textContent === 'MAT ' + cursoAsigMat,
-      opMatHeredada ? opMatHeredada.closest('optgroup').label + ' > ' + opMatHeredada.textContent : 'sin opción');
+    check('D-67 · una asignatura heredada sigue en el curso de su nombre',
+      !!opMatHeredada && selCursoEl() && selCursoEl().value === cursoAsigMat &&
+      opMatHeredada.textContent === 'MAT',
+      opMatHeredada ? (selCursoEl() ? selCursoEl().value : '?') + ' > ' + opMatHeredada.textContent : 'sin opción');
     asigMat.curso = cursoAsigMat;
     // El área ya no agrupa, pero sigue siendo UNA sola verdad: es la que decide
     // la abreviatura de la opción. Se vacía el campo guardado de todas y debe
     // seguir deduciéndose del currículo, como en el filtro de la ACI (D-62).
     app.Storage.db.asignaturas.forEach(a => { a.area = ''; });
     app.App.ir('curriculo');
-    const opMatSinCampo = Array.from(v.querySelector('#sel-asig').querySelectorAll('option'))
+    const selSinAreaGuardada = elegirCurso(cursoDeAsignatura(asigMat));
+    const opMatSinCampo = opcionesDe(selSinAreaGuardada)
       .find(o => o.value === asigMat.id);
     check('D-64 · sin el campo `area` la abreviatura sigue saliendo del currículo',
-      !!opMatSinCampo && opMatSinCampo.textContent === 'MAT ' + cursoDeAsignatura(asigMat),
+      !!opMatSinCampo && opMatSinCampo.textContent === 'MAT',
       opMatSinCampo ? opMatSinCampo.textContent : 'sin opción');
 
     // --- Abreviaturas del área (D-63) ---

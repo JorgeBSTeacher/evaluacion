@@ -96,24 +96,27 @@ const CurriculoView = (() => {
 
     const sumaPesos = criteriosDe().reduce((s, c) => s + (Number(c.peso) || 0), 0);
     const asig = Calc.asignatura(asigSel) || {};
-    // Agrupado por CURSO: el docente piensa en «estoy en 4º» y revisa sus áreas.
-    // Con 7 áreas × 6 cursos = 42 currículos, seis bloques de siete se leen
-    // mejor que siete bloques de seis, y el bloque que interesa está siempre en
-    // el mismo sitio. El texto de la opción sigue siendo «MAT 4º» (nombre corto):
-    // el desplegable cerrado muestra SOLO la opción, sin su grupo, así que ahí
-    // no se puede dar el curso por sabido. Las variantes (Inglés/Francés,
-    // Plástica/Música) conservan su nombre porque abreviarlas las haría
-    // indistinguibles entre sí.
+    // El docente piensa «estoy en 4º y reviso sus áreas»: el curso es un eje, no
+    // una etiqueta. Por eso se elige en un control propio (D-68) y el segundo
+    // desplegable solo enseña las asignaturas de ese curso — 7 opciones en vez
+    // de las 42 del decreto entero.
+    //
+    // DOS desplegables solo cuando hay algo que elegir en el primero: si todas
+    // las asignaturas son del mismo curso, el de curso tendría una única opción
+    // y no elegiría nada, así que se quita y el curso viaja en el texto de la
+    // opción («MAT 4º»), que es lo único que lo diría. Se deduce de los datos en
+    // cada render: no hay ajuste que guardar ni que mantener.
     //
     // El orden de los cursos sale de `ClasesView.ordenCursos`, la MISMA tabla
     // que usa el filtro de los niveles ACI (D-65). Un curso fuera de ella
     // (Infantil, otra etapa) va al final, y las asignaturas sin curso —las
-    // creadas a mano— al bloque «Sin curso», también al final.
+    // creadas a mano— al grupo «Sin curso», también al final.
     const SIN_CURSO = 'Sin curso';
     const orden = ClasesView.ordenCursos();
     const grupos = [];
+    const claveDe = a => ClasesView.cursoDeAsignatura(a) || SIN_CURSO;
     db.asignaturas.forEach(a => {
-      const clave = ClasesView.cursoDeAsignatura(a) || SIN_CURSO;
+      const clave = claveDe(a);
       let g = grupos.find(x => x.curso === clave);
       if (!g) { g = { curso: clave, lista: [] }; grupos.push(g); }
       g.lista.push(a);
@@ -124,18 +127,23 @@ const CurriculoView = (() => {
       return i < 0 ? 900 : i;
     };
     grupos.sort((x, y) => pos(x.curso) - pos(y.curso));
-    const opcionesAsig = grupos.map(g =>
-      `<optgroup label="${Utils.esc(g.curso)}">`
-      + g.lista.map(a =>
-        `<option value="${a.id}" ${a.id === asigSel ? 'selected' : ''}>${Utils.esc(ClasesView.nombreCortoAsignatura(a))}</option>`
-      ).join('')
-      + '</optgroup>').join('');
+
+    const dos = grupos.length > 1;
+    const grupoSel = grupos.find(g => g.curso === claveDe(asig)) || grupos[0];
+    const lista = dos ? grupoSel.lista : db.asignaturas;
+    const opsCurso = dos ? grupos.map(g =>
+      `<option value="${Utils.esc(g.curso)}"${g === grupoSel ? ' selected' : ''}>${Utils.esc(g.curso)}</option>`
+    ).join('') : '';
+    const opcionesAsig = lista.map(a =>
+      `<option value="${a.id}"${a.id === asigSel ? ' selected' : ''}>${Utils.esc(ClasesView.nombreCortoAsignatura(a, dos))}</option>`
+    ).join('');
     el.innerHTML = `
       <section class="card">
         <div class="card-head">
           <h2>Currículo</h2>
-          <div style="display:flex;gap:8px;align-items:center">
-            <select id="sel-asig" style="max-width:280px">${opcionesAsig}</select>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            ${dos ? `<select id="sel-curso" aria-label="Curso">${opsCurso}</select>` : ''}
+            <select id="sel-asig" aria-label="Asignatura" style="max-width:280px">${opcionesAsig}</select>
           </div>
         </div>
         <div class="aviso">
@@ -183,6 +191,18 @@ const CurriculoView = (() => {
         </div>
       </section>`;
 
+    const selCurso = el.querySelector('#sel-curso');
+    if (selCurso) {
+      selCurso.onchange = e => {
+        const g = grupos.find(x => x.curso === e.target.value);
+        if (!g || !g.lista.length) return;
+        // Cambiar de curso resuelve SIEMPRE a una asignatura concreta: la
+        // primera de ese curso. Si no, el cuerpo seguiría enseñando criterios
+        // de otro curso mientras arriba pone este, y la pantalla mentiría.
+        asigSel = g.lista[0].id;
+        render(el);
+      };
+    }
     el.querySelector('#sel-asig').onchange = e => { asigSel = e.target.value; render(el); };
     el.querySelector('#add-esp').onclick = () => modalEsp();
     el.querySelector('#add-crit').onclick = () => modalCriterio(null);

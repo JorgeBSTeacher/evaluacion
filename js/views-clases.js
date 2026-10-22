@@ -107,19 +107,30 @@ const ClasesView = (() => {
   // hecha a mano, sin área. Las manuales no compiten en el mismo desplegable
   // que las oficiales, así que el nombre largo solo aparece cuando es lo único
   // que identifica a la asignatura.
-  function nombreCortoAsignatura(a) {
+  // `sinCurso` se usa cuando el curso YA se lee en otro control (el desplegable
+  // de curso de Currículo): repetirlo en cada opción es ruido. Solo se quita el
+  // sufijo a los nombres que lo llevan tal cual —«Inglés 3º» → «Inglés»—; un
+  // nombre editado a mano se respeta entero, porque ahí el curso puede no ser
+  // un sufijo sino parte del nombre.
+  function nombreCortoAsignatura(a, sinCurso) {
     if (!a) return '';
-    const area = areaDeAsignatura(a);
-    if (!area) return String(a.nombre || '');
+    const nombre = String(a.nombre || '').trim();
     const curso = cursoDeAsignatura(a);
+    const sinSufijo = () => {
+      const sufijo = ' ' + curso;
+      return (sinCurso && curso && nombre.endsWith(sufijo))
+        ? nombre.slice(0, -sufijo.length) : nombre;
+    };
+    const area = areaDeAsignatura(a);
+    if (!area) return sinSufijo();
     // Si el nombre visible NO es «área + curso», no es un nombre canónico: es
     // una VARIANTE (Inglés, Francés, Música, Plástica) o un nombre editado a
     // mano. Abreviarla la haría indistinguible de su pariente —«LEXT 3º» para
     // Inglés y para Francés—, así que se deja tal cual: ya es corta y es lo
     // único que las diferencia.
     const canonico = area + (curso ? ' ' + curso : '');
-    if (String(a.nombre || '').trim() !== canonico) return String(a.nombre || '');
-    return abreviaturaArea(area) + (curso ? ' ' + curso : '');
+    if (nombre !== canonico) return sinSufijo();
+    return abreviaturaArea(area) + (!sinCurso && curso ? ' ' + curso : '');
   }
 
   // Lista con «y» antes del último elemento: «1º, 2º y 3º». Sirve para
