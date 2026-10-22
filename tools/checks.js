@@ -2547,6 +2547,166 @@ async function main() {
       hb.includes('2 de 2 aprueban') && hb.includes('alumnado de <b>Base</b>'), hb.slice(0, 160));
   }
 
+  console.log('\n== Informe: el nivel del instrumento manda (D-69) ==');
+  // Un control creado para un nivel ACI solo lo corrige ese alumnado. Sus
+  // preguntas no pueden salir en el informe de otro nivel: se leerían como
+  // fallos de alumnado que nunca hizo esa prueba.
+  {
+    const app = cargarApp();
+    app.Storage.load();
+    await importarJson(app, estadoAci());
+    const db = app.Storage.db;
+    const el = makeEl();
+    // El control de 4º, con sus dos alumnos ACI suspensos.
+    db.registros.iAci = { c1al: { q1: 0 }, c2al: { q1: 0 } };
+
+    const hBase = app.Calc.hallazgos('c1', db.instrumentos, [], '');
+    check('D-69 · en «Base» no salen las preguntas de un control de nivel ACI',
+      !hBase.some(h => h.tipo === 'pregunta' && h.instrumentoId === 'iAci'),
+      hBase.map(h => h.titulo).join(', '));
+
+    const todas = app.Calc.hallazgos('c1', db.instrumentos, []);
+    check('D-69 · con «todos los niveles» sí salen, y con el nivel de su instrumento',
+      todas.some(h => h.tipo === 'pregunta' && h.instrumentoId === 'iAci'),
+      todas.map(h => h.titulo).join(', '));
+
+    // Y en la VISTA: el alcance y el análisis se ciñen a los instrumentos del
+    // nivel activo. Se usa el DOM real para poder leer los desplegables.
+    const vi = cargarApp({ dom: true });
+    vi.Storage.load();
+    await importarJson(vi, (() => { const e = estadoAci(); return e; })());
+    const viDb = vi.Storage.db;
+    viDb.registros.iAci = { c1al: { q1: 0 }, c2al: { q1: 0 } };
+    const vel = vi.document.createElement('div');
+
+    // Con Base, el control de 4º no se ofrece ni se analiza.
+    vi.InformeView.render(vel, { claseSel: 'c1', nivelSel: '' });
+    const selBase = vel.querySelector('#alc-instrumento');
+    const opsBase = selBase ? Array.from(selBase.querySelectorAll('option')).map(o => o.textContent) : [];
+    check('D-69 · con «Base» el alcance no ofrece el control de otro nivel',
+      opsBase.length > 0 && !opsBase.some(t => t.includes('Control 4º')),
+      opsBase.join(', '));
+    const cuerpoBase = (vel.querySelector('#informe-cuerpo') || {}).textContent || '';
+    check('D-69 · con «Base» la vista no enseña la pregunta del control ACI',
+      !cuerpoBase.includes('Control 4º'),
+      cuerpoBase.replace(/\s+/g, ' ').slice(0, 120));
+
+    // Con «todos los niveles» sí aparece.
+    vi.InformeView.render(vel, { claseSel: 'c1', nivelSel: '__todas__' });
+    const selTod = vel.querySelector('#alc-instrumento');
+    const opsTod = selTod ? Array.from(selTod.querySelectorAll('option')).map(o => o.textContent) : [];
+    check('D-69 · con «todos los niveles» el alcance sí ofrece el control ACI',
+      opsTod.some(t => t.includes('Control 4º')), opsTod.join(', '));
+    const cuerpoTod = (vel.querySelector('#informe-cuerpo') || {}).textContent || '';
+    check('D-69 · con «todos los niveles» la vista sí enseña esa pregunta',
+      cuerpoTod.includes('Control 4º'),
+      cuerpoTod.replace(/\s+/g, ' ').slice(0, 120));
+
+    // Un filtro de instrumento que el nivel deja fuera se suelta solo: si no, el
+    // informe quedaría vacío y el desplegable que lo puso ya no estaría. Se
+    // elige el control ACI en «todos los niveles», se enciende y se vuelve a
+    // Base: allí ese instrumento ya no pinta nada, así que el alcance debe
+    // quedar limpio y el informe seguir enseñando el control de base.
+    const selTod2 = vel.querySelector('#alc-instrumento');
+    selTod2.value = 'iAci';
+    selTod2.onchange({ target: { value: 'iAci' } });
+    const antes = (vel.querySelector('#informe-cuerpo') || {}).textContent || '';
+    check('D-69 · con el control ACI elegido, el informe se ciñe a él',
+      antes.includes('Control 4º') && !antes.includes('Control A (base)'),
+      antes.replace(/\s+/g, ' ').slice(0, 120));
+    // Se suspende el control de base para que el «suéltalo solo» se vea: si el
+    // filtro del control ACI no se suelta, el informe vuelve a Base ya sin
+    // instrumentos y sale vacío aunque el control de base tenga fallos.
+    viDb.registros.iBase = { a1: { p1: 0 }, a2: { p1: 0 }, c1al: { p1: 9 } };
+    vi.InformeView.render(vel, { claseSel: 'c1', nivelSel: '' });
+    const selLimpio = vel.querySelector('#alc-instrumento');
+    const cuerpoSuelto = (vel.querySelector('#informe-cuerpo') || {}).textContent || '';
+    check('D-69 · un filtro de instrumento que el nivel deja fuera se suelta solo',
+      (!selLimpio || selLimpio.value === '') &&
+      cuerpoSuelto.includes('Control A (base)') &&
+      !cuerpoSuelto.includes('Control 4º'),
+      'valor=' + (selLimpio ? selLimpio.value : 'sin control') +
+      ' · cuerpo=' + cuerpoSuelto.replace(/\s+/g, ' ').slice(0, 120));
+  }
+
+  console.log('\n== Informe: un apartado sin criterios no es de ningún nivel (D-69 bis) ==');
+  // Un apartado sin `criterioIds` no pertenece a ningún currículo: no se puede
+  // decir que sea de un nivel, así que se descarta como pregunta con fallos.
+  {
+    const app = cargarApp();
+    app.Storage.load();
+    await importarJson(app, estadoAci());
+    const db = app.Storage.db;
+    // Se copia el control de 4º SIN criterios y con los dos alumnos ACI
+    // suspensos: sin el descarte, saldría como pregunta con fallos al 100%.
+    db.instrumentos.push({
+      id: 'iSinCrit', claseId: 'c1', tipo: 'Control', titulo: 'Control sin criterios',
+      fecha: '2026-03-01', periodo: 'T1', nivel: '4', unidad: 'UD3',
+      apartados: [{ id: 'z1', orden: 1, descripcion: 'sin criterio', maxPts: 10, criterioIds: [] }]
+    });
+    db.registros.iSinCrit = { c1al: { z1: 0 }, c2al: { z1: 0 } };
+
+    const hs = app.Calc.hallazgos('c1', db.instrumentos, []);
+    check('D-69 · un apartado sin criterios no genera «pregunta con fallos»',
+      !hs.some(h => h.tipo === 'pregunta' && h.instrumentoId === 'iSinCrit'),
+      hs.map(h => h.titulo).join(', '));
+    const hCon = app.Calc.hallazgos('c1', db.instrumentos, [], '4');
+    check('D-69 · ni siquiera al mirar su propio nivel',
+      !hCon.some(h => h.tipo === 'pregunta' && h.instrumentoId === 'iSinCrit'),
+      hCon.map(h => h.titulo).join(', '));
+  }
+
+  console.log('\n== Informe: «Todos los niveles» no puede vaciar el informe (D-71) ==');
+  // El centinela del selector de la Cuadrícula es de la vista, no un código de
+  // nivel. `nivelNorm('__todas__')` devuelve «__TODAS__», que no casa con ningún
+  // nivel: si la vista se lo colaba a Calc como si fuera un nivel, la Regla 2
+  // descartaba TODOS los instrumentos y el informe salía en blanco.
+  {
+    // Con el DOM real: `makeEl` devuelve un `querySelector` en blanco y no deja
+    // leer el cuerpo pintado, que es justo lo que se quiere comprobar.
+    const app = cargarApp({ dom: true });
+    app.Storage.load();
+    const est = estadoPrueba();
+    // El único hallazgo tiene que venir de un instrumento CON nivel: en uno
+    // común `instrumentoParaNivel` dice que sí a cualquier cosa —también a un
+    // centinela— y el check no distinguiría el bug. Se pone al alumnado del
+    // nivel 3 a suspender esa rúbrica.
+    const clase0 = est.clases[0];
+    const instNv = est.instrumentos.find(i =>
+      i.claseId === clase0.id && i.nivel === '3' && i.apartados.length);
+    const paraNivel = est.alumnos.slice(0, 3).map(a => a.id);
+    clase0.adaptaciones = clase0.adaptaciones || {};
+    paraNivel.forEach(id => { clase0.adaptaciones[id] = '3'; });
+    instNv.apartados.forEach(ap => {
+      paraNivel.forEach(al => {
+        est.registros[instNv.id] = est.registros[instNv.id] || {};
+        est.registros[instNv.id][al] = est.registros[instNv.id][al] || {};
+        est.registros[instNv.id][al][ap.id] = 0;
+      });
+    });
+    await importarJson(app, est);
+    const claseId = app.Storage.db.clases[0].id;
+    const insts = app.Calc.instrumentosAlcance(claseId, {});
+    const el = app.document.createElement('div');
+
+    // El motor, sin filtro (que es lo que la vista le pasa para «todas»): la
+    // pregunta suspendida del instrumento con nivel sí se analiza.
+    check('D-71 · sin filtro de nivel el instrumento con nivel sí se analiza',
+      app.Calc.hallazgos(claseId, insts, [], undefined)
+        .some(h => h.tipo === 'pregunta' && h.instrumentoId === instNv.id),
+      'hallazgos=' + app.Calc.hallazgos(claseId, insts, [], undefined)
+        .map(h => h.tipo + '/' + h.titulo).join(', '));
+
+    // Y la vista con el centinela, por el mismo camino que la app real. Se mira
+    // la TABLA DE PREGUNTAS, que es la que nace de la Regla 2: si el centinela
+    // se cuela hasta Calc, esa regla descarta todos los instrumentos y la tabla
+    // desaparece aunque el resto del informe siga pintándose.
+    app.InformeView.render(el, { claseSel: claseId, nivelSel: '__todas__' });
+    const cuerpo = (el.querySelector('#informe-cuerpo') || {}).textContent || '';
+    check('D-71 · con «Todos los niveles» la tabla de preguntas sale',
+      cuerpo.includes('Preguntas con fallos'), cuerpo.replace(/\s+/g, ' ').slice(0, 160));
+  }
+
   console.log('\n== Inicio: paneles de estado (dashboard) ==');
   {
     const app = cargarApp();

@@ -574,7 +574,21 @@ const Calc = {
   // Reglas de detección para la pestaña Informe. `criterios` los decide la vista
   // (según el nivel ACI seleccionado). Devuelve hallazgos ordenados por
   // severidad: críticos primero, luego atención, por porcentaje descendente.
-  hallazgos(claseId, insts, criterios) {
+  //
+  // `nivelFiltro`: undefined = todos los niveles; '' = base; otro = ese nivel
+  // ACI (misma convención que `distribucionNotas`). Es responsabilidad de la
+  // vista traducir sus centinelas de «todos» (p. ej. el '__todas__' del selector
+  // de la Cuadrícula) a `undefined` antes de llamar: aquí un valor que no sea un
+  // código de nivel se trata como un nivel real y no casaría con nadie.
+  //
+  // El NIVEL del instrumento manda en los dos sentidos: una prueba creada para
+  // un nivel ACI solo la corrige ese alumnado (`alumnosDeInstrumento`), así que
+  // sus preguntas se juzgan con los datos de quien realmente la hizo —no con los
+  // de todo el grupo— y no salen en el informe de otro nivel, donde se leerían
+  // como fallos de alumnado que nunca la hizo.
+  hallazgos(claseId, insts, criterios, nivelFiltro) {
+    const todos = nivelFiltro === undefined || nivelFiltro === null;
+    const alcance = todos ? '' : this.nivelNorm(nivelFiltro);
     const alumnos = this.alumnosDeClase(claseId);
     const UMB = { critico: 50, atencion: 30, fallosPregunta: 50 };
     const salida = [];
@@ -604,6 +618,10 @@ const Calc = {
 
     // Regla 2: preguntas (apartados) con alto índice de fallos.
     for (const inst of insts || []) {
+      // Con un nivel elegido, solo se juzgan los instrumentos de ESE nivel: los
+      // comunes (sin nivel) valen para todos y una prueba de otro nivel no la
+      // hizo este alumnado.
+      if (!todos && !this.instrumentoParaNivel(inst, alcance)) continue;
       const alumnosAp = this.alumnosDeInstrumento(inst);
       for (const ap of inst.apartados || []) {
         const notas = alumnosAp
@@ -611,6 +629,10 @@ const Calc = {
           .filter(v => v != null && v !== '' && !isNaN(v))
           .map(Number);
         if (notas.length < 2) continue;
+        // Apartado sin criterios: no pertenece a ningún currículo, así que no
+        // se puede decir que sea de un nivel. Igual que `logroCriterioEnInsts`
+        // con los criterios, se descarta en vez de contarlo como un fallo más.
+        if (!(ap.criterioIds || []).length) continue;
         const max = inst.tipo === 'Rúbrica' ? 100 : Number(ap.maxPts) || 1;
         const pct = Math.round(notas.filter(v => v / max < 0.5).length / notas.length * 100);
         if (pct >= UMB.fallosPregunta) {

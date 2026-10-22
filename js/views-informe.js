@@ -23,10 +23,7 @@ const InformeView = (function () {
   // va la clase analizada, para que el selector de clase de la cabecera de
   // la cuadrícula tenga una respuesta visible en el propio informe.
   function htmlAlcance(claseId) {
-    const f = {};
-    if (alcance.periodo) f.periodo = alcance.periodo;
-    if (alcance.unidad) f.unidad = alcance.unidad;
-    const instsBase = Calc.instrumentosAlcance(claseId, f);
+    const instsBase = instsNivel();
     const uds = Calc.unidadesDe(instsBase);
     const instsUd = alcance.unidad
       ? instsBase.filter(i => i.unidad === alcance.unidad)
@@ -82,13 +79,45 @@ const InformeView = (function () {
       </div>`;
   }
 
-  // Instrumentos del alcance activo (trimestre → UD → instrumento).
-  function instsAlcance() {
+  // Nivel para Calc: `undefined` = todos los niveles, y un código normalizado en
+  // el resto ('' = base). El centinela «__todas__» es de la vista —viene del
+  // selector de la Cuadrícula— y NUNCA llega al motor: `nivelNorm('__todas__')`
+  // devuelve «__TODAS__», que no casa con ningún nivel y dejaba el informe vacío.
+  function nivelParaCalc() {
+    return esTodas(nivelSel) ? undefined : Calc.nivelNorm(nivelSel);
+  }
+
+  // Instrumentos del nivel activo (sin UD ni instrumento todavía). Un
+  // instrumento sin nivel vale para todos; con nivel, solo para ese nivel, así
+  // que una prueba creada para un ACI no aparece en el informe de otro nivel.
+  function instsNivel() {
     const f = {};
     if (alcance.periodo) f.periodo = alcance.periodo;
-    if (alcance.unidad) f.unidad = alcance.unidad;
-    if (alcance.instrumentoId) f.instrumentoId = alcance.instrumentoId;
-    return Calc.instrumentosAlcance(claseSel, f);
+    const insts = Calc.instrumentosAlcance(claseSel, f);
+    const nv = nivelParaCalc();
+    return nv === undefined ? insts : insts.filter(i => Calc.instrumentoParaNivel(i, nv));
+  }
+
+  // Instrumentos del alcance activo (trimestre → nivel → UD → instrumento).
+  function instsAlcance() {
+    let insts = instsNivel();
+    if (alcance.unidad) insts = insts.filter(i => i.unidad === alcance.unidad);
+    if (alcance.instrumentoId) insts = insts.filter(i => i.id === alcance.instrumentoId);
+    return insts;
+  }
+
+  // Un filtro que el nivel activo deja sin contenido se suelta solo: si no, el
+  // informe saldría vacío y el desplegable que lo puso ya no estaría en pantalla
+  // para quitarlo. Se llama al principio de cada render, antes de pintar.
+  function sueltaFiltrosVacios() {
+    const insts = instsNivel();
+    if (alcance.unidad && !insts.some(i => i.unidad === alcance.unidad)) {
+      alcance.unidad = '';
+      alcance.instrumentoId = '';
+    }
+    if (alcance.instrumentoId && !insts.some(i => i.id === alcance.instrumentoId)) {
+      alcance.instrumentoId = '';
+    }
   }
 
   // ------------------------------------------------------------ hallazgos
@@ -112,25 +141,32 @@ const InformeView = (function () {
       etiqueta: nv.etiqueta || nv.codigo,
       criterios: Calc.criteriosDeNivel(claseId, nv.codigo)
     })));
-    const nvNormSel = Calc.nivelNorm ? Calc.nivelNorm(nivelSel) : String(nivelSel || '').trim().toUpperCase();
+    // «Todos los niveles» se comprueba ANTES de normalizar: `nivelNorm` está
+    // pensado para códigos de nivel y deja «__TODAS__» tal cual, así que
+    // normalizar primero y comparar después dejaba la selección vacía.
     const seleccion = esTodas(nivelSel)
       ? niveles
-      : niveles.filter(nv => {
-          const nvNorm = Calc.nivelNorm ? Calc.nivelNorm(nv.codigo) : String(nv.codigo || '').trim().toUpperCase();
-          return nvNorm === nvNormSel;
-        });
+      : niveles.filter(nv => nv.codigo === Calc.nivelNorm(nivelSel));
 
     const critsPorNivel = [];
     for (const nv of seleccion) {
-      Calc.hallazgos(claseId, insts, nv.criterios).forEach(h => {
+      Calc.hallazgos(claseId, insts, nv.criterios, nv.codigo).forEach(h => {
         if (h.tipo === 'criterio') {
           h.nivelEtiqueta = nv.etiqueta;
           critsPorNivel.push(h);
         }
       });
     }
-    const pregGlobal = Calc.hallazgos(claseId, insts, []).filter(h => h.tipo === 'pregunta');
-    pregGlobal.forEach(h => { if (!h.nivelEtiqueta) h.nivelEtiqueta = '—'; });
+    const pregGlobal = Calc.hallazgos(claseId, insts, [], nivelParaCalc())
+      .filter(h => h.tipo === 'pregunta');
+    // Cada hallazgo de pregunta lleva el nivel del INSTRUMENTO que la contiene:
+    // sin nivel (común), base, o el ACI al que se creó la prueba. Así la tabla
+    // dice de quién es el fallo en vez de dejar la columna a rayas.
+    pregGlobal.forEach(h => {
+      const inst = Calc.instrumento(h.instrumentoId);
+      const nivel = inst && inst.nivel ? Calc.nivelNorm(inst.nivel) : '';
+      h.nivelEtiqueta = nivel ? (Calc.etiquetaNivel(claseId, nivel) || nivel) : 'Base';
+    });
     const todosH = critsPorNivel.concat(pregGlobal);
     if (!todosH.length) {
       return '<div class="aviso">No se han detectado problemas significativos en este alcance.</div>';
@@ -490,6 +526,7 @@ const InformeView = (function () {
       return;
     }
 
+    sueltaFiltrosVacios();
     const insts = instsAlcance();
     const todas = esTodas(nivelSel);
 
