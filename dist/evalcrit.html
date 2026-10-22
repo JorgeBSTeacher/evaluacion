@@ -2506,6 +2506,13 @@ const ClasesView = (() => {
     const area = areaDeAsignatura(a);
     if (!area) return String(a.nombre || '');
     const curso = String(a.curso || '').trim();
+    // Si el nombre visible NO es «área + curso», no es un nombre canónico: es
+    // una VARIANTE (Inglés, Francés, Música, Plástica) o un nombre editado a
+    // mano. Abreviarla la haría indistinguible de su pariente —«LEXT 3º» para
+    // Inglés y para Francés—, así que se deja tal cual: ya es corta y es lo
+    // único que las diferencia.
+    const canonico = area + (curso ? ' ' + curso : '');
+    if (String(a.nombre || '').trim() !== canonico) return String(a.nombre || '');
     return abreviaturaArea(area) + (curso ? ' ' + curso : '');
   }
 
@@ -2994,7 +3001,13 @@ const ClasesView = (() => {
     });
   }
 
-  return { render, areaDeAsignatura, abreviaturaArea, nombreCortoAsignatura };
+  // Orden canónico de los cursos, para que las vistas que agrupan o comparan
+  // por curso usen la MISMA tabla que el filtro de los niveles ACI (D-65).
+  function ordenCursos() {
+    return ORDEN_CURSOS.slice();
+  }
+
+  return { render, areaDeAsignatura, abreviaturaArea, nombreCortoAsignatura, ordenCursos };
 })();
 
 </script>
@@ -3104,26 +3117,38 @@ const CurriculoView = (() => {
 
     const sumaPesos = criteriosDe().reduce((s, c) => s + (Number(c.peso) || 0), 0);
     const asig = Calc.asignatura(asigSel) || {};
-    // Agrupado por area del decreto. El area sale de ClasesView.areaDeAsignatura,
-    // la MISMA fuente que usa el filtro de los niveles ACI: deducida del prefijo
-    // de los criterios cuando el campo guardado esta vacio. Antes se leia
-    // `a.area` directamente, asi que las asignaturas creadas antes de que el
-    // campo existiera (todas con area='') caian enteras en «Otras asignaturas»
-    // aunque su curriculo fuera oficial. Una sola verdad para el area.
-    const SIN_AREA = 'Otras asignaturas';
+    // Agrupado por CURSO: el docente piensa en «estoy en 4º» y revisa sus áreas.
+    // Con 7 áreas × 6 cursos = 42 currículos, seis bloques de siete se leen
+    // mejor que siete bloques de seis, y el bloque que interesa está siempre en
+    // el mismo sitio. El texto de la opción sigue siendo «MAT 4º» (nombre corto):
+    // el desplegable cerrado muestra SOLO la opción, sin su grupo, así que ahí
+    // no se puede dar el curso por sabido. Las variantes (Inglés/Francés,
+    // Plástica/Música) conservan su nombre porque abreviarlas las haría
+    // indistinguibles entre sí.
+    //
+    // El orden de los cursos sale de `ClasesView.ordenCursos`, la MISMA tabla
+    // que usa el filtro de los niveles ACI (D-65). Un curso fuera de ella
+    // (Infantil, otra etapa) va al final, y las asignaturas sin curso —las
+    // creadas a mano— al bloque «Sin curso», también al final.
+    const SIN_CURSO = 'Sin curso';
+    const orden = ClasesView.ordenCursos();
     const grupos = [];
     db.asignaturas.forEach(a => {
-      const clave = ClasesView.areaDeAsignatura(a) || SIN_AREA;
-      let g = grupos.find(x => x.area === clave);
-      if (!g) { g = { area: clave, lista: [] }; grupos.push(g); }
+      const clave = String(a.curso || '').trim() || SIN_CURSO;
+      let g = grupos.find(x => x.curso === clave);
+      if (!g) { g = { curso: clave, lista: [] }; grupos.push(g); }
       g.lista.push(a);
     });
-    grupos.sort((x, y) => (x.area === SIN_AREA) - (y.area === SIN_AREA)
-      || x.area.localeCompare(y.area, 'es'));
+    const pos = c => {
+      if (c === SIN_CURSO) return 999;
+      const i = orden.indexOf(c);
+      return i < 0 ? 900 : i;
+    };
+    grupos.sort((x, y) => pos(x.curso) - pos(y.curso));
     const opcionesAsig = grupos.map(g =>
-      `<optgroup label="${Utils.esc(ClasesView.abreviaturaArea(g.area) || g.area)}">`
+      `<optgroup label="${Utils.esc(g.curso)}">`
       + g.lista.map(a =>
-        `<option value="${a.id}" ${a.id === asigSel ? 'selected' : ''}>${Utils.esc(a.nombre)}</option>`
+        `<option value="${a.id}" ${a.id === asigSel ? 'selected' : ''}>${Utils.esc(ClasesView.nombreCortoAsignatura(a))}</option>`
       ).join('')
       + '</optgroup>').join('');
     el.innerHTML = `

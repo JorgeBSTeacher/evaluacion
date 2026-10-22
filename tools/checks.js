@@ -1201,13 +1201,23 @@ async function main() {
       mSinVar.querySelector('#campo-variante').style.display === 'none');
     app.alertas.length = 0;
 
-    // --- El desplegable de Currículo agrupa por área ---
+    // --- El desplegable de Currículo agrupa por CURSO ---
+    // El docente piensa «estoy en 4º y reviso sus áreas»: seis bloques por curso
+    // se leen mejor que siete bloques por área, y el bloque que interesa está
+    // siempre en el mismo sitio. El texto de la opción es el nombre corto
+    // («MAT 4º») porque al cerrarse el desplegable se ve SOLO la opción, sin su
+    // grupo: ahí no se puede dar el curso por sabido.
     app.App.ir('curriculo');
     const selAsig = v.querySelector('#sel-asig');
     const grupos = Array.from(selAsig.querySelectorAll('optgroup')).map(g => g.label);
-    // El estado de prueba ya trae currículos oficiales: todos con área. Se
-    // confecciona a mano una asignatura sin área (como las creadas antes de que
-    // el campo existiera) para comprobar que no desaparece del desplegable.
+    const ordenCursos = app.ClasesView.ordenCursos();
+    const conocidos = grupos.filter(c => c !== 'Sin curso');
+    check('P-07 · el desplegable de Currículo agrupa por curso y en orden',
+      conocidos.length > 0 && conocidos.every(c => ordenCursos.includes(c)) &&
+      conocidos.every((c, i) => i === 0 || ordenCursos.indexOf(conocidos[i - 1]) < ordenCursos.indexOf(c)),
+      grupos.join(','));
+    // Asignatura hecha a mano, sin curso ni área: no desaparece, cae en «Sin
+    // curso», que va al final.
     app.Storage.guardarAsignatura({ nombre: 'Taller de ajedrez', etapa: 'Primaria' });
     const sinArea = app.Storage.db.asignaturas[app.Storage.db.asignaturas.length - 1];
     app.App.ir('curriculo');
@@ -1216,28 +1226,24 @@ async function main() {
     const opciones2 = Array.from(selAsig2.querySelectorAll('option'));
     const opSinArea = opciones2.find(o => o.value === sinArea.id);
     const opIngles = opciones2.find(o => o.value === ingles.id);
-    // El agrupado debe usar la MISMA fuente que el filtro de la ACI (el área
-    // deducida), no el campo guardado: si no, las asignaturas creadas antes de
-    // que el campo existiera caen en «Otras asignaturas» aunque su currículo sea
-    // oficial. Se vacía el campo `area` de TODAS y se comprueba que el agrupado
-    // no se rompe.
+    check('P-07 · una asignatura sin curso no desaparece: cae en «Sin curso», al final',
+      grupos2[grupos2.length - 1] === 'Sin curso' && !!opSinArea &&
+      opSinArea.closest('optgroup').label === 'Sin curso');
+    check('P-07 · la asignatura aparece en su curso con el nombre corto',
+      !!opIngles && opIngles.textContent === 'Inglés 3º' &&
+      opIngles.closest('optgroup') && opIngles.closest('optgroup').label === '3º');
+    // El área ya no agrupa, pero sigue siendo UNA sola verdad: es la que decide
+    // la abreviatura de la opción. Se vacía el campo guardado de todas y debe
+    // seguir deduciéndose del currículo, como en el filtro de la ACI (D-62).
+    const asigMat = app.Storage.db.asignaturas.find(a => a.id !== ingles.id
+      && app.ClasesView.areaDeAsignatura(a) === 'Matemáticas');
     app.Storage.db.asignaturas.forEach(a => { a.area = ''; });
     app.App.ir('curriculo');
-    const gruposSinCampo = Array.from(v.querySelector('#sel-asig').querySelectorAll('optgroup')).map(g => g.label);
-    check('D-64 · sin el campo `area` el agrupado sigue siendo el del decreto',
-      gruposSinCampo.includes('LEXT') && gruposSinCampo.includes('MAT') &&
-      gruposSinCampo.indexOf('Otras asignaturas') === gruposSinCampo.length - 1
-      && gruposSinCampo.indexOf('LEXT') < gruposSinCampo.indexOf('Otras asignaturas'),
-      gruposSinCampo.join(','));
-    app.App.ir('curriculo');
-    check('P-07 · el desplegable de Currículo agrupa por área del decreto',
-      grupos.includes('LEXT') && grupos.includes('MAT'));
-    check('P-07 · una asignatura sin área no desaparece: cae en «Otras asignaturas»',
-      grupos2[grupos2.length - 1] === 'Otras asignaturas' && !!opSinArea &&
-      opSinArea.closest('optgroup').label === 'Otras asignaturas');
-    check('P-07 · la asignatura aparece bajo su área con su nombre visible',
-      !!opIngles && opIngles.textContent === 'Inglés 3º' &&
-      opIngles.closest('optgroup') && opIngles.closest('optgroup').label === 'LEXT');
+    const opMatSinCampo = Array.from(v.querySelector('#sel-asig').querySelectorAll('option'))
+      .find(o => o.value === asigMat.id);
+    check('D-64 · sin el campo `area` la abreviatura sigue saliendo del currículo',
+      !!opMatSinCampo && opMatSinCampo.textContent === 'MAT ' + asigMat.curso,
+      opMatSinCampo ? opMatSinCampo.textContent : 'sin opción');
 
     // --- Abreviaturas del área (D-63) ---
     // Se usan las MISMAS siglas que los códigos de criterio del decreto, para
@@ -1254,10 +1260,12 @@ async function main() {
       abre('Otras asignaturas') === 'Otras asignaturas' && abre('') === '' && abre(null) === '');
     // La abreviatura es solo para MOSTRAR: el nombre de la asignatura no cambia.
     const nombreCorto = app.ClasesView.nombreCortoAsignatura;
-    const asigMat = app.Storage.db.asignaturas.find(a => a.id !== ingles.id
-      && app.ClasesView.areaDeAsignatura(a) === 'Matemáticas');
     check('D-63 · el nombre corto de un currículo oficial es «abreviatura + curso»',
       nombreCorto(asigMat) === 'MAT ' + asigMat.curso, nombreCorto(asigMat));
+    // Una variante NO se abrevia: «LEXT 3º» para Inglés y para Francés las haría
+    // indistinguibles. Se conserva su etiqueta, que ya es corta.
+    check('D-63 · una variante conserva su nombre en vez de abreviarse',
+      nombreCorto(ingles) === 'Inglés 3º', nombreCorto(ingles));
     check('D-63 · una asignatura sin área conserva su nombre entero',
       nombreCorto(sinArea) === 'Taller de ajedrez', nombreCorto(sinArea));
     check('D-63 · abreviar NO toca el nombre guardado de la asignatura',

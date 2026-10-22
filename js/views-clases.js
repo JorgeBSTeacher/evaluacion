@@ -97,6 +97,13 @@ const ClasesView = (() => {
     const area = areaDeAsignatura(a);
     if (!area) return String(a.nombre || '');
     const curso = String(a.curso || '').trim();
+    // Si el nombre visible NO es «área + curso», no es un nombre canónico: es
+    // una VARIANTE (Inglés, Francés, Música, Plástica) o un nombre editado a
+    // mano. Abreviarla la haría indistinguible de su pariente —«LEXT 3º» para
+    // Inglés y para Francés—, así que se deja tal cual: ya es corta y es lo
+    // único que las diferencia.
+    const canonico = area + (curso ? ' ' + curso : '');
+    if (String(a.nombre || '').trim() !== canonico) return String(a.nombre || '');
     return abreviaturaArea(area) + (curso ? ' ' + curso : '');
   }
 
@@ -585,5 +592,11 @@ const ClasesView = (() => {
     });
   }
 
-  return { render, areaDeAsignatura, abreviaturaArea, nombreCortoAsignatura };
+  // Orden canónico de los cursos, para que las vistas que agrupan o comparan
+  // por curso usen la MISMA tabla que el filtro de los niveles ACI (D-65).
+  function ordenCursos() {
+    return ORDEN_CURSOS.slice();
+  }
+
+  return { render, areaDeAsignatura, abreviaturaArea, nombreCortoAsignatura, ordenCursos };
 })();
