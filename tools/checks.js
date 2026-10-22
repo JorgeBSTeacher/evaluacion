@@ -1403,7 +1403,7 @@ async function main() {
     const opcionesFiltro = Array.from(filaFiltro.querySelector('.nv-asig').querySelectorAll('option'))
       .map(o => o.value).filter(Boolean);
     check('D-62 · el desplegable de la ACI solo ofrece la misma área',
-      opcionesFiltro.includes(matId) && !opcionesFiltro.includes(lclId),
+      opcionesFiltro.includes(mat3Id) && !opcionesFiltro.includes(lclId),
       opcionesFiltro.join(','));
     check('D-62 · la asignatura a mano (sin currículo) tampoco se ofrece',
       !opcionesFiltro.includes(manual.id));
@@ -1445,7 +1445,143 @@ async function main() {
     const bodyAviso = modal();
     check('D-62 · con área pero sin otro currículo de esa área se muestra el aviso en gris',
       !!bodyAviso.querySelector('#aviso-curriculo-area')
-      && /Genera un currículo personalizado primero/.test(bodyAviso.querySelector('#aviso-curriculo-area').textContent));
+      && /Faltan los currículos/.test(bodyAviso.querySelector('#aviso-curriculo-area').textContent));
+    doc.querySelector('.cancelar').click();
+
+    // --- Niveles ACI: la lista se acota al MISMO curso inferior (D-65) ---
+    // Un nivel ACI apunta a un currículo de otro curso: el alumnado con
+    // adaptación trabaja por debajo del curso de referencia. La ampliación no
+    // se modela como un nivel de currículo: «ampliar no es dar más, es dar más
+    // profundo» — quien profundiza sigue evaluándose con los criterios de SU
+    // curso.
+    //
+    // Se monta un escenario completo de Matemáticas con los seis cursos.
+    importarJson(app, escAci);
+    const db65 = app.Storage.db;
+    const mats = [];
+    ['1º', '2º', '3º', '4º', '5º', '6º'].forEach(c => {
+      const tpl = app.PLANTILLAS_CURRICULO.find(p => (p.asignatura || {}).nombre === 'Matemáticas'
+        && (p.asignatura.cursos || []).includes(c));
+      mats.push(app.Storage.importarCurriculo(tpl, { cursos: [c] }).ids[0]);
+    });
+    const asigDeCurso = c => app.Calc.asignatura(mats[['1º', '2º', '3º', '4º', '5º', '6º'].indexOf(c)]);
+    const m4 = asigDeCurso('4º');
+    db65.clases.push({ id: 'c65', asignaturaId: m4.id, grupoId: 'gA', nivelesAci: [], adaptaciones: {} });
+    app.App.ir('clases');
+    v.querySelector('.aci-clase[data-id="c65"]').click();
+    const body65 = modal();
+    body65.querySelector('#add-nivel-aci').click();
+    const fila65 = body65.querySelector('.nivel-aci-fila:last-child');
+    const sel65 = fila65.querySelector('.nv-asig');
+    const ids65 = Array.from(sel65.querySelectorAll('option')).map(o => o.value).filter(Boolean);
+    const cursos65 = ids65.map(id => String(app.Calc.asignatura(id).curso));
+    check('D-65 · desde 4º el nivel ACI solo ofrece cursos INFERIORES',
+      cursos65.length === 3 && cursos65.every(c => ['1º', '2º', '3º'].includes(c)),
+      cursos65.join(','));
+    check('D-65 · ni el propio curso ni los superiores se ofrecen',
+      !ids65.includes(m4.id) && !ids65.includes(asigDeCurso('5º').id) && !ids65.includes(asigDeCurso('6º').id));
+    check('D-65 · el curso inferior más cercano va primero',
+      cursos65[0] === '3º' && cursos65[cursos65.length - 1] === '1º', cursos65.join(','));
+    check('D-65 · desde 4º NO se avisa: hay cursos inferiores a los que apuntar',
+      !body65.querySelector('#aviso-curriculo-area'));
+    doc.querySelector('.cancelar').click();
+
+    // Desde 1º no hay nada por debajo: la salvaguarda ofrece todo el área y no
+    // se avisa de unos cursos inferiores que no existen.
+    db65.clases.push({ id: 'c65b', asignaturaId: asigDeCurso('1º').id, grupoId: 'gA', nivelesAci: [], adaptaciones: {} });
+    app.App.ir('clases');
+    v.querySelector('.aci-clase[data-id="c65b"]').click();
+    const body65b = modal();
+    body65b.querySelector('#add-nivel-aci').click();
+    const fila65b = body65b.querySelector('.nivel-aci-fila:last-child');
+    const ids65b = Array.from(fila65b.querySelector('.nv-asig').querySelectorAll('option')).map(o => o.value).filter(Boolean);
+    check('D-65 · desde 1º la lista NO se bloquea: se ofrece todo el área',
+      ids65b.length === 6 && mats.every(id => ids65b.includes(id)), ids65b.length + ' opciones');
+    check('D-65 · desde 1º no se avisa: no hay cursos por debajo',
+      !body65b.querySelector('#aviso-curriculo-area'));
+    doc.querySelector('.cancelar').click();
+
+    // Solo existe el currículo del propio curso: se avisa de cuáles faltan y el
+    // desplegable no se queda vacío.
+    importarJson(app, escAci);
+    const db65c = app.Storage.db;
+    const tpl4 = app.PLANTILLAS_CURRICULO.find(p => (p.asignatura || {}).nombre === 'Matemáticas'
+      && (p.asignatura.cursos || []).includes('4º'));
+    const soloM4 = app.Storage.importarCurriculo(tpl4, { cursos: ['4º'] }).ids[0];
+    db65c.clases.push({ id: 'c65c', asignaturaId: soloM4, grupoId: 'gA', nivelesAci: [], adaptaciones: {} });
+    app.App.ir('clases');
+    v.querySelector('.aci-clase[data-id="c65c"]').click();
+    const body65c = modal();
+    const aviso65c = body65c.querySelector('#aviso-curriculo-area');
+    check('D-65 · sin currículos inferiores se avisa de CUÁLES faltan',
+      !!aviso65c && /Matemáticas/.test(aviso65c.textContent)
+      && /1º/.test(aviso65c.textContent) && /2º/.test(aviso65c.textContent)
+      && /3º/.test(aviso65c.textContent), aviso65c ? aviso65c.textContent : 'sin aviso');
+    body65c.querySelector('#add-nivel-aci').click();
+    const fila65c = body65c.querySelector('.nivel-aci-fila:last-child');
+    const ids65c = Array.from(fila65c.querySelector('.nv-asig').querySelectorAll('option')).map(o => o.value).filter(Boolean);
+    check('D-65 · sin currículos inferiores la lista NO se bloquea',
+      ids65c.length > 0 && ids65c.includes(soloM4));
+    doc.querySelector('.cancelar').click();
+
+    // RETROCOMPATIBILIDAD: un nivel ya guardado que apunta a un curso SUPERIOR
+    // (creado antes de esta regla) debe seguir apareciendo seleccionado. Si no,
+    // al reabrir el modal caería a «— asignatura —» y al guardar se perdería.
+    importarJson(app, escAci);
+    const db65d = app.Storage.db;
+    const ids65d = {};
+    ['3º', '4º', '6º'].forEach(c => {
+      const tpl = app.PLANTILLAS_CURRICULO.find(p => (p.asignatura || {}).nombre === 'Matemáticas'
+        && (p.asignatura.cursos || []).includes(c));
+      ids65d[c] = app.Storage.importarCurriculo(tpl, { cursos: [c] }).ids[0];
+    });
+    db65d.clases.push({
+      id: 'c65d', asignaturaId: ids65d['4º'], grupoId: 'gA', adaptaciones: {},
+      nivelesAci: [{ codigo: 'A', etiqueta: 'Refuerzo', asignaturaId: ids65d['3º'] },
+                  { codigo: 'B', etiqueta: 'Antiguo', asignaturaId: ids65d['6º'] }]
+    });
+    app.App.ir('clases');
+    v.querySelector('.aci-clase[data-id="c65d"]').click();
+    const body65d = modal();
+    const filas65d = Array.from(body65d.querySelectorAll('.nivel-aci-fila'));
+    const valorDe = c => {
+      const f = filas65d.find(x => (x.querySelector('.nv-cod') || {}).value === c);
+      return f ? f.querySelector('.nv-asig').value : '';
+    };
+    check('D-65 · un nivel ya guardado de curso inferior sigue seleccionado',
+      valorDe('A') === ids65d['3º']);
+    check('D-65 · un nivel ya guardado de curso SUPERIOR no se pierde al reabrir',
+      valorDe('B') === ids65d['6º']);
+    // Y al guardar sin tocar nada, las dos asignaciones se conservan.
+    guardar();
+    const guardada65d = db65d.clases.find(c => c.id === 'c65d');
+    check('D-65 · al reabrir y guardar, el nivel antiguo conserva su currículo',
+      guardada65d.nivelesAci.some(n => n.codigo === 'B' && n.asignaturaId === ids65d['6º']));
+
+    // Curso desconocido (Infantil u otra etapa): «inferior» no significa nada,
+    // así que NO se filtra por curso y se ofrece todo el área. Se prueba por la
+    // UI, con una asignatura cuyo curso está fuera de ORDEN_CURSOS.
+    importarJson(app, escAci);
+    const db65e = app.Storage.db;
+    const tplM6 = app.PLANTILLAS_CURRICULO.find(p => (p.asignatura || {}).nombre === 'Matemáticas'
+      && (p.asignatura.cursos || []).includes('6º'));
+    const m6e = app.Storage.importarCurriculo(tplM6, { cursos: ['6º'] }).ids[0];
+    const m3e = app.Storage.importarCurriculo(app.PLANTILLAS_CURRICULO.find(p =>
+      (p.asignatura || {}).nombre === 'Matemáticas'
+      && (p.asignatura.cursos || []).includes('3º')), { cursos: ['3º'] }).ids[0];
+    // Se fuerza un curso que no está en la tabla de orden.
+    app.Calc.asignatura(m6e).curso = 'Infantil 5 años';
+    db65e.clases.push({ id: 'c65e', asignaturaId: m6e, grupoId: 'gA', nivelesAci: [], adaptaciones: {} });
+    app.App.ir('clases');
+    v.querySelector('.aci-clase[data-id="c65e"]').click();
+    const body65e = modal();
+    check('D-65 · con un curso fuera de la tabla no se avisa: «inferior» no aplica',
+      !body65e.querySelector('#aviso-curriculo-area'));
+    body65e.querySelector('#add-nivel-aci').click();
+    const fila65e = body65e.querySelector('.nivel-aci-fila:last-child');
+    const ids65e = Array.from(fila65e.querySelector('.nv-asig').querySelectorAll('option')).map(o => o.value).filter(Boolean);
+    check('D-65 · con un curso fuera de la tabla se ofrece todo el área, sin filtrar',
+      ids65e.includes(m3e) && ids65e.includes(m6e), ids65e.join(','));
     doc.querySelector('.cancelar').click();
 
     // Se restaura la referencia ORIGINAL de Storage.db para no contaminar los

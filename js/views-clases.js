@@ -100,6 +100,16 @@ const ClasesView = (() => {
     return abreviaturaArea(area) + (curso ? ' ' + curso : '');
   }
 
+  // Lista con «y» antes del último elemento: «1º, 2º y 3º». Sirve para
+  // decir qué currículos faltan, sin inventar un helper en Utils.
+  function listaEnCastellano(items) {
+    const arr = Array.from(items).map(String).filter(Boolean);
+    if (!arr.length) return '';
+    if (arr.length === 1) return arr[0];
+    if (arr.length === 2) return arr[0] + ' y ' + arr[1];
+    return arr.slice(0, -1).join(', ') + ' y ' + arr[arr.length - 1];
+  }
+
   // Solo dos áreas del decreto se desdoblan en la práctica, y el currículo es el
   // mismo en las dos: Lengua Extranjera (Inglés o Francés) y Educación Artística
   // (Plástica o Música). Son ETIQUETAS del nombre visible, no áreas distintas.
@@ -314,19 +324,51 @@ const ClasesView = (() => {
       asignaturaId: (f.querySelector('.nv-asig') || {}).value || ''
     }));
 
-    // Currículos que se ofrecen en cada nivel ACI: solo los de la MISMA área que
-    // la clase. Una clase de Matemáticas no puede apuntar a Lengua. El área se
-    // deduce del currículo de la propia clase (su asignatura base), no del campo
-    // guardado, para que funcione también con las asignaturas anteriores.
+    // Curso de la clase y cursos ESTRICTAMENTE INFERIORES. Un nivel ACI apunta
+    // a un currículo de OTRO curso: el alumnado con adaptación trabaja por
+    // debajo del curso de referencia. La ampliación NO se modela así: «ampliar
+    // no es dar más, es dar más profundo» — quien profundiza sigue evaluándose
+    // con los criterios de SU curso, con evidencias más exigentes, así que no
+    // necesita un nivel de currículo.
     //
-    // SALVAGUARDA: si el filtro deja la lista VACÍA, la ACI NO se bloquea: se
-    // ofrecen todas. «Prefiero una lista larga que un callejón sin salida.»
-    // Pasa con las asignaturas hechas a mano (sin área) y con las clases sin
-    // currículo propio.
-    function otrasDelArea() {
+    // `null` = no se filtra por curso. Pasa si el curso está vacío (asignaturas
+    // hechas a mano) o no está en ORDEN_CURSOS (Infantil, otras etapas): sin un
+    // orden conocido, «inferior» no significa nada y se ofrece todo el área.
+    function cursosInferioresDeClase() {
+      const asigClase = Calc.asignaturaDeClase(clase.id);
+      const i = ORDEN_CURSOS.indexOf(String((asigClase && asigClase.curso) || '').trim());
+      return i < 0 ? null : ORDEN_CURSOS.slice(0, i);
+    }
+
+    const cursoDe = a => String((a && a.curso) || '').trim();
+    const indiceDeCurso = a => ORDEN_CURSOS.indexOf(cursoDe(a));
+
+    // Currículos de la MISMA área que la clase (D-62). El área se deduce del
+    // currículo de la propia clase, no del campo guardado, para que funcione
+    // también con las asignaturas anteriores al campo.
+    function delArea() {
       const areaClase = areaDeAsignatura(Calc.asignaturaDeClase(clase.id));
       if (!areaClase) return null; // sin área: no se puede filtrar
       return db.asignaturas.filter(a => areaDeAsignatura(a) === areaClase);
+    }
+
+    // Currículos que se ofrecen en cada nivel ACI: misma área (D-62) y curso
+    // inferior al de la clase (D-65). El más cercano primero: desde 4º se ve
+    // 3º, 2º y 1º, en ese orden.
+    //
+    // SALVAGUARDA: si el filtro deja la lista VACÍA, la ACI NO se bloquea. Pero
+    // el rescate se hace DENTRO del área: si no hay cursos inferiores se
+    // ofrecen todos los del área, nunca los de otra. «Prefiero una lista larga
+    // que un callejón sin salida», sin romper lo que D-62 garantiza.
+    function otrasDelArea() {
+      const mismas = delArea();
+      if (!mismas) return null;
+      const inferiores = cursosInferioresDeClase();
+      if (!inferiores) return mismas; // curso desconocido: no se filtra
+      const deCursoInferior = mismas
+        .filter(a => inferiores.includes(cursoDe(a)))
+        .sort((a, b) => indiceDeCurso(b) - indiceDeCurso(a));
+      return deCursoInferior.length ? deCursoInferior : mismas;
     }
 
     // Opciones del desplegable de currículo de un nivel ACI. El texto visible es
@@ -338,24 +380,34 @@ const ClasesView = (() => {
 
     function opcionesAsignatura(asignaturaId) {
       const mismas = otrasDelArea();
-      const lista = (mismas && mismas.length) ? mismas : db.asignaturas;
+      let lista = (mismas && mismas.length) ? mismas : db.asignaturas;
+      // RETROCOMPATIBILIDAD: un nivel ya guardado que apunte a un currículo que
+      // el filtro deja fuera (creado antes de esta regla, o de un curso que no
+      // es inferior) debe seguir apareciendo seleccionado. Si no, al reabrir el
+      // modal el desplegable caería a «— asignatura —» y, al guardar, ese nivel
+      // se perdería sin avisar. Se añade a la lista y punto: sin migración, sin
+      // botón y sin pedir permiso.
+      if (asignaturaId && !lista.some(a => a.id === asignaturaId)) {
+        const actual = Calc.asignatura(asignaturaId);
+        if (actual) lista = lista.concat([actual]);
+      }
       return opcionesDe(lista)(asignaturaId);
     }
 
-    // Aviso en gris: la clase tiene área pero NO hay otro currículo de esa área
-    // al que apuntar un nivel ACI (solo el suyo propio, o ninguno). Entonces no
-    // se puede montar un nivel de otro curso y se dice en gris qué falta, sin
-    // bloquear nada. Es el caso en que el docente aún no ha generado el currículo
-    // del curso del que viene el alumnado con adaptación.
+    // Aviso en gris: la clase tiene área y curso conocidos, pero NO existe
+    // ningún currículo de un curso inferior al que apuntar un nivel. Es el caso
+    // normal al empezar, cuando solo se ha creado el currículo del curso de la
+    // clase. Se dice cuáles faltan y se explica que, mientras tanto, el
+    // desplegable ofrece todo el área (la salvaguarda).
     function avisoSinCurriculo() {
-      const mismas = otrasDelArea();
+      const mismas = delArea();
       if (!mismas) return ''; // sin área no hay nada que reclamar
-      const propias = new Set(
-        Calc.nivelesAciDeClase(clase.id).map(n => n.asignaturaId).filter(Boolean)
-      );
-      const candidatas = mismas.filter(a => a.id !== clase.asignaturaId && !propias.has(a.id));
-      if (candidatas.length) return '';
-      return `<div class="aviso" id="aviso-curriculo-area">Genera un currículo personalizado primero: no hay ningún otro currículo de <b>${Utils.esc(areaDeAsignatura(Calc.asignaturaDeClase(clase.id)))}</b> al que apuntar el nivel.</div>`;
+      const inferiores = cursosInferioresDeClase();
+      if (!inferiores || !inferiores.length) return ''; // curso desconocido, o ya es 1º
+      const hayInferior = mismas.some(a => inferiores.includes(cursoDe(a)));
+      if (hayInferior) return ''; // hay a qué apuntar: nada que avisar
+      const area = areaDeAsignatura(Calc.asignaturaDeClase(clase.id));
+      return `<div class="aviso" id="aviso-curriculo-area">Faltan los currículos de <b>${Utils.esc(area)}</b> de ${Utils.esc(listaEnCastellano(inferiores))}. Genéralos en «Currículos y asignaturas» y podrás apuntar el nivel; mientras tanto se ofrecen todos los del área.</div>`;
     }
 
     function filaNivel(n) {
