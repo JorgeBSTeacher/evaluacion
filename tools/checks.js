@@ -1232,17 +1232,42 @@ async function main() {
     check('P-07 · la asignatura aparece en su curso con el nombre corto',
       !!opIngles && opIngles.textContent === 'Inglés 3º' &&
       opIngles.closest('optgroup') && opIngles.closest('optgroup').label === '3º');
+    // Las asignaturas de la generación anterior (v0.1–v0.5) no guardan `curso`:
+    // el curso vive SOLO en el nombre («Matemáticas 6º»). Se deduce de ahí, sin
+    // migrar ni escribir nada (D-67). Sin esto caen todas en «Sin curso» y el
+    // filtro ACI no sabe de qué curso es la clase.
+    const asigMat = app.Storage.db.asignaturas.find(a => a.id !== ingles.id
+      && app.ClasesView.areaDeAsignatura(a) === 'Matemáticas');
+    const cursoDeAsignatura = app.ClasesView.cursoDeAsignatura;
+    check('D-67 · el curso se deduce del nombre cuando el campo está vacío',
+      cursoDeAsignatura({ nombre: 'Matemáticas 6º', curso: '' }) === '6º');
+    check('D-67 · el campo `curso` manda cuando existe',
+      cursoDeAsignatura({ nombre: 'Matemáticas 6º', curso: '4º' }) === '4º');
+    check('D-67 · un nombre sin curso no inventa uno',
+      cursoDeAsignatura({ nombre: 'Taller de ajedrez' }) === '');
+    check('D-67 · «4º de Primaria» también se entiende',
+      cursoDeAsignatura({ nombre: 'Matemáticas 4º de Primaria' }) === '4º');
+    // Integración: una asignatura heredada se agrupa por el curso de su nombre,
+    // con su nombre corto, y no en «Sin curso».
+    const cursoAsigMat = asigMat.curso;
+    asigMat.curso = '';
+    app.App.ir('curriculo');
+    const opMatHeredada = Array.from(v.querySelector('#sel-asig').querySelectorAll('option'))
+      .find(o => o.value === asigMat.id);
+    check('D-67 · una asignatura heredada se agrupa por el curso de su nombre',
+      !!opMatHeredada && opMatHeredada.closest('optgroup').label === cursoAsigMat &&
+      opMatHeredada.textContent === 'MAT ' + cursoAsigMat,
+      opMatHeredada ? opMatHeredada.closest('optgroup').label + ' > ' + opMatHeredada.textContent : 'sin opción');
+    asigMat.curso = cursoAsigMat;
     // El área ya no agrupa, pero sigue siendo UNA sola verdad: es la que decide
     // la abreviatura de la opción. Se vacía el campo guardado de todas y debe
     // seguir deduciéndose del currículo, como en el filtro de la ACI (D-62).
-    const asigMat = app.Storage.db.asignaturas.find(a => a.id !== ingles.id
-      && app.ClasesView.areaDeAsignatura(a) === 'Matemáticas');
     app.Storage.db.asignaturas.forEach(a => { a.area = ''; });
     app.App.ir('curriculo');
     const opMatSinCampo = Array.from(v.querySelector('#sel-asig').querySelectorAll('option'))
       .find(o => o.value === asigMat.id);
     check('D-64 · sin el campo `area` la abreviatura sigue saliendo del currículo',
-      !!opMatSinCampo && opMatSinCampo.textContent === 'MAT ' + asigMat.curso,
+      !!opMatSinCampo && opMatSinCampo.textContent === 'MAT ' + cursoDeAsignatura(asigMat),
       opMatSinCampo ? opMatSinCampo.textContent : 'sin opción');
 
     // --- Abreviaturas del área (D-63) ---
@@ -1493,6 +1518,24 @@ async function main() {
     check('D-65 · desde 4º NO se avisa: hay cursos inferiores a los que apuntar',
       !body65.querySelector('#aviso-curriculo-area'));
     doc.querySelector('.cancelar').click();
+
+    // La clase puede ser una asignatura HEREDADA (sin campo `curso`, el curso
+    // solo en el nombre). El filtro debe seguir aplicándose: si no, las clases
+    // de siempre —las que se crearon con las primeras versiones— verían todos
+    // los cursos otra vez y D-65 no serviría de nada en los datos reales.
+    m4.curso = '';
+    app.App.ir('clases');
+    v.querySelector('.aci-clase[data-id="c65"]').click();
+    const body65h = modal();
+    body65h.querySelector('#add-nivel-aci').click();
+    const fila65h = body65h.querySelector('.nivel-aci-fila:last-child');
+    const cursos65h = Array.from(fila65h.querySelector('.nv-asig').querySelectorAll('option'))
+      .map(o => o.value).filter(Boolean).map(id => String(app.Calc.asignatura(id).curso));
+    check('D-67 · una clase heredada sigue filtrando por el curso de su nombre',
+      cursos65h.length === 3 && cursos65h.every(c => ['1º', '2º', '3º'].includes(c)),
+      cursos65h.join(','));
+    doc.querySelector('.cancelar').click();
+    m4.curso = '4º';
 
     // Desde 1º no hay nada por debajo: la salvaguarda ofrece todo el área y no
     // se avisa de unos cursos inferiores que no existen.

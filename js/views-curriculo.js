@@ -113,7 +113,7 @@ const CurriculoView = (() => {
     const orden = ClasesView.ordenCursos();
     const grupos = [];
     db.asignaturas.forEach(a => {
-      const clave = String(a.curso || '').trim() || SIN_CURSO;
+      const clave = ClasesView.cursoDeAsignatura(a) || SIN_CURSO;
       let g = grupos.find(x => x.curso === clave);
       if (!g) { g = { curso: clave, lista: [] }; grupos.push(g); }
       g.lista.push(a);

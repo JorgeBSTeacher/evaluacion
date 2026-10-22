@@ -87,6 +87,21 @@ const ClasesView = (() => {
     return ABREVIATURA_POR_AREA[a] || a;
   }
 
+  // Curso de una asignatura. El campo `curso` manda cuando existe. Las
+  // asignaturas de la generación anterior (v0.1–v0.5) NO lo guardan: el curso
+  // vive SOLO en el nombre («Matemáticas 6º»). Se deduce de ahí, igual que el
+  // área se deduce del prefijo de los criterios (D-62): es una lectura viva,
+  // sin migración, sin botón y sin escribir nada. Sin esto, todas las
+  // asignaturas antiguas caen en «Sin curso» y el filtro de los niveles ACI
+  // (D-65) no se aplica, porque no sabe de qué curso es la clase.
+  function cursoDeAsignatura(a) {
+    if (!a) return '';
+    const campo = String(a.curso || '').trim();
+    if (campo) return campo;
+    const m = String(a.nombre || '').match(/([1-6])º(?:\s+de\s+(?:Primaria|Infantil))?\s*$/i);
+    return m ? m[1] + 'º' : '';
+  }
+
   // Nombre corto de una asignatura para un desplegable: «MAT 4º» si su área se
   // conoce (currículo oficial), y su nombre visible entero si es una asignatura
   // hecha a mano, sin área. Las manuales no compiten en el mismo desplegable
@@ -96,7 +111,7 @@ const ClasesView = (() => {
     if (!a) return '';
     const area = areaDeAsignatura(a);
     if (!area) return String(a.nombre || '');
-    const curso = String(a.curso || '').trim();
+    const curso = cursoDeAsignatura(a);
     // Si el nombre visible NO es «área + curso», no es un nombre canónico: es
     // una VARIANTE (Inglés, Francés, Música, Plástica) o un nombre editado a
     // mano. Abreviarla la haría indistinguible de su pariente —«LEXT 3º» para
@@ -343,11 +358,11 @@ const ClasesView = (() => {
     // orden conocido, «inferior» no significa nada y se ofrece todo el área.
     function cursosInferioresDeClase() {
       const asigClase = Calc.asignaturaDeClase(clase.id);
-      const i = ORDEN_CURSOS.indexOf(String((asigClase && asigClase.curso) || '').trim());
+      const i = ORDEN_CURSOS.indexOf(cursoDeAsignatura(asigClase));
       return i < 0 ? null : ORDEN_CURSOS.slice(0, i);
     }
 
-    const cursoDe = a => String((a && a.curso) || '').trim();
+    const cursoDe = a => cursoDeAsignatura(a);
     const indiceDeCurso = a => ORDEN_CURSOS.indexOf(cursoDe(a));
 
     // Currículos de la MISMA área que la clase (D-62). El área se deduce del
@@ -598,5 +613,5 @@ const ClasesView = (() => {
     return ORDEN_CURSOS.slice();
   }
 
-  return { render, areaDeAsignatura, abreviaturaArea, nombreCortoAsignatura, ordenCursos };
+  return { render, areaDeAsignatura, abreviaturaArea, nombreCortoAsignatura, cursoDeAsignatura, ordenCursos };
 })();
