@@ -196,10 +196,22 @@ const CurriculoView = (() => {
       selCurso.onchange = e => {
         const g = grupos.find(x => x.curso === e.target.value);
         if (!g || !g.lista.length) return;
-        // Cambiar de curso resuelve SIEMPRE a una asignatura concreta: la
-        // primera de ese curso. Si no, el cuerpo seguiría enseñando criterios
-        // de otro curso mientras arriba pone este, y la pantalla mentiría.
-        asigSel = g.lista[0].id;
+        // Cambiar de curso MANTIENE la asignatura cuando el curso nuevo también
+        // la tiene: quien repasa Conocimiento del Medio en 3º quiere el de 1º,
+        // no la primera de la lista. Se busca primero por el nombre visible
+        // —Inglés antes que Francés— y después por el área, que es la misma
+        // aunque cambie la variante. Si el curso no la tiene, se abre la
+        // primera, que es lo único que queda. En cualquier caso se reescribe
+        // `asigSel` y se repinta: si no, el cuerpo enseñaría criterios de otra
+        // asignatura mientras arriba pone esta.
+        const actual = Calc.asignatura(asigSel);
+        const nombreActual = actual ? ClasesView.nombreCortoAsignatura(actual, true) : '';
+        const areaActual = actual ? ClasesView.areaDeAsignatura(actual) : '';
+        const gemela =
+          (nombreActual && g.lista.find(a => ClasesView.nombreCortoAsignatura(a, true) === nombreActual))
+          || (areaActual && g.lista.find(a => ClasesView.areaDeAsignatura(a) === areaActual))
+          || g.lista[0];
+        asigSel = gemela.id;
         render(el);
       };
     }

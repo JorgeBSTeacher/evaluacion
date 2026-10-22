@@ -1265,24 +1265,15 @@ async function main() {
     const opIngles = opcionesDe(sel3).find(o => o.value === ingles.id);
     check('D-68 · dentro de un curso, la opción no repite el curso',
       !!opIngles && opIngles.textContent === 'Inglés', opIngles && opIngles.textContent);
-    const opMat3 = opcionesDe(sel3).find(o => {
-      const a = app.Calc.asignatura(o.value);
-      return a && app.ClasesView.areaDeAsignatura(a) === 'Matemáticas';
-    });
-    check('D-68 · el currículo oficial se abrevia sin el curso',
-      !!opMat3 && opMat3.textContent === 'MAT', opMat3 && opMat3.textContent);
 
-    // Cambiar de curso resuelve SIEMPRE a una asignatura concreta: la primera
-    // de ese curso. Si no, el cuerpo enseñaría criterios de otro curso mientras
-    // el desplegable dice este, y la pantalla mentiría.
-    const primeraDe3 = app.Storage.db.asignaturas.filter(a => cursoDeAsignatura(a) === '3º')[0];
-    const elegida3 = opcionesDe(sel3).find(o => o.selected);
+    // Cambiar de curso no puede dejar el cuerpo enseñando otra asignatura.
+    const sel3b = opcionesDe(selAsigEl()).find(o => o.selected);
     const critsPintados = Array.from(v.querySelectorAll('table.tabla tbody tr[data-id]'))
       .map(tr => tr.dataset.id);
-    check('D-68 · al cambiar de curso se abre su primera asignatura y el cuerpo la sigue',
-      !!elegida3 && elegida3.value === primeraDe3.id && critsPintados.length > 0 &&
-      critsPintados.every(id => (app.Calc.criterio(id) || {}).asignaturaId === primeraDe3.id),
-      (elegida3 ? app.Calc.asignatura(elegida3.value).nombre : 'sin opción') +
+    check('D-68 · al cambiar de curso el cuerpo enseña la asignatura que dice el desplegable',
+      !!sel3b && critsPintados.length > 0 &&
+      critsPintados.every(id => (app.Calc.criterio(id) || {}).asignaturaId === sel3b.value),
+      (sel3b ? app.Calc.asignatura(sel3b.value).nombre : 'sin opción') +
       ' · ' + critsPintados.length + ' criterios');
 
     // Con un solo curso, el desplegable de curso sobra: una única opción no
@@ -1298,6 +1289,84 @@ async function main() {
       opsSolo.length > 0 && opsSolo.every(t => t.endsWith('4º')), opsSolo.join(','));
     app.Storage.db.asignaturas = todasAsig;
     app.App.ir('curriculo');
+
+    // --- Cambiar de curso no pierde la asignatura (D-68) ---
+    // El desplegable de curso no es un filtro que reinicia: es el mismo currículo
+    // visto en otro curso. Quien repasa Matemáticas en 3º quiere las de 1º, no la
+    // primera de la lista; solo cuando ese curso no la tiene se abre la primera,
+    // que es lo único que queda.
+    {
+      const app2 = cargarApp({ dom: true });
+      app2.Storage.load();
+      await importarJson(app2, estadoPrueba());
+      const db2 = app2.Storage.db;
+      const v2 = app2.document.getElementById('app');
+      const selC = () => v2.querySelector('#sel-curso');
+      const selA = () => v2.querySelector('#sel-asig');
+      const opciones = sel => sel ? Array.from(sel.querySelectorAll('option')) : [];
+      const elegir = curso => {
+        const s = selC();
+        s.value = curso;
+        s.onchange({ target: { value: curso } });
+        return selA();
+      };
+      const idDe = nombre => (db2.asignaturas.find(a => a.nombre === nombre) || {}).id;
+
+      // Con un solo grupo por curso, MAT está en 3º y en 6º: al cambiar de curso
+      // se mantiene. Lengua Extranjera está en 2º y en 4º, pero no en 3º.
+      app2.App.ir('curriculo');
+      elegir('3º');
+      const opMat3 = opciones(selA()).find(o => o.value === idDe('Matemáticas 3º'));
+      selA().value = opMat3.value;
+      selA().onchange({ target: { value: opMat3.value } });
+      const sel6 = elegir('6º');
+      const elegida6 = opciones(sel6).find(o => o.selected);
+      check('D-68 · cambiar de curso mantiene la asignatura cuando existe en el curso nuevo',
+        !!elegida6 && elegida6.value === idDe('Matemáticas 6º') && elegida6.textContent === 'MAT',
+        elegida6 ? app2.Calc.asignatura(elegida6.value).nombre : 'sin opción');
+
+      // Lengua Extranjera no existe en 3º: al bajar allí se abre la primera del
+      // curso, que es lo único que queda.
+      const selIng = elegir('2º');
+      const opIng2 = opciones(selIng).find(o => o.value === idDe('Lengua Extranjera 2º'));
+      selA().value = opIng2.value;
+      selA().onchange({ target: { value: opIng2.value } });
+      const sel3b = elegir('3º');
+      const elegida3b = opciones(sel3b).find(o => o.selected);
+      check('D-68 · si el curso nuevo no tiene esa asignatura, abre la primera',
+        !!elegida3b && elegida3b.value === idDe('Lengua Castellana y Literatura 3º'),
+        elegida3b ? app2.Calc.asignatura(elegida3b.value).nombre : 'sin opción');
+
+      // La segunda red es el ÁREA: en los ciclos, la misma área puede aparecer
+      // con otra etiqueta (una variante). Si el nombre no coincide pero el área
+      // sí, se mantiene el área —mejor eso que saltar a la primera— y no se
+      // pierde el hilo de lo que el docente estaba revisando.
+      const dos = app2.Storage.db.asignaturas.filter(a => a.nombre === 'Matemáticas 2º');
+      const gemelaArea = Object.assign({}, dos[0], {
+        id: 'clon-mates-2o', nombre: 'MAT 2º (variante)', area: 'Matemáticas',
+        criterios: undefined
+      });
+      app2.Storage.db.asignaturas.push(gemelaArea);
+      const selCursos = () => {
+        const s = v2.querySelector('#sel-curso');
+        s.value = '2º';
+        s.onchange({ target: { value: '2º' } });
+        return v2.querySelector('#sel-asig');
+      };
+      // Se elige la variante en 2º y se sube a 6º, donde la PRIMERA del curso es
+      // Lengua y Matemáticas va después: si la red del área no existiera, el
+      // salto a la primera se vería aquí. Es el caso del docente: prefiere seguir
+      // con la misma área antes que cambiar de asignatura sin querer.
+      app2.App.ir('curriculo');
+      const s2 = selCursos();
+      s2.value = gemelaArea.id;
+      s2.onchange({ target: { value: gemelaArea.id } });
+      const sel6b = elegir('6º');
+      const elegida6b = opciones(sel6b).find(o => o.selected);
+      check('D-68 · si el nombre cambia, se mantiene por área',
+        !!elegida6b && elegida6b.value === idDe('Matemáticas 6º'),
+        elegida6b ? app2.Calc.asignatura(elegida6b.value).nombre : 'sin opción');
+    }
 
     // Las asignaturas de la generación anterior (v0.1–v0.5) no guardan `curso`:
     // el curso vive SOLO en el nombre («Matemáticas 6º»). Se deduce de ahí, sin
