@@ -46,13 +46,16 @@ Los datos se guardan en el `localStorage` de **ese navegador y ese equipo**. Si 
 ```bash
 node tools/checks.js          # comprobaciones de la app
 node tools/check-plantillas.js # integridad de las plantillas
+node tools/build-licencia.js   # regenera js/licencia.js desde LICENSE
 node tools/build-singlefile.js # genera dist/evalora.html
 ```
 
 ## Autoría y licencia
 
-**© 2026 Jorge Bourgon Salinero.**
+**© 2026 Jorge Bourgon Salinero.** Repositorio oficial: <https://github.com/JorgeBSTeacher/evaluacion>.
 
-Esta obra se distribuye bajo la **Licencia Pública de la Unión Europea v. 1.2 (EUPL-1.2)**. El texto completo, en castellano, está en [`LICENSE`](LICENSE).
+Esta obra se distribuye bajo la **Licencia Pública de la Unión Europea v. 1.2 (EUPL-1.2)**. El texto completo, en castellano, está en [`LICENSE`](LICENSE) y también **incrustado en el entregable** (`Configuración → Acerca de → «Texto de la licencia (EUPL-1.2)»`), para que viaje con el fichero único aunque se copie sin el repositorio.
 
 La EUPL es una licencia **copyleft**: permite usar, estudiar, modificar y redistribuir la aplicación, pero obliga a mantener los avisos de copyright y a declarar las modificaciones. Un trabajo derivado no puede distribuirse con condiciones más restrictivas ni cerrarse como software propietario.
+
+Si redistribuyes o modificas la app: conserva el aviso de autoría, la licencia y el enlace al repositorio oficial, y declara los cambios con su fecha (art. 5 de la EUPL).

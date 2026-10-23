@@ -168,6 +168,20 @@ const App = (() => {
           <p class="acerca-firma">Jorge Bourgon Salinero · © ${new Date().getFullYear()} · Licencia EUPL-1.2</p>
         </div>`
     });
+    // La licencia viaja con el entregable: el fichero único puede copiarse sin
+    // el LICENSE, así que el texto completo va dentro del «Acerca de», plegado.
+    const bloqueAcerca = body.querySelector('.bloque-acerca');
+    if (bloqueAcerca) {
+      const detalles = document.createElement('details');
+      detalles.className = 'acerca-licencia';
+      const resumen = document.createElement('summary');
+      resumen.textContent = 'Texto de la licencia (EUPL-1.2)';
+      const texto = document.createElement('pre');
+      texto.textContent = LICENCIA_EUPL;
+      detalles.appendChild(resumen);
+      detalles.appendChild(texto);
+      bloqueAcerca.appendChild(detalles);
+    }
     body.querySelector('#btn-exportar-ajustes').onclick = () =>
       Storage.exportar()
         .then(ok => { if (ok) { UI.toast('Backup exportado'); modalAjustes(); } })

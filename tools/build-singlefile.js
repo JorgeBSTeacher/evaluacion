@@ -26,6 +26,22 @@ if (/src="js\//.test(salida) || /rel="stylesheet"/.test(salida)) {
   process.exit(1);
 }
 
+// La licencia y la autoría deben viajar con el entregable (D-73). Si alguien
+// quita el bloque «Acerca de», el banner o el script de la licencia, el build
+// falla en vez de producir un fichero sin atribución.
+if (!salida.includes('LICENCIA PÚBLICA DE LA UNIÓN EUROPEA')) {
+  console.error('ERROR: el entregable no incluye el texto de la licencia');
+  process.exit(1);
+}
+if (!salida.includes('SPDX-License-Identifier: EUPL-1.2')) {
+  console.error('ERROR: el entregable no incluye el aviso SPDX');
+  process.exit(1);
+}
+if (!salida.includes('Jorge Bourgon Salinero')) {
+  console.error('ERROR: el entregable no incluye la autoría');
+  process.exit(1);
+}
+
 fs.mkdirSync(path.join(raiz, 'dist'), { recursive: true });
 const destino = path.join(raiz, 'dist', 'evalora.html');
 fs.writeFileSync(destino, salida);

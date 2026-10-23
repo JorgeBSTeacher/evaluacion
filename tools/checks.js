@@ -2788,6 +2788,20 @@ async function main() {
       acerca.textContent.includes('EUPL-1.2'));
     check('Acerca de avisa de que funciona sin conexion',
       /sin conexi/i.test(acerca.textContent));
+    check('Acerca de incluye el texto completo de la licencia',
+      acerca.textContent.includes('LICENCIA PÚBLICA DE LA UNIÓN EUROPEA v. 1.2') &&
+      acerca.textContent.includes('5. Obligaciones del licenciatario'));
+    check('la licencia va plegada dentro de Acerca de',
+      !!acerca.querySelector('.acerca-licencia summary') &&
+      !!acerca.querySelector('.acerca-licencia pre'));
+    check('la licencia incrustada coincide con LICENSE',
+      app.LICENCIA_EUPL.replace(/\s+/g, ' ').trim() ===
+      fs.readFileSync(path.join(raiz, 'LICENSE'), 'utf8').replace(/\s+/g, ' ').trim());
+    check('index.html declara autoria y licencia en metadatos',
+      /name="author" content="Jorge Bourgon Salinero"/.test(html) &&
+      /name="license" content="EUPL-1.2"/.test(html));
+    check('index.html lleva el aviso SPDX de licencia',
+      /SPDX-License-Identifier: EUPL-1\.2/.test(html));
 
     body.querySelector('#btn-reiniciar').click();
     const confirmar = doc.querySelector('.guardar');
