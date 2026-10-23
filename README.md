@@ -1,4 +1,4 @@
-# Evalora
+# Evaluación por criterios (Evalora)
 
 Aplicación web **de un solo fichero** para calificar por **criterios de evaluación ponderados** conforme a la LOMLOE (Cantabria, Infantil y Primaria).
 

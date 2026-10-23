@@ -162,8 +162,9 @@ const App = (() => {
         </div>
         <div class="bloque-acerca">
           <b>Acerca de</b>
-          <p><b>Evalora</b> · Evaluación por criterios · LOMLOE (Cantabria).</p>
+          <p><b>Evaluación por criterios</b> (Evalora) · LOMLOE (Cantabria).</p>
           <p>Califica con criterios ponderados, adaptaciones curriculares (ACI) e informes de análisis. Funciona <b>sin conexión</b>: tus datos no salen de este dispositivo.</p>
+          <p><b>Evalora</b>: e-VALORA — evaluar y valorar.</p>
           <p class="acerca-firma">Jorge Bourgon Salinero · © ${new Date().getFullYear()} · Licencia EUPL-1.2</p>
         </div>`
     });

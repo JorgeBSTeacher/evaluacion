@@ -1,4 +1,4 @@
-// tools/checks.js — comprobaciones automaticas de Evalora (Node, sin frameworks).
+// tools/checks.js — comprobaciones automaticas de Evaluación por criterios (Node, sin frameworks).
 // Carga la app real (js/*.js) en un sandbox con DOM/localStorage simulados y
 // verifica importador de curriculo, retrocompatibilidad de backups y motor ACI.
 // Uso: node tools/checks.js
@@ -2781,6 +2781,7 @@ async function main() {
     const acerca = body.querySelector('.bloque-acerca');
     check('Configuracion incluye el bloque Acerca de', !!acerca);
     check('Acerca de nombra el producto y el autor',
+      acerca.textContent.includes('Evaluación por criterios') &&
       acerca.textContent.includes('Evalora') &&
       acerca.textContent.includes('Jorge Bourgon Salinero'));
     check('Acerca de declara la licencia EUPL-1.2',

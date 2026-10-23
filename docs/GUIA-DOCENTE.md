@@ -1,6 +1,6 @@
-# Guía de uso · Evalora
+# Guía de uso · Evaluación por criterios (Evalora)
 
-Manual paso a paso para el docente. Evalora es una aplicación HTML **de un solo fichero** que funciona **sin conexión**: no hay servidor, no hay nube y **tus datos no salen del dispositivo**. Califica con criterios ponderados según la LOMLOE (Cantabria, Infantil y Primaria).
+Manual paso a paso para el docente. Evaluación por criterios (Evalora) es una aplicación HTML **de un solo fichero** que funciona **sin conexión**: no hay servidor, no hay nube y **tus datos no salen del dispositivo**. Califica con criterios ponderados según la LOMLOE (Cantabria, Infantil y Primaria).
 
 > **Antes de nada: esto no es una app que se instala.** Es un fichero `evalora.html` que abres con el navegador. Los datos se guardan **en ese navegador, en ese ordenador**. Si cambias de equipo, de navegador o borras los datos de navegación, **no aparecen solos**: por eso el paso 7 (backup) no es opcional.
 
@@ -263,4 +263,4 @@ Aquí sí: la app **no se conecta a internet**. No hay envío, ni cuenta, ni tel
 
 ---
 
-*Evalora · Evaluación por criterios · LOMLOE (Cantabria) · Jorge Bourgon Salinero. La app no se conecta a internet: tus datos no salen del dispositivo.*
+*Evaluación por criterios (Evalora) · LOMLOE (Cantabria) · Jorge Bourgon Salinero. La app no se conecta a internet: tus datos no salen del dispositivo.*

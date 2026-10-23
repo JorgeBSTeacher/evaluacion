@@ -1,4 +1,4 @@
-# Plantilla para que una IA genere rúbricas de Evalora
+# Plantilla para que una IA genere rúbricas de Evaluación por criterios (Evalora)
 
 > **Atajo**: no hace falta copiar nada de aquí. En Evalora, entra en
 > **Instrumentos → «Importar rúbrica (IA)»** y el botón **«Copiar instrucciones»**

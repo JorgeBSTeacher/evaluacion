@@ -1,16 +1,16 @@
-# Plan de interfaz · Evalora
+# Plan de interfaz · Evaluación por criterios (Evalora)
 
 La app ya funciona; el objetivo es que se pueda usar **de pie, con el móvil en la mano**, sin perder la referencia del alumno ni la nota. Este plan sale de tres revisiones independientes sobre el CSS y las vistas reales —identidad visual, accesibilidad/legibilidad y ergonomía táctil— y **no toca motor, modelo de datos ni currículo**.
 
 ## Decisión propuesta
 
-Tres fases independientes, cada una en un commit revisable. El orden recomendado es **móvil → accesibilidad → identidad**: las dos primeras quitan fricción diaria y la tercera (Evalora, F8) entra después sin rehacer nada.
+Tres fases independientes, cada una en un commit revisable. El orden recomendado es **móvil → accesibilidad → identidad**: las dos primeras quitan fricción diaria y la tercera (identidad, F8) entra después sin rehacer nada.
 
 | Fase | Objetivo | Cambios | Coste |
 |---|---|---|---|
 | **1 · Móvil** | Usar la app a 360 px sin pelearse con la pantalla | cabecera, objetivos táctiles, columna fija, corrección en el alumno tocado, modal de instrumento | M |
 | **2 · Accesibilidad** | Leer y manejar con teclado y con poca visión | foco, chips, contrastes, impresión | S/M |
-| **3 · Identidad** | Evalora y un sistema que no haya que reescribir al rebrandear | tokens, marca, escala tipográfica | M |
+| **3 · Identidad** | El nombre funcional y un sistema que no haya que reescribir al renombrar | tokens, marca, escala tipográfica | M |
 
 ## Quick path (fase 1)
 
@@ -59,7 +59,7 @@ Verificación de cada paso: 360×740 y 412×915 en Chrome sin zoom, `node tools/
 - **Sin dependencias nuevas**: nada de frameworks, iconos descargados ni fuentes web (rompería `file://` y el fichero único).
 - **Tokens primero**: superficie, texto, estado (fondo y texto por separado), radios, alturas de control, sombra y escala tipográfica. Regla: ningún color literal fuera de `:root`.
 - **Tipografía**: se mantiene la pila de sistema y la jerarquía se construye con tamaño, peso y espacio. Se descarta la serif para titulares: Georgia no existe en Android y una fuente descargada rompe el offline; la identidad cambiaría según el dispositivo.
-- **Evalora**: cambiar solo cadenas visibles y marca; los identificadores de backup (`rubrica-evalcrit`, `curriculo-evalcrit`) **no se tocan** (D-58).
+- **Nombre visible**: el nombre funcional manda y «Evalora» es el alias corto; se cambian solo cadenas visibles y marca; los identificadores de backup (`rubrica-evalcrit`, `curriculo-evalcrit`) **no se tocan** (D-58, D-72).
 - **Modo oscuro**: fuera de alcance en v0.8; la tokenización lo deja barato para después.
 
 ## Criterios de aceptación
@@ -78,5 +78,5 @@ Motor de cálculo, modelo de datos, currículo, backup, atajos de teclado nuevos
 
 ## Decisiones abiertas
 
-1. **Orden de las fases**: la propuesta es móvil → accesibilidad → identidad. Si el rebranding Evalora (F8) es prioritario por fecha, la fase 3 puede ir primero: no comparte ficheros con las otras dos.
+1. **Orden de las fases**: la propuesta es móvil → accesibilidad → identidad. Si el renombrado (F8) es prioritario por fecha, la fase 3 puede ir primero: no comparte ficheros con las otras dos.
 2. **Salto de página del informe**: se mantiene «cada nivel empieza en hoja nueva» (lo que hace el CSS y documenta v0.7.1) y se corrige el texto viejo del SSOT. Si se prefiere lo contrario, es un cambio de una línea en `@media print`.
