@@ -184,7 +184,7 @@ const Storage = {
       if (!destino && typeof window !== 'undefined' && typeof window.showSaveFilePicker === 'function') {
         const fh = await window.showSaveFilePicker({
           suggestedName: nombre,
-          types: [{ description: 'Backup EvalCrit (JSON)', accept: { 'application/json': ['.json'] } }]
+          types: [{ description: 'Backup Evalora (JSON)', accept: { 'application/json': ['.json'] } }]
         });
         const w = await fh.createWritable();
         await w.write(contenido);
@@ -642,7 +642,7 @@ const Storage = {
 
   importarCurriculo(datos, opciones) {
     if (!datos || datos.tipo !== 'curriculo-evalcrit' || datos.version !== 1) {
-      throw new Error('El archivo no es una plantilla de currículo EvalCrit válida');
+      throw new Error('El archivo no es una plantilla de currículo Evalora válida');
     }
     const asig = datos.asignatura || {};
     const nombre = String(asig.nombre || '').trim();
@@ -788,7 +788,7 @@ const Storage = {
   // se importa nada.
   importarRubrica(datos, claseId, periodo) {
     if (!datos || datos.tipo !== 'rubrica-evalcrit' || datos.version !== 1) {
-      throw new Error('El texto no es una rúbrica EvalCrit válida (debe empezar por "tipo": "rubrica-evalcrit").');
+      throw new Error('El texto no es una rúbrica Evalora válida (debe empezar por "tipo": "rubrica-evalcrit").');
     }
     const titulo = String(datos.titulo || '').trim();
     if (!titulo) throw new Error('La rúbrica no tiene título.');

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EvalCrit · Evaluación por criterios</title>
+<title>Evalora · Evaluación por criterios</title>
 <style>
 :root {
   --papel: #f5f3ec;
@@ -427,8 +427,8 @@ input:focus, select:focus, textarea:focus { border-color: var(--acento); }
 <body>
 <header class="topbar">
   <div class="brand">
-    <span class="logo">EC</span>
-    <div class="brand-txt"><strong>EvalCrit</strong><small>Evaluación por criterios · LOMLOE</small></div>
+    <span class="logo">EV</span>
+    <div class="brand-txt"><strong>Evalora</strong><small>Evaluación por criterios · LOMLOE</small></div>
   </div>
   <nav id="nav" class="nav"></nav>
   <div class="actions">
@@ -702,7 +702,7 @@ const Storage = {
       if (!destino && typeof window !== 'undefined' && typeof window.showSaveFilePicker === 'function') {
         const fh = await window.showSaveFilePicker({
           suggestedName: nombre,
-          types: [{ description: 'Backup EvalCrit (JSON)', accept: { 'application/json': ['.json'] } }]
+          types: [{ description: 'Backup Evalora (JSON)', accept: { 'application/json': ['.json'] } }]
         });
         const w = await fh.createWritable();
         await w.write(contenido);
@@ -1160,7 +1160,7 @@ const Storage = {
 
   importarCurriculo(datos, opciones) {
     if (!datos || datos.tipo !== 'curriculo-evalcrit' || datos.version !== 1) {
-      throw new Error('El archivo no es una plantilla de currículo EvalCrit válida');
+      throw new Error('El archivo no es una plantilla de currículo Evalora válida');
     }
     const asig = datos.asignatura || {};
     const nombre = String(asig.nombre || '').trim();
@@ -1306,7 +1306,7 @@ const Storage = {
   // se importa nada.
   importarRubrica(datos, claseId, periodo) {
     if (!datos || datos.tipo !== 'rubrica-evalcrit' || datos.version !== 1) {
-      throw new Error('El texto no es una rúbrica EvalCrit válida (debe empezar por "tipo": "rubrica-evalcrit").');
+      throw new Error('El texto no es una rúbrica Evalora válida (debe empezar por "tipo": "rubrica-evalcrit").');
     }
     const titulo = String(datos.titulo || '').trim();
     if (!titulo) throw new Error('La rúbrica no tiene título.');
@@ -5664,7 +5664,7 @@ const App = (() => {
     el.innerHTML = `
       <section class="card">
         <div class="card-head">
-          <h1>Bienvenido a EvalCrit</h1>
+          <h1>Bienvenido a Evalora</h1>
           <label class="campo" style="margin:0"><span>Curso escolar</span>
             <select id="sel-curso" style="max-width:150px">${opcionesCurso(db.cursoEscolar)}</select></label>
         </div>
@@ -5803,7 +5803,7 @@ const App = (() => {
           UI.closeModal();
           ir(actual);
         })
-        .catch(() => alert('El archivo no es un backup válido de EvalCrit'));
+        .catch(() => alert('El archivo no es un backup válido de Evalora'));
     };
 
     // Red de seguridad (R-01): vuelca el estado al ocultar o cerrar la pestaña

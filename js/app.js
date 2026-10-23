@@ -193,7 +193,7 @@ const App = (() => {
     el.innerHTML = `
       <section class="card">
         <div class="card-head">
-          <h1>Bienvenido a EvalCrit</h1>
+          <h1>Bienvenido a Evalora</h1>
           <label class="campo" style="margin:0"><span>Curso escolar</span>
             <select id="sel-curso" style="max-width:150px">${opcionesCurso(db.cursoEscolar)}</select></label>
         </div>
@@ -332,7 +332,7 @@ const App = (() => {
           UI.closeModal();
           ir(actual);
         })
-        .catch(() => alert('El archivo no es un backup válido de EvalCrit'));
+        .catch(() => alert('El archivo no es un backup válido de Evalora'));
     };
 
     // Red de seguridad (R-01): vuelca el estado al ocultar o cerrar la pestaña
