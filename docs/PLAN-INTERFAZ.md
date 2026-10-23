@@ -1,4 +1,4 @@
-# Plan de interfaz · Evalora v0.8
+# Plan de interfaz · Evalora
 
 La app ya funciona; el objetivo es que se pueda usar **de pie, con el móvil en la mano**, sin perder la referencia del alumno ni la nota. Este plan sale de tres revisiones independientes sobre el CSS y las vistas reales —identidad visual, accesibilidad/legibilidad y ergonomía táctil— y **no toca motor, modelo de datos ni currículo**.
 
@@ -20,7 +20,7 @@ Tres fases independientes, cada una en un commit revisable. El orden recomendado
 4. **Corrección en el alumno tocado**: `renderCorreccion` acepta el alumno y arranca en su índice.
 5. **Modal de instrumento ≤600 px**: dos filas por ítem, `100dvh` y pie sticky.
 
-Verificación de cada paso: 360×740 y 412×915 en Chrome sin zoom, `node tools/checks.js` (**449**), `node tools/check-plantillas.js` (**344**) y `node tools/build-singlefile.js`.
+Verificación de cada paso: 360×740 y 412×915 en Chrome sin zoom, `node tools/checks.js`, `node tools/check-plantillas.js` y `node tools/build-singlefile.js`. **El número de comprobaciones no se escribe aquí**: crece con cada decisión (van **574** + **344** a v0.10.1) y una cifra copiada solo sirve para quedar desfasada. Manda el `TODO OK` de la salida.
 
 ## Hallazgos
 
@@ -69,7 +69,7 @@ Verificación de cada paso: 360×740 y 412×915 en Chrome sin zoom, `node tools/
 - [ ] Texto ≥4.5:1; componentes de interfaz y foco ≥3:1 (medido, no estimado).
 - [ ] Los chips se recorren con Tab y muestran el foco.
 - [ ] El informe impreso usa ≥10 px de cuerpo y no deja páginas en blanco.
-- [ ] `node tools/checks.js` ≥449 OK, `check-plantillas` 344 OK y `dist/evalcrit.html` determinista.
+- [ ] `node tools/checks.js` y `check-plantillas` en `TODO OK` (no un número fijo: crece con cada decisión) y `dist/evalcrit.html` determinista.
 - [ ] Sin peticiones de red ni ficheros nuevos en `dist/`.
 
 ## Fuera de alcance
