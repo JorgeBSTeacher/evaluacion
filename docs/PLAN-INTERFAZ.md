@@ -69,7 +69,7 @@ Verificación de cada paso: 360×740 y 412×915 en Chrome sin zoom, `node tools/
 - [ ] Texto ≥4.5:1; componentes de interfaz y foco ≥3:1 (medido, no estimado).
 - [ ] Los chips se recorren con Tab y muestran el foco.
 - [ ] El informe impreso usa ≥10 px de cuerpo y no deja páginas en blanco.
-- [ ] `node tools/checks.js` y `check-plantillas` en `TODO OK` (no un número fijo: crece con cada decisión) y `dist/evalcrit.html` determinista.
+- [ ] `node tools/checks.js` y `check-plantillas` en `TODO OK` (no un número fijo: crece con cada decisión) y `dist/evalora.html` determinista.
 - [ ] Sin peticiones de red ni ficheros nuevos en `dist/`.
 
 ## Fuera de alcance

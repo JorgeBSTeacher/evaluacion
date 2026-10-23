@@ -1,11 +1,11 @@
-# Plantilla para que una IA genere rúbricas de EvalCrit
+# Plantilla para que una IA genere rúbricas de Evalora
 
-> **Atajo**: no hace falta copiar nada de aquí. En EvalCrit, entra en
+> **Atajo**: no hace falta copiar nada de aquí. En Evalora, entra en
 > **Instrumentos → «Importar rúbrica (IA)»** y el botón **«Copiar instrucciones»**
 > ya te da este texto relleno con los códigos reales de la asignatura.
 
 Pega en **cualquier chat** (ChatGPT, Claude, Gemini, Copilot…) las instrucciones y
-rellena los huecos marcados con `___`. La IA devolverá un **JSON** que EvalCrit
+rellena los huecos marcados con `___`. La IA devolverá un **JSON** que Evalora
 podrá importar como rúbrica.
 
 ---
@@ -69,16 +69,16 @@ Reglas obligatorias:
 
 ## Notas para el docente
 
-- **De dónde salen los códigos**: el botón «Copiar instrucciones» de EvalCrit ya
+- **De dónde salen los códigos**: el botón «Copiar instrucciones» de Evalora ya
   los rellena. A mano: vista **Currículo** → elige la asignatura y verás cada
   criterio con su código (p. ej. `MAT 1.1`) y su ponderación.
 - **Cómo importarlo**: Instrumentos → «Importar rúbrica (IA)» → pega el JSON →
-  elige el periodo → Importar. EvalCrit valida los códigos contra la asignatura;
+  elige el periodo → Importar. Evalora valida los códigos contra la asignatura;
   si alguno no existe, avisa y **no importa nada**.
 - **Qué pasa si el chat se equivoca**: no toques el JSON a mano. Pídele al chat
   que lo corrija («el nivel 2 del ítem de ortografía debe ser…») y vuelve a pegar
   el resultado. Para retoques finos, edita la rúbrica ya importada en la propia
-  cuadrícula de EvalCrit (criterio · peso · nivel 1 … nivel 4).
+  cuadrícula de Evalora (criterio · peso · nivel 1 … nivel 4).
 - **Peso vs. criterio**: en la rúbrica, el `peso` ordena los ítems entre sí (la
   nota de la rúbrica es una media ponderada). Las ponderaciones oficiales por
   criterio siguen rigiendo la nota de la evaluación en la Cuadrícula.

@@ -1,4 +1,4 @@
-// tools/checks.js — comprobaciones automaticas de EvalCrit (Node, sin frameworks).
+// tools/checks.js — comprobaciones automaticas de Evalora (Node, sin frameworks).
 // Carga la app real (js/*.js) en un sandbox con DOM/localStorage simulados y
 // verifica importador de curriculo, retrocompatibilidad de backups y motor ACI.
 // Uso: node tools/checks.js
@@ -2783,8 +2783,8 @@ async function main() {
     check('Acerca de nombra el producto y el autor',
       acerca.textContent.includes('Evalora') &&
       acerca.textContent.includes('Jorge Bourgon Salinero'));
-    check('Acerca de declara los derechos reservados',
-      acerca.textContent.includes('Todos los derechos reservados'));
+    check('Acerca de declara la licencia EUPL-1.2',
+      acerca.textContent.includes('EUPL-1.2'));
     check('Acerca de avisa de que funciona sin conexion',
       /sin conexi/i.test(acerca.textContent));
 

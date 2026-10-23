@@ -2,7 +2,7 @@
 """Extrae las plantillas de curriculo de Primaria desde el PDF del Decreto 66/2022.
 
 Lee sources/Decreto 662022.pdf (Anexo II-A) y escribe una plantilla JSON por
-area+ciclo en plantillas/. Formato compatible con el importador de EvalCrit
+area+ciclo en plantillas/. Formato compatible con el importador de Evalora
 (tipo "curriculo-evalcrit").
 
 Uso: python3 tools/extract-decreto.py

@@ -1,4 +1,4 @@
-// Genera dist/evalcrit.html: la app completa en UN solo fichero (CSS y JS incrustados).
+// Genera dist/evalora.html: la app completa en UN solo fichero (CSS y JS incrustados).
 // Motivo: Chrome en Android abre los HTML desde gestores de archivos vía content://
 // y ahí los recursos externos no cargan. Con todo incrustado funciona igual.
 // Uso: node tools/build-singlefile.js
@@ -27,6 +27,6 @@ if (/src="js\//.test(salida) || /rel="stylesheet"/.test(salida)) {
 }
 
 fs.mkdirSync(path.join(raiz, 'dist'), { recursive: true });
-const destino = path.join(raiz, 'dist', 'evalcrit.html');
+const destino = path.join(raiz, 'dist', 'evalora.html');
 fs.writeFileSync(destino, salida);
 console.log('Generado', destino, (salida.length / 1024).toFixed(0) + ' KB');

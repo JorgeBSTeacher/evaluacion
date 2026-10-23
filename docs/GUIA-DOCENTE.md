@@ -2,7 +2,7 @@
 
 Manual paso a paso para el docente. Evalora es una aplicación HTML **de un solo fichero** que funciona **sin conexión**: no hay servidor, no hay nube y **tus datos no salen del dispositivo**. Califica con criterios ponderados según la LOMLOE (Cantabria, Infantil y Primaria).
 
-> **Antes de nada: esto no es una app que se instala.** Es un fichero `evalcrit.html` que abres con el navegador. Los datos se guardan **en ese navegador, en ese ordenador**. Si cambias de equipo, de navegador o borras los datos de navegación, **no aparecen solos**: por eso el paso 7 (backup) no es opcional.
+> **Antes de nada: esto no es una app que se instala.** Es un fichero `evalora.html` que abres con el navegador. Los datos se guardan **en ese navegador, en ese ordenador**. Si cambias de equipo, de navegador o borras los datos de navegación, **no aparecen solos**: por eso el paso 7 (backup) no es opcional.
 
 ---
 
@@ -24,9 +24,9 @@ Manual paso a paso para el docente. Evalora es una aplicación HTML **de un solo
 
 ## 1. Abrir la aplicación
 
-1. Copia el fichero `evalcrit.html` (está en la carpeta `dist/`) a tu ordenador o al USB. Es **un solo fichero**: no necesita la carpeta `js/`, ni internet, ni instalar nada.
+1. Copia el fichero `evalora.html` (está en la carpeta `dist/`) a tu ordenador o al USB. Es **un solo fichero**: no necesita la carpeta `js/`, ni internet, ni instalar nada.
    - **En Windows**: haz doble clic. Se abre en Chrome o Edge.
-   - **En Android**: copia el fichero al teléfono (por ejemplo a Descargas) y ábrelo con Chrome. Si Chrome no lo abre, abre Chrome y escribe `file:///sdcard/Download/evalcrit.html` en la barra de direcciones.
+   - **En Android**: copia el fichero al teléfono (por ejemplo a Descargas) y ábrelo con Chrome. Si Chrome no lo abre, abre Chrome y escribe `file:///sdcard/Download/evalora.html` en la barra de direcciones.
 2. La primera vez, en **Inicio**, elige el **Curso escolar** en el desplegable de arriba a la derecha (por ejemplo `2025/2026`). Es solo una etiqueta; cámbiala al empezar cada curso.
 3. Si quieres trastear sin miedo antes de meter datos reales, pulsa **Cargar datos de ejemplo**. Cuando ya no los quieras, los borras en **Configuración → Restablecer y vaciar todos los datos**.
 
