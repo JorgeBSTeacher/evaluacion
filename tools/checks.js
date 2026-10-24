@@ -3360,6 +3360,282 @@ async function main() {
     check('A12-8 · el error crítico dura más y acaba retirándose', !tError.isConnected);
   }
 
+  console.log('\n== Perfil docente en cabeceras de los informes (D-74) ==');
+  // Modelo y migración: defaults() declara la clave y migrar rellena los
+  // backups antiguos sin migración explícita ni cambio de schemaVersion.
+  {
+    const app = cargarApp();
+    const d = app.Storage.defaults();
+    check('D74-01 · defaults() trae perfil { nombre, centro, logo } vacío',
+      !!d.perfil && typeof d.perfil === 'object'
+      && d.perfil.nombre === '' && d.perfil.centro === '' && d.perfil.logo === '',
+      JSON.stringify(d.perfil));
+    check('D74-02 · defaults() sigue declarando schemaVersion 1 (importar exige 1)',
+      d.schemaVersion === 1, String(d.schemaVersion));
+
+    const legacy = estadoLegacy();
+    const alumnosAntes = JSON.stringify(legacy.alumnos);
+    const registrosAntes = JSON.stringify(legacy.registros);
+    check('D74-03 · el backup antiguo de referencia no trae perfil',
+      legacy.perfil === undefined);
+    const migrado = app.Storage.migrar(legacy);
+    check('D74-04 · migrar rellena perfil en un backup sin la clave',
+      !!migrado.perfil && migrado.perfil.nombre === '' && migrado.perfil.centro === '' && migrado.perfil.logo === '',
+      JSON.stringify(migrado.perfil));
+    check('D74-05 · migrar deja intactos alumnado y notas',
+      JSON.stringify(migrado.alumnos) === alumnosAntes && JSON.stringify(migrado.registros) === registrosAntes);
+    check('D74-06 · migrar no cambia schemaVersion',
+      migrado.schemaVersion === 1, String(migrado.schemaVersion));
+
+    const conPerfil = estadoLegacy();
+    conPerfil.perfil = { nombre: 'María López', centro: '', logo: '' };
+    const m2 = app.Storage.migrar(conPerfil);
+    check('D74-07 · migrar respeta un perfil que el backup ya traía',
+      !!m2.perfil && m2.perfil.nombre === 'María López' && m2.perfil.centro === '',
+      JSON.stringify(m2.perfil));
+  }
+
+  // Guardas puras del logo (mismo criterio que Utils.urlPintable): se prueban
+  // con un objeto {type, size} a medias, sin navegador. Si la guarda no
+  // existe, el envoltorio devuelve null para que el check falle y no truene.
+  {
+    const app = cargarApp();
+    app.Storage.load();
+    const rechazo = f => (typeof app.Storage.logoRechazo === 'function'
+      ? app.Storage.logoRechazo(f) : null);
+    const dentro = rechazo({ type: 'image/png', size: 10 * 1024 });
+    check('D74-08 · logoRechazo acepta una imagen dentro del límite', dentro === '', dentro);
+    const grande = rechazo({ type: 'image/png', size: 5 * 1024 * 1024 });
+    check('D74-09 · logoRechazo rechaza una imagen que supera el límite',
+      typeof grande === 'string' && grande !== '', String(grande));
+    const pdf = rechazo({ type: 'application/pdf', size: 100 });
+    check('D74-10 · logoRechazo rechaza un fichero que no es imagen',
+      typeof pdf === 'string' && pdf !== '', String(pdf));
+    check('D74-11 · logoRechazo rechaza un fichero ilegible',
+      typeof rechazo(null) === 'string' && typeof rechazo(undefined) === 'string');
+    const max = app.Storage.LOGO_MAX;
+    check('D74-12 · el límite del logo está acotado (no puede colgar el localStorage)',
+      typeof max === 'number' && max > 0 && max <= 1024 * 1024, String(max));
+    const pintable = v => (typeof app.Storage.logoPintable === 'function'
+      ? app.Storage.logoPintable(v) : 'sin guarda');
+    check('D74-13 · logoPintable solo admite data:image/',
+      pintable('data:image/png;base64,AAAA') === true
+      && pintable('javascript:alert(1)') === false
+      && pintable('data:text/html,<script>') === false
+      && pintable('') === false
+      && pintable(null) === false);
+  }
+
+  // Las DOS cabeceras imprimibles con perfil definido: nombre, centro y logo.
+  {
+    const app = cargarApp();
+    app.Storage.load();
+    await importarJson(app, estadoInforme());
+    app.Storage.db.perfil = {
+      nombre: 'María "La Rara" <script>alert(1)</script>',
+      centro: 'CEIP <b>Prueba</b> & "Amigos"',
+      logo: 'data:image/png;base64,QUJD'
+    };
+    const el = makeEl();
+    app.InformeView.render(el, { claseSel: 'c1', nivelSel: '' });
+    const infAn = app.InformeView.informeHtml();
+    const infCu = app.CuadriculaView.informeHtml('c1', 'T1', { criterios: true, competencias: false });
+
+    check('D74-14 · el informe de análisis lleva el nombre del docente',
+      typeof infAn === 'string' && infAn.includes('María &quot;La Rara&quot;'),
+      String(infAn).slice(0, 200));
+    check('D74-15 · el informe de análisis lleva el centro',
+      typeof infAn === 'string'
+      && infAn.includes('CEIP &lt;b&gt;Prueba&lt;/b&gt; &amp; &quot;Amigos&quot;'));
+    check('D74-16 · el informe de análisis lleva el logo en un src seguro',
+      typeof infAn === 'string'
+      && infAn.includes('<img class="informe-logo" src="data:image/png;base64,QUJD"'));
+    check('D74-17 · el <script> del nombre sale escapado, no inyectado (análisis)',
+      typeof infAn === 'string' && !infAn.includes('<script>') && infAn.includes('&lt;script&gt;'));
+    check('D74-18 · el imprimible de la cuadrícula lleva nombre, centro y logo',
+      typeof infCu === 'string'
+      && infCu.includes('María &quot;La Rara&quot;')
+      && infCu.includes('Prueba&lt;/b&gt;')
+      && infCu.includes('<img class="informe-logo" src="data:image/png;base64,QUJD"'),
+      String(infCu).slice(0, 200));
+    check('D74-19 · el <script> del nombre sale escapado también en la cuadrícula',
+      typeof infCu === 'string' && !infCu.includes('<script>') && infCu.includes('&lt;script&gt;'));
+  }
+
+  // Sin perfil (clave ausente o vacía): nada pintado, sin separadores sueltos
+  // ni «undefined», y ninguna de las dos funciones se cae.
+  {
+    const app = cargarApp();
+    app.Storage.load();
+    await importarJson(app, estadoInforme());
+    delete app.Storage.db.perfil; // estado antiguo o manipulado: sin la clave
+    const cabeceraDe = h => {
+      const t = String(h);
+      const i = t.indexOf('informe-cab');
+      const j = t.indexOf('informe-seccion');
+      return t.slice(i === -1 ? 0 : i, j === -1 ? t.length : j);
+    };
+    const infDe = () => [app.InformeView.informeHtml(),
+      app.CuadriculaView.informeHtml('c1', 'T1', { criterios: true, competencias: false })];
+    let infAn = null;
+    let infCu = null;
+    let err = '';
+    try {
+      const el = makeEl();
+      app.InformeView.render(el, { claseSel: 'c1', nivelSel: '' });
+      const hs = infDe();
+      infAn = hs[0];
+      infCu = hs[1];
+    } catch (e) { err = e.message; }
+    check('D74-20 · un estado SIN la clave perfil no rompe ninguno de los dos informes',
+      typeof infAn === 'string' && typeof infCu === 'string', err);
+    check('D74-21 · sin la clave no se pinta el bloque de perfil en ninguno de los dos',
+      !String(infAn).includes('informe-perfil') && !String(infCu).includes('informe-perfil'));
+    check('D74-22 · las cabeceras no se llenan de «undefined» con la clave ausente',
+      !cabeceraDe(infAn).includes('undefined') && !cabeceraDe(infCu).includes('undefined'),
+      cabeceraDe(infAn).slice(0, 160));
+
+    // Perfil presente pero vacío: tampoco debe pintar nada ni dejar restos.
+    app.Storage.db.perfil = { nombre: '', centro: '', logo: '' };
+    const vacias = infDe();
+    const cabAn = cabeceraDe(vacias[0]);
+    const cabCu = cabeceraDe(vacias[1]);
+    check('D74-23 · con el perfil vacío no se pinta nada del perfil',
+      !cabAn.includes('informe-perfil') && !cabCu.includes('informe-perfil'));
+    check('D74-24 · con el perfil vacío las cabeceras siguen sin restos ni «undefined»',
+      !cabAn.includes('undefined') && !cabCu.includes('undefined') && !cabAn.includes('informe-logo'),
+      cabAn.slice(0, 160));
+
+    // Solo nombre: no debe aparecer un bloque de centro vacío al lado.
+    app.Storage.db.perfil = { nombre: 'Jorge Bourgon', centro: '', logo: '' };
+    const soloNombre = cabeceraDe(app.InformeView.informeHtml());
+    check('D74-25 · con solo nombre aparece el nombre y NO un centro vacío',
+      soloNombre.includes('informe-nombre') && !soloNombre.includes('informe-centro'),
+      soloNombre.slice(0, 160));
+
+    // Guarda al pintar: un valor que no es data:image/ no llega al src.
+    const p = app.Storage.db.perfil;
+    p.centro = 'CEIP Norte';
+    const cabeceras = () => [cabeceraDe(app.InformeView.informeHtml()),
+      cabeceraDe(app.CuadriculaView.informeHtml('c1', 'T1', { criterios: true, competencias: false }))];
+    ['javascript:alert(1)', 'data:text/html,<script>alert(1)</script>', 'vbscript:msgbox'].forEach(malo => {
+      p.logo = malo;
+      const cabs = cabeceras();
+      check('D74-26 · un logo que no es data:image/ no se emite en src (' + malo.split(':')[0] + ':)',
+        cabs.every(c => !c.includes('informe-logo')),
+        cabs[0].slice(0, 160));
+    });
+
+    // Un data:image/ con «<» y «» SÍ se emite, pero escapado: el atributo
+    // src es de comillas dobles y Utils.esc las neutraliza.
+    p.logo = 'data:image/svg+xml,<svg onload="alert(1)"></svg>';
+    const svg = cabeceras();
+    check('D74-27 · un logo data:image/ con caracteres especiales se emite escapado',
+      svg.every(c => c.includes('informe-logo') && c.includes('&lt;svg') && !c.includes('<svg')),
+      svg[0].slice(0, 200));
+  }
+
+  // El perfil viaja en el backup: lo que serializa exportar() y lo que lee
+  // load() tras volcar(), sin código añadido a esas dos funciones.
+  {
+    const app = cargarApp();
+    app.Storage.load();
+    app.Storage.db.perfil = {
+      nombre: 'María López', centro: 'CEIP Gerardo Diego', logo: 'data:image/png;base64,QUJD'
+    };
+    const exportado = JSON.stringify(app.Storage.db);
+    const otra = cargarApp();
+    otra.Storage.load();
+    await importarJson(otra, JSON.parse(exportado));
+    const p = otra.Storage.db.perfil;
+    check('D74-28 · el perfil sobrevive al ciclo export → import',
+      !!p && p.nombre === 'María López' && p.centro === 'CEIP Gerardo Diego'
+      && p.logo === 'data:image/png;base64,QUJD', JSON.stringify(p));
+
+    app.Storage.volcar();
+    app.Storage.db = null;
+    app.Storage.load();
+    check('D74-29 · el perfil viaja por localStorage (volcar → load)',
+      !!app.Storage.db.perfil && app.Storage.db.perfil.logo === 'data:image/png;base64,QUJD',
+      JSON.stringify(app.Storage.db.perfil));
+  }
+
+  // El bloque «Perfil docente» del modal Configuración: primero, con
+  // autoguardado al teclear, subida de logo con guarda y «Quitar logo».
+  {
+    const app = cargarApp({ dom: true });
+    app.Storage.load();
+    await importarJson(app, estadoInforme());
+    app.App.abrirAjustes();
+    const doc = app.document;
+    const body = doc.querySelector('.modal-body');
+    const html = body ? body.innerHTML : '';
+    check('D74-30 · Configuración abre con el bloque «Perfil docente»',
+      !!body && !!body.querySelector('.bloque-perfil'));
+    check('D74-31 · el bloque de perfil es el PRIMERO (antes de «Copias de seguridad»)',
+      html.includes('bloque-perfil') && html.indexOf('bloque-perfil') < html.indexOf('bloque-copias'),
+      html.slice(0, 120));
+    const nombre = body ? body.querySelector('#perfil-nombre') : null;
+    const centro = body ? body.querySelector('#perfil-centro') : null;
+    const inpLogo = body ? body.querySelector('#perfil-logo') : null;
+    const quitar = body ? body.querySelector('#btn-quitar-logo') : null;
+    check('D74-32 · el bloque trae nombre, centro, archivo de logo y «Quitar»',
+      !!nombre && !!centro && !!inpLogo && !!quitar);
+
+    if (nombre && centro) {
+      nombre.value = 'Jorge "JB"';
+      nombre._dispara('input');
+      centro.value = 'CEIP Norte';
+      centro._dispara('input');
+    }
+    const p = app.Storage.db.perfil;
+    check('D74-33 · al teclear se guarda en db.perfil',
+      !!p && p.nombre === 'Jorge "JB"' && p.centro === 'CEIP Norte', JSON.stringify(p));
+    check('D74-34 · y queda escrito en el navegador', (() => {
+      const raw = app.localStorage.getItem('evalcrit:data');
+      if (!raw) return false;
+      try {
+        const datos = JSON.parse(raw);
+        return !!datos.perfil && datos.perfil.nombre === 'Jorge "JB"' && datos.perfil.centro === 'CEIP Norte';
+      } catch (e) { return false; }
+    })());
+
+    const pLogo = () => (app.Storage.db.perfil ? app.Storage.db.perfil.logo : undefined);
+    if (inpLogo) {
+      inpLogo.files = [{ name: 'logo.png', type: 'image/png', size: 8 * 1024, _dataUrl: 'data:image/png;base64,QUJD' }];
+      inpLogo._dispara('change');
+    }
+    const mini = body ? body.querySelector('#perfil-logo-mini') : null;
+    check('D74-35 · subir un logo válido lo guarda como data URL',
+      pLogo() === 'data:image/png;base64,QUJD', JSON.stringify(pLogo()));
+    check('D74-36 · la vista previa del logo se muestra al subirlo',
+      !!mini && mini.hidden === false);
+
+    const antes = pLogo();
+    if (inpLogo) {
+      inpLogo.files = [{ name: 'foto.jpg', type: 'image/jpeg', size: 5 * 1024 * 1024, _dataUrl: 'data:image/jpeg;base64,HUGE' }];
+      inpLogo._dispara('change');
+    }
+    const aviso = body ? body.querySelector('#perfil-logo-aviso') : null;
+    const textoAviso = aviso ? String(aviso.textContent) : '';
+    check('D74-37 · un logo que supera el límite NO se guarda',
+      pLogo() === antes, JSON.stringify(pLogo()));
+    check('D74-38 · el rechazo se explica en castellano en el propio bloque',
+      textoAviso.includes('demasiado grande'), textoAviso);
+
+    if (inpLogo) {
+      inpLogo.files = [{ name: 'documento.pdf', type: 'application/pdf', size: 1024, _dataUrl: 'data:application/pdf;base64,QQ==' }];
+      inpLogo._dispara('change');
+    }
+    const textoPdf = aviso ? String(aviso.textContent) : '';
+    check('D74-39 · un fichero que no es imagen no se guarda como logo',
+      pLogo() === antes && textoPdf.includes('debe ser una imagen'), textoPdf);
+
+    if (quitar) quitar.click();
+    check('D74-40 · «Quitar logo» vacía el logo y oculta la vista previa',
+      pLogo() === '' && !!mini && mini.hidden === true, JSON.stringify(pLogo()));
+  }
+
   console.log('\n' + (fallos ? 'FALLOS: ' + fallos + '/' + total : 'TODO OK: ' + total + ' comprobaciones')
     + (avisos ? ' · ' + avisos + ' aviso(s)' : ''));
   process.exitCode = fallos ? 1 : 0;

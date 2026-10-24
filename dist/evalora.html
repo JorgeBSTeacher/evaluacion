@@ -121,6 +121,18 @@ main { max-width: 1440px; margin: 0 auto; padding: 20px 18px 60px; }
 }
 .zona-peligro > b { display: block; color: var(--ko); margin-bottom: 4px; }
 .zona-peligro > p { margin: 0 0 10px; font-size: 13px; color: var(--tinta-suave); }
+/* Bloque «Perfil docente» del modal Configuración (D-74): nombre, centro y
+   logo que saldrán en la cabecera de los informes impresos. */
+.bloque-perfil {
+  margin-top: 14px; padding: 12px 14px;
+  border: 1px solid var(--linea); border-radius: 10px; background: var(--papel);
+}
+.bloque-perfil > b { display: block; margin-bottom: 4px; }
+.bloque-perfil > p { margin: 0 0 10px; font-size: 13px; color: var(--tinta-suave); }
+.perfil-logo-fila { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.perfil-logo-mini { max-height: 40px; max-width: 140px; object-fit: contain; }
+.perfil-logo-mini[hidden] { display: none; }
+.perfil-logo-aviso { margin: 6px 0 0; }
 /* Bloque de copias de seguridad del modal Configuración. */
 .bloque-copias {
   margin-top: 14px; padding: 12px 14px;
@@ -445,6 +457,19 @@ input:focus, select:focus, textarea:focus { border-color: var(--acento); }
 .informe-cab { margin: 0 0 12px; }
 .informe-cab strong { font-size: 16px; }
 .informe-cab span { display: block; color: var(--tinta-suave); font-size: 12px; }
+/* Perfil docente en la cabecera impresa (D-74): solo aparece si el docente ha
+   definido algo. La clase .logo ya está ocupada por la marca de la cabecera,
+   y el bloque entero no debe partirse entre páginas. Van con `.informe-cab`
+   por delante para ganarle a `.informe-cab span` (que haría block y suave
+   todos los span de la cabecera). */
+.informe-cab .informe-perfil {
+  display: flex; align-items: center; gap: 10px; margin: 0 0 8px;
+  break-inside: avoid; page-break-inside: avoid;
+}
+.informe-cab .informe-logo { max-height: 44px; max-width: 150px; object-fit: contain; }
+.informe-cab .informe-perfil-txt { display: flex; flex-direction: column; min-width: 0; }
+.informe-cab .informe-nombre { font-size: 13px; font-weight: 700; color: var(--tinta); }
+.informe-cab .informe-centro { font-size: 12px; color: var(--tinta-suave); }
 .informe-seccion { margin-bottom: 16px; }
 /* El título viaja siempre con lo que le sigue: nunca solo al pie de una página. */
 .informe-titulo { font-size: 15px; margin: 0 0 6px; break-after: avoid; page-break-after: avoid; }
@@ -587,8 +612,63 @@ const Storage = {
       // Moldes de instrumentos guardados para reutilizarlos en otra clase o en
       // el curso siguiente (D-48).
       bancoInstrumentos: [],
+      // Perfil docente (D-74): nombre del profesor, nombre del centro y logo
+      // (data URL) para las cabeceras de los informes impresos. Declararlo
+      // aquí basta: Storage.migrar rellena la clave en backups antiguos.
+      perfil: { nombre: '', centro: '', logo: '' },
       registros: {}
     };
+  },
+
+  // --- Perfil docente (D-74) ---------------------------------------------
+  // Límite del logo en origen: el data URL ocupa ~4/3 de la imagen, así que
+  // 30 KB de fichero son ~40 KB en el backup. Un logo grande no debe colgar
+  // el localStorage (cuota de ~5 MB) ni cargar cada guardado.
+  LOGO_MAX: 30 * 1024,
+
+  // Motivo por el que un fichero de logo NO se acepta, o '' si va bien. Pura:
+  // se comprueba sin navegador, con un objeto { type, size } a medias. Mismo
+  // criterio defensivo que Utils.urlPintable: la guarda vive al subir, no
+  // solo al pintar.
+  logoRechazo(archivo) {
+    if (!archivo) return 'No se ha podido leer el fichero del logo.';
+    if (archivo.type && archivo.type.indexOf('image/') !== 0) {
+      return 'El logo debe ser una imagen: «' + (archivo.name || 'ese fichero') + '» no lo es.';
+    }
+    if (typeof archivo.size !== 'number' || archivo.size > this.LOGO_MAX) {
+      const kb = typeof archivo.size === 'number' ? Math.round(archivo.size / 1024) : '?';
+      return 'Logo demasiado grande (' + kb + ' KB): el máximo son '
+        + Math.round(this.LOGO_MAX / 1024) + ' KB.';
+    }
+    return '';
+  },
+
+  // Al pintar se vuelve a comprobar: un backup manipulado no puede meter en
+  // el src del logo otra cosa que no sea una imagen (data:image/...).
+  logoPintable(valor) {
+    return typeof valor === 'string' && valor.indexOf('data:image/') === 0;
+  },
+
+  // Cabecera de perfil para los informes impresos (D-74): nombre, centro y
+  // logo. La usan LAS DOS vistas imprimibles, así que vive en el modelo y no
+  // en ninguna de las dos (views-informe.js es un módulo autocontenido y no
+  // puede ser su dependencia). Devuelve '' si no hay datos: una cabecera
+  // vacía no deja separadores sueltos. Lee db.perfil con defensa, para que un
+  // estado antiguo sin la clave no rompa informeHtml. Comprobable sin
+  // navegador: las comprobaciones la comparan como string.
+  perfilHtml() {
+    const p = (this.db && this.db.perfil) || {};
+    const nombre = String(p.nombre == null ? '' : p.nombre).trim();
+    const centro = String(p.centro == null ? '' : p.centro).trim();
+    const logo = this.logoPintable(p.logo) ? p.logo : '';
+    if (!nombre && !centro && !logo) return '';
+    const partes = [];
+    if (logo) partes.push(`<img class="informe-logo" src="${Utils.esc(logo)}" alt="Logo del centro">`);
+    const textos = [];
+    if (nombre) textos.push(`<span class="informe-nombre">${Utils.esc(nombre)}</span>`);
+    if (centro) textos.push(`<span class="informe-centro">${Utils.esc(centro)}</span>`);
+    if (textos.length) partes.push(`<span class="informe-perfil-txt">${textos.join('')}</span>`);
+    return `<div class="informe-perfil">${partes.join('')}</div>`;
   },
 
   load() {
@@ -4900,6 +4980,7 @@ const InformeView = (function () {
         ${cuerpo}
       </section>`;
     return `<div class="informe-cab">
+        ${Storage.perfilHtml()}
         <strong>Informe de análisis · ${Utils.esc(asig ? asig.nombre : '¿?')}</strong>
         <span>${Utils.esc(gru ? gru.nombre : '¿?')} · nivel: ${Utils.esc(nivelTxt)} · ${alcanceTxt.join(' · ')} · impreso el ${Utils.hoy().split('-').reverse().join('/')}</span>
       </div>
@@ -5193,6 +5274,7 @@ const CuadriculaView = (() => {
       ? Utils.esc(`${alu.apellidos}, ${alu.nombre}`)
       : `${Calc.alumnosDeClase(claseId).length} alumno(s)`;
     return `<div class="informe-cab">
+        ${Storage.perfilHtml()}
         <strong>${alu ? 'Informe individual' : 'Cuadrícula de calificaciones'} · ${tituloBloques}</strong>
         <span>${Utils.esc(nombreAsig(cl.asignaturaId))} · ${Utils.esc(gru ? gru.nombre : '¿?')} · ${quien} · ${periodo} · impreso el ${Utils.hoy().split('-').reverse().join('/')}</span>
       </div>
@@ -5967,10 +6049,32 @@ const App = (() => {
     const ultima = db.meta && db.meta.ultimaExportacion
       ? Utils.fechaLegible(new Date(db.meta.ultimaExportacion)) + ' a las ' + new Date(db.meta.ultimaExportacion).toTimeString().slice(0, 5)
       : 'nunca';
+    // Perfil docente (D-74): con defensa por si un estado antiguo llegó sin
+    // la clave o corrupta (informeHtml también se guarda por su lado).
+    if (!db.perfil || typeof db.perfil !== 'object') db.perfil = { nombre: '', centro: '', logo: '' };
+    const perfil = db.perfil;
+    const pistaLogo = `Sube un PNG o JPG de hasta ${Math.round(Storage.LOGO_MAX / 1024)} KB: un logo grande no cabe en el navegador.`;
     const body = UI.openModal({
       titulo: 'Configuración',
       cuerpo: `
         <p class="hint">Acciones poco frecuentes. Tus datos viven solo en este navegador.</p>
+        <div class="bloque-perfil">
+          <b>Perfil docente</b>
+          <p>Nombre, centro y logo que saldrán en la cabecera de los informes impresos.</p>
+          <label class="campo"><span>Nombre del profesor</span>
+            <input type="text" id="perfil-nombre" maxlength="80" value="${Utils.esc(perfil.nombre)}" placeholder="p. ej. María López"></label>
+          <label class="campo"><span>Nombre del centro</span>
+            <input type="text" id="perfil-centro" maxlength="120" value="${Utils.esc(perfil.centro)}" placeholder="p. ej. CEIP Gerardo Diego"></label>
+          <div class="campo perfil-logo-campo">
+            <span>Logo del centro</span>
+            <div class="perfil-logo-fila">
+              <input type="file" id="perfil-logo" accept="image/*">
+              <button class="btn btn-mini" id="btn-quitar-logo" type="button">Quitar logo</button>
+            </div>
+            <img class="perfil-logo-mini" id="perfil-logo-mini" alt="Vista previa del logo" ${Storage.logoPintable(perfil.logo) ? `src="${Utils.esc(perfil.logo)}"` : 'hidden'}>
+            <p class="hint perfil-logo-aviso" id="perfil-logo-aviso">${pistaLogo}</p>
+          </div>
+        </div>
         <div class="bloque-copias">
           <b>Copias de seguridad</b>
           <p>Última copia: <b>${ultima}</b>. El backup guarda <b>todo</b> (grupos, alumnos, clases, currículos, instrumentos y notas).</p>
@@ -5992,6 +6096,60 @@ const App = (() => {
           <p class="acerca-firma">Jorge Bourgon Salinero · © ${new Date().getFullYear()} · Licencia EUPL-1.2</p>
         </div>`
     });
+    // Perfil docente (D-74): autoguardado al teclear, como en el resto de la
+    // app —el modal de Configuración no tiene botón «Guardar»—.
+    const campoNombre = body.querySelector('#perfil-nombre');
+    const campoCentro = body.querySelector('#perfil-centro');
+    if (campoNombre) campoNombre.oninput = () => { perfil.nombre = campoNombre.value; Storage.save(); };
+    if (campoCentro) campoCentro.oninput = () => { perfil.centro = campoCentro.value; Storage.save(); };
+    const inputLogo = body.querySelector('#perfil-logo');
+    const avisoLogo = body.querySelector('#perfil-logo-aviso');
+    const miniLogo = body.querySelector('#perfil-logo-mini');
+    const btnQuitarLogo = body.querySelector('#btn-quitar-logo');
+    const pistaAviso = texto => { if (avisoLogo) avisoLogo.textContent = texto; };
+    const pintarLogo = () => {
+      const hay = Storage.logoPintable(perfil.logo);
+      if (miniLogo) {
+        if (hay) { miniLogo.src = perfil.logo; miniLogo.hidden = false; }
+        else { miniLogo.removeAttribute('src'); miniLogo.hidden = true; }
+      }
+      // Sin logo no se ofrece «Quitar»: no hay nada que quitar.
+      if (btnQuitarLogo) btnQuitarLogo.style.display = hay ? '' : 'none';
+    };
+    pintarLogo();
+    if (inputLogo) {
+      inputLogo.onchange = () => {
+        const archivo = inputLogo.files && inputLogo.files[0];
+        const motivo = Storage.logoRechazo(archivo);
+        if (motivo) {
+          pistaAviso(motivo);
+          UI.toast(motivo, 'error');
+          inputLogo.value = ''; // para poder volver a elegir el mismo fichero
+          return;
+        }
+        const lector = new FileReader();
+        lector.onload = () => {
+          perfil.logo = lector.result;
+          Storage.save();
+          pistaAviso(pistaLogo);
+          pintarLogo();
+        };
+        lector.onerror = () => {
+          pistaAviso('No se ha podido leer la imagen: prueba con otra.');
+          UI.toast('No se ha podido leer la imagen', 'error');
+        };
+        lector.readAsDataURL(archivo);
+      };
+    }
+    if (btnQuitarLogo) {
+      btnQuitarLogo.onclick = () => {
+        perfil.logo = '';
+        Storage.save();
+        pistaAviso(pistaLogo);
+        pintarLogo();
+        UI.toast('Logo quitado de los informes');
+      };
+    }
     // La licencia viaja con el entregable: el fichero único puede copiarse sin
     // el LICENSE, así que el texto completo va dentro del «Acerca de», plegado.
     const bloqueAcerca = body.querySelector('.bloque-acerca');

@@ -143,10 +143,32 @@ const App = (() => {
     const ultima = db.meta && db.meta.ultimaExportacion
       ? Utils.fechaLegible(new Date(db.meta.ultimaExportacion)) + ' a las ' + new Date(db.meta.ultimaExportacion).toTimeString().slice(0, 5)
       : 'nunca';
+    // Perfil docente (D-74): con defensa por si un estado antiguo llegó sin
+    // la clave o corrupta (informeHtml también se guarda por su lado).
+    if (!db.perfil || typeof db.perfil !== 'object') db.perfil = { nombre: '', centro: '', logo: '' };
+    const perfil = db.perfil;
+    const pistaLogo = `Sube un PNG o JPG de hasta ${Math.round(Storage.LOGO_MAX / 1024)} KB: un logo grande no cabe en el navegador.`;
     const body = UI.openModal({
       titulo: 'Configuración',
       cuerpo: `
         <p class="hint">Acciones poco frecuentes. Tus datos viven solo en este navegador.</p>
+        <div class="bloque-perfil">
+          <b>Perfil docente</b>
+          <p>Nombre, centro y logo que saldrán en la cabecera de los informes impresos.</p>
+          <label class="campo"><span>Nombre del profesor</span>
+            <input type="text" id="perfil-nombre" maxlength="80" value="${Utils.esc(perfil.nombre)}" placeholder="p. ej. María López"></label>
+          <label class="campo"><span>Nombre del centro</span>
+            <input type="text" id="perfil-centro" maxlength="120" value="${Utils.esc(perfil.centro)}" placeholder="p. ej. CEIP Gerardo Diego"></label>
+          <div class="campo perfil-logo-campo">
+            <span>Logo del centro</span>
+            <div class="perfil-logo-fila">
+              <input type="file" id="perfil-logo" accept="image/*">
+              <button class="btn btn-mini" id="btn-quitar-logo" type="button">Quitar logo</button>
+            </div>
+            <img class="perfil-logo-mini" id="perfil-logo-mini" alt="Vista previa del logo" ${Storage.logoPintable(perfil.logo) ? `src="${Utils.esc(perfil.logo)}"` : 'hidden'}>
+            <p class="hint perfil-logo-aviso" id="perfil-logo-aviso">${pistaLogo}</p>
+          </div>
+        </div>
         <div class="bloque-copias">
           <b>Copias de seguridad</b>
           <p>Última copia: <b>${ultima}</b>. El backup guarda <b>todo</b> (grupos, alumnos, clases, currículos, instrumentos y notas).</p>
@@ -168,6 +190,60 @@ const App = (() => {
           <p class="acerca-firma">Jorge Bourgon Salinero · © ${new Date().getFullYear()} · Licencia EUPL-1.2</p>
         </div>`
     });
+    // Perfil docente (D-74): autoguardado al teclear, como en el resto de la
+    // app —el modal de Configuración no tiene botón «Guardar»—.
+    const campoNombre = body.querySelector('#perfil-nombre');
+    const campoCentro = body.querySelector('#perfil-centro');
+    if (campoNombre) campoNombre.oninput = () => { perfil.nombre = campoNombre.value; Storage.save(); };
+    if (campoCentro) campoCentro.oninput = () => { perfil.centro = campoCentro.value; Storage.save(); };
+    const inputLogo = body.querySelector('#perfil-logo');
+    const avisoLogo = body.querySelector('#perfil-logo-aviso');
+    const miniLogo = body.querySelector('#perfil-logo-mini');
+    const btnQuitarLogo = body.querySelector('#btn-quitar-logo');
+    const pistaAviso = texto => { if (avisoLogo) avisoLogo.textContent = texto; };
+    const pintarLogo = () => {
+      const hay = Storage.logoPintable(perfil.logo);
+      if (miniLogo) {
+        if (hay) { miniLogo.src = perfil.logo; miniLogo.hidden = false; }
+        else { miniLogo.removeAttribute('src'); miniLogo.hidden = true; }
+      }
+      // Sin logo no se ofrece «Quitar»: no hay nada que quitar.
+      if (btnQuitarLogo) btnQuitarLogo.style.display = hay ? '' : 'none';
+    };
+    pintarLogo();
+    if (inputLogo) {
+      inputLogo.onchange = () => {
+        const archivo = inputLogo.files && inputLogo.files[0];
+        const motivo = Storage.logoRechazo(archivo);
+        if (motivo) {
+          pistaAviso(motivo);
+          UI.toast(motivo, 'error');
+          inputLogo.value = ''; // para poder volver a elegir el mismo fichero
+          return;
+        }
+        const lector = new FileReader();
+        lector.onload = () => {
+          perfil.logo = lector.result;
+          Storage.save();
+          pistaAviso(pistaLogo);
+          pintarLogo();
+        };
+        lector.onerror = () => {
+          pistaAviso('No se ha podido leer la imagen: prueba con otra.');
+          UI.toast('No se ha podido leer la imagen', 'error');
+        };
+        lector.readAsDataURL(archivo);
+      };
+    }
+    if (btnQuitarLogo) {
+      btnQuitarLogo.onclick = () => {
+        perfil.logo = '';
+        Storage.save();
+        pistaAviso(pistaLogo);
+        pintarLogo();
+        UI.toast('Logo quitado de los informes');
+      };
+    }
     // La licencia viaja con el entregable: el fichero único puede copiarse sin
     // el LICENSE, así que el texto completo va dentro del «Acerca de», plegado.
     const bloqueAcerca = body.querySelector('.bloque-acerca');

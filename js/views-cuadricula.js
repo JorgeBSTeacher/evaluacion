@@ -196,6 +196,7 @@ const CuadriculaView = (() => {
       ? Utils.esc(`${alu.apellidos}, ${alu.nombre}`)
       : `${Calc.alumnosDeClase(claseId).length} alumno(s)`;
     return `<div class="informe-cab">
+        ${Storage.perfilHtml()}
         <strong>${alu ? 'Informe individual' : 'Cuadrícula de calificaciones'} · ${tituloBloques}</strong>
         <span>${Utils.esc(nombreAsig(cl.asignaturaId))} · ${Utils.esc(gru ? gru.nombre : '¿?')} · ${quien} · ${periodo} · impreso el ${Utils.hoy().split('-').reverse().join('/')}</span>
       </div>

@@ -104,6 +104,18 @@ main { max-width: 1440px; margin: 0 auto; padding: 20px 18px 60px; }
 }
 .zona-peligro > b { display: block; color: var(--ko); margin-bottom: 4px; }
 .zona-peligro > p { margin: 0 0 10px; font-size: 13px; color: var(--tinta-suave); }
+/* Bloque «Perfil docente» del modal Configuración (D-74): nombre, centro y
+   logo que saldrán en la cabecera de los informes impresos. */
+.bloque-perfil {
+  margin-top: 14px; padding: 12px 14px;
+  border: 1px solid var(--linea); border-radius: 10px; background: var(--papel);
+}
+.bloque-perfil > b { display: block; margin-bottom: 4px; }
+.bloque-perfil > p { margin: 0 0 10px; font-size: 13px; color: var(--tinta-suave); }
+.perfil-logo-fila { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.perfil-logo-mini { max-height: 40px; max-width: 140px; object-fit: contain; }
+.perfil-logo-mini[hidden] { display: none; }
+.perfil-logo-aviso { margin: 6px 0 0; }
 /* Bloque de copias de seguridad del modal Configuración. */
 .bloque-copias {
   margin-top: 14px; padding: 12px 14px;
@@ -428,6 +440,19 @@ input:focus, select:focus, textarea:focus { border-color: var(--acento); }
 .informe-cab { margin: 0 0 12px; }
 .informe-cab strong { font-size: 16px; }
 .informe-cab span { display: block; color: var(--tinta-suave); font-size: 12px; }
+/* Perfil docente en la cabecera impresa (D-74): solo aparece si el docente ha
+   definido algo. La clase .logo ya está ocupada por la marca de la cabecera,
+   y el bloque entero no debe partirse entre páginas. Van con `.informe-cab`
+   por delante para ganarle a `.informe-cab span` (que haría block y suave
+   todos los span de la cabecera). */
+.informe-cab .informe-perfil {
+  display: flex; align-items: center; gap: 10px; margin: 0 0 8px;
+  break-inside: avoid; page-break-inside: avoid;
+}
+.informe-cab .informe-logo { max-height: 44px; max-width: 150px; object-fit: contain; }
+.informe-cab .informe-perfil-txt { display: flex; flex-direction: column; min-width: 0; }
+.informe-cab .informe-nombre { font-size: 13px; font-weight: 700; color: var(--tinta); }
+.informe-cab .informe-centro { font-size: 12px; color: var(--tinta-suave); }
 .informe-seccion { margin-bottom: 16px; }
 /* El título viaja siempre con lo que le sigue: nunca solo al pie de una página. */
 .informe-titulo { font-size: 15px; margin: 0 0 6px; break-after: avoid; page-break-after: avoid; }

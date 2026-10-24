@@ -34,8 +34,63 @@ const Storage = {
       // Moldes de instrumentos guardados para reutilizarlos en otra clase o en
       // el curso siguiente (D-48).
       bancoInstrumentos: [],
+      // Perfil docente (D-74): nombre del profesor, nombre del centro y logo
+      // (data URL) para las cabeceras de los informes impresos. Declararlo
+      // aquí basta: Storage.migrar rellena la clave en backups antiguos.
+      perfil: { nombre: '', centro: '', logo: '' },
       registros: {}
     };
+  },
+
+  // --- Perfil docente (D-74) ---------------------------------------------
+  // Límite del logo en origen: el data URL ocupa ~4/3 de la imagen, así que
+  // 30 KB de fichero son ~40 KB en el backup. Un logo grande no debe colgar
+  // el localStorage (cuota de ~5 MB) ni cargar cada guardado.
+  LOGO_MAX: 30 * 1024,
+
+  // Motivo por el que un fichero de logo NO se acepta, o '' si va bien. Pura:
+  // se comprueba sin navegador, con un objeto { type, size } a medias. Mismo
+  // criterio defensivo que Utils.urlPintable: la guarda vive al subir, no
+  // solo al pintar.
+  logoRechazo(archivo) {
+    if (!archivo) return 'No se ha podido leer el fichero del logo.';
+    if (archivo.type && archivo.type.indexOf('image/') !== 0) {
+      return 'El logo debe ser una imagen: «' + (archivo.name || 'ese fichero') + '» no lo es.';
+    }
+    if (typeof archivo.size !== 'number' || archivo.size > this.LOGO_MAX) {
+      const kb = typeof archivo.size === 'number' ? Math.round(archivo.size / 1024) : '?';
+      return 'Logo demasiado grande (' + kb + ' KB): el máximo son '
+        + Math.round(this.LOGO_MAX / 1024) + ' KB.';
+    }
+    return '';
+  },
+
+  // Al pintar se vuelve a comprobar: un backup manipulado no puede meter en
+  // el src del logo otra cosa que no sea una imagen (data:image/...).
+  logoPintable(valor) {
+    return typeof valor === 'string' && valor.indexOf('data:image/') === 0;
+  },
+
+  // Cabecera de perfil para los informes impresos (D-74): nombre, centro y
+  // logo. La usan LAS DOS vistas imprimibles, así que vive en el modelo y no
+  // en ninguna de las dos (views-informe.js es un módulo autocontenido y no
+  // puede ser su dependencia). Devuelve '' si no hay datos: una cabecera
+  // vacía no deja separadores sueltos. Lee db.perfil con defensa, para que un
+  // estado antiguo sin la clave no rompa informeHtml. Comprobable sin
+  // navegador: las comprobaciones la comparan como string.
+  perfilHtml() {
+    const p = (this.db && this.db.perfil) || {};
+    const nombre = String(p.nombre == null ? '' : p.nombre).trim();
+    const centro = String(p.centro == null ? '' : p.centro).trim();
+    const logo = this.logoPintable(p.logo) ? p.logo : '';
+    if (!nombre && !centro && !logo) return '';
+    const partes = [];
+    if (logo) partes.push(`<img class="informe-logo" src="${Utils.esc(logo)}" alt="Logo del centro">`);
+    const textos = [];
+    if (nombre) textos.push(`<span class="informe-nombre">${Utils.esc(nombre)}</span>`);
+    if (centro) textos.push(`<span class="informe-centro">${Utils.esc(centro)}</span>`);
+    if (textos.length) partes.push(`<span class="informe-perfil-txt">${textos.join('')}</span>`);
+    return `<div class="informe-perfil">${partes.join('')}</div>`;
   },
 
   load() {

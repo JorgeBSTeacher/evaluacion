@@ -116,6 +116,12 @@ function cargarApp(opciones) {
       this.result = f._text;
       if (this.onload) this.onload();
     };
+    // Subida de logo del perfil docente (D-74): el fichero falso lleva su
+    // data URL en `_dataUrl`, igual que el JSON en `_text`.
+    this.readAsDataURL = f => {
+      this.result = f && f._dataUrl;
+      if (this.onload) this.onload();
+    };
   };
   vm.createContext(s);
   let code = ARCHIVOS.map(f => fs.readFileSync(path.join(raiz, f), 'utf8')).join('\n')

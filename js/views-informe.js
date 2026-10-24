@@ -494,6 +494,7 @@ const InformeView = (function () {
         ${cuerpo}
       </section>`;
     return `<div class="informe-cab">
+        ${Storage.perfilHtml()}
         <strong>Informe de análisis · ${Utils.esc(asig ? asig.nombre : '¿?')}</strong>
         <span>${Utils.esc(gru ? gru.nombre : '¿?')} · nivel: ${Utils.esc(nivelTxt)} · ${alcanceTxt.join(' · ')} · impreso el ${Utils.hoy().split('-').reverse().join('/')}</span>
       </div>
