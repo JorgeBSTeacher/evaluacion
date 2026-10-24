@@ -219,7 +219,7 @@ const App = (() => {
           <small>Con Chrome/Edge en Windows puedes guardar directamente en la carpeta <code>backups/</code> del proyecto; en Android irán a Descargas.</small>
           <div id="aviso-copia" class="no-print"></div>
           <div class="acciones no-print" style="margin-top:8px">
-            ${Storage.puedeCarpeta() ? '<button class="btn btn-mini" id="btn-carpeta">Elegir carpeta de backups…</button>' : ''}
+            ${Storage.puedeCarpeta() ? '<button class="btn btn-mini" id="btn-carpeta">' + (Storage.db && Storage.db._dir ? 'Cambiar carpeta…' : 'Elegir carpeta de backups…') + '</button>' : ''}
           </div>
           ${Storage.copiaPrevia() ? '<div class="no-print" style="margin-top:8px"><button class="btn btn-mini" id="btn-restaurar-previa">↩ Recuperar los datos anteriores a la última importación</button></div>' : ''}
         </div>

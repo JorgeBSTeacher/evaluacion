@@ -184,6 +184,13 @@ main { max-width: 1440px; margin: 0 auto; padding: 20px 18px 60px; }
 .tabla { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
 .tabla th, .tabla td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--linea); vertical-align: middle; }
 .tabla th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--tinta-suave); }
+.tabla thead th {
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 4;
+  box-shadow: 0 1px 0 var(--linea);
+}
 .tabla tr:last-child td { border-bottom: none; }
 .tabla .num { text-align: right; font-variant-numeric: tabular-nums; }
 .tabla tbody tr:hover { background: #faf9f4; }
@@ -198,12 +205,19 @@ main { max-width: 1440px; margin: 0 auto; padding: 20px 18px 60px; }
 .fila-inicio { cursor: pointer; }
 .fila-inicio:hover td { background: #faf9f4; }
 
-/* Cuadrícula ancha: fija la columna del alumno y agrupa por unidades didácticas */
+/* Cuadrícula ancha: fija la columna del alumno y la columna «Evaluación». */
 .tabla-cuadricula th:first-child, .tabla-cuadricula td:first-child {
-  position: sticky; left: 0; background: #fff; z-index: 2;
+  position: sticky; left: 0; background: #fff; z-index: 5;
   box-shadow: 1px 0 0 var(--linea);
 }
+.tabla-cuadricula thead th:first-child { z-index: 6; }
+.tabla-cuadricula th.col-eval, .tabla-cuadricula td.col-eval {
+  position: sticky; right: 0; background: #fff; z-index: 4;
+  box-shadow: -1px 0 0 var(--linea);
+}
+.tabla-cuadricula thead th.col-eval { z-index: 6; }
 .tabla-cuadricula tbody tr:hover td:first-child { background: #faf9f4; }
+.tabla-cuadricula tbody tr:hover td.col-eval { background: #faf9f4; }
 /* En la cuadrícula solo la columna del alumno va a la izquierda: cabeceras y
    notas se centran para que cada cifra quede bajo su columna. */
 .tabla-cuadricula th:not(:first-child),
@@ -5030,9 +5044,9 @@ const CuadriculaView = (() => {
         return `<td class="celda-nota num" ${ud} data-inst="${i.id}" data-alumno="${Utils.esc(a.id)}">${n == null ? '<span class="badge na">—</span>' : Calc.badgeHtml(n)}</td>`;
       }).join('');
     const thead = conBarra
-      ? `<tr class="fila-ud"><th rowspan="2">Alumno</th>${grupos.map(barraUd).join('')}<th rowspan="2">Evaluación</th></tr>
+      ? `<tr class="fila-ud"><th rowspan="2">Alumno</th>${grupos.map(barraUd).join('')}<th class="col-eval" rowspan="2">Evaluación</th></tr>
          <tr>${grupos.map(cabecerasGrupo).join('')}</tr>`
-      : `<tr><th>Alumno</th>${insts.map(cabeceraInst).join('')}<th>Evaluación</th></tr>`;
+      : `<tr><th>Alumno</th>${insts.map(cabeceraInst).join('')}<th class="col-eval">Evaluación</th></tr>`;
     return `
       ${insts.length ? '' : '<div class="aviso">Aún no hay instrumentos en esta clase para este nivel. Créalos en «Instrumentos».</div>'}
       <table class="tabla tabla-cuadricula">
@@ -5041,7 +5055,7 @@ const CuadriculaView = (() => {
           ${alumnos.map(a => `<tr>
             <td>${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}</td>
             ${grupos.map(g => celdasGrupo(a, g)).join('')}
-            <td class="num">${Calc.badgeHtml(Calc.notaEvaluacion(claseSel, a.id, periodo))}</td>
+            <td class="num col-eval">${Calc.badgeHtml(Calc.notaEvaluacion(claseSel, a.id, periodo))}</td>
           </tr>`).join('')}
         </tbody>
       </table>
@@ -5058,7 +5072,7 @@ const CuadriculaView = (() => {
       <table class="tabla tabla-cuadricula">
         <thead><tr><th>Alumno</th>${criterios.map(c =>
           `<th title="${Utils.esc(c.descripcion)}">${Utils.esc(c.codigo)}<br><small>${Utils.fmt(c.peso)}%</small></th>`
-        ).join('')}<th class="num">Evaluación</th></tr></thead>
+        ).join('')}<th class="num col-eval">Evaluación</th></tr></thead>
         <tbody>
           ${alumnos.map(a => `<tr>
             <td>${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}</td>
@@ -5067,7 +5081,7 @@ const CuadriculaView = (() => {
               const n = (l == null ? null : l * 10);
               return `<td class="num">${n == null ? '<span class="badge na">—</span>' : '<span class="badge ' + Calc.clasif(n) + '">' + Utils.fmt(n) + '</span>'}</td>`;
             }).join('')}
-            <td class="num">${Calc.badgeHtml(Calc.notaEvaluacion(claseSel, a.id, periodo))}</td>
+            <td class="num col-eval">${Calc.badgeHtml(Calc.notaEvaluacion(claseSel, a.id, periodo))}</td>
           </tr>`).join('')}
         </tbody>
       </table>
@@ -6029,7 +6043,7 @@ const App = (() => {
           <small>Con Chrome/Edge en Windows puedes guardar directamente en la carpeta <code>backups/</code> del proyecto; en Android irán a Descargas.</small>
           <div id="aviso-copia" class="no-print"></div>
           <div class="acciones no-print" style="margin-top:8px">
-            ${Storage.puedeCarpeta() ? '<button class="btn btn-mini" id="btn-carpeta">Elegir carpeta de backups…</button>' : ''}
+            ${Storage.puedeCarpeta() ? '<button class="btn btn-mini" id="btn-carpeta">' + (Storage.db && Storage.db._dir ? 'Cambiar carpeta…' : 'Elegir carpeta de backups…') + '</button>' : ''}
           </div>
           ${Storage.copiaPrevia() ? '<div class="no-print" style="margin-top:8px"><button class="btn btn-mini" id="btn-restaurar-previa">↩ Recuperar los datos anteriores a la última importación</button></div>' : ''}
         </div>

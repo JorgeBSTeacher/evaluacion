@@ -47,9 +47,9 @@ const CuadriculaView = (() => {
         return `<td class="celda-nota num" ${ud} data-inst="${i.id}" data-alumno="${Utils.esc(a.id)}">${n == null ? '<span class="badge na">—</span>' : Calc.badgeHtml(n)}</td>`;
       }).join('');
     const thead = conBarra
-      ? `<tr class="fila-ud"><th rowspan="2">Alumno</th>${grupos.map(barraUd).join('')}<th rowspan="2">Evaluación</th></tr>
+      ? `<tr class="fila-ud"><th rowspan="2">Alumno</th>${grupos.map(barraUd).join('')}<th class="col-eval" rowspan="2">Evaluación</th></tr>
          <tr>${grupos.map(cabecerasGrupo).join('')}</tr>`
-      : `<tr><th>Alumno</th>${insts.map(cabeceraInst).join('')}<th>Evaluación</th></tr>`;
+      : `<tr><th>Alumno</th>${insts.map(cabeceraInst).join('')}<th class="col-eval">Evaluación</th></tr>`;
     return `
       ${insts.length ? '' : '<div class="aviso">Aún no hay instrumentos en esta clase para este nivel. Créalos en «Instrumentos».</div>'}
       <table class="tabla tabla-cuadricula">
@@ -58,7 +58,7 @@ const CuadriculaView = (() => {
           ${alumnos.map(a => `<tr>
             <td>${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}</td>
             ${grupos.map(g => celdasGrupo(a, g)).join('')}
-            <td class="num">${Calc.badgeHtml(Calc.notaEvaluacion(claseSel, a.id, periodo))}</td>
+            <td class="num col-eval">${Calc.badgeHtml(Calc.notaEvaluacion(claseSel, a.id, periodo))}</td>
           </tr>`).join('')}
         </tbody>
       </table>
@@ -75,7 +75,7 @@ const CuadriculaView = (() => {
       <table class="tabla tabla-cuadricula">
         <thead><tr><th>Alumno</th>${criterios.map(c =>
           `<th title="${Utils.esc(c.descripcion)}">${Utils.esc(c.codigo)}<br><small>${Utils.fmt(c.peso)}%</small></th>`
-        ).join('')}<th class="num">Evaluación</th></tr></thead>
+        ).join('')}<th class="num col-eval">Evaluación</th></tr></thead>
         <tbody>
           ${alumnos.map(a => `<tr>
             <td>${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}</td>
@@ -84,7 +84,7 @@ const CuadriculaView = (() => {
               const n = (l == null ? null : l * 10);
               return `<td class="num">${n == null ? '<span class="badge na">—</span>' : '<span class="badge ' + Calc.clasif(n) + '">' + Utils.fmt(n) + '</span>'}</td>`;
             }).join('')}
-            <td class="num">${Calc.badgeHtml(Calc.notaEvaluacion(claseSel, a.id, periodo))}</td>
+            <td class="num col-eval">${Calc.badgeHtml(Calc.notaEvaluacion(claseSel, a.id, periodo))}</td>
           </tr>`).join('')}
         </tbody>
       </table>
