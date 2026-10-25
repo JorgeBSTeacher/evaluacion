@@ -76,6 +76,12 @@ Verificación de cada paso: 360×740 y 412×915 en Chrome sin zoom, `node tools/
 
 Motor de cálculo, modelo de datos, currículo, backup, atajos de teclado nuevos, modo oscuro, biblioteca de iconos, rediseño de la navegación (solo su adaptación a móvil).
 
+### Nota: D-74 (perfil docente), fuera de las tres fases
+
+- **D-74 «Perfil docente»** se implementó **fuera de las tres fases** de este plan, por petición directa y con registro previo en el SSOT. No pertenece a ninguna fase ni amplía su alcance.
+- Añadió **`db.perfil = { nombre, centro, logo }`** al modelo de datos, que este plan excluye explícitamente en este apartado: la exclusión se anuló **de forma consciente y documentada** para ese único caso, no se ignoró en silencio.
+- El único solape con el plan es cosmético y ya cubierto por el hallazgo de marca de la fase 3: `.logo` estaba ocupada por la insignia de la cabecera (`css/styles.css`), así que la característica introdujo una clase propia, **`.informe-logo`**, en lugar de reutilizarla. Este cambio no cierra ningún hallazgo de la fase 3.
+
 ## Decisiones abiertas
 
 1. **Orden de las fases**: la propuesta es móvil → accesibilidad → identidad. Si el renombrado (F8) es prioritario por fecha, la fase 3 puede ir primero: no comparte ficheros con las otras dos.

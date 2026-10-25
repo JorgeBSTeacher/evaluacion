@@ -17,8 +17,9 @@ Manual paso a paso para el docente. Evaluación por criterios (Evalora) es una a
 7. [Corregir](#7-corregir)
 8. [Calificaciones: la cuadrícula](#8-calificaciones-la-cuadrícula)
 9. [Informe de análisis](#9-informe-de-análisis)
-10. [Backup: lo único que no puedes olvidar](#10-backup-lo-único-que-no-puedes-olvidar)
-11. [Preguntas frecuentes](#11-preguntas-frecuentes)
+10. [Perfil docente: tu nombre y tu centro en los impresos](#10-perfil-docente-tu-nombre-y-tu-centro-en-los-impresos)
+11. [Backup: lo único que no puedes olvidar](#11-backup-lo-único-que-no-puedes-olvidar)
+12. [Preguntas frecuentes](#12-preguntas-frecuentes)
 
 ---
 
@@ -222,11 +223,33 @@ Es la herramienta para saber **con quién hablar mañana** y **qué hay que refo
 
 > **Los criterios globales de un instrumento se mueven juntos.** Si un examen evalúa los criterios de forma global, su nota se reparte entre **todos** ellos, así que un alumno que suspende el examen suspende en todos sus criterios a la vez. Por eso **si el examen suspende de verdad, siempre hay criterios que disparan el hallazgo**. Lo que no verás en modo global es un análisis *pregunta a pregunta*: sería contradecir que tú has dicho «este criterio lo evalúo con el examen completo».
 
-Puedes **Imprimir / PDF** el informe, o acotarlo con sus propios filtros (unidad, instrumentos, periodo) sin cambiar la cabecera.
+Puedes **Imprimir / PDF** el informe, o acotarlo con sus propios filtros (unidad, instrumentos, periodo) sin cambiar la cabecera. Si has rellenado el **Perfil docente** (Configuración → **Perfil docente**), esa cabecera impresa sale con tu nombre, el del centro y el logo (sección 10).
 
 ---
 
-## 10. Backup: lo único que no puedes olvidar
+## 10. Perfil docente: tu nombre y tu centro en los impresos
+
+**Vista: Configuración (⚙) · primer bloque «Perfil docente»**
+
+El modal de **Configuración** (el engranaje ⚙ de la barra superior) abre con un primer bloque llamado **«Perfil docente»**: tres cosas tuyas que salen en la cabecera de los impresos, para que el papel salga identificado.
+
+1. **Nombre del profesor** y **Nombre del centro**: escríbelos y ya está. **No hay botón de guardar**: los dos se guardan solos mientras escribes.
+2. **Logo del centro**: pulsa el botón de selección de fichero del campo y elige la imagen. Verás una vista previa al lado.
+   - El límite es de **30 KB sobre el fichero original** (unos 40 KB ya guardados en el navegador). Un logotipo tal cual sale de la web o una foto **se pasa de largo**: la app lo **rechaza con un aviso en castellano** («Logo demasiado grande…») y **no se guarda nada**. Reduce la imagen y vuelve a subirla; un fichero que no sea imagen también se rechaza.
+   - Para deshacerlo, pulsa **Quitar logo** (solo aparece cuando hay logo).
+
+¿Dónde se ve? En **las dos salidas imprimibles**:
+
+- El **Informe de análisis** (Calificaciones → pestaña **Informe**; la sección 9 lo cuenta en detalle).
+- El imprimible de **Criterios y Competencias** (Calificaciones → **Imprimir / PDF**).
+
+Solo se pinta **lo que hayas rellenado**: si un campo está vacío —o tus datos vienen de antes de este bloque—, no aparece nada de ese campo, ni separadores sueltos ni textos raros. Y sí: el perfil **viaja en tu backup** como el resto de tus datos, así que si exportas el `.json` y lo importas en otro equipo, tu nombre, tu centro y tu logo viajan contigo.
+
+> **Tu nombre y el del centro no son datos del alumnado.** El RGPD protege los datos de los menores; los tuyos no entran en esa cesta. Y sigue en pie lo de siempre: la app **no se conecta a internet** —el logo se guarda en tu navegador como cualquier otro dato—.
+
+---
+
+## 11. Backup: lo único que no puedes olvidar
 
 **Vista: Inicio · bloque «Copias de seguridad»**
 
@@ -241,7 +264,7 @@ Tus datos viven **en este navegador de este dispositivo**. Eso es la garantía d
 
 ---
 
-## 11. Preguntas frecuentes
+## 12. Preguntas frecuentes
 
 **¿Se puede usar en dos ordenadores a la vez?**
 No con datos compartidos. Cada fichero y cada navegador tiene sus datos. El «traslado» se hace exportando el `.json` en uno e importándolo en el otro. Una misma clase no puede estar «viva» en dos sitios sin pisarse.
@@ -260,6 +283,9 @@ Sí. Editar el nombre o el nivel **solo cambia cómo se muestra**; el currículo
 
 **Los datos que se guardan, ¿son anónimos realmente?**
 Aquí sí: la app **no se conecta a internet**. No hay envío, ni cuenta, ni telemetría. Lo que hay en el navegador es lo único que existe. Por eso el backup manual es tan importante.
+
+**¿Se ve mi logo en el impreso si no lo he puesto?**
+No. Los impresos solo llevan lo que hayas rellenado en **Perfil docente**: si un campo está vacío —o tus datos son de antes de ese bloque—, la cabecera sale sin ese dato y sin restos sueltos.
 
 ---
 
