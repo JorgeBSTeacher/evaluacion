@@ -229,7 +229,15 @@ const CuadriculaView = (() => {
       window.removeEventListener('afterprint', alCerrar);
     };
     window.addEventListener('afterprint', alCerrar);
-    window.print();
+    // Los logos ya son URL de objeto (blob:), que cargan en diferido: hay que
+    // esperarlos antes de imprimir o salen a 0×0 (o ausentes) en el PDF.
+    const imgs = Array.prototype.slice.call(cont.querySelectorAll('img'));
+    const cargadas = imgs.map(img => new Promise(res => {
+      if (img.complete && img.naturalWidth > 0) return res();
+      img.addEventListener('load', res, { once: true });
+      img.addEventListener('error', res, { once: true });
+    }));
+    Promise.all(cargadas).then(() => window.print());
   }
 
   // Modal de impresión: elegir alcance (vista actual, clase completa o un

@@ -3403,6 +3403,22 @@ async function main() {
     app.Storage.load();
     const rechazo = f => (typeof app.Storage.logoRechazo === 'function'
       ? app.Storage.logoRechazo(f) : null);
+    // perfilHtml genera <img src="blob:..."> (D-74): la carga es en diferido y
+    // la vista espera a las imágenes antes de llamar a window.print(), así que
+    // el PDF no se genera con el logo a 0×0. Necesita render() previo para que
+    // InformeView tenga claseSel establecido (si no, informeHtml devuelve '').
+    {
+      const app = cargarApp();
+      app.Storage.load();
+      await importarJson(app, estadoInforme());
+      app.Storage.db.perfil = { nombre: 'A', centro: 'B', logo: 'data:image/png;base64,QUJD' };
+      const el = makeEl();
+      app.InformeView.render(el, { claseSel: 'c1', nivelSel: '' });
+      const h = app.InformeView.informeHtml();
+      check('D74-07b · el <img del logo lleva src blob:',
+        /<img class="informe-logo" src="blob:/.test(h), String(h).slice(0, 140));
+    }
+
     const dentro = rechazo({ type: 'image/png', size: 10 * 1024 });
     check('D74-08 · logoRechazo acepta una imagen dentro del límite', dentro === '', dentro);
     const grande = rechazo({ type: 'image/png', size: 5 * 1024 * 1024 });
