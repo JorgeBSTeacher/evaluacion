@@ -468,8 +468,12 @@ async function main() {
     const el6 = makeEl();
     app5.CuadriculaView.render(el6);
     const h6 = el6.innerHTML;
+    // La celda plegada de la UD con 2 instrumentos ocupa 2 columnas (colspan="2");
+    // ahora la <td> lleva la nota media (clase «num»), así que se verifica el
+    // colspan sin depender del orden de atributos.
+    const colspan2Plegada = /<td[^>]*class="celda-plegada num"[^>]*colspan="2"[^>]*>/;
     check('la unidad plegada con 2 instrumentos ocupa sus 2 columnas con una sola celda',
-      h6.includes('<th class="celda-plegada" colspan="2">') && h6.includes('<td class="celda-plegada" colspan="2">'));
+      /<th class="celda-plegada" colspan="2">/.test(h6) && colspan2Plegada.test(h6));
     check('la nota final sigue cuadrando con columnas plegadas de varias posiciones', cuadra(h6));
 
     // Con un grupo grande debe aparecer el buscador de alumnado, en todas las pestañas.
@@ -3674,6 +3678,29 @@ async function main() {
     // revocarLogos debe existir y no fallar aunque no haya URLs que revocar.
     const revocar = () => { try { app.Storage.revocarLogos(); return true; } catch (e) { return false; } };
     check('D74-44 · revocarLogos existe y no lanza', revocar() === true);
+  }
+
+  // Columnas de una UD plegadas: cada alumno ve su nota media en la UD (D-74b).
+  // Media aritmética de los instrumentos de la UD; cada uno ya ponderado por
+  // criterios. Reutiliza el curso de prueba (datos-prueba.js), que tiene UD1..UD9.
+  {
+    const app = cargarApp();
+    const dp = require('./datos-prueba');
+    const db = app.Storage.migrar(dp.estadoPrueba());
+    app.Storage.db = db;
+    const claseId = dp.CLASES[0];
+    const el = makeEl();
+    // Todas las UDs plegadas (udsAbiertas vacío al entrar). Se renderiza el panel
+    // Notas y se inspecciona el HTML resultante.
+    app.CuadriculaView.render(el, { claseSel: claseId, periodo: 'T1', nivelSel: '', tab: 'notas' });
+    const html = typeof el.innerHTML === 'string' ? el.innerHTML : (el._html || '');
+    // La celda plegada de cada alumno lleva ahora el badge de la media de la UD
+    // (badge ok/ko con la nota en formato español, p. ej. «5,9»).
+    const celdaPlegadaConNota = /<td[^>]*class="celda-plegada num"[^>]*>[\s\S]*?<span class="badge (ok|ko|na)">\d+,\d+<\/span>[\s\S]*?<\/td>/;
+    check('D74-45 · celda plegada muestra la media de la UD (badge)',
+      celdaPlegadaConNota.test(html), String(html).slice(0, 260));
+    check('D74-46 · celda plegada ya no va vacía (antes celda-plegada"></td> vacío)',
+      !/<td[^>]*class="celda-plegada num"><\/td>/.test(html), String(html).slice(0, 260));
   }
 
   console.log('\n' + (fallos ? 'FALLOS: ' + fallos + '/' + total : 'TODO OK: ' + total + ' comprobaciones')

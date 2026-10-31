@@ -5143,11 +5143,24 @@ const CuadriculaView = (() => {
     const barraUd = g => `<th class="ud-grupo plegable" colspan="${g.insts.length}" data-toggle-ud="${Utils.esc(g.ud)}" title="${g.insts.length} instrumento${g.insts.length === 1 ? '' : 's'} · toca para ${g.plegada ? 'ver' : 'ocultar'} sus columnas">` +
       `<span class="ud-flecha">${g.plegada ? '▸' : '▾'}</span>${g.ud ? Utils.esc(g.ud) : 'Sin unidad'}` +
       `<small>${g.plegada ? `(${g.insts.length})` : `${g.insts.length} instrumento${g.insts.length === 1 ? '' : 's'}`}</small></th>`;
+    // Columnas de una UD plegadas: en vez de una celda vacía, se muestra la nota
+    // media del alumno en esa UD (media aritmética de sus instrumentos, cada uno
+    // ya ponderado por criterios). Información útil sin desplegar.
+    const mediaUdAlumno = (a, insts) => {
+      const notas = insts
+        .filter(i => !modoTodas || Calc.instrumentoParaAlumno(i, claseSel, a.id))
+        .map(i => Calc.notaInstrumento(i, a.id))
+        .filter(n => n != null);
+      return notas.length ? notas.reduce((x, y) => x + y, 0) / notas.length : null;
+    };
     const cabecerasGrupo = g => g.plegada
       ? `<th class="celda-plegada" colspan="${g.insts.length}"></th>`
       : g.insts.map(cabeceraInst).join('');
     const celdasGrupo = (a, g) => g.plegada
-      ? `<td class="celda-plegada" colspan="${g.insts.length}"></td>`
+      ? (() => {
+          const m = mediaUdAlumno(a, g.insts);
+          return `<td class="celda-plegada num" colspan="${g.insts.length}" title="Nota media de la UD">${m == null ? '<span class="badge na">—</span>' : Calc.badgeHtml(m)}</td>`;
+        })()
       : g.insts.map(i => {
         const ud = `data-ud="${Utils.esc(i.unidad || '')}"`;
         if (modoTodas && !Calc.instrumentoParaAlumno(i, claseSel, a.id)) {
