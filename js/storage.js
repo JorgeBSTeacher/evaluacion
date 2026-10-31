@@ -1,5 +1,10 @@
+// URLs de objeto creadas para los logos en impresión; se revocan al terminar.
+const _logoObjUrls = [];
+
 const Storage = {
   KEY: 'evalcrit:data',
+  LOGO_MAX: 30 * 1024, // 30 KB en el fichero original (~40 KB en base64).
+
   // Copia del estado anterior a una importación, para poder deshacerla:
   // importar reemplaza TODOS los datos (ver «Copia de seguridad» más abajo).
   KEY_PREVIA: 'evalcrit:preimport',
@@ -71,6 +76,33 @@ const Storage = {
     return typeof valor === 'string' && valor.indexOf('data:image/') === 0;
   },
 
+  // Convierte un data:URL del logo en una URL de objeto (blob:), que Chrome SÍ
+  // renderiza al exportar a PDF; un <img src="data:..."> a veces no imprime.
+  // La URL creada se registra en _logoObjUrls y se revoca al terminar de imprimir.
+  logoObjUrl(valor) {
+    if (!this.logoPintable(valor)) return '';
+    try {
+      const arr = String(valor).split(',');
+      const mime = (arr[0].match(/:(.*?);/) || [])[1] || 'image/png';
+      const bstr = atob(arr[1]);
+      const u8 = new Uint8Array(bstr.length);
+      for (let i = 0; i < bstr.length; i++) u8[i] = bstr.charCodeAt(i);
+      const url = URL.createObjectURL(new Blob([u8], { type: mime }));
+      _logoObjUrls.push(url);
+      return url;
+    } catch (e) {
+      return '';
+    }
+  },
+
+  // Revoca todas las URLs de objeto creadas para los logos (tras imprimir).
+  revocarLogos() {
+    for (const url of _logoObjUrls) {
+      try { URL.revokeObjectURL(url); } catch (e) { /* ya revocada */ }
+    }
+    _logoObjUrls.length = 0;
+  },
+
   // Cabecera de perfil para los informes impresos (D-74): nombre, centro y
   // logo. La usan LAS DOS vistas imprimibles, así que vive en el modelo y no
   // en ninguna de las dos (views-informe.js es un módulo autocontenido y no
@@ -82,7 +114,7 @@ const Storage = {
     const p = (this.db && this.db.perfil) || {};
     const nombre = String(p.nombre == null ? '' : p.nombre).trim();
     const centro = String(p.centro == null ? '' : p.centro).trim();
-    const logo = this.logoPintable(p.logo) ? p.logo : '';
+    const logo = this.logoPintable(p.logo) ? this.logoObjUrl(p.logo) : '';
     if (!nombre && !centro && !logo) return '';
     const partes = [];
     if (logo) partes.push(`<img class="informe-logo" src="${Utils.esc(logo)}" alt="Logo del centro">`);

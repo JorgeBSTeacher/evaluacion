@@ -3449,14 +3449,16 @@ async function main() {
       && infAn.includes('CEIP &lt;b&gt;Prueba&lt;/b&gt; &amp; &quot;Amigos&quot;'));
     check('D74-16 · el informe de análisis lleva el logo en un src seguro',
       typeof infAn === 'string'
-      && infAn.includes('<img class="informe-logo" src="data:image/png;base64,QUJD"'));
+      && /<img class="informe-logo" src="blob:/.test(infAn)
+      && infAn.includes('alt="Logo del centro"'));
     check('D74-17 · el <script> del nombre sale escapado, no inyectado (análisis)',
       typeof infAn === 'string' && !infAn.includes('<script>') && infAn.includes('&lt;script&gt;'));
     check('D74-18 · el imprimible de la cuadrícula lleva nombre, centro y logo',
       typeof infCu === 'string'
       && infCu.includes('María &quot;La Rara&quot;')
       && infCu.includes('Prueba&lt;/b&gt;')
-      && infCu.includes('<img class="informe-logo" src="data:image/png;base64,QUJD"'),
+      && /<img class="informe-logo" src="blob:/.test(infCu)
+      && infCu.includes('alt="Logo del centro"'),
       String(infCu).slice(0, 200));
     check('D74-19 · el <script> del nombre sale escapado también en la cuadrícula',
       typeof infCu === 'string' && !infCu.includes('<script>') && infCu.includes('&lt;script&gt;'));
@@ -3526,12 +3528,13 @@ async function main() {
         cabs[0].slice(0, 160));
     });
 
-    // Un data:image/ con «<» y «» SÍ se emite, pero escapado: el atributo
-    // src es de comillas dobles y Utils.esc las neutraliza.
+    // Un data:image/ con código embebido (SVG con onload en bruto, sin base64):
+    // atob falla, logoObjUrl devuelve '' y el <img> NO se emite. El código
+    // peligroso no llega al HTML; se prefiere omitir a renderizar una imagen rota.
     p.logo = 'data:image/svg+xml,<svg onload="alert(1)"></svg>';
     const svg = cabeceras();
-    check('D74-27 · un logo data:image/ con caracteres especiales se emite escapado',
-      svg.every(c => c.includes('informe-logo') && c.includes('&lt;svg') && !c.includes('<svg')),
+    check('D74-27 · un logo data:image/ con código no inyecta <img en el HTML',
+      svg.every(c => !c.includes('informe-logo')),
       svg[0].slice(0, 200));
   }
 
@@ -3634,6 +3637,27 @@ async function main() {
     if (quitar) quitar.click();
     check('D74-40 · «Quitar logo» vacía el logo y oculta la vista previa',
       pLogo() === '' && !!mini && mini.hidden === true, JSON.stringify(pLogo()));
+  }
+
+  // Conversión data:URL → blob: (D-74) y revocación: funciones puras del modelo,
+  // comprobables sin navegador. El logo se imprime como URL de objeto porque
+  // Chrome no siempre renderiza <img src="data:..."> al exportar a PDF.
+  {
+    const app = cargarApp();
+    const objUrl = v => (typeof app.Storage.logoObjUrl === 'function'
+      ? app.Storage.logoObjUrl(v) : '');
+    check('D74-41 · logoObjUrl convierte un data:image/ válido en blob:',
+      typeof objUrl('data:image/png;base64,QUJD') === 'string'
+      && objUrl('data:image/png;base64,QUJD').indexOf('blob:') === 0,
+      objUrl('data:image/png;base64,QUJD').slice(0, 12));
+    check('D74-42 · logoObjUrl rechaza un valor que no es data:image/',
+      objUrl('javascript:alert(1)') === '' && objUrl('http://x/y.png') === ''
+      && objUrl('') === '' && objUrl(null) === '');
+    check('D74-43 · logoObjUrl no rompe con un data:URL mal formado',
+      objUrl('data:image/png;base64,no!!!es!!!base64') === '');
+    // revocarLogos debe existir y no fallar aunque no haya URLs que revocar.
+    const revocar = () => { try { app.Storage.revocarLogos(); return true; } catch (e) { return false; } };
+    check('D74-44 · revocarLogos existe y no lanza', revocar() === true);
   }
 
   console.log('\n' + (fallos ? 'FALLOS: ' + fallos + '/' + total : 'TODO OK: ' + total + ' comprobaciones')

@@ -221,8 +221,13 @@ const CuadriculaView = (() => {
     }
     cont.innerHTML = html;
     document.body.classList.add('imprimiendo-informe');
-    // Al cerrar el diálogo se retira el informe; la vista queda intacta.
-    const alCerrar = () => { limpiarInforme(); window.removeEventListener('afterprint', alCerrar); };
+    // Al terminar de imprimir se retira el informe y se revocan las URLs de
+    // objeto de los logos (si no, la memoria crece con cada exportación).
+    const alCerrar = () => {
+      limpiarInforme();
+      Storage.revocarLogos();
+      window.removeEventListener('afterprint', alCerrar);
+    };
     window.addEventListener('afterprint', alCerrar);
     window.print();
   }

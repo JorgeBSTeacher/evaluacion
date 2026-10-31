@@ -123,6 +123,11 @@ function cargarApp(opciones) {
       if (this.onload) this.onload();
     };
   };
+  // APIs que el sandbox de Node no expone y que el código de la app usa como
+  // globales del navegador (conversión del logo data:URL a blob: para PDF en
+  // D-74). Sin esto el vm fallaría con ReferenceError en logoObjUrl.
+  s.atob = atob; s.btoa = btoa; s.Blob = Blob; s.URL = URL;
+  s.Uint8Array = Uint8Array; s.TextEncoder = TextEncoder;
   vm.createContext(s);
   let code = ARCHIVOS.map(f => fs.readFileSync(path.join(raiz, f), 'utf8')).join('\n')
     + '\nthis.__app = { Utils, Storage, Calc, PLANTILLAS_CURRICULO, CurriculoView, InstrumentosView, CuadriculaView, ClasesView, InformeView, App, UI, LICENCIA_EUPL };';
