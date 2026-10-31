@@ -43,6 +43,11 @@ const Storage = {
       // (data URL) para las cabeceras de los informes impresos. Declararlo
       // aquí basta: Storage.migrar rellena la clave en backups antiguos.
       perfil: { nombre: '', centro: '', logo: '' },
+      // Ajustes del comportamiento de la app (D-74b): como se calcula la media
+      // de una UD plegada en Calificaciones cuando un instrumento no tiene nota.
+      // false (por defecto) = no cuenta (solo promedia lo evaluado, «Media»);
+      // true = el vacio vale 0 (punitivo). Se rellena solo con migrar().
+      configuracion: { sinNotaEsCero: true },
       registros: {}
     };
   },

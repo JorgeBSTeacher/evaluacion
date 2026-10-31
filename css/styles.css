@@ -116,6 +116,17 @@ main { max-width: 1440px; margin: 0 auto; padding: 20px 18px 60px; }
 .perfil-logo-mini { max-height: 40px; max-width: 140px; object-fit: contain; }
 .perfil-logo-mini[hidden] { display: none; }
 .perfil-logo-aviso { margin: 6px 0 0; }
+/* Bloque «Ajustes de calificación» del modal Configuración (D-74b): cómo se
+   calcula la media de una UD plegada cuando un instrumento no tiene nota. */
+.bloque-ajustes {
+  margin-top: 14px; padding: 12px 14px;
+  border: 1px solid var(--linea); border-radius: 10px; background: var(--papel);
+}
+.bloque-ajustes > b { display: block; margin-bottom: 4px; }
+.bloque-ajustes > p { margin: 0 0 10px; font-size: 13px; color: var(--tinta-suave); }
+.campo--toggle { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.campo--toggle input { width: auto; flex: 0 0 auto; margin: 0; }
+.campo--toggle span { flex: 1; }
 /* Bloque de copias de seguridad del modal Configuración. */
 .bloque-copias {
   margin-top: 14px; padding: 12px 14px;

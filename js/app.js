@@ -147,6 +147,10 @@ const App = (() => {
     // la clave o corrupta (informeHtml también se guarda por su lado).
     if (!db.perfil || typeof db.perfil !== 'object') db.perfil = { nombre: '', centro: '', logo: '' };
     const perfil = db.perfil;
+    // Ajustes de calificación (D-74b): defensa equivalente para la clave de
+    // configuración por si un backup antiguo llegó sin ella.
+    if (!db.configuracion || typeof db.configuracion !== 'object') db.configuracion = { sinNotaEsCero: false };
+    const config = db.configuracion;
     const pistaLogo = `Sube un PNG o JPG de hasta ${Math.round(Storage.LOGO_MAX / 1024)} KB: un logo grande no cabe en el navegador.`;
     const body = UI.openModal({
       titulo: 'Configuración',
@@ -168,6 +172,12 @@ const App = (() => {
             <img class="perfil-logo-mini" id="perfil-logo-mini" alt="Vista previa del logo" ${Storage.logoPintable(perfil.logo) ? `src="${Utils.esc(perfil.logo)}"` : 'hidden'}>
             <p class="hint perfil-logo-aviso" id="perfil-logo-aviso">${pistaLogo}</p>
           </div>
+        </div>
+        <div class="bloque-ajustes">
+          <b>Ajustes de calificación</b>
+          <p>Cómo se calcula la media de una unidad didáctica (UD) en la cuadrícula cuando hay instrumentos sin nota.</p>
+          <label class="campo campo--toggle"><input type="checkbox" id="ajuste-sin-nota" ${config.sinNotaEsCero ? 'checked' : ''}><span>Un instrumento sin nota cuenta como 0 en la media de la UD</span></label>
+          <p class="hint">Desactivado (recomendado): la media solo promedia los instrumentos evaluados, igual que la columna «Media» de Instrumentos. Activo: un instrumento sin nota baja la media igual que un 0.</p>
         </div>
         <div class="bloque-copias">
           <b>Copias de seguridad</b>
@@ -196,6 +206,14 @@ const App = (() => {
     const campoCentro = body.querySelector('#perfil-centro');
     if (campoNombre) campoNombre.oninput = () => { perfil.nombre = campoNombre.value; Storage.save(); };
     if (campoCentro) campoCentro.oninput = () => { perfil.centro = campoCentro.value; Storage.save(); };
+    // Ajustes de calificación (D-74b): autoguardado del toggle al cambiar.
+    const chkSinNota = body.querySelector('#ajuste-sin-nota');
+    if (chkSinNota) chkSinNota.onchange = () => {
+      // Mantener siempre un objeto configuracion valido y guardar.
+      if (!db.configuracion || typeof db.configuracion !== 'object') db.configuracion = { sinNotaEsCero: false };
+      db.configuracion.sinNotaEsCero = !!chkSinNota.checked;
+      Storage.save();
+    };
     const inputLogo = body.querySelector('#perfil-logo');
     const avisoLogo = body.querySelector('#perfil-logo-aviso');
     const miniLogo = body.querySelector('#perfil-logo-mini');

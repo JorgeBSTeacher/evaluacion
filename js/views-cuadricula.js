@@ -36,10 +36,23 @@ const CuadriculaView = (() => {
     // Columnas de una UD plegadas: en vez de una celda vacía, se muestra la nota
     // media del alumno en esa UD (media aritmética de sus instrumentos, cada uno
     // ya ponderado por criterios). Información útil sin desplegar.
+    // sinNotaEsCero (D-74b, ajustable en Configuración): true = el vacío vale 0;
+    // false = solo promedia los instrumentos evaluados. notaInstrumento devuelve 0
+    // tanto para «sin nota» como para nota 0 real, así que para distinguir si un
+    // instrumento tiene nota se mira el registro del alumno (si hay al menos un
+    // apartado con valor, cuenta; si no, es «sin nota»).
+    const sinNotaEsCero = !!(Storage.db && Storage.db.configuracion && Storage.db.configuracion.sinNotaEsCero);
+    const instrumentoEvaluado = (inst, alumnoId) => {
+      const fila = ((Storage.db.registros && Storage.db.registros[inst.id]) || {})[alumnoId];
+      return !!(fila && inst.apartados && inst.apartados.some(ap => fila[ap.id] != null && fila[ap.id] !== ''));
+    };
     const mediaUdAlumno = (a, insts) => {
       const notas = insts
         .filter(i => !modoTodas || Calc.instrumentoParaAlumno(i, claseSel, a.id))
-        .map(i => Calc.notaInstrumento(i, a.id))
+        .map(i => {
+          if (instrumentoEvaluado(i, a.id)) return Calc.notaInstrumento(i, a.id);
+          return sinNotaEsCero ? 0 : null;
+        })
         .filter(n => n != null);
       return notas.length ? notas.reduce((x, y) => x + y, 0) / notas.length : null;
     };

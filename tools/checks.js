@@ -3604,7 +3604,29 @@ async function main() {
     const quitar = body ? body.querySelector('#btn-quitar-logo') : null;
     check('D74-32 · el bloque trae nombre, centro, archivo de logo y «Quitar»',
       !!nombre && !!centro && !!inpLogo && !!quitar);
-
+    // Ajustes de calificación (D-74b): el bloque y el toggle aparecen entre el
+    // perfil y las copias de seguridad, y se autoguarda al cambiar.
+    const bloqueAjustes = body ? body.querySelector('.bloque-ajustes') : null;
+    const chkSinNota = body ? body.querySelector('#ajuste-sin-nota') : null;
+    check('D74-32b · Configuración abre con el bloque «Ajustes de calificación»',
+      !!bloqueAjustes && !!chkSinNota);
+    check('D74-32c · el bloque de ajustes va tras el perfil y antes de copias',
+      html.includes('bloque-ajustes')
+      && html.indexOf('bloque-perfil') < html.indexOf('bloque-ajustes')
+      && html.indexOf('bloque-ajustes') < html.indexOf('bloque-copias'),
+      html.slice(0, 200));
+    // Por defecto el checkbox está marcado (sinNotaEsCero=true).
+    check('D74-32d · el toggle arranca marcado (sinNotaEsCero=true por defecto)',
+      !!chkSinNota && chkSinNota.checked === true);
+    if (chkSinNota) {
+      chkSinNota.checked = false;
+      chkSinNota._dispara('change');
+      check('D74-32e · al desmarcar se guarda sinNotaEsCero=false en db.configuracion',
+        app.Storage.db.configuracion && app.Storage.db.configuracion.sinNotaEsCero === false,
+        JSON.stringify(app.Storage.db.configuracion));
+      chkSinNota.checked = true;
+      chkSinNota._dispara('change');
+    }
     if (nombre && centro) {
       nombre.value = 'Jorge "JB"';
       nombre._dispara('input');
@@ -3701,6 +3723,72 @@ async function main() {
       celdaPlegadaConNota.test(html), String(html).slice(0, 260));
     check('D74-46 · celda plegada ya no va vacía (antes celda-plegada"></td> vacío)',
       !/<td[^>]*class="celda-plegada num"><\/td>/.test(html), String(html).slice(0, 260));
+  }
+
+  // D-74b: la media de una UD con instrumentos sin nota segun el ajuste.
+  // Escenario: clase con 2 instrumentos en una UD; un alumno tiene nota en uno
+  // (7,0) y el otro sin nota. Resultado esperado:
+  //   sinNotaEsCero=false -> solo promedia el evaluado = 7,0
+  //   sinNotaEsCero=true  -> cuenta el vacio como 0 = (7+0)/2 = 3,5
+  {
+    const app = cargarApp();
+    app.Storage.load();
+    app.Storage.db = app.Storage.migrar({
+      schemaVersion: 1, cursoEscolar: '2025/2026',
+      meta: { ultimaExportacion: null, cambiosSinCopia: false },
+      grupos: [{ id: 'g1', nombre: '6ºA', etapa: 'Primaria' }],
+      alumnos: [{ id: 'a1', nombre: 'Ana', apellidos: 'Uno', grupoId: 'g1' }],
+      asignaturas: [{ id: 's1', nombre: 'Matemáticas 6º', etapa: 'Primaria' }],
+      clases: [{ id: 'c1', asignaturaId: 's1', grupoId: 'g1' }],
+      competenciasEspecificas: [{ id: 'e1', asignaturaId: 's1', codigo: 'CE1', descripcion: 'x' }],
+      criterios: [{ id: 'k1', asignaturaId: 's1', codigo: 'C1', descripcion: 'c1', peso: 100, espIds: ['e1'] }],
+      instrumentos: [
+        { id: 'i1', claseId: 'c1', tipo: 'Control', titulo: 'Control 1', fecha: '2026-01-10',
+          periodo: 'T1', unidad: 'UD1', nivel: 'BASE',
+          apartados: [{ id: 'p1', orden: 1, descripcion: 'a', maxPts: 10, criterioIds: ['k1'] }] },
+        { id: 'i2', claseId: 'c1', tipo: 'Control', titulo: 'Control 2', fecha: '2026-01-20',
+          periodo: 'T1', unidad: 'UD1', nivel: 'BASE',
+          apartados: [{ id: 'p2', orden: 1, descripcion: 'b', maxPts: 10, criterioIds: ['k1'] }] }
+      ],
+      registros: { i1: { a1: { p1: 7 } }, i2: { a1: {} } }, // a1 tiene 7 en i1; i2 sin nota
+      bancoInstrumentos: [], competenciasClave: [],
+      perfil: { nombre: '', centro: '', logo: '' },
+      configuracion: { sinNotaEsCero: false }
+    });
+    const mediaDe = (sel) => {
+      app.Storage.db.configuracion.sinNotaEsCero = sel;
+      const alumnos = app.Calc.alumnosDeClase('c1').map(a => ({ id: a.id, nombre: a.nombre, apellidos: a.apellidos }));
+      const insts = app.Storage.db.instrumentos.filter(i => i.claseId === 'c1');
+      const el = makeEl();
+      app.CuadriculaView.render(el, { claseSel: 'c1', periodo: 'T1', nivelSel: '', tab: 'notas' });
+      const h = typeof el.innerHTML === 'string' ? el.innerHTML : (el._html || '');
+      const m = h.match(/celda-plegada num"[^>]*>[\s\S]*?<span class="badge (ok|ko|na)">([\d,]+)<\/span>/);
+      return m ? m[2] : null;
+    };
+    check('D74-47 · sinNotaEsCero por defecto (true) cuenta el vacío como 0 (media=3,5)', mediaDe(true) === '3,5', mediaDe(true));
+    check('D74-48 · sinNotaEsCero=false excluye el vacío (media=7,0)', mediaDe(false) === '7,0', mediaDe(false));
+  }
+
+  // Persistencia: el toggle se lee de db.configuracion y se autoguarda.
+  {
+    const app = cargarApp();
+    app.Storage.load();
+    await importarJson(app, estadoInforme());
+    app.Storage.db.configuracion = { sinNotaEsCero: true };
+    app.Storage.save();
+    // Recargar desde el mismo localStorage: la configuración persiste.
+    const app2 = cargarApp();
+    app2.Storage.load();
+    check('D74-49 · configuracion.sinNotaEsCero persiste al recargar',
+      app2.Storage.db.configuracion && app2.Storage.db.configuracion.sinNotaEsCero === true,
+      JSON.stringify(app2.Storage.db.configuracion));
+    // Un backup antiguo (sin la clave) migra al valor por defecto.
+    const app3 = cargarApp();
+    app3.Storage.load();
+    app3.Storage.db = app3.Storage.migrar({ schemaVersion: 1, cursoEscolar: '2025/2026' });
+    check('D74-50 · un backup antiguo sin configuracion migra a sinNotaEsCero=true (por defecto)',
+      app3.Storage.db.configuracion && app3.Storage.db.configuracion.sinNotaEsCero === true,
+      JSON.stringify(app3.Storage.db.configuracion));
   }
 
   console.log('\n' + (fallos ? 'FALLOS: ' + fallos + '/' + total : 'TODO OK: ' + total + ' comprobaciones')
