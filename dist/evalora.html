@@ -266,11 +266,14 @@ input:focus, select:focus, textarea:focus { border-color: var(--acento); }
   display: inline-block; padding: 3px 10px; border-radius: 999px;
   font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;
 }
-.badge.ok { background: var(--ok-suave); color: var(--ok); }
-.badge.ko { background: var(--ko-suave); color: var(--ko); }
-.badge.na { background: var(--na-suave); color: var(--na); }
-.badge.info { background: var(--acento-suave); color: var(--acento); }
-.badge.warn { background: var(--aviso-suave); color: var(--aviso); }
+/* Los badges llevan texto más oscuro que el color de estado para superar 4.5:1
+   (WCAG AA para texto pequeño): el color claro de estado sobre su fondo "suave"
+   ronda 4:1 y falla; estos tonos suben a 5-7:1. */
+.badge.ok { background: var(--ok-suave); color: #166534; }
+.badge.ko { background: var(--ko-suave); color: #991b1b; }
+.badge.na { background: var(--na-suave); color: #4b5563; }
+.badge.info { background: var(--acento-suave); color: #3730a3; }
+.badge.warn { background: var(--aviso-suave); color: #92400e; }
 
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .hint { display: block; color: var(--tinta-suave); font-size: 12px; margin-bottom: 6px; }
