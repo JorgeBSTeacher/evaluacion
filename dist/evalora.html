@@ -6464,9 +6464,21 @@ const App = (() => {
     };
 
     // Red de seguridad (R-01): vuelca el estado al ocultar o cerrar la pestaña
-    // por si alguna escritura anterior no llegó a completarse.
+    // por si alguna escritura anterior no llegó a completarse. Los datos nunca
+    // se pierden (el autoguardado continuo ya los tiene en localStorage); esto
+    // solo garantiza el vuelco final. beforeunload ademas pide confirmacion
+    // cuando hay cambios sin copia de seguridad (D-53, cambiosSinCopia).
     const volcadoSeguro = () => { if (Storage.db) Storage.volcar(); };
-    window.addEventListener('beforeunload', volcadoSeguro);
+    window.addEventListener('beforeunload', (e) => {
+      volcadoSeguro();
+      const haySinCopia = Storage.db && Storage.db.meta && Storage.db.meta.cambiosSinCopia;
+      if (haySinCopia) {
+        // El navegador muestra su dialogo generico (texto y botones no se pueden
+        // personalizar por seguridad). Previene el cierre para que salga.
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') volcadoSeguro();
     });

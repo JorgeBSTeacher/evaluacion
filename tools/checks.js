@@ -2351,8 +2351,19 @@ async function main() {
     check('un guardado correcto no avisa (no hay falsa alarma)',
       rootToast.childNodes.length === antesOk);
 
-    S.db.meta.ultimaExportacion = new Date(Date.now() - 10 * 86400000).toISOString();
+    // D-74c: confirmacion al cerrar la pestaña si hay cambios sin copia de
+    // seguridad. No podemos disparar el beforeunload real del navegador, asi que
+    // comprobamos la condicion que lo dispara: el flag cambiosSinCopia (D-53).
+    // El handler en app.js hace volcar() (autoguardado) y, solo si el flag es
+    // true, llama a preventDefault() para que el navegador muestre su dialogo.
+    const flagConfirma = (db) => !!(db && db.meta && db.meta.cambiosSinCopia);
+    const dbTmp = cargarApp().Storage.defaults();
+    dbTmp.meta.cambiosSinCopia = false;
+    check('sin cambios pendientes NO dispara confirmacion', flagConfirma(dbTmp) === false);
+    dbTmp.meta.cambiosSinCopia = true;
+    check('con cambios pendientes SÍ dispara confirmacion', flagConfirma(dbTmp) === true);
     S.db.meta.cambiosSinCopia = false;
+    S.db.meta.ultimaExportacion = new Date(Date.now() - 10 * 86400000).toISOString();
     check('una copia de hace 10 días sale «antigua»',
       S.estadoCopia().nivel === 'antigua' && S.estadoCopia().dias >= 10);
 
