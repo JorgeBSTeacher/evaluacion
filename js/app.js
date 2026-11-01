@@ -209,12 +209,12 @@ const App = (() => {
     // Ajustes de calificación (D-74b): autoguardado del toggle al cambiar.
     const chkSinNota = body.querySelector('#ajuste-sin-nota');
     if (chkSinNota) chkSinNota.onchange = () => {
-      // Mantener siempre un objeto configuracion valido y guardar.
       if (!db.configuracion || typeof db.configuracion !== 'object') db.configuracion = { sinNotaEsCero: false };
       db.configuracion.sinNotaEsCero = !!chkSinNota.checked;
       Storage.save();
-      // Refrescar la vista para que la media de las UDs se recalcule con el
-      // nuevo ajuste (sin esto el cambio solo se notaba al salir y volver).
+      // Cerrar el modal y refrescar: si el modal queda abierto tapa la vista y el
+      // cambio de media no se aprecia. App.refrescar() recalcula con el ajuste.
+      UI.closeModal();
       if (typeof App !== 'undefined' && App.refrescar) App.refrescar();
     };
     const inputLogo = body.querySelector('#perfil-logo');

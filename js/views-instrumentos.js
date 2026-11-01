@@ -28,8 +28,19 @@ const InstrumentosView = (() => {
   // Fila de la tabla de instrumentos (sin columna de periodo: el trimestre ya
   // es el encabezado de sección).
   function filaInstrumento(i) {
+    // sinNotaEsCero (D-74b): true = el vacio vale 0 (por defecto, coherente con
+    // el resto de la app); false = solo promedia los alumnos con nota. El toggle
+    // vive en Configuracion y se autoguarda; App.refrescar() lo re-lee al pulsar.
+    const sinNotaEsCero = !!(Storage.db && Storage.db.configuracion && Storage.db.configuracion.sinNotaEsCero);
+    // Un alumno tiene nota si algun apartado del instrumento tiene valor en su
+    // registro (notaInstrumento devuelve 0 tanto para "todo a 0" como para "sin
+    // nota", asi que hay que mirar el registro para distinguirlos).
+    const tieneNota = (alumnoId) => {
+      const fila = ((Storage.db.registros && Storage.db.registros[i.id]) || {})[alumnoId];
+      return !!(fila && i.apartados && i.apartados.some(ap => fila[ap.id] != null && fila[ap.id] !== ''));
+    };
     const notas = Calc.alumnosDeInstrumento(i)
-      .map(a => Calc.notaInstrumento(i, a.id))
+      .map(a => (tieneNota(a.id) ? Calc.notaInstrumento(i, a.id) : (sinNotaEsCero ? 0 : null)))
       .filter(n => n != null);
     const media = notas.length ? notas.reduce((x, y) => x + y, 0) / notas.length : null;
     const nivelTxt = i.nivel ? Calc.etiquetaNivel(i.claseId, i.nivel) : '';
