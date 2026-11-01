@@ -419,21 +419,24 @@ input:focus, select:focus, textarea:focus { border-color: var(--acento); }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   @page { margin: 10mm; size: A4 landscape; }
 
-  /* Reducir tablas muy anchas (criterios, etc.) */
+  /* Reducir tablas muy anchas (criterios, etc.) —cuerpo a 10 px (plan: >=10 px)*/
   #informe-impresion .tabla,
   #informe-impresion .tabla-cuadricula {
     width: 100%;
     table-layout: fixed;
     word-break: break-word;
     hyphens: auto;
-    font-size: 8px;
+    font-size: 10px;
   }
   #informe-impresion .tabla th,
   #informe-impresion .tabla td {
     padding: 1px 2px;
-    font-size: 8px;
+    font-size: 10px;
     line-height: 1.15;
     white-space: normal;
+  }
+  #informe-impresion .tabla th {
+    font-size: 11px;
   }
   #informe-impresion .scroll-x {
     overflow: visible !important;
