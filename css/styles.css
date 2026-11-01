@@ -286,6 +286,9 @@ input:focus, select:focus, textarea:focus { border-color: var(--acento); }
 /* La cuadrícula de rúbrica necesita más ancho para sus columnas de nivel */
 .modal:has(.rub-head) { width: min(1080px, 100%); }
 .modal:has(#ia-prompt) { width: min(860px, 100%); }
+/* El modal de instrumento ahora lleva 5 columnas (pregunta, saberes, peso,
+   criterios, quitar): necesita más ancho que el modal por defecto. */
+.modal:has(#lista-apartados) { width: min(1080px, 100%); }
 .modal-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 18px; border-top: 1px solid var(--linea); }
 
 #toast-root { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 200; display: flex; flex-direction: column; gap: 8px; align-items: center; }
@@ -299,13 +302,24 @@ input:focus, select:focus, textarea:focus { border-color: var(--acento); }
 @keyframes aparecer { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
 .apartado-fila {
-  display: grid; grid-template-columns: 28px 1fr 110px auto 1fr auto auto; gap: 8px; align-items: center;
+  display: grid; grid-template-columns: 1fr 1fr 110px auto auto; gap: 8px; align-items: center;
   padding: 6px 0; border-bottom: 1px dashed var(--linea);
 }
-.col-saberes { display: flex; flex-direction: column; gap: 2px; }
-.col-saberes small { color: var(--tinta-suave); font-size: 11px; font-weight: 600; text-transform: none; letter-spacing: 0; }
+.apartado-fila > *:first-child { min-width: 0; }
+.col-saberes, .col-peso { display: flex; flex-direction: column; gap: 2px; }
+.col-saberes small, .col-peso small { color: var(--tinta-suave); font-size: 11px; font-weight: 600; text-transform: none; letter-spacing: 0; }
+.col-peso input { width: 100%; }
 .zona-crit { grid-column: 1 / -1; padding: 8px 4px 2px; border-top: 1px dashed var(--linea); }
 .apartado-fila:last-child { border-bottom: none; }
+.apartado-fila .quitar-ap { justify-self: end; }
+/* Movil: 5 columnas no caben. Pregunta+saberes arriba, peso+criterios+quitar abajo. */
+@media (max-width: 720px) {
+  .apartado-fila { grid-template-columns: 1fr 1fr; gap: 6px 10px; }
+  .apartado-fila .ap-desc,
+  .apartado-fila .col-saberes { grid-column: 1 / -1; }
+  .apartado-fila .toggle-crit { justify-self: start; }
+  .apartado-fila .quitar-ap { justify-self: end; }
+}
 
 
 /* Rúbrica: cuadrícula «criterio · peso · nivel 1 … nivel N» (D-40) */

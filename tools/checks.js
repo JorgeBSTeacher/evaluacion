@@ -831,7 +831,8 @@ async function main() {
       const tokens = plantilla.trim().split(/\s+(?![^(]*\))/).length;
       check(`plantilla de ${n} niveles = ${n + 5} columnas`, tokens === n + 5, 'tokens=' + tokens);
       check(`la cabecera de ${n} niveles tiene ${n + 5} celdas`, cuenta(cab, /<span/g) === n + 5);
-      check(`la fila de ${n} niveles tiene ${n + 5} campos`, cuenta(fila, /<(input|button|span)/g) === n + 5);
+      // La fila de rúbrica lleva descripción, peso, n niveles, botón y quitar (n+4).
+      check(`la fila de ${n} niveles tiene ${n + 4} campos`, cuenta(fila, /<(input|button|span)/g) === n + 4);
       check(`la fila crea ${n} entradas de nivel`, cuenta(fila, /class="ap-nv"/g) === n);
       check(`la cabecera y la fila usan la misma plantilla`, cab.includes(plantilla) && fila.includes(plantilla));
     }
@@ -1903,13 +1904,12 @@ async function main() {
     check('cada sección del informe (nivel) empieza en una hoja nueva',
       css.includes('.informe-seccion + .informe-seccion { break-before: page; page-break-before: always; }'));
 
-    // La fila de apartado (Control/Proyecto) pinta 7 controles: nº, descripción,
-    // máximo, «peso», «Saberes», «Criterios» y «Quitar». Si el grid declara menos
-    // columnas, «Quitar» se va a una segunda fila (la columna de 28px) y no cabe su
-    // texto.
+    // La fila de apartado (Control/Proyecto) pinta 5 controles: descripción,
+    // saberes, peso, «Criterios» y «Quitar». Si el grid declara menos columnas,
+    // «Quitar» se va a una segunda fila y no cabe su texto.
     const apCols = (css.match(/\.apartado-fila\s*\{[^}]*grid-template-columns:\s*([^;]+);/) || [])[1];
     check('la fila de apartado (no rúbrica) declara una columna por control: «Quitar» no salta de fila',
-      !!apCols && apCols.trim().split(/\s+/).length === 7, apCols);
+      !!apCols && apCols.trim().split(/\s+/).length === 5, apCols);
   }
 
   console.log('\n== Nivel ACI: los criterios del instrumento deben ser de su currículo ==');

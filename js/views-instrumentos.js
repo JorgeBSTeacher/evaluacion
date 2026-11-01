@@ -108,13 +108,11 @@ function columnasNivel(filas) {
     const cols = esRubrica ? (columnasNv || []) : [];
     return `
       <div class="apartado-fila${esRubrica ? ' rub' : ''}" data-id="${ap.id}"${esRubrica ? ` style="grid-template-columns:${plantillaColumnas(cols.length)}"` : ''}>
-        <span class="num-ap"></span>
         <input type="text" class="ap-desc" placeholder="${esRubrica ? 'Ítem evaluado (ej. Ortografía)' : 'Pregunta, parte o fase'}" value="${Utils.esc(ap.descripcion)}">
+        ${esRubrica ? '' : `<div class="col-saberes"><small>Saberes básicos</small><input type="text" class="ap-saberes" placeholder="separados por coma" value="${Utils.esc(ap.saberes || '')}"></div>`}
         ${esRubrica
           ? `<input type="number" class="ap-peso" min="0.01" step="0.5" value="${peso}" title="Peso de este ítem en la rúbrica">`
-          : `<input type="number" class="ap-max" min="0.5" step="0.5" value="${ap.maxPts}" title="Puntos máximos">`}
-        ${esRubrica ? '' : '<small style="color:var(--tinta-suave)">peso</small>'}
-        ${esRubrica ? '' : `<div class="col-saberes"><small>Saberes</small><input type="text" class="ap-saberes" placeholder="Saberes básicos (separados por coma)" value="${Utils.esc(ap.saberes || '')}"></div>`}
+          : `<label class="col-peso"><small>Peso</small><input type="number" class="ap-max" min="0.5" step="0.5" value="${ap.maxPts}" title="Puntos máximos"></label>`}
         ${cols.map((nv, k) => `
           <input type="text" class="ap-nv" data-pct="${nv.pct}"
             value="${Utils.esc(descriptorPropio(ap, nv.pct))}"
@@ -290,10 +288,6 @@ function columnasNivel(filas) {
     chipsGlobal.innerHTML = UI.chipsCriterios(asig.id, inst ? (inst.criterioIdsGlobal || []) : []);
     UI.wireChips(chipsGlobal);
 
-    function refrescaNumeros() {
-      body.querySelectorAll('.num-ap').forEach((n, i) => { n.textContent = i + 1 + '.'; });
-    }
-
     // Columnas de la cuadrícula de rúbrica: la unión de los niveles propios de
     // los ítems. Si todavía no hay ninguno (rúbrica nueva), la escala estándar.
     
@@ -346,7 +340,7 @@ function columnasNivel(filas) {
       const div = document.createElement('div');
       div.innerHTML = filaApartado(ap || { id: 'nuevo', descripcion: '', maxPts: '', criterioIds: [] }, asigCrit ? asigCrit.id : asig.id, esRubrica, modoGlobal, cols).trim();
       const fila = div.firstElementChild;
-      fila.querySelector('.quitar-ap').onclick = () => { fila.remove(); refrescaNumeros(); };
+      fila.querySelector('.quitar-ap').onclick = () => { fila.remove(); };
       if (fila.querySelector('.toggle-crit')) {
         fila.querySelector('.toggle-crit').onclick = () => {
           const zona = fila.querySelector('.zona-crit');
@@ -358,7 +352,6 @@ function columnasNivel(filas) {
         inp.addEventListener('change', () => actualizaEtiquetaCrit(fila)));
       actualizaEtiquetaCrit(fila);
       listaAp.appendChild(fila);
-      refrescaNumeros();
     }
 
     function refrescaTipo() {

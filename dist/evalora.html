@@ -303,6 +303,9 @@ input:focus, select:focus, textarea:focus { border-color: var(--acento); }
 /* La cuadrícula de rúbrica necesita más ancho para sus columnas de nivel */
 .modal:has(.rub-head) { width: min(1080px, 100%); }
 .modal:has(#ia-prompt) { width: min(860px, 100%); }
+/* El modal de instrumento ahora lleva 5 columnas (pregunta, saberes, peso,
+   criterios, quitar): necesita más ancho que el modal por defecto. */
+.modal:has(#lista-apartados) { width: min(1080px, 100%); }
 .modal-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 18px; border-top: 1px solid var(--linea); }
 
 #toast-root { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 200; display: flex; flex-direction: column; gap: 8px; align-items: center; }
@@ -316,13 +319,24 @@ input:focus, select:focus, textarea:focus { border-color: var(--acento); }
 @keyframes aparecer { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
 .apartado-fila {
-  display: grid; grid-template-columns: 28px 1fr 110px auto 1fr auto auto; gap: 8px; align-items: center;
+  display: grid; grid-template-columns: 1fr 1fr 110px auto auto; gap: 8px; align-items: center;
   padding: 6px 0; border-bottom: 1px dashed var(--linea);
 }
-.col-saberes { display: flex; flex-direction: column; gap: 2px; }
-.col-saberes small { color: var(--tinta-suave); font-size: 11px; font-weight: 600; text-transform: none; letter-spacing: 0; }
+.apartado-fila > *:first-child { min-width: 0; }
+.col-saberes, .col-peso { display: flex; flex-direction: column; gap: 2px; }
+.col-saberes small, .col-peso small { color: var(--tinta-suave); font-size: 11px; font-weight: 600; text-transform: none; letter-spacing: 0; }
+.col-peso input { width: 100%; }
 .zona-crit { grid-column: 1 / -1; padding: 8px 4px 2px; border-top: 1px dashed var(--linea); }
 .apartado-fila:last-child { border-bottom: none; }
+.apartado-fila .quitar-ap { justify-self: end; }
+/* Movil: 5 columnas no caben. Pregunta+saberes arriba, peso+criterios+quitar abajo. */
+@media (max-width: 720px) {
+  .apartado-fila { grid-template-columns: 1fr 1fr; gap: 6px 10px; }
+  .apartado-fila .ap-desc,
+  .apartado-fila .col-saberes { grid-column: 1 / -1; }
+  .apartado-fila .toggle-crit { justify-self: start; }
+  .apartado-fila .quitar-ap { justify-self: end; }
+}
 
 
 /* Rúbrica: cuadrícula «criterio · peso · nivel 1 … nivel N» (D-40) */
@@ -3671,13 +3685,11 @@ function columnasNivel(filas) {
     const cols = esRubrica ? (columnasNv || []) : [];
     return `
       <div class="apartado-fila${esRubrica ? ' rub' : ''}" data-id="${ap.id}"${esRubrica ? ` style="grid-template-columns:${plantillaColumnas(cols.length)}"` : ''}>
-        <span class="num-ap"></span>
         <input type="text" class="ap-desc" placeholder="${esRubrica ? 'Ítem evaluado (ej. Ortografía)' : 'Pregunta, parte o fase'}" value="${Utils.esc(ap.descripcion)}">
+        ${esRubrica ? '' : `<div class="col-saberes"><small>Saberes básicos</small><input type="text" class="ap-saberes" placeholder="separados por coma" value="${Utils.esc(ap.saberes || '')}"></div>`}
         ${esRubrica
           ? `<input type="number" class="ap-peso" min="0.01" step="0.5" value="${peso}" title="Peso de este ítem en la rúbrica">`
-          : `<input type="number" class="ap-max" min="0.5" step="0.5" value="${ap.maxPts}" title="Puntos máximos">`}
-        ${esRubrica ? '' : '<small style="color:var(--tinta-suave)">peso</small>'}
-        ${esRubrica ? '' : `<div class="col-saberes"><small>Saberes</small><input type="text" class="ap-saberes" placeholder="Saberes básicos (separados por coma)" value="${Utils.esc(ap.saberes || '')}"></div>`}
+          : `<label class="col-peso"><small>Peso</small><input type="number" class="ap-max" min="0.5" step="0.5" value="${ap.maxPts}" title="Puntos máximos"></label>`}
         ${cols.map((nv, k) => `
           <input type="text" class="ap-nv" data-pct="${nv.pct}"
             value="${Utils.esc(descriptorPropio(ap, nv.pct))}"
@@ -3853,10 +3865,6 @@ function columnasNivel(filas) {
     chipsGlobal.innerHTML = UI.chipsCriterios(asig.id, inst ? (inst.criterioIdsGlobal || []) : []);
     UI.wireChips(chipsGlobal);
 
-    function refrescaNumeros() {
-      body.querySelectorAll('.num-ap').forEach((n, i) => { n.textContent = i + 1 + '.'; });
-    }
-
     // Columnas de la cuadrícula de rúbrica: la unión de los niveles propios de
     // los ítems. Si todavía no hay ninguno (rúbrica nueva), la escala estándar.
     
@@ -3909,7 +3917,7 @@ function columnasNivel(filas) {
       const div = document.createElement('div');
       div.innerHTML = filaApartado(ap || { id: 'nuevo', descripcion: '', maxPts: '', criterioIds: [] }, asigCrit ? asigCrit.id : asig.id, esRubrica, modoGlobal, cols).trim();
       const fila = div.firstElementChild;
-      fila.querySelector('.quitar-ap').onclick = () => { fila.remove(); refrescaNumeros(); };
+      fila.querySelector('.quitar-ap').onclick = () => { fila.remove(); };
       if (fila.querySelector('.toggle-crit')) {
         fila.querySelector('.toggle-crit').onclick = () => {
           const zona = fila.querySelector('.zona-crit');
@@ -3921,7 +3929,6 @@ function columnasNivel(filas) {
         inp.addEventListener('change', () => actualizaEtiquetaCrit(fila)));
       actualizaEtiquetaCrit(fila);
       listaAp.appendChild(fila);
-      refrescaNumeros();
     }
 
     function refrescaTipo() {
