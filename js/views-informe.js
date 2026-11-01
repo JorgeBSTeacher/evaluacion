@@ -9,8 +9,11 @@ const InformeView = (function () {
   let claseSel = null;
   let nivelSel = '';
   let alcance = { periodo: '', unidad: '', instrumentoId: '' };
-  let subVista = 'hallazgos'; // 'hallazgos' | 'criterios' | 'distribucion' | 'alumnos'
+  let subVista = 'hallazgos'; // 'hallazgos' | 'criterios' | 'distribucion' | 'alumnos' | 'instrumentos'
   let contenedor = null;
+  // Instrumento elegido en la subvista «Instrumentos» (D-74c). Se resetea al
+  // cambiar de clase (el render restablece el alcance).
+  let instrumentoInfoSel = '';
 
   function esTodas(nv) {
     const v = String(nv == null ? '' : nv).trim();
@@ -68,7 +71,8 @@ const InformeView = (function () {
       { id: 'hallazgos', nombre: 'Hallazgos' },
       { id: 'criterios', nombre: 'Criterios' },
       { id: 'distribucion', nombre: 'Distribución' },
-      { id: 'alumnos', nombre: 'Alumnos' }
+      { id: 'alumnos', nombre: 'Alumnos' },
+      { id: 'instrumentos', nombre: 'Instrumentos' }
     ];
     return `
       <div class="chips no-print" style="margin-bottom:14px">
@@ -473,6 +477,61 @@ const InformeView = (function () {
       </p>`;
   }
 
+  // ---------------------------------------------------------------- saberes
+  // Subvista «Instrumentos» (D-74c): por instrumento, una tabla de saberes
+  // básicos (filas = alumnado, columnas = saberes) donde cada celda dice si el
+  // alumno domina ese saber (media de los apartados que lo trabajan). Incluye un
+  // cajetín de observaciones del docente, guardado localmente.
+  function htmlInstrumentos(claseId, insts) {
+    const instsClase = (insts || []).filter(i => i.claseId === claseId);
+    if (!instsClase.length) {
+      return '<div class="aviso">No hay instrumentos en esta clase. Créalos en la pestaña Instrumentos.</div>';
+    }
+    const instId = instrumentoInfoSel || instsClase[0].id;
+    const inst = Calc.instrumento(instId);
+    const saberes = Calc.saberesDeInstrumento(instId);
+    const alumnos = Calc.alumnosDeClase(claseId);
+
+    const selOpts = instsClase.map(i =>
+      `<option value="${i.id}" ${i.id === instId ? 'selected' : ''}>${Utils.esc(i.titulo || i.tipo)}</option>`).join('');
+
+    const badgeCelda = d => {
+      if (d.estado === 'domina') return '<span class="badge ok" title="' + Utils.esc(d.media != null ? d.media + '/10' : '') + '">✓</span>';
+      if (d.estado === 'mejorar') return '<span class="badge ko" title="' + Utils.esc(d.media != null ? d.media + '/10' : '') + '">✗</span>';
+      return '<span class="badge na" title="Sin datos">—</span>';
+    };
+
+    let tabla = '';
+    if (!saberes.length) {
+      tabla = '<div class="aviso">Este instrumento no tiene saberes etiquetados en sus apartados. ' +
+        'Edita el instrumento y añade los saberes básicos (separados por coma) en cada apartado.</div>';
+    } else {
+      tabla = `
+        <div class="scroll-x">
+          <table class="tabla">
+            <thead><tr><th>Alumno</th>${saberes.map(s => `<th style="text-align:center">${Utils.esc(s.saber)}</th>`).join('')}</tr></thead>
+            <tbody>
+              ${alumnos.map(a => `
+                <tr>
+                  <td>${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}</td>
+                  ${saberes.map(s => `<td style="text-align:center">${badgeCelda(Calc.dominioSaber(instId, a.id, s.saber))}</td>`).join('')}
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`;
+    }
+
+    const obs = (Storage.db.observaciones && Storage.db.observaciones[instId]) || '';
+    return `
+      <label class="campo"><span>Instrumento</span>
+        <select id="sel-inst-info">${selOpts}</select></label>
+      ${tabla}
+      <label class="campo" style="margin-top:16px">
+        <span>Observaciones del docente (propuestas de mejora, a criterio del maestro)</span>
+        <textarea id="obs-inst" rows="4" class="obs-inst" placeholder="Anotaciones locales; no se imprimen ni se exportan.">${Utils.esc(obs)}</textarea>
+      </label>`;
+  }
+
   // Informe de análisis para PDF: todas las subvistas compuestas —hallazgos,
   // criterios, distribución y alumnos— con cabecera de clase y alcance. Devuelve
   // un string puro (comprobable sin navegador); el botón «Imprimir / PDF» se lo
@@ -506,10 +565,11 @@ const InformeView = (function () {
 
   // ---------------------------------------------------------------- render
   function render(el, opciones) {
-    // Al cambiar de clase se restablece el alcance.
+    // Al cambiar de clase se restablece el alcance y el instrumento del informe.
     if (opciones.claseSel !== claseSel) {
       claseSel = opciones.claseSel;
       alcance = { periodo: '', unidad: '', instrumentoId: '' };
+      instrumentoInfoSel = '';
     }
     // Si la cuadrícula nos pasa un periodo (T1/T2/T3/Final), sincronízalo con
     // el alcance del informe. «Final» no es un periodo propio del informe: se
@@ -542,6 +602,7 @@ const InformeView = (function () {
         ${subVista === 'hallazgos' ? htmlHallazgos(claseSel, insts)
           : subVista === 'criterios' ? htmlCriterios(claseSel, insts)
           : subVista === 'distribucion' ? htmlDistribucion(claseSel, insts, todas ? undefined : nivelSel)
+          : subVista === 'instrumentos' ? htmlInstrumentos(claseSel, insts)
           : htmlAlumnos(claseSel, insts, todas ? undefined : nivelSel)}
       </div>`;
 
@@ -577,6 +638,14 @@ const InformeView = (function () {
     el.querySelectorAll('[data-filtrosev]').forEach(ch => {
       ch.onclick = () => { filtroSev = ch.dataset.filtrosev; render(el, opciones); };
     });
+    const selInstInfo = el.querySelector('#sel-inst-info');
+    if (selInstInfo) selInstInfo.onchange = e => { instrumentoInfoSel = e.target.value; render(el, opciones); };
+    const obsInst = el.querySelector('#obs-inst');
+    if (obsInst && selInstInfo) {
+      obsInst.oninput = e => {
+        if (selInstInfo.value) { Storage.db.observaciones[selInstInfo.value] = e.target.value; Storage.save(); }
+      };
+    }
     // La Cuadrícula inyecta la función de impresión (opciones.imprimir); sin
     // ella (arnés de pruebas) el botón no hace nada.
     const btnPdf = el.querySelector('#btn-informe-pdf');

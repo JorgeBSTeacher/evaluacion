@@ -48,7 +48,10 @@ const Storage = {
       // false (por defecto) = no cuenta (solo promedia lo evaluado, «Media»);
       // true = el vacio vale 0 (punitivo). Se rellena solo con migrar().
       configuracion: { sinNotaEsCero: true },
-      registros: {}
+      registros: {},
+      // Observaciones del docente por instrumento (D-74c): propuestas de mejora
+      // a criterio del maestro. Se guardan localmente, offline.
+      observaciones: {}
     };
   },
 
@@ -349,6 +352,7 @@ const Storage = {
     }
     if (!db.meta || typeof db.meta !== 'object') db.meta = { ultimaExportacion: null };
     if (db.meta.cambiosSinCopia == null) db.meta.cambiosSinCopia = false;
+    if (db.observaciones == null) db.observaciones = {};
     db.grupos.forEach(g => { if (g.etapa == null) g.etapa = ''; });
     // La asignatura recuerda de qué curso es su currículo (p. ej. «6º») y su
     // fuente legal (la cita del decreto). Backups antiguos no los traen.
@@ -396,6 +400,7 @@ const Storage = {
         }
         if (!Array.isArray(ap.criterioIds)) ap.criterioIds = [];
         if (!Array.isArray(ap.niveles)) ap.niveles = [];
+        if (ap.saberes == null) ap.saberes = '';
       });
     });
     // Las rúbricas antiguas guardaban los descriptores en la escala común del

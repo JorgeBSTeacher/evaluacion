@@ -316,9 +316,11 @@ input:focus, select:focus, textarea:focus { border-color: var(--acento); }
 @keyframes aparecer { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
 .apartado-fila {
-  display: grid; grid-template-columns: 28px 1fr 110px auto auto auto; gap: 8px; align-items: center;
+  display: grid; grid-template-columns: 28px 1fr 110px auto 1fr auto auto; gap: 8px; align-items: center;
   padding: 6px 0; border-bottom: 1px dashed var(--linea);
 }
+.col-saberes { display: flex; flex-direction: column; gap: 2px; }
+.col-saberes small { color: var(--tinta-suave); font-size: 11px; font-weight: 600; text-transform: none; letter-spacing: 0; }
 .zona-crit { grid-column: 1 / -1; padding: 8px 4px 2px; border-top: 1px dashed var(--linea); }
 .apartado-fila:last-child { border-bottom: none; }
 
@@ -328,6 +330,10 @@ input:focus, select:focus, textarea:focus { border-color: var(--acento); }
 .rub-head > span { font-size: 11px; font-weight: 700; color: var(--tinta-suave); text-transform: uppercase; letter-spacing: .04em; line-height: 1.3; }
 .rub-head > span small { text-transform: none; letter-spacing: 0; font-size: 11px; color: var(--acento); }
 .apartado-fila.rub { align-items: start; }
+.ap-saberes { font-size: 13px; }
+
+/* Subvista «Instrumentos» del informe (D-74c): tabla de saberes por alumno */
+.obs-inst { resize: vertical; min-height: 80px; }
 .apartado-fila.rub .ap-nv { font-size: 13px; }
 .apartado-fila.rub .ap-nv::placeholder { color: #b6b2a6; font-style: italic; }
 
@@ -640,7 +646,10 @@ const Storage = {
       // false (por defecto) = no cuenta (solo promedia lo evaluado, «Media»);
       // true = el vacio vale 0 (punitivo). Se rellena solo con migrar().
       configuracion: { sinNotaEsCero: true },
-      registros: {}
+      registros: {},
+      // Observaciones del docente por instrumento (D-74c): propuestas de mejora
+      // a criterio del maestro. Se guardan localmente, offline.
+      observaciones: {}
     };
   },
 
@@ -941,6 +950,7 @@ const Storage = {
     }
     if (!db.meta || typeof db.meta !== 'object') db.meta = { ultimaExportacion: null };
     if (db.meta.cambiosSinCopia == null) db.meta.cambiosSinCopia = false;
+    if (db.observaciones == null) db.observaciones = {};
     db.grupos.forEach(g => { if (g.etapa == null) g.etapa = ''; });
     // La asignatura recuerda de qué curso es su currículo (p. ej. «6º») y su
     // fuente legal (la cita del decreto). Backups antiguos no los traen.
@@ -988,6 +998,7 @@ const Storage = {
         }
         if (!Array.isArray(ap.criterioIds)) ap.criterioIds = [];
         if (!Array.isArray(ap.niveles)) ap.niveles = [];
+        if (ap.saberes == null) ap.saberes = '';
       });
     });
     // Las rúbricas antiguas guardaban los descriptores en la escala común del
@@ -2288,6 +2299,64 @@ const Calc = {
 
   badgeHtml(n) {
     return '<span class="badge ' + this.clasif(n) + '">' + Utils.fmt(n) + '</span>';
+  },
+
+  // === Saberes por instrumento (D-74c) ===
+  // Pura: lee Storage.db, no toca DOM. Analiza qué saberes básicos domina cada
+  // alumno a partir de los apartados etiquetados por el docente.
+
+  // Lista los saberes únicos de un instrumento y en qué apartados aparecen.
+  // Deduplica por minúsculas conservando la primera capitalización.
+  saberesDeInstrumento(instrumentId) {
+    const inst = this.instrumento(instrumentId);
+    if (!inst) return [];
+    const vistos = new Map(); // lowercase -> { saber, apartados, count }
+    for (const ap of inst.apartados) {
+      const raw = String(ap.saberes == null ? '' : ap.saberes);
+      for (let s of raw.split(',')) {
+        s = s.trim();
+        if (!s) continue;
+        const clave = s.toLowerCase();
+        if (!vistos.has(clave)) vistos.set(clave, { saber: s, apartados: [], count: 0 });
+        const item = vistos.get(clave);
+        if (item.apartados.indexOf(ap.id) === -1) item.apartados.push(ap.id);
+        item.count++;
+      }
+    }
+    return [...vistos.values()];
+  },
+
+  // Nota 0–10 de un alumno en un apartado, o null si no tiene nota. Pura.
+  notaAlumnoEnApartado(instrumentId, alumnoId, apartadoId) {
+    const inst = this.instrumento(instrumentId);
+    if (!inst) return null;
+    const ap = inst.apartados.find(a => a.id === apartadoId);
+    if (!ap || !ap.maxPts) return null;
+    const reg = (Storage.db.registros[instrumentId] || {})[alumnoId];
+    const raw = (reg || {})[apartadoId];
+    if (raw == null || raw === '' || isNaN(raw)) return null;
+    const n = (Number(raw) / ap.maxPts) * 10;
+    const clamp = Math.max(0, Math.min(10, n));
+    return Math.round(clamp * 10) / 10;
+  },
+
+  // Dominio de un saber para un alumno: media de los apartados que lo trabajan.
+  dominioSaber(instrumentId, alumnoId, saber) {
+    const todos = this.saberesDeInstrumento(instrumentId);
+    const match = todos.find(x => x.saber.toLowerCase() === String(saber).toLowerCase());
+    const etiquetaSaber = match ? match.saber : saber;
+    if (!match) return { saber: etiquetaSaber, estado: 'sin_datos', media: null, apartados: [] };
+    const filas = match.apartados.map(apId => {
+      const ap = (this.instrumento(instrumentId) || {}).apartados.find(a => a.id === apId);
+      const nota = this.notaAlumnoEnApartado(instrumentId, alumnoId, apId);
+      return { descripcion: ap ? ap.descripcion : '', nota, apto: nota !== null && nota >= 5 };
+    });
+    const conNota = filas.filter(f => f.nota !== null);
+    if (!conNota.length) {
+      return { saber: etiquetaSaber, estado: 'sin_datos', media: null, apartados: filas };
+    }
+    const media = Math.round((conNota.reduce((s, f) => s + f.nota, 0) / conNota.length) * 10) / 10;
+    return { saber: etiquetaSaber, estado: media >= 5 ? 'domina' : 'mejorar', media, apartados: filas };
   }
 };
 
@@ -3608,6 +3677,7 @@ function columnasNivel(filas) {
           ? `<input type="number" class="ap-peso" min="0.01" step="0.5" value="${peso}" title="Peso de este ítem en la rúbrica">`
           : `<input type="number" class="ap-max" min="0.5" step="0.5" value="${ap.maxPts}" title="Puntos máximos">`}
         ${esRubrica ? '' : '<small style="color:var(--tinta-suave)">peso</small>'}
+        ${esRubrica ? '' : `<div class="col-saberes"><small>Saberes</small><input type="text" class="ap-saberes" placeholder="Saberes básicos (separados por coma)" value="${Utils.esc(ap.saberes || '')}"></div>`}
         ${cols.map((nv, k) => `
           <input type="text" class="ap-nv" data-pct="${nv.pct}"
             value="${Utils.esc(descriptorPropio(ap, nv.pct))}"
@@ -3729,6 +3799,7 @@ function columnasNivel(filas) {
             if (isNaN(maxPts) || maxPts <= 0) { alert('Cada apartado necesita puntos máximos'); return false; }
           }
           const peso = fila.querySelector('.ap-peso') ? parseFloat(fila.querySelector('.ap-peso').value) : (esRubrica ? 1 : maxPts);
+          const saberes = (fila.querySelector('.ap-saberes') || {}).value || '';
           const nivelesItem = Array.from(fila.querySelectorAll('.ap-nv'))
             .map(i => ({ pct: Number(i.dataset.pct), descriptor: i.value.trim() }))
             .filter(n => n.descriptor);
@@ -3740,7 +3811,8 @@ function columnasNivel(filas) {
             id: fila.dataset.id && fila.dataset.id !== 'nuevo' ? fila.dataset.id : Utils.uid(),
             orden, descripcion: desc, maxPts, criterioIds,
             peso: (isNaN(peso) || peso <= 0) ? 1 : peso,
-            niveles: esRubrica ? nivelesItem : []
+            niveles: esRubrica ? nivelesItem : [],
+            saberes: saberes.trim()
           });
         }
         if (!apartados.length) { alert('Añade al menos un apartado'); return false; }
@@ -4569,8 +4641,11 @@ const InformeView = (function () {
   let claseSel = null;
   let nivelSel = '';
   let alcance = { periodo: '', unidad: '', instrumentoId: '' };
-  let subVista = 'hallazgos'; // 'hallazgos' | 'criterios' | 'distribucion' | 'alumnos'
+  let subVista = 'hallazgos'; // 'hallazgos' | 'criterios' | 'distribucion' | 'alumnos' | 'instrumentos'
   let contenedor = null;
+  // Instrumento elegido en la subvista «Instrumentos» (D-74c). Se resetea al
+  // cambiar de clase (el render restablece el alcance).
+  let instrumentoInfoSel = '';
 
   function esTodas(nv) {
     const v = String(nv == null ? '' : nv).trim();
@@ -4628,7 +4703,8 @@ const InformeView = (function () {
       { id: 'hallazgos', nombre: 'Hallazgos' },
       { id: 'criterios', nombre: 'Criterios' },
       { id: 'distribucion', nombre: 'Distribución' },
-      { id: 'alumnos', nombre: 'Alumnos' }
+      { id: 'alumnos', nombre: 'Alumnos' },
+      { id: 'instrumentos', nombre: 'Instrumentos' }
     ];
     return `
       <div class="chips no-print" style="margin-bottom:14px">
@@ -5033,6 +5109,61 @@ const InformeView = (function () {
       </p>`;
   }
 
+  // ---------------------------------------------------------------- saberes
+  // Subvista «Instrumentos» (D-74c): por instrumento, una tabla de saberes
+  // básicos (filas = alumnado, columnas = saberes) donde cada celda dice si el
+  // alumno domina ese saber (media de los apartados que lo trabajan). Incluye un
+  // cajetín de observaciones del docente, guardado localmente.
+  function htmlInstrumentos(claseId, insts) {
+    const instsClase = (insts || []).filter(i => i.claseId === claseId);
+    if (!instsClase.length) {
+      return '<div class="aviso">No hay instrumentos en esta clase. Créalos en la pestaña Instrumentos.</div>';
+    }
+    const instId = instrumentoInfoSel || instsClase[0].id;
+    const inst = Calc.instrumento(instId);
+    const saberes = Calc.saberesDeInstrumento(instId);
+    const alumnos = Calc.alumnosDeClase(claseId);
+
+    const selOpts = instsClase.map(i =>
+      `<option value="${i.id}" ${i.id === instId ? 'selected' : ''}>${Utils.esc(i.titulo || i.tipo)}</option>`).join('');
+
+    const badgeCelda = d => {
+      if (d.estado === 'domina') return '<span class="badge ok" title="' + Utils.esc(d.media != null ? d.media + '/10' : '') + '">✓</span>';
+      if (d.estado === 'mejorar') return '<span class="badge ko" title="' + Utils.esc(d.media != null ? d.media + '/10' : '') + '">✗</span>';
+      return '<span class="badge na" title="Sin datos">—</span>';
+    };
+
+    let tabla = '';
+    if (!saberes.length) {
+      tabla = '<div class="aviso">Este instrumento no tiene saberes etiquetados en sus apartados. ' +
+        'Edita el instrumento y añade los saberes básicos (separados por coma) en cada apartado.</div>';
+    } else {
+      tabla = `
+        <div class="scroll-x">
+          <table class="tabla">
+            <thead><tr><th>Alumno</th>${saberes.map(s => `<th style="text-align:center">${Utils.esc(s.saber)}</th>`).join('')}</tr></thead>
+            <tbody>
+              ${alumnos.map(a => `
+                <tr>
+                  <td>${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}</td>
+                  ${saberes.map(s => `<td style="text-align:center">${badgeCelda(Calc.dominioSaber(instId, a.id, s.saber))}</td>`).join('')}
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`;
+    }
+
+    const obs = (Storage.db.observaciones && Storage.db.observaciones[instId]) || '';
+    return `
+      <label class="campo"><span>Instrumento</span>
+        <select id="sel-inst-info">${selOpts}</select></label>
+      ${tabla}
+      <label class="campo" style="margin-top:16px">
+        <span>Observaciones del docente (propuestas de mejora, a criterio del maestro)</span>
+        <textarea id="obs-inst" rows="4" class="obs-inst" placeholder="Anotaciones locales; no se imprimen ni se exportan.">${Utils.esc(obs)}</textarea>
+      </label>`;
+  }
+
   // Informe de análisis para PDF: todas las subvistas compuestas —hallazgos,
   // criterios, distribución y alumnos— con cabecera de clase y alcance. Devuelve
   // un string puro (comprobable sin navegador); el botón «Imprimir / PDF» se lo
@@ -5066,10 +5197,11 @@ const InformeView = (function () {
 
   // ---------------------------------------------------------------- render
   function render(el, opciones) {
-    // Al cambiar de clase se restablece el alcance.
+    // Al cambiar de clase se restablece el alcance y el instrumento del informe.
     if (opciones.claseSel !== claseSel) {
       claseSel = opciones.claseSel;
       alcance = { periodo: '', unidad: '', instrumentoId: '' };
+      instrumentoInfoSel = '';
     }
     // Si la cuadrícula nos pasa un periodo (T1/T2/T3/Final), sincronízalo con
     // el alcance del informe. «Final» no es un periodo propio del informe: se
@@ -5102,6 +5234,7 @@ const InformeView = (function () {
         ${subVista === 'hallazgos' ? htmlHallazgos(claseSel, insts)
           : subVista === 'criterios' ? htmlCriterios(claseSel, insts)
           : subVista === 'distribucion' ? htmlDistribucion(claseSel, insts, todas ? undefined : nivelSel)
+          : subVista === 'instrumentos' ? htmlInstrumentos(claseSel, insts)
           : htmlAlumnos(claseSel, insts, todas ? undefined : nivelSel)}
       </div>`;
 
@@ -5137,6 +5270,14 @@ const InformeView = (function () {
     el.querySelectorAll('[data-filtrosev]').forEach(ch => {
       ch.onclick = () => { filtroSev = ch.dataset.filtrosev; render(el, opciones); };
     });
+    const selInstInfo = el.querySelector('#sel-inst-info');
+    if (selInstInfo) selInstInfo.onchange = e => { instrumentoInfoSel = e.target.value; render(el, opciones); };
+    const obsInst = el.querySelector('#obs-inst');
+    if (obsInst && selInstInfo) {
+      obsInst.oninput = e => {
+        if (selInstInfo.value) { Storage.db.observaciones[selInstInfo.value] = e.target.value; Storage.save(); }
+      };
+    }
     // La Cuadrícula inyecta la función de impresión (opciones.imprimir); sin
     // ella (arnés de pruebas) el botón no hace nada.
     const btnPdf = el.querySelector('#btn-informe-pdf');

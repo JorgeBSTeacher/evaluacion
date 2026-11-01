@@ -114,6 +114,7 @@ function columnasNivel(filas) {
           ? `<input type="number" class="ap-peso" min="0.01" step="0.5" value="${peso}" title="Peso de este ítem en la rúbrica">`
           : `<input type="number" class="ap-max" min="0.5" step="0.5" value="${ap.maxPts}" title="Puntos máximos">`}
         ${esRubrica ? '' : '<small style="color:var(--tinta-suave)">peso</small>'}
+        ${esRubrica ? '' : `<div class="col-saberes"><small>Saberes</small><input type="text" class="ap-saberes" placeholder="Saberes básicos (separados por coma)" value="${Utils.esc(ap.saberes || '')}"></div>`}
         ${cols.map((nv, k) => `
           <input type="text" class="ap-nv" data-pct="${nv.pct}"
             value="${Utils.esc(descriptorPropio(ap, nv.pct))}"
@@ -235,6 +236,7 @@ function columnasNivel(filas) {
             if (isNaN(maxPts) || maxPts <= 0) { alert('Cada apartado necesita puntos máximos'); return false; }
           }
           const peso = fila.querySelector('.ap-peso') ? parseFloat(fila.querySelector('.ap-peso').value) : (esRubrica ? 1 : maxPts);
+          const saberes = (fila.querySelector('.ap-saberes') || {}).value || '';
           const nivelesItem = Array.from(fila.querySelectorAll('.ap-nv'))
             .map(i => ({ pct: Number(i.dataset.pct), descriptor: i.value.trim() }))
             .filter(n => n.descriptor);
@@ -246,7 +248,8 @@ function columnasNivel(filas) {
             id: fila.dataset.id && fila.dataset.id !== 'nuevo' ? fila.dataset.id : Utils.uid(),
             orden, descripcion: desc, maxPts, criterioIds,
             peso: (isNaN(peso) || peso <= 0) ? 1 : peso,
-            niveles: esRubrica ? nivelesItem : []
+            niveles: esRubrica ? nivelesItem : [],
+            saberes: saberes.trim()
           });
         }
         if (!apartados.length) { alert('Añade al menos un apartado'); return false; }

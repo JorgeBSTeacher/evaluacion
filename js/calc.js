@@ -681,5 +681,63 @@ const Calc = {
 
   badgeHtml(n) {
     return '<span class="badge ' + this.clasif(n) + '">' + Utils.fmt(n) + '</span>';
+  },
+
+  // === Saberes por instrumento (D-74c) ===
+  // Pura: lee Storage.db, no toca DOM. Analiza qué saberes básicos domina cada
+  // alumno a partir de los apartados etiquetados por el docente.
+
+  // Lista los saberes únicos de un instrumento y en qué apartados aparecen.
+  // Deduplica por minúsculas conservando la primera capitalización.
+  saberesDeInstrumento(instrumentId) {
+    const inst = this.instrumento(instrumentId);
+    if (!inst) return [];
+    const vistos = new Map(); // lowercase -> { saber, apartados, count }
+    for (const ap of inst.apartados) {
+      const raw = String(ap.saberes == null ? '' : ap.saberes);
+      for (let s of raw.split(',')) {
+        s = s.trim();
+        if (!s) continue;
+        const clave = s.toLowerCase();
+        if (!vistos.has(clave)) vistos.set(clave, { saber: s, apartados: [], count: 0 });
+        const item = vistos.get(clave);
+        if (item.apartados.indexOf(ap.id) === -1) item.apartados.push(ap.id);
+        item.count++;
+      }
+    }
+    return [...vistos.values()];
+  },
+
+  // Nota 0–10 de un alumno en un apartado, o null si no tiene nota. Pura.
+  notaAlumnoEnApartado(instrumentId, alumnoId, apartadoId) {
+    const inst = this.instrumento(instrumentId);
+    if (!inst) return null;
+    const ap = inst.apartados.find(a => a.id === apartadoId);
+    if (!ap || !ap.maxPts) return null;
+    const reg = (Storage.db.registros[instrumentId] || {})[alumnoId];
+    const raw = (reg || {})[apartadoId];
+    if (raw == null || raw === '' || isNaN(raw)) return null;
+    const n = (Number(raw) / ap.maxPts) * 10;
+    const clamp = Math.max(0, Math.min(10, n));
+    return Math.round(clamp * 10) / 10;
+  },
+
+  // Dominio de un saber para un alumno: media de los apartados que lo trabajan.
+  dominioSaber(instrumentId, alumnoId, saber) {
+    const todos = this.saberesDeInstrumento(instrumentId);
+    const match = todos.find(x => x.saber.toLowerCase() === String(saber).toLowerCase());
+    const etiquetaSaber = match ? match.saber : saber;
+    if (!match) return { saber: etiquetaSaber, estado: 'sin_datos', media: null, apartados: [] };
+    const filas = match.apartados.map(apId => {
+      const ap = (this.instrumento(instrumentId) || {}).apartados.find(a => a.id === apId);
+      const nota = this.notaAlumnoEnApartado(instrumentId, alumnoId, apId);
+      return { descripcion: ap ? ap.descripcion : '', nota, apto: nota !== null && nota >= 5 };
+    });
+    const conNota = filas.filter(f => f.nota !== null);
+    if (!conNota.length) {
+      return { saber: etiquetaSaber, estado: 'sin_datos', media: null, apartados: filas };
+    }
+    const media = Math.round((conNota.reduce((s, f) => s + f.nota, 0) / conNota.length) * 10) / 10;
+    return { saber: etiquetaSaber, estado: media >= 5 ? 'domina' : 'mejorar', media, apartados: filas };
   }
 };

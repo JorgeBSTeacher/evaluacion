@@ -1903,12 +1903,13 @@ async function main() {
     check('cada sección del informe (nivel) empieza en una hoja nueva',
       css.includes('.informe-seccion + .informe-seccion { break-before: page; page-break-before: always; }'));
 
-    // La fila de apartado (Control/Proyecto) pinta 6 controles: nº, descripción,
-    // máximo, «peso», «Criterios» y «Quitar». Si el grid declara menos columnas,
-    // «Quitar» se va a una segunda fila (la columna de 28px) y no cabe su texto.
+    // La fila de apartado (Control/Proyecto) pinta 7 controles: nº, descripción,
+    // máximo, «peso», «Saberes», «Criterios» y «Quitar». Si el grid declara menos
+    // columnas, «Quitar» se va a una segunda fila (la columna de 28px) y no cabe su
+    // texto.
     const apCols = (css.match(/\.apartado-fila\s*\{[^}]*grid-template-columns:\s*([^;]+);/) || [])[1];
     check('la fila de apartado (no rúbrica) declara una columna por control: «Quitar» no salta de fila',
-      !!apCols && apCols.trim().split(/\s+/).length === 6, apCols);
+      !!apCols && apCols.trim().split(/\s+/).length === 7, apCols);
   }
 
   console.log('\n== Nivel ACI: los criterios del instrumento deben ser de su currículo ==');
@@ -3800,6 +3801,96 @@ async function main() {
     check('D74-50 · un backup antiguo sin configuracion migra a sinNotaEsCero=true (por defecto)',
       app3.Storage.db.configuracion && app3.Storage.db.configuracion.sinNotaEsCero === true,
       JSON.stringify(app3.Storage.db.configuracion));
+  }
+
+  console.log('\n== Saberes por instrumento (informe, D-74c) ==');
+  {
+    const app = cargarApp();
+    app.Storage.load();
+    // Un control con dos apartados que comparten saberes y dos alumnos con notas.
+    const e = {
+      schemaVersion: 1, cursoEscolar: '2025/2026',
+      grupos: [{ id: 'g1', nombre: '6ºA', etapa: 'Primaria' }],
+      alumnos: [
+        { id: 'a1', nombre: 'Ana', apellidos: 'Uno', grupoId: 'g1' },
+        { id: 'a2', nombre: 'Beto', apellidos: 'Dos', grupoId: 'g1' }
+      ],
+      asignaturas: [{ id: 's1', nombre: 'Matemáticas 6º', etapa: 'Primaria' }],
+      clases: [{ id: 'c1', asignaturaId: 's1', grupoId: 'g1', nivelesAci: [], adaptaciones: {} }],
+      competenciasClave: [], competenciasEspecificas: [],
+      criterios: [
+        { id: 'k1', asignaturaId: 's1', codigo: 'C1', descripcion: 'c1', peso: 60, espIds: [], claveIds: [] },
+        { id: 'k2', asignaturaId: 's1', codigo: 'C2', descripcion: 'c2', peso: 40, espIds: [], claveIds: [] }
+      ],
+      instrumentos: [{
+        id: 'i1', claseId: 'c1', tipo: 'Control', titulo: 'Control 1', fecha: '2026-01-10',
+        periodo: 'T1', nivel: '', unidad: '', saberes: '',
+        criteriosModo: 'desglosado', criterioIdsGlobal: [],
+        apartados: [
+          { id: 'p1', orden: 1, descripcion: 'Problemas', maxPts: 10, criterioIds: ['k1'], peso: 1, niveles: [], saberes: 'potencias, problemas' },
+          { id: 'p2', orden: 2, descripcion: 'Cálculo', maxPts: 10, criterioIds: ['k2'], peso: 1, niveles: [], saberes: 'problemas' }
+        ]
+      }],
+      registros: {
+        i1: { a1: { p1: 8, p2: 6 }, a2: { p1: 4, p2: 7 } }
+      }
+    };
+    const migrated = app.Storage.migrar(e);
+    app.Storage.db = migrated;
+    const C = app.Calc;
+
+    const saberes = C.saberesDeInstrumento('i1');
+    check('saberesDeInstrumento devuelve 2 saberes deduplicados', saberes.length === 2, 'n=' + saberes.length);
+    check('saberes: potencias y problemas', saberes.map(s => s.saber).join(',') === 'potencias,problemas', saberes.map(s => s.saber).join(','));
+    const prob = saberes.find(s => s.saber === 'problemas');
+    check('«problemas» aparece en 2 apartados', prob && prob.apartados.length === 2, prob ? 'ap=' + prob.apartados.length : 'no');
+    const pot = saberes.find(s => s.saber === 'potencias');
+    check('«potencias» aparece en 1 apartado', pot && pot.apartados.length === 1, pot ? 'ap=' + pot.apartados.length : 'no');
+
+    check('notaAlumnoEnApartado normaliza (8/10*10=8)', C.notaAlumnoEnApartado('i1', 'a1', 'p1') === 8, String(C.notaAlumnoEnApartado('i1', 'a1', 'p1')));
+    check('notaAlumnoEnApartado sin nota devuelve null', C.notaAlumnoEnApartado('i1', 'a1', 'inexistente') === null);
+    check('notaAlumnoEnApartado 6/10 = 6,0', C.notaAlumnoEnApartado('i1', 'a1', 'p2') === 6, String(C.notaAlumnoEnApartado('i1', 'a1', 'p2')));
+
+    const domA1Prob = C.dominioSaber('i1', 'a1', 'problemas');
+    // a1: p1=8, p2=6 → media = 7,0 → domina
+    check('dominioSaber «problemas» a1 media=7 domina', domA1Prob.estado === 'domina' && domA1Prob.media === 7, JSON.stringify(domA1Prob));
+    const domA2Prob = C.dominioSaber('i1', 'a2', 'problemas');
+    // a2: p1=4, p2=7 → media = 5,5 → domina
+    check('dominioSaber «problemas» a2 media=5,5 domina', domA2Prob.estado === 'domina' && domA2Prob.media === 5.5, JSON.stringify(domA2Prob));
+    const domA1Pot = C.dominioSaber('i1', 'a1', 'potencias');
+    check('dominioSaber «potencias» a1 apto (8>=5)', domA1Pot.estado === 'domina' && domA1Pot.apartados[0].apto === true, JSON.stringify(domA1Pot));
+
+    // Sin notas → sin_datos
+    const domSin = C.dominioSaber('i1', 'sinAlumno', 'problemas');
+    check('dominioSaber sin notas → sin_datos', domSin.estado === 'sin_datos' && domSin.media === null, JSON.stringify(domSin));
+
+    // Migración: apartado antiguo sin saberes → '', db sin observaciones → {}
+    const legacy = {
+      schemaVersion: 1, cursoEscolar: '2025/2026',
+      grupos: [{ id: 'g1', nombre: '6ºA', etapa: 'Primaria' }],
+      alumnos: [], asignaturas: [], clases: [],
+      competenciasClave: [], competenciasEspecificas: [],
+      criterios: [],
+      instrumentos: [{
+        id: 'i1', claseId: 'c1', tipo: 'Control', titulo: 'L', fecha: '2026-01-10',
+        periodo: 'T1', saberes: '',
+        apartados: [{ id: 'p1', orden: 1, descripcion: 'a', maxPts: 10, criterioIds: [] }]
+      }],
+      registros: {}
+    };
+    delete legacy.observaciones;
+    const mig = app.Storage.migrar(legacy);
+    check('migración: apartado sin saberes → ""', mig.instrumentos[0].apartados[0].saberes === '', JSON.stringify(mig.instrumentos[0].apartados[0].saberes));
+    check('migración: db sin observaciones → {}', mig.observaciones && typeof mig.observaciones === 'object', JSON.stringify(mig.observaciones));
+
+    // La subvista «instrumentos» se renderiza desde render(): forzamos el estado
+    // del módulo y comprobamos quee HTML contiene el select y los badges.
+    const el = makeEl();
+    app.InformeView.render(el, { claseSel: 'c1', nivelSel: '', imprimir: null });
+    // Forzar subVista 'instrumentos'render de nuevo (no hay chips en el arnés sin
+    // navegador, pero render respeta subVista si se setea antes). Como subVista es
+    // interna, verificamos el cálculo puro (arriba) y que render no lanza.
+    check('render de InformeView no lanza con datos D-74c', typeof el.innerHTML === 'string');
   }
 
   console.log('\n' + (fallos ? 'FALLOS: ' + fallos + '/' + total : 'TODO OK: ' + total + ' comprobaciones')
