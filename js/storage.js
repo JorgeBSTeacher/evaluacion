@@ -256,50 +256,62 @@ const Storage = {
   async exportar() {
     const contenido = JSON.stringify(this.db, null, 2);
     const nombre = `backup-${Utils.fechaLegible()}-${Utils.horaCorta()}.json`;
+    // En file:// el API de acceso al sistema de ficheros (showSaveFilePicker) NO
+    // funciona: no abre el selector nativo y el fallback Blob puede no disparar la
+    // descarga. Detectamos el protocolo para saltarnos ese camino por completo y
+    // usar solo la descarga por Blob, que funciona en cualquier origen.
+    const esFile = typeof location !== 'undefined' && location.protocol === 'file:';
     let destino = '';
     try {
-      const dir = await this.idbLeer('dir');
-      if (dir) {
-        let perm = 'granted';
-        if (dir.queryPermission) perm = await dir.queryPermission({ mode: 'readwrite' });
-        if (perm !== 'granted' && dir.requestPermission) {
-          perm = await dir.requestPermission({ mode: 'readwrite' });
+      if (!esFile) {
+        const dir = await this.idbLeer('dir');
+        if (dir) {
+          let perm = 'granted';
+          if (dir.queryPermission) perm = await dir.queryPermission({ mode: 'readwrite' });
+          if (perm !== 'granted' && dir.requestPermission) {
+            perm = await dir.requestPermission({ mode: 'readwrite' });
+          }
+          if (perm === 'granted') {
+            const fh = await dir.getFileHandle(nombre, { create: true });
+            const w = await fh.createWritable();
+            await w.write(contenido);
+            await w.close();
+            destino = `la carpeta «${dir.name}»`;
+          }
         }
-        if (perm === 'granted') {
-          const fh = await dir.getFileHandle(nombre, { create: true });
+        if (!destino && typeof window !== 'undefined' && typeof window.showSaveFilePicker === 'function') {
+          const fh = await window.showSaveFilePicker({
+            suggestedName: nombre,
+            types: [{ description: 'Backup Evalora (JSON)', accept: { 'application/json': ['.json'] } }]
+          });
           const w = await fh.createWritable();
           await w.write(contenido);
           await w.close();
-          destino = `la carpeta «${dir.name}»`;
+          destino = `«${fh.name}»`;
         }
-      }
-      if (!destino && typeof window !== 'undefined' && typeof window.showSaveFilePicker === 'function') {
-        const fh = await window.showSaveFilePicker({
-          suggestedName: nombre,
-          types: [{ description: 'Backup Evalora (JSON)', accept: { 'application/json': ['.json'] } }]
-        });
-        const w = await fh.createWritable();
-        await w.write(contenido);
-        await w.close();
-        destino = `«${fh.name}»`;
       }
     } catch (e) {
       if (e && e.name === 'AbortError') return false;
-      console.error(e);
+      console.error('exportar (FSA):', e);
     }
     if (!destino) {
+      // Fallback universal: descarga por Blob. En file:// (Opera, Chrome...) este
+      // es el unico camino que funciona sin servidor.
       const blob = new Blob([contenido], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
+      a.href = url;
       a.download = nombre;
+      a.style.display = 'none';
       document.body.appendChild(a);
       a.click();
-      a.remove();
+      // Revocamos la URL tras un breve retardo para no bloquear la descarga.
+      setTimeout(() => { try { a.remove(); } catch (e) {} URL.revokeObjectURL(url); }, 1000);
       destino = 'Descargas';
     }
     this.marcarCopia();
     UI.toast(destino === 'Descargas'
-      ? 'Backup en Descargas: cópialo a la carpeta backups/ del proyecto'
+      ? 'Backup en Descargas (' + nombre + '): copialo a la carpeta backups/ del proyecto'
       : `Backup guardado en ${destino}`);
     return true;
   },
