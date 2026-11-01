@@ -213,6 +213,9 @@ const App = (() => {
       if (!db.configuracion || typeof db.configuracion !== 'object') db.configuracion = { sinNotaEsCero: false };
       db.configuracion.sinNotaEsCero = !!chkSinNota.checked;
       Storage.save();
+      // Refrescar la vista para que la media de las UDs se recalcule con el
+      // nuevo ajuste (sin esto el cambio solo se notaba al salir y volver).
+      if (typeof App !== 'undefined' && App.refrescar) App.refrescar();
     };
     const inputLogo = body.querySelector('#perfil-logo');
     const avisoLogo = body.querySelector('#perfil-logo-aviso');
