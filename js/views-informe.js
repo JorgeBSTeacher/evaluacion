@@ -381,26 +381,18 @@ const InformeView = (function () {
     const total = notas.length;
     const aprobados = notas.filter(n => n >= 5).length;
 
-    // Beeswarm: cada alumno es un punto en SU nota, apilado verticalmente para no
-    // solapar. Así se ven los casos sueltos (outliers) y la forma real.
-    const RADIO = 4;
+    // Strip plot: cada alumno es un punto en SU nota. Jitter vertical pequeño y
+    // determinista (por índice) para que no se tapen los que tienen notas casi
+    // iguales, sin crear columnas (que era el problema del beeswarm).
     const ordenadas = notas.slice().sort((a, b) => a - b);
-    const puntos = [];
-    for (const n of ordenadas) {
-      let y = 0;
-      for (;;) {
-        let libre = true;
-        for (const p of puntos) {
-          if (Math.abs(p.n - n) < RADIO * 2 && Math.abs(p.y - y) < RADIO * 2) { libre = false; break; }
-        }
-        if (libre) break;
-        y += RADIO;
-      }
-      puntos.push({ n, y });
-    }
-    const maxStack = Math.max(RADIO * 2, ...puntos.map(p => p.y + RADIO * 2));
+    const BANDA = 14; // px de banda vertical para el jitter
+    const pseudo = i => {
+      const x = Math.sin(i * 12.9898) * 43758.5453;
+      return (x - Math.floor(x)) - 0.5;
+    };
+    const puntos = ordenadas.map((n, i) => ({ n, dy: pseudo(i) * 2 * BANDA }));
 
-    // Curva de tendencia: densidad KDE gaussiana sobre las notas.
+    // Curva de densidad KDE (tendencia) por encima de los puntos.
     const BW = 0.6;
     const grid = [];
     for (let x = 0; x <= 10.0001; x += 0.2) {
@@ -410,11 +402,12 @@ const InformeView = (function () {
     }
     const maxD = Math.max(1e-9, ...grid.map(g => g.d));
 
-    // SVG: X = nota (0-10), Y = apilado (sin eje: solo ordena los puntos).
-    const W = 640, H = 240, PAD_L = 16, PAD_R = 16, PAD_T = 14, PAD_B = 30;
+    // SVG: X = nota (0-10). Y = jitter para los puntos; la curva se dibuja en la
+    // mitad superior para no pisar los puntos.
+    const W = 640, H = 220, PAD_L = 16, PAD_R = 16, PAD_T = 14, PAD_B = 30;
     const xDe = n => PAD_L + (n / 10) * (W - PAD_L - PAD_R);
-    const yDeStack = y => H - PAD_B - (y / maxStack) * (H - PAD_T - PAD_B);
-    const yDeDens = d => H - PAD_B - (d / maxD) * (H - PAD_T - PAD_B) * 0.7;
+    const yDeDens = d => (H - PAD_B) - 24 - (d / maxD) * (H - PAD_T - PAD_B - 40);
+    const yPunto = dy => (H - PAD_B) - 12 + dy;
 
     // Curva KDE suavizada (Catmull-Rom -> Bézier cúbico).
     const curva = (() => {
@@ -434,7 +427,7 @@ const InformeView = (function () {
       <p style="margin-bottom:${filtrado ? 4 : 14}px"><strong>${mediaTxt}:</strong> ${media} / 10</p>
       ${filtrado ? '<p class="no-print" style="margin-bottom:14px;font-size:12px;color:var(--tinta-suave)">Nivel filtrado con el selector superior de la cuadrícula.</p>' : ''}
       <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block" role="img"
-           aria-label="Distribución de notas: ${total} alumnos, media ${media}">
+           aria-label="Dispersión de notas: ${total} alumnos, media ${media}">
         <!-- Eje X: 0, 2, 4, 6, 8, 10 -->
         ${[0, 2, 4, 6, 8, 10].map(n => `
           <text x="${xDe(n).toFixed(1)}" y="${H - 8}" text-anchor="middle"
@@ -443,19 +436,19 @@ const InformeView = (function () {
         <!-- Umbral de aprobado: línea vertical punteada en x = 5 -->
         <line x1="${xDe(5).toFixed(1)}" y1="${PAD_T - 4}" x2="${xDe(5).toFixed(1)}" y2="${H - PAD_B}"
               stroke="#888" stroke-width="1.5" stroke-dasharray="4 3"/>
-        <!-- Curva de densidad (tendencia) -->
+        <!-- Curva de densidad -->
         <path d="${curva}" fill="none" stroke="var(--acento, #4a90d9)" stroke-width="1.5"
               stroke-linecap="round" stroke-linejoin="round"/>
         <!-- Puntos: un alumno por punto, rojos bajo 5 y verdes desde 5 -->
         ${puntos.map(p => `
-          <circle cx="${xDe(p.n).toFixed(1)}" cy="${yDeStack(p.y).toFixed(1)}" r="${RADIO}"
+          <circle cx="${xDe(p.n).toFixed(1)}" cy="${yPunto(p.dy).toFixed(1)}" r="4"
                   fill="${p.n >= 5 ? 'var(--acento, #4a90d9)' : '#dc3545'}"
                   stroke="#fff" stroke-width="1.2">
             <title>Nota ${Math.round(p.n * 10) / 10}</title>
           </circle>`).join('')}
       </svg>
       <p style="margin-top:14px;font-size:13px;color:var(--tinta-suave)">
-        Cada punto es un alumno en su nota (apilados); la curva muestra la densidad · ${aprobados} de ${total} aprueban (${Math.round(aprobados / total * 100)}%)
+        Cada punto es un alumno en su nota · la curva muestra la densidad · ${aprobados} de ${total} aprueban (${Math.round(aprobados / total * 100)}%)
       </p>`;
   }
 
