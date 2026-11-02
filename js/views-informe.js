@@ -367,7 +367,7 @@ const InformeView = (function () {
   // aprobado). Eje X = nota (0–10), altura proporcional a la nota.
   // `nivelFiltro`: undefined = todo el grupo; '' = base; otro = ese nivel ACI.
   function htmlDistribucion(claseId, insts, nivelFiltro) {
-    const dist = Calc.distribucionNotas(claseId, insts, nivelFiltro);
+    const dist = Calc.distribucionNotasIndividual(claseId, insts, nivelFiltro);
     const filtrado = nivelFiltro !== undefined;
     const mediaTxt = filtrado
       ? `Media del alumnado de <b>${Utils.esc(Calc.etiquetaNivel(claseId, nivelFiltro))}</b>`
@@ -375,21 +375,18 @@ const InformeView = (function () {
     const avisoTxt = filtrado
       ? `No hay notas del alumnado de <b>${Utils.esc(Calc.etiquetaNivel(claseId, nivelFiltro))}</b> en este alcance.`
       : 'No hay notas de todo el grupo en este alcance.';
-    if (!dist.notas.length) return `<div class="aviso">${avisoTxt}</div>`;
+    if (!dist.total) return `<div class="aviso">${avisoTxt}</div>`;
     const media = Math.round(dist.media * 10) / 10;
-    const total = dist.notas.length;
     const aprobados = dist.notas.filter(n => n >= 5).length;
+    const total = dist.total;
 
-    // Dot plot de Cleveland: X = nota, Y = alumno ordenado por nota. Así la nube
-    // muestra la dispersión real Y los individuos (con su nombre a la izquierda).
-    const parejas = Calc.alumnosDeClase(claseId)
-      .map(a => ({ nombre: `${a.apellidos || ''}, ${a.nombre}`.replace(/^, |, $/g, '').trim(), n: Calc.notaEnInsts(claseId, a.id, insts) }))
-      .filter(p => p.n != null)
-      .sort((x, y) => x.n - y.n);
+    // Dot plot de Cleveland: X = nota, Y = nota individual ordenada. Cada punto es
+    // UNA nota de un instrumento (el mismo alumno puede aparecer varias veces).
+    const parejas = dist.parejas.slice().sort((x, y) => x.nota - y.nota);
     const N = parejas.length;
 
     const W = 640, PAD_L = 150, PAD_R = 20, PAD_T = 10, PAD_B = 30;
-    const FILA = 22; // px por alumno
+    const FILA = 22; // px por nota
     const H = PAD_T + PAD_B + N * FILA;
     const xDe = n => PAD_L + (n / 10) * (W - PAD_L - PAD_R);
     const yDe = i => PAD_T + i * FILA + FILA / 2;
@@ -399,7 +396,7 @@ const InformeView = (function () {
       <p style="margin-bottom:${filtrado ? 4 : 14}px"><strong>${mediaTxt}:</strong> ${media} / 10</p>
       ${filtrado ? '<p class="no-print" style="margin-bottom:14px;font-size:12px;color:var(--tinta-suave)">Nivel filtrado con el selector superior de la cuadrícula.</p>' : ''}
       <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block" role="img"
-           aria-label="Dispersión de notas: ${N} alumnos, media ${media}">
+           aria-label="Dispersión de notas: ${N} notas, media ${media}">
         <!-- Eje X: 0, 2, 4, 6, 8, 10 -->
         ${[0, 2, 4, 6, 8, 10].map(n => `
           <text x="${xDe(n).toFixed(1)}" y="${H - 8}" text-anchor="middle"
@@ -408,18 +405,18 @@ const InformeView = (function () {
         <!-- Umbral de aprobado: línea vertical punteada en x = 5 -->
         <line x1="${xDe(5).toFixed(1)}" y1="${PAD_T}" x2="${xDe(5).toFixed(1)}" y2="${H - PAD_B}"
               stroke="#888" stroke-width="1.5" stroke-dasharray="4 3"/>
-        <!-- Alumnos: nombre a la izquierda, punto en su nota -->
+        <!-- Notas: nombre+instrumento a la izquierda, punto en su nota -->
         ${parejas.map((p, i) => `
           <text x="${PAD_L - 8}" y="${(yDe(i) + 3).toFixed(1)}" text-anchor="end"
-                font-size="11" fill="var(--tinta-suave)">${Utils.esc(corta(p.nombre))}</text>
-          <circle cx="${xDe(p.n).toFixed(1)}" cy="${yDe(i).toFixed(1)}" r="4"
-                  fill="${p.n >= 5 ? 'var(--acento, #4a90d9)' : '#dc3545'}"
+                font-size="10" fill="var(--tinta-suave)" title="${Utils.esc(p.instTitulo)}">${Utils.esc(corta(p.nombre))}</text>
+          <circle cx="${xDe(p.nota).toFixed(1)}" cy="${yDe(i).toFixed(1)}" r="4"
+                  fill="${p.nota >= 5 ? 'var(--acento, #4a90d9)' : '#dc3545'}"
                   stroke="#fff" stroke-width="1.2">
-            <title>${Utils.esc(p.nombre)}: ${Math.round(p.n * 10) / 10}</title>
+            <title>${Utils.esc(p.nombre)} · ${Utils.esc(p.instTitulo)}: ${Math.round(p.nota * 10) / 10}</title>
           </circle>`).join('')}
       </svg>
       <p style="margin-top:14px;font-size:13px;color:var(--tinta-suave)">
-        Alumnos ordenados por nota · ${aprobados} de ${total} aprueban (${Math.round(aprobados / total * 100)}%)
+        Cada punto es una nota de un instrumento (ordenadas de menor a mayor) · ${aprobados} de ${total} notas aprueban (${Math.round(aprobados / total * 100)}%)
       </p>`;
   }
 

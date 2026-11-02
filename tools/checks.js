@@ -2551,16 +2551,18 @@ async function main() {
     check('los alumnos ACI salen con datos en su tabla',
       hc.includes('Aci, Carla') && hc.includes('75%'));
 
-    // Distribución: el nivel del selector decide qué alumnado cuenta.
+    // Distribución: el nivel del selector decide qué alumnado cuenta. Con notas
+    // individuales, el conteo es de NOTAS (un alumno con dos instrumentos aporta
+    // dos). En este escenario: 6 notas en total (4 aptas) y 3 en Base (2 aptas).
     chips[2].onclick();
     const hd = el.innerHTML;
-    check('distribución con «Todos los niveles» cuenta a los 4 alumnos',
-      hd.includes('4 de 4 aprueban'), hd.slice(-160));
+    check('distribución con «Todos los niveles» cuenta todas las notas',
+      hd.includes('4 de 6 notas aprueban'), hd.slice(-200));
     opciones.nivelSel = '';
     app.InformeView.render(el, opciones);
     const hb = el.innerHTML;
-    check('distribución en Base solo cuenta a los 2 alumnos base',
-      hb.includes('2 de 2 aprueban') && hb.includes('alumnado de <b>Base</b>'), hb.slice(0, 160));
+    check('distribución en Base solo cuenta las notas del alumnado base',
+      hb.includes('2 de 3 notas aprueban') && hb.includes('alumnado de <b>Base</b>'), hb.slice(0, 200));
   }
 
   console.log('\n== Informe: el nivel del instrumento manda (D-69) ==');

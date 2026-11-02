@@ -674,6 +674,49 @@ const Calc = {
     return { notas, buckets, media };
   },
 
+  // Distribución de NOTAS INDIVIDUALES por instrumento (no agregada por alumno):
+  // un alumno con dos instrumentos aporta dos notas. Es la lectura honesta de
+  // «cómo se dispersan todas las notas del alcance». Devuelve también las parejas
+  // (alumno, instrumento, nota) para pintar el dot plot con nombres.
+  distribucionNotasIndividual(claseId, insts, nivelCodigo) {
+    let alumnos = this.alumnosDeClase(claseId);
+    if (nivelCodigo !== undefined && nivelCodigo !== null) {
+      const nv = this.nivelNorm(nivelCodigo);
+      alumnos = alumnos.filter(a => this.nivelDeAlumno(claseId, a.id) === nv);
+    }
+    const notas = [];
+    const parejas = [];
+    for (const a of alumnos) {
+      for (const inst of insts) {
+        // Solo cuentan las notas de instrumentos que APLICAN a este alumno
+        // (nivel y currículo): si no, un registro suelto colorearía la distribución.
+        if (!this.instrumentoParaAlumno(inst, claseId, a.id)) continue;
+        const reg = (Storage.db.registros[inst.id] || {})[a.id] || {};
+        const evaluado = inst.apartados && inst.apartados.some(ap => reg[ap.id] != null && reg[ap.id] !== '');
+        if (!evaluado) continue;
+        const n = this.notaInstrumento(inst, a.id);
+        if (n == null) continue;
+        notas.push(n);
+        parejas.push({
+          alumnoId: a.id,
+          nombre: `${a.apellidos || ''}, ${a.nombre}`.replace(/^, |, $/g, '').trim(),
+          nota: n,
+          instId: inst.id,
+          instTitulo: inst.titulo
+        });
+      }
+    }
+    if (!notas.length) return { notas: [], buckets: [], media: null, total: 0, parejas: [] };
+    const buckets = Array.from({ length: 10 }, (_, i) => ({
+      rango: `${i}–${i + 1}`, cantidad: 0
+    }));
+    for (const n of notas) {
+      buckets[Math.min(9, Math.floor(n))].cantidad++;
+    }
+    const media = notas.reduce((s, n) => s + n, 0) / notas.length;
+    return { notas, buckets, media, total: notas.length, parejas };
+  },
+
   clasif(n) {
     if (n == null || isNaN(n)) return 'na';
     return n >= 5 ? 'ok' : 'ko';
