@@ -450,7 +450,7 @@ const ClasesView = (() => {
         <label class="campo"><span>Código</span><input type="text" class="nv-cod" value="${Utils.esc(n.codigo || '')}" placeholder="B" style="max-width:80px"></label>
         <label class="campo"><span>Etiqueta</span><input type="text" class="nv-etq" value="${Utils.esc(n.etiqueta || '')}" placeholder="4º"></label>
         <label class="campo"><span>Currículo (asignatura)</span><select class="nv-asig">${opcionesAsignatura(n.asignaturaId)}</select></label>
-        <button type="button" class="icon-btn quitar-nivel-aci">×</button>`;
+        <button type="button" class="icon-btn quitar-nivel-aci" title="Quitar nivel" aria-label="Quitar nivel ACI">×</button>`;
       div.querySelector('.quitar-nivel-aci').onclick = () => { div.remove(); pintarAsignacion(); };
       div.querySelector('.nv-cod').addEventListener('input', pintarAsignacion);
       return div;

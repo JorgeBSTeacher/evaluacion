@@ -77,7 +77,7 @@ const InformeView = (function () {
     return `
       <div class="chips no-print" style="margin-bottom:14px">
         ${vistas.map(v =>
-          `<label class="chip ${subVista === v.id ? 'on' : ''}" data-subvista="${v.id}">${v.nombre}</label>`).join('')}
+          `<label class="chip ${subVista === v.id ? 'on' : ''}" data-subvista="${v.id}" ${subVista === v.id ? 'aria-current="true"' : ''}>${v.nombre}</label>`).join('')}
         <button class="btn" id="btn-informe-pdf" title="Pasar a PDF todas las subvistas del informe"
                 style="margin-left:auto">Imprimir / PDF</button>
       </div>`;

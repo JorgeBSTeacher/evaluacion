@@ -3147,7 +3147,7 @@ const ClasesView = (() => {
         <label class="campo"><span>Código</span><input type="text" class="nv-cod" value="${Utils.esc(n.codigo || '')}" placeholder="B" style="max-width:80px"></label>
         <label class="campo"><span>Etiqueta</span><input type="text" class="nv-etq" value="${Utils.esc(n.etiqueta || '')}" placeholder="4º"></label>
         <label class="campo"><span>Currículo (asignatura)</span><select class="nv-asig">${opcionesAsignatura(n.asignaturaId)}</select></label>
-        <button type="button" class="icon-btn quitar-nivel-aci">×</button>`;
+        <button type="button" class="icon-btn quitar-nivel-aci" title="Quitar nivel" aria-label="Quitar nivel ACI">×</button>`;
       div.querySelector('.quitar-nivel-aci').onclick = () => { div.remove(); pintarAsignacion(); };
       div.querySelector('.nv-cod').addEventListener('input', pintarAsignacion);
       return div;
@@ -4721,7 +4721,7 @@ const InformeView = (function () {
     return `
       <div class="chips no-print" style="margin-bottom:14px">
         ${vistas.map(v =>
-          `<label class="chip ${subVista === v.id ? 'on' : ''}" data-subvista="${v.id}">${v.nombre}</label>`).join('')}
+          `<label class="chip ${subVista === v.id ? 'on' : ''}" data-subvista="${v.id}" ${subVista === v.id ? 'aria-current="true"' : ''}>${v.nombre}</label>`).join('')}
         <button class="btn" id="btn-informe-pdf" title="Pasar a PDF todas las subvistas del informe"
                 style="margin-left:auto">Imprimir / PDF</button>
       </div>`;
@@ -5748,10 +5748,10 @@ const CuadriculaView = (() => {
           </div>
         </div>
         <div class="chips no-print" id="tabs" style="margin-bottom:14px">
-          <label class="chip ${tab === 'notas' ? 'on' : ''}" data-tab="notas">Instrumentos</label>
-          <label class="chip ${tab === 'criterios' ? 'on' : ''}" data-tab="criterios">Criterios</label>
-          <label class="chip ${tab === 'competencias' ? 'on' : ''}" data-tab="competencias">Competencias específicas y clave</label>
-          <label class="chip ${tab === 'informe' ? 'on' : ''}" data-tab="informe">Informe</label>
+          <label class="chip ${tab === 'notas' ? 'on' : ''}" data-tab="notas" ${tab === 'notas' ? 'aria-current="true"' : ''}>Instrumentos</label>
+          <label class="chip ${tab === 'criterios' ? 'on' : ''}" data-tab="criterios" ${tab === 'criterios' ? 'aria-current="true"' : ''}>Criterios</label>
+          <label class="chip ${tab === 'competencias' ? 'on' : ''}" data-tab="competencias" ${tab === 'competencias' ? 'aria-current="true"' : ''}>Competencias específicas y clave</label>
+          <label class="chip ${tab === 'informe' ? 'on' : ''}" data-tab="informe" ${tab === 'informe' ? 'aria-current="true"' : ''}>Informe</label>
         </div>
         ${tab === 'notas' ? `<div class="barra-tab no-print" style="justify-content:flex-end">
           <button class="btn" id="btn-nuevo-instrumento">+ Crear instrumento</button>
@@ -6578,7 +6578,7 @@ const App = (() => {
     for (const v of VISTAS) {
       const b = document.createElement('button');
       b.textContent = v.label;
-      if (v.id === actual) b.classList.add('activo');
+      if (v.id === actual) { b.classList.add('activo'); b.setAttribute('aria-current', 'page'); }
       if (v.riesgo && v.id !== actual) b.classList.add('peligro-activo');
       b.onclick = () => ir(v.id);
       nav.appendChild(b);

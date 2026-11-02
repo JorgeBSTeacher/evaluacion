@@ -443,10 +443,10 @@ const CuadriculaView = (() => {
           </div>
         </div>
         <div class="chips no-print" id="tabs" style="margin-bottom:14px">
-          <label class="chip ${tab === 'notas' ? 'on' : ''}" data-tab="notas">Instrumentos</label>
-          <label class="chip ${tab === 'criterios' ? 'on' : ''}" data-tab="criterios">Criterios</label>
-          <label class="chip ${tab === 'competencias' ? 'on' : ''}" data-tab="competencias">Competencias específicas y clave</label>
-          <label class="chip ${tab === 'informe' ? 'on' : ''}" data-tab="informe">Informe</label>
+          <label class="chip ${tab === 'notas' ? 'on' : ''}" data-tab="notas" ${tab === 'notas' ? 'aria-current="true"' : ''}>Instrumentos</label>
+          <label class="chip ${tab === 'criterios' ? 'on' : ''}" data-tab="criterios" ${tab === 'criterios' ? 'aria-current="true"' : ''}>Criterios</label>
+          <label class="chip ${tab === 'competencias' ? 'on' : ''}" data-tab="competencias" ${tab === 'competencias' ? 'aria-current="true"' : ''}>Competencias específicas y clave</label>
+          <label class="chip ${tab === 'informe' ? 'on' : ''}" data-tab="informe" ${tab === 'informe' ? 'aria-current="true"' : ''}>Informe</label>
         </div>
         ${tab === 'notas' ? `<div class="barra-tab no-print" style="justify-content:flex-end">
           <button class="btn" id="btn-nuevo-instrumento">+ Crear instrumento</button>

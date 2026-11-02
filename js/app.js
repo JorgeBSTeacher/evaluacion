@@ -406,7 +406,7 @@ const App = (() => {
     for (const v of VISTAS) {
       const b = document.createElement('button');
       b.textContent = v.label;
-      if (v.id === actual) b.classList.add('activo');
+      if (v.id === actual) { b.classList.add('activo'); b.setAttribute('aria-current', 'page'); }
       if (v.riesgo && v.id !== actual) b.classList.add('peligro-activo');
       b.onclick = () => ir(v.id);
       nav.appendChild(b);
