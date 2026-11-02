@@ -5021,35 +5021,38 @@ const InformeView = (function () {
       : 'No hay notas de todo el grupo en este alcance.';
     if (!dist.notas.length) return `<div class="aviso">${avisoTxt}</div>`;
     const media = Math.round(dist.media * 10) / 10;
-    const notas = dist.notas.slice().sort((a, b) => a - b);
+    const buckets = dist.buckets; // [{ rango, cantidad }] — 10 tramos de 1 punto
+    const total = dist.notas.length;
+    const aprobados = dist.notas.filter(n => n >= 5).length;
+    const maxCant = Math.max(1, ...buckets.map(b => b.cantidad));
     const ALTO = 180; // px máximos de barra
 
     return `
       <p style="margin-bottom:${filtrado ? 4 : 14}px"><strong>${mediaTxt}:</strong> ${media} / 10</p>
       ${filtrado ? '<p class="no-print" style="margin-bottom:14px;font-size:12px;color:var(--tinta-suave)">Nivel filtrado con el selector superior de la cuadrícula.</p>' : ''}
-      <div style="position:relative;height:${ALTO + 28}px;
-                  border-bottom:2px solid #ccc;margin-bottom:4px">
-        ${notas.map(n => {
-          const h = Math.max(4, Math.round((n / 10) * ALTO));
-          const x = (n / 10 * 100).toFixed(2);
-          const color = n >= 5 ? 'var(--acento, #4a90d9)' : '#dc3545';
+      <div style="display:flex;gap:8px;align-items:flex-end;position:relative;
+                  height:${ALTO + 30}px;border-bottom:2px solid #ccc;margin-bottom:4px">
+        ${buckets.map((b, i) => {
+          const h = b.cantidad > 0 ? Math.max(6, Math.round((b.cantidad / maxCant) * ALTO)) : 0;
+          // Rojo por debajo de 5 (tramos 0-1 … 4-5), verde a partir de 5 (5-6 … 9-10).
+          const color = i >= 5 ? 'var(--acento, #4a90d9)' : '#dc3545';
           return `
-            <div style="position:absolute;bottom:0;left:${x}%;
-                        transform:translateX(-50%);
-                        width:10px;height:${h}px;
-                        background:${color};border-radius:3px 3px 0 0"
-                 title="${Math.round(n * 10) / 10}"></div>`;
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">
+              ${b.cantidad > 0 ? `<span style="font-size:11px;font-weight:700;color:var(--tinta)">${b.cantidad}</span>` : ''}
+              <div style="width:100%;max-width:36px;height:${h}px;background:${color};
+                          border-radius:3px 3px 0 0;${b.cantidad === 0 ? 'opacity:.15' : ''}"
+                   title="${b.rango}: ${b.cantidad} alumno${b.cantidad === 1 ? '' : 's'}"></div>
+            </div>`;
         }).join('')}
-        <div style="position:absolute;top:0;bottom:0;left:50%;
-                    border-left:2px dashed #888"></div>
-        <span style="position:absolute;bottom:-20px;left:50%;transform:translateX(-50%);
+        <div style="position:absolute;top:-6px;bottom:0;left:50%;border-left:2px dashed #888"></div>
+        <span style="position:absolute;top:-22px;left:50%;transform:translateX(-50%);
                      font-size:11px;color:#888">5 (aprobado)</span>
       </div>
-      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--tinta-suave)">
-        <span>0</span><span>2</span><span>4</span><span>6</span><span>8</span><span>10</span>
+      <div style="display:flex;gap:8px;font-size:11px;color:var(--tinta-suave)">
+        ${buckets.map((b, i) => `<span style="flex:1;text-align:center">${i}</span>`).join('')}
       </div>
       <p style="margin-top:14px;font-size:13px;color:var(--tinta-suave)">
-        Cada barra es un alumno · ${notas.filter(n => n >= 5).length} de ${notas.length} aprueban (${Math.round(notas.filter(n => n >= 5).length / notas.length * 100)}%)
+        Cada barra es un tramo de nota (0–1, 1–2, …, 9–10) · ${aprobados} de ${total} aprueban (${Math.round(aprobados / total * 100)}%)
       </p>`;
   }
 
