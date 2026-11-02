@@ -406,6 +406,7 @@ const InformeView = (function () {
         <div class="stat"><span class="stat-label">Media</span><span class="stat-value">${media.toFixed(1).replace('.', ',')}</span></div>
         <div class="stat"><span class="stat-label">Mediana</span><span class="stat-value">${mediana.toFixed(1).replace('.', ',')}</span></div>
         <div class="stat"><span class="stat-label">Desv. típica</span><span class="stat-value">${desv.toFixed(1).replace('.', ',')}</span></div>
+        <div class="stat"><span class="stat-label">Dispersión rel. (CV)</span><span class="stat-value">${stats.cv == null ? '—' : (stats.cv * 100).toFixed(0).replace('.', ',') + '%'}</span></div>
         <div class="stat"><span class="stat-label">Rango</span><span class="stat-value">${min.toFixed(1).replace('.', ',')}–${max.toFixed(1).replace('.', ',')}</span></div>
         <div class="stat"><span class="stat-label">Tramo más poblado</span><span class="stat-value">${moda.rango}</span></div>
         <div class="stat"><span class="stat-label">Alumnos</span><span class="stat-value">${total} <small>con nota</small></span></div>

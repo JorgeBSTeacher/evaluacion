@@ -678,7 +678,7 @@ const Calc = {
   // Distribución del Informe): media, mediana, desviación típica, mínima y
   // máxima. Puro y testeable sin navegador.
   estadisticasNotas(notas) {
-    if (!notas || !notas.length) return { media: null, mediana: null, desv: null, min: null, max: null };
+    if (!notas || !notas.length) return { media: null, mediana: null, desv: null, min: null, max: null, cv: null };
     const ordenadas = notas.slice().sort((a, b) => a - b);
     const n = ordenadas.length;
     const media = ordenadas.reduce((s, x) => s + x, 0) / n;
@@ -686,7 +686,7 @@ const Calc = {
       ? ordenadas[(n - 1) / 2]
       : (ordenadas[n / 2 - 1] + ordenadas[n / 2]) / 2;
     const varianza = ordenadas.reduce((s, x) => s + (x - media) * (x - media), 0) / n;
-    return { media, mediana, desv: Math.sqrt(varianza), min: ordenadas[0], max: ordenadas[n - 1] };
+    return { media, mediana, desv: Math.sqrt(varianza), min: ordenadas[0], max: ordenadas[n - 1], cv: media ? Math.sqrt(varianza) / media : null };
   },
 
 

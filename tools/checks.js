@@ -2477,8 +2477,10 @@ async function main() {
     check('stats: mínima y máxima cuadran con las notas', st.min === Math.min(...dist.notas) && st.max === Math.max(...dist.notas));
     const stPar = C.estadisticasNotas([4, 6]); // par: mediana = media de los dos centrales
     check('stats: mediana par = media de los dos centrales', Math.abs(stPar.mediana - 5) < 1e-9, String(stPar.mediana));
+    check('stats: CV = desviación / media', st.media ? Math.abs(st.cv - st.desv / st.media) < 1e-9 : st.cv === null, String(st.cv));
+    check('stats: CV es adimensional (0-1)', st.cv > 0 && st.cv < 1, String(st.cv));
     const stVacio = C.estadisticasNotas([]);
-    check('stats: sin notas devuelve nulls', stVacio.media === null && stVacio.mediana === null && stVacio.desv === null);
+    check('stats: sin notas devuelve nulls', stVacio.media === null && stVacio.mediana === null && stVacio.desv === null && stVacio.cv === null);
 
     // distribucionNotas con filtro de nivel (D-59: filtro base/ACI)
     const distBase = C.distribucionNotas('c1', t1, '');
