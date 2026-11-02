@@ -2469,6 +2469,17 @@ async function main() {
     const totalBuckets = dist.buckets.reduce((s, b) => s + b.cantidad, 0);
     check('suma de buckets = 4', totalBuckets === 4);
 
+    // estadisticasNotas (fila de stats de la pestaña Distribución)
+    const st = C.estadisticasNotas(dist.notas);
+    check('stats: media coincide con la distribución', Math.abs(st.media - dist.media) < 1e-9, String(st.media));
+    check('stats: mediana entre mínima y máxima', st.mediana >= st.min && st.mediana <= st.max, String(st.mediana));
+    check('stats: desviación típica >= 0', st.desv >= 0, String(st.desv));
+    check('stats: mínima y máxima cuadran con las notas', st.min === Math.min(...dist.notas) && st.max === Math.max(...dist.notas));
+    const stPar = C.estadisticasNotas([4, 6]); // par: mediana = media de los dos centrales
+    check('stats: mediana par = media de los dos centrales', Math.abs(stPar.mediana - 5) < 1e-9, String(stPar.mediana));
+    const stVacio = C.estadisticasNotas([]);
+    check('stats: sin notas devuelve nulls', stVacio.media === null && stVacio.mediana === null && stVacio.desv === null);
+
     // distribucionNotas con filtro de nivel (D-59: filtro base/ACI)
     const distBase = C.distribucionNotas('c1', t1, '');
     check('distribución filtrada por base = mismo alumnado', distBase.notas.length === 4);

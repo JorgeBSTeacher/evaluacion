@@ -2311,6 +2311,21 @@ const Calc = {
     return { notas, buckets, media };
   },
 
+  // Estadísticos deterministas de una lista de notas (para la pestaña
+  // Distribución del Informe): media, mediana, desviación típica, mínima y
+  // máxima. Puro y testeable sin navegador.
+  estadisticasNotas(notas) {
+    if (!notas || !notas.length) return { media: null, mediana: null, desv: null, min: null, max: null };
+    const ordenadas = notas.slice().sort((a, b) => a - b);
+    const n = ordenadas.length;
+    const media = ordenadas.reduce((s, x) => s + x, 0) / n;
+    const mediana = n % 2
+      ? ordenadas[(n - 1) / 2]
+      : (ordenadas[n / 2 - 1] + ordenadas[n / 2]) / 2;
+    const varianza = ordenadas.reduce((s, x) => s + (x - media) * (x - media), 0) / n;
+    return { media, mediana, desv: Math.sqrt(varianza), min: ordenadas[0], max: ordenadas[n - 1] };
+  },
+
 
   clasif(n) {
     if (n == null || isNaN(n)) return 'na';
@@ -5021,16 +5036,40 @@ const InformeView = (function () {
       ? `No hay notas del alumnado de <b>${Utils.esc(Calc.etiquetaNivel(claseId, nivelFiltro))}</b> en este alcance.`
       : 'No hay notas de todo el grupo en este alcance.';
     if (!dist.notas.length) return `<div class="aviso">${avisoTxt}</div>`;
-    const media = Math.round(dist.media * 10) / 10;
     const buckets = dist.buckets; // [{ rango, cantidad }] — 10 tramos de 1 punto
     const total = dist.notas.length;
     const aprobados = dist.notas.filter(n => n >= 5).length;
     const maxCant = Math.max(1, ...buckets.map(b => b.cantidad));
     const ALTO = 180; // px máximos de barra
 
+    // Estadísticos deterministas de la distribución (para la fila de stats).
+    const stats = Calc.estadisticasNotas(dist.notas);
+    const { media, mediana, desv, min, max } = stats;
+    const moda = buckets.reduce((best, b) => (b.cantidad > best.cantidad ? b : best), buckets[0]);
+
+    // «Sin nota» con cuidado: solo alumnos del alcance SIN nota agregada. Un
+    // alumno con 2 versiones del examen TIENE nota (la de la que hizo), así que
+    // no cuenta aquí. Además, solo son «evaluables» los alumnos a los que le
+    // aplica algún instrumento del alcance (los de otro nivel no cuentan).
+    // Si el alcance no deja a nadie sin nota, no se muestra.
+    const alumnosScope = Calc.alumnosDeClase(claseId).filter(a => {
+      if (nivelFiltro === undefined || nivelFiltro === null) return true;
+      return Calc.nivelDeAlumno(claseId, a.id) === Calc.nivelNorm(nivelFiltro);
+    });
+    const evaluables = alumnosScope.filter(a => insts.some(inst => Calc.instrumentoParaAlumno(inst, claseId, a.id)));
+    const sinNota = Math.max(0, evaluables.length - total);
+
     return `
-      <p style="margin-bottom:${filtrado ? 4 : 14}px"><strong>${mediaTxt}:</strong> ${media} / 10</p>
+      <p style="margin-bottom:${filtrado ? 4 : 14}px"><strong>${mediaTxt}:</strong> ${media.toFixed(1).replace('.', ',')} / 10</p>
       ${filtrado ? '<p class="no-print" style="margin-bottom:14px;font-size:12px;color:var(--tinta-suave)">Nivel filtrado con el selector superior de la cuadrícula.</p>' : ''}
+      <div style="display:flex;flex-wrap:wrap;gap:6px 18px;margin:0 0 12px;font-size:12px;color:var(--tinta-suave)">
+        <span>Media <b style="color:var(--tinta)">${media.toFixed(1).replace('.', ',')}</b></span>
+        <span>Mediana <b style="color:var(--tinta)">${mediana.toFixed(1).replace('.', ',')}</b></span>
+        <span>Desv. típica <b style="color:var(--tinta)">${desv.toFixed(1).replace('.', ',')}</b></span>
+        <span>Rango <b style="color:var(--tinta)">${min.toFixed(1).replace('.', ',')}–${max.toFixed(1).replace('.', ',')}</b></span>
+        <span>Tramo más poblado <b style="color:var(--tinta)">${moda.rango}</b></span>
+        <span>${total} con nota${sinNota ? ` · <b style="color:var(--tinta)">${sinNota} sin nota</b>` : ''}</span>
+      </div>
       <div style="display:flex;gap:8px;align-items:flex-end;position:relative;
                   height:${ALTO + 30}px;border-bottom:2px solid #ccc;margin-bottom:4px">
         ${buckets.map((b, i) => {
