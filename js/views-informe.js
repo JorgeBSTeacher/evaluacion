@@ -367,7 +367,7 @@ const InformeView = (function () {
   // aprobado). Eje X = nota (0–10), altura proporcional a la nota.
   // `nivelFiltro`: undefined = todo el grupo; '' = base; otro = ese nivel ACI.
   function htmlDistribucion(claseId, insts, nivelFiltro) {
-    const dist = Calc.distribucionNotasIndividual(claseId, insts, nivelFiltro);
+    const dist = Calc.distribucionNotas(claseId, insts, nivelFiltro);
     const filtrado = nivelFiltro !== undefined;
     const mediaTxt = filtrado
       ? `Media del alumnado de <b>${Utils.esc(Calc.etiquetaNivel(claseId, nivelFiltro))}</b>`
@@ -375,48 +375,40 @@ const InformeView = (function () {
     const avisoTxt = filtrado
       ? `No hay notas del alumnado de <b>${Utils.esc(Calc.etiquetaNivel(claseId, nivelFiltro))}</b> en este alcance.`
       : 'No hay notas de todo el grupo en este alcance.';
-    if (!dist.total) return `<div class="aviso">${avisoTxt}</div>`;
+    if (!dist.notas.length) return `<div class="aviso">${avisoTxt}</div>`;
     const media = Math.round(dist.media * 10) / 10;
+    const buckets = dist.buckets; // [{ rango, cantidad }] — 10 tramos de 1 punto
+    const total = dist.notas.length;
     const aprobados = dist.notas.filter(n => n >= 5).length;
-    const total = dist.total;
-
-    // Dot plot de Cleveland: X = nota, Y = nota individual ordenada. Cada punto es
-    // UNA nota de un instrumento (el mismo alumno puede aparecer varias veces).
-    const parejas = dist.parejas.slice().sort((x, y) => x.nota - y.nota);
-    const N = parejas.length;
-
-    const W = 640, PAD_L = 150, PAD_R = 20, PAD_T = 10, PAD_B = 30;
-    const FILA = 22; // px por nota
-    const H = PAD_T + PAD_B + N * FILA;
-    const xDe = n => PAD_L + (n / 10) * (W - PAD_L - PAD_R);
-    const yDe = i => PAD_T + i * FILA + FILA / 2;
-    const corta = s => s.length > 22 ? s.slice(0, 21) + '…' : s;
+    const maxCant = Math.max(1, ...buckets.map(b => b.cantidad));
+    const ALTO = 180; // px máximos de barra
 
     return `
       <p style="margin-bottom:${filtrado ? 4 : 14}px"><strong>${mediaTxt}:</strong> ${media} / 10</p>
       ${filtrado ? '<p class="no-print" style="margin-bottom:14px;font-size:12px;color:var(--tinta-suave)">Nivel filtrado con el selector superior de la cuadrícula.</p>' : ''}
-      <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block" role="img"
-           aria-label="Dispersión de notas: ${N} notas, media ${media}">
-        <!-- Eje X: 0, 2, 4, 6, 8, 10 -->
-        ${[0, 2, 4, 6, 8, 10].map(n => `
-          <text x="${xDe(n).toFixed(1)}" y="${H - 8}" text-anchor="middle"
-                font-size="10" fill="#8a857c">${n}</text>`).join('')}
-        <line x1="${PAD_L}" y1="${H - PAD_B}" x2="${W - PAD_R}" y2="${H - PAD_B}" stroke="#c9c4ba" stroke-width="1"/>
-        <!-- Umbral de aprobado: línea vertical punteada en x = 5 -->
-        <line x1="${xDe(5).toFixed(1)}" y1="${PAD_T}" x2="${xDe(5).toFixed(1)}" y2="${H - PAD_B}"
-              stroke="#888" stroke-width="1.5" stroke-dasharray="4 3"/>
-        <!-- Notas: nombre+instrumento a la izquierda, punto en su nota -->
-        ${parejas.map((p, i) => `
-          <text x="${PAD_L - 8}" y="${(yDe(i) + 3).toFixed(1)}" text-anchor="end"
-                font-size="10" fill="var(--tinta-suave)" title="${Utils.esc(p.instTitulo)}">${Utils.esc(corta(p.nombre))}</text>
-          <circle cx="${xDe(p.nota).toFixed(1)}" cy="${yDe(i).toFixed(1)}" r="4"
-                  fill="${p.nota >= 5 ? 'var(--acento, #4a90d9)' : '#dc3545'}"
-                  stroke="#fff" stroke-width="1.2">
-            <title>${Utils.esc(p.nombre)} · ${Utils.esc(p.instTitulo)}: ${Math.round(p.nota * 10) / 10}</title>
-          </circle>`).join('')}
-      </svg>
+      <div style="display:flex;gap:8px;align-items:flex-end;position:relative;
+                  height:${ALTO + 30}px;border-bottom:2px solid #ccc;margin-bottom:4px">
+        ${buckets.map((b, i) => {
+          const h = b.cantidad > 0 ? Math.max(6, Math.round((b.cantidad / maxCant) * ALTO)) : 0;
+          // Rojo por debajo de 5 (tramos 0-1 … 4-5), verde a partir de 5 (5-6 … 9-10).
+          const color = i >= 5 ? 'var(--acento, #4a90d9)' : '#dc3545';
+          return `
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">
+              ${b.cantidad > 0 ? `<span style="font-size:11px;font-weight:700;color:var(--tinta)">${b.cantidad}</span>` : ''}
+              <div style="width:100%;max-width:36px;height:${h}px;background:${color};
+                          border-radius:3px 3px 0 0;${b.cantidad === 0 ? 'opacity:.15' : ''}"
+                   title="${b.rango}: ${b.cantidad} alumno${b.cantidad === 1 ? '' : 's'}"></div>
+            </div>`;
+        }).join('')}
+        <div style="position:absolute;top:-6px;bottom:0;left:50%;border-left:2px dashed #888"></div>
+        <span style="position:absolute;top:-22px;left:50%;transform:translateX(-50%);
+                     font-size:11px;color:#888">5 (aprobado)</span>
+      </div>
+      <div style="display:flex;gap:8px;font-size:11px;color:var(--tinta-suave)">
+        ${buckets.map((b, i) => `<span style="flex:1;text-align:center">${i}</span>`).join('')}
+      </div>
       <p style="margin-top:14px;font-size:13px;color:var(--tinta-suave)">
-        Cada punto es una nota de un instrumento (ordenadas de menor a mayor) · ${aprobados} de ${total} notas aprueban (${Math.round(aprobados / total * 100)}%)
+        Cada barra es un tramo de nota (0–1, 1–2, …, 9–10) · ${aprobados} de ${total} aprueban (${Math.round(aprobados / total * 100)}%)
       </p>`;
   }
 
