@@ -239,7 +239,7 @@ input[type="text"], input[type="number"], input[type="date"], select, textarea {
 }
 input:focus, select:focus, textarea:focus { border-color: var(--acento); }
 :where(button, a, input, select, textarea, summary):focus-visible {
-  outline: 2px solid var(--acento); outline-offset: 2px;
+  outline: 3px solid var(--acento); outline-offset: 2px;
 }
 .campo { display: block; margin-bottom: 12px; }
 .campo > span { display: block; font-size: 12px; font-weight: 700; color: var(--tinta-suave); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .04em; }
@@ -261,12 +261,14 @@ input:focus, select:focus, textarea:focus { border-color: var(--acento); }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .hint { display: block; color: var(--tinta-suave); font-size: 12px; margin-bottom: 6px; }
 .chip {
+  position: relative;
   display: inline-flex; align-items: center; gap: 6px; min-height: 32px;
   border: 1px solid var(--linea); border-radius: 999px;
   padding: 6px 12px; font-size: 13px; cursor: pointer; user-select: none; background: #fff;
 }
 .chip.on { background: var(--acento); border-color: var(--acento); color: #fff; }
-.chip input { display: none; }
+.chip input { position: absolute; width: 1px; height: 1px; opacity: 0; margin: 0; }
+.chip:has(input:focus-visible) { outline: 2px solid var(--acento); outline-offset: 2px; }
 
 .aviso {
   background: #fffbeb; border: 1px solid #fde68a; color: #92400e;
