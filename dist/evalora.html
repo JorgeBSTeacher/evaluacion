@@ -5027,20 +5027,21 @@ const InformeView = (function () {
     const maxCant = Math.max(1, ...buckets.map(b => b.cantidad));
 
     // Puntos de dispersión: un punto por tramo (x = centro del tramo, y = cantidad).
-    const W = 640, H = 190, PAD_L = 34, PAD_R = 14, PAD_T = 18, PAD_B = 26;
+    const W = 640, H = 200, PAD_L = 34, PAD_R = 14, PAD_T = 18, PAD_B = 36;
     const xDe = n => PAD_L + (n / 10) * (W - PAD_L - PAD_R);
     const yDe = c => H - PAD_B - (c / maxCant) * (H - PAD_T - PAD_B);
     const puntos = buckets.map((b, i) => ({ x: xDe(i + 0.5), y: yDe(b.cantidad), c: b.cantidad, r: b.rango, i }));
 
     // Curva de tendencia suavizada (Catmull-Rom -> Bézier cúbico) por los puntos.
+    // Divisor 8 (en vez de 6) = curva más suave y menos "ondulada".
     const curva = (() => {
       const p = puntos;
       if (p.length < 2) return '';
       let d = `M ${p[0].x.toFixed(1)} ${p[0].y.toFixed(1)}`;
       for (let i = 0; i < p.length - 1; i++) {
         const p0 = p[i - 1] || p[i], p1 = p[i], p2 = p[i + 1], p3 = p[i + 2] || p2;
-        const c1x = p1.x + (p2.x - p0.x) / 6, c1y = p1.y + (p2.y - p0.y) / 6;
-        const c2x = p2.x - (p3.x - p1.x) / 6, c2y = p2.y - (p3.y - p1.y) / 6;
+        const c1x = p1.x + (p2.x - p0.x) / 8, c1y = p1.y + (p2.y - p0.y) / 8;
+        const c2x = p2.x - (p3.x - p1.x) / 8, c2y = p2.y - (p3.y - p1.y) / 8;
         d += ` C ${c1x.toFixed(1)} ${c1y.toFixed(1)}, ${c2x.toFixed(1)} ${c2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
       }
       return d;
@@ -5059,16 +5060,16 @@ const InformeView = (function () {
                 font-size="10" fill="#8a857c">${c}</text>`).join('')}
         <!-- Eje X: 0, 2, 4, 6, 8, 10 -->
         ${[0, 2, 4, 6, 8, 10].map(n => `
-          <text x="${xDe(n).toFixed(1)}" y="${H - 8}" text-anchor="middle"
+          <text x="${xDe(n).toFixed(1)}" y="${H - PAD_B + 14}" text-anchor="middle"
                 font-size="10" fill="#8a857c">${n}</text>`).join('')}
         <line x1="${PAD_L}" y1="${H - PAD_B}" x2="${W - PAD_R}" y2="${H - PAD_B}" stroke="#c9c4ba" stroke-width="1"/>
-        <!-- Curva de tendencia -->
-        <path d="${curva}" fill="none" stroke="var(--acento, #4a90d9)" stroke-width="2.5"
+        <!-- Curva de tendencia (fina y suave) -->
+        <path d="${curva}" fill="none" stroke="var(--acento, #4a90d9)" stroke-width="1.5"
               stroke-linecap="round" stroke-linejoin="round"/>
-        <!-- Umbral de aprobado (x = 5) -->
-        <line x1="${xDe(5).toFixed(1)}" y1="${PAD_T - 6}" x2="${xDe(5).toFixed(1)}" y2="${H - PAD_B}"
-              stroke="#888" stroke-width="1.5" stroke-dasharray="4 3"/>
-        <text x="${xDe(5).toFixed(1)}" y="${PAD_T - 10}" text-anchor="middle"
+        <!-- Umbral de aprobado: marca en el eje inferior (x = 5) -->
+        <line x1="${xDe(5).toFixed(1)}" y1="${H - PAD_B}" x2="${xDe(5).toFixed(1)}" y2="${H - PAD_B + 6}"
+              stroke="#888" stroke-width="1.5"/>
+        <text x="${xDe(5).toFixed(1)}" y="${H - 4}" text-anchor="middle"
               font-size="10" fill="#888">5 (aprobado)</text>
         <!-- Puntos de dispersión: rojos por debajo de 5, verdes desde 5 -->
         ${puntos.map(p => `
