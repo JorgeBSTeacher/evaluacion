@@ -258,6 +258,38 @@ input:focus, select:focus, textarea:focus { border-color: var(--acento); }
 .badge.info { background: var(--acento-suave); color: #3730a3; }
 .badge.warn { background: var(--aviso-suave); color: #92400e; }
 
+/* Estadísticos de la pestaña Distribución (Informe): rejilla de tarjetas. */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px;
+  margin: 0 0 14px;
+}
+.stat {
+  background: var(--papel);
+  border: 1px solid var(--linea);
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.stat-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--tinta-suave);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.stat-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--tinta);
+  font-variant-numeric: tabular-nums;
+}
+.stat-value small { font-size: 11px; font-weight: 600; color: var(--tinta-suave); }
+
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .hint { display: block; color: var(--tinta-suave); font-size: 12px; margin-bottom: 6px; }
 .chip {

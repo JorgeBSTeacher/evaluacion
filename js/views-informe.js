@@ -402,13 +402,14 @@ const InformeView = (function () {
     return `
       <p style="margin-bottom:${filtrado ? 4 : 14}px"><strong>${mediaTxt}:</strong> ${media.toFixed(1).replace('.', ',')} / 10</p>
       ${filtrado ? '<p class="no-print" style="margin-bottom:14px;font-size:12px;color:var(--tinta-suave)">Nivel filtrado con el selector superior de la cuadrícula.</p>' : ''}
-      <div style="display:flex;flex-wrap:wrap;gap:6px 18px;margin:0 0 12px;font-size:12px;color:var(--tinta-suave)">
-        <span>Media <b style="color:var(--tinta)">${media.toFixed(1).replace('.', ',')}</b></span>
-        <span>Mediana <b style="color:var(--tinta)">${mediana.toFixed(1).replace('.', ',')}</b></span>
-        <span>Desv. típica <b style="color:var(--tinta)">${desv.toFixed(1).replace('.', ',')}</b></span>
-        <span>Rango <b style="color:var(--tinta)">${min.toFixed(1).replace('.', ',')}–${max.toFixed(1).replace('.', ',')}</b></span>
-        <span>Tramo más poblado <b style="color:var(--tinta)">${moda.rango}</b></span>
-        <span>${total} con nota${sinNota ? ` · <b style="color:var(--tinta)">${sinNota} sin nota</b>` : ''}</span>
+      <div class="stat-grid">
+        <div class="stat"><span class="stat-label">Media</span><span class="stat-value">${media.toFixed(1).replace('.', ',')}</span></div>
+        <div class="stat"><span class="stat-label">Mediana</span><span class="stat-value">${mediana.toFixed(1).replace('.', ',')}</span></div>
+        <div class="stat"><span class="stat-label">Desv. típica</span><span class="stat-value">${desv.toFixed(1).replace('.', ',')}</span></div>
+        <div class="stat"><span class="stat-label">Rango</span><span class="stat-value">${min.toFixed(1).replace('.', ',')}–${max.toFixed(1).replace('.', ',')}</span></div>
+        <div class="stat"><span class="stat-label">Tramo más poblado</span><span class="stat-value">${moda.rango}</span></div>
+        <div class="stat"><span class="stat-label">Alumnos</span><span class="stat-value">${total} <small>con nota</small></span></div>
+        ${sinNota ? `<div class="stat"><span class="stat-label">Sin nota</span><span class="stat-value">${sinNota}</span></div>` : ''}
       </div>
       <div style="display:flex;gap:8px;align-items:flex-end;position:relative;
                   height:${ALTO + 30}px;border-bottom:2px solid #ccc;margin-bottom:4px">
