@@ -413,7 +413,7 @@ const InformeView = (function () {
         ${sinNota ? `<div class="stat" title="Alumnos evaluables (a los que les aplica algún instrumento del alcance) sin nota agregada: no hizo ninguna versión aplicable o está pendiente."><span class="stat-label">Sin nota</span><span class="stat-value">${sinNota}</span></div>` : ''}
       </div>
       <div style="display:flex;gap:8px;align-items:flex-end;position:relative;
-                  height:${ALTO + 30}px;border-bottom:2px solid #ccc;margin-bottom:4px">
+                  height:${ALTO + 30}px;border-bottom:2px solid #ccc;margin:8px 0 4px">
         ${buckets.map((b, i) => {
           const h = b.cantidad > 0 ? Math.max(6, Math.round((b.cantidad / maxCant) * ALTO)) : 0;
           // Rojo por debajo de 5 (tramos 0-1 … 4-5), verde a partir de 5 (5-6 … 9-10).
