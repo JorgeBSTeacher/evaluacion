@@ -20,6 +20,8 @@ const CuadriculaView = (() => {
       if (!g) { g = { ud, insts: [] }; grupos.push(g); }
       g.insts.push(i);
     });
+    const { mapa: coloresUd, cambios: nuevosColores } = Storage.coloresUdPara(grupos.map(g => g.ud));
+    if (nuevosColores) Storage.save();
     // La barra de unidad (con su plegado) solo tiene sentido si hay algo que
     // agrupar: varias unidades, o una sola con nombre. Si todo va sin unidad no
     // hay barra, y sin barra no se pliega nada (las columnas se ven siempre).
@@ -29,10 +31,19 @@ const CuadriculaView = (() => {
     // estira con colspan sobre sus columnas. Si se ocultan de verdad, la fila se
     // queda corta y todo lo que va detrás (cabeceras y la nota final) se desplaza
     // de su columna. Con la celda de relleno la tabla siempre cuadra.
-    const cabeceraInst = i => `<th class="celda-nota" data-ud="${Utils.esc(i.unidad || '')}" data-edit="${i.id}" title="Toca para editar el instrumento" style="max-width:130px">${Utils.esc(i.titulo)}<br><small>${Utils.esc(i.tipo)} · ${Utils.esc(i.periodo)}${i.unidad ? ' · ' + Utils.esc(i.unidad) : ''}</small></th>`;
-    const barraUd = g => `<th class="ud-grupo plegable" colspan="${g.insts.length}" data-toggle-ud="${Utils.esc(g.ud)}" title="${g.insts.length} instrumento${g.insts.length === 1 ? '' : 's'} · toca para ${g.plegada ? 'ver' : 'ocultar'} sus columnas">` +
-      `<span class="ud-flecha">${g.plegada ? '▸' : '▾'}</span>${g.ud ? Utils.esc(g.ud) : 'Sin unidad'}` +
-      `<small>${g.plegada ? `(${g.insts.length})` : `${g.insts.length} instrumento${g.insts.length === 1 ? '' : 's'}`}</small></th>`;
+    const cabeceraInst = i => {
+      const c = coloresUd[i.unidad || ''];
+      const estilo = c ? `style="max-width:130px;background:${c.suave}"` : 'style="max-width:130px"';
+      return `<th class="celda-nota" ${estilo} data-ud="${Utils.esc(i.unidad || '')}" data-edit="${i.id}" title="Toca para editar el instrumento">${Utils.esc(i.titulo)}<br><small>${Utils.esc(i.tipo)} · ${Utils.esc(i.periodo)}${i.unidad ? ' · ' + Utils.esc(i.unidad) : ''}</small></th>`;
+    };
+    const barraUd = g => {
+      const c = coloresUd[g.ud];
+      const estiloTh = c ? `style="background:${c.intenso};color:var(--tinta)"` : '';
+      const estiloSmall = c ? 'style="color:var(--tinta)"' : '';
+      return `<th class="ud-grupo plegable" colspan="${g.insts.length}" data-toggle-ud="${Utils.esc(g.ud)}" title="${g.insts.length} instrumento${g.insts.length === 1 ? '' : 's'} · toca para ${g.plegada ? 'ver' : 'ocultar'} sus columnas · clic derecho para cambiar el color" ${estiloTh}>` +
+        `<span class="ud-flecha">${g.plegada ? '▸' : '▾'}</span>${g.ud ? Utils.esc(g.ud) : 'Sin unidad'}` +
+        `<small ${estiloSmall}>${g.plegada ? `(${g.insts.length})` : `${g.insts.length} instrumento${g.insts.length === 1 ? '' : 's'}`}</small></th>`;
+    };
     // Columnas de una UD plegadas: en vez de una celda vacía, se muestra la nota
     // media del alumno en esa UD (media aritmética de sus instrumentos, cada uno
     // ya ponderado por criterios). Información útil sin desplegar.
@@ -47,8 +58,11 @@ const CuadriculaView = (() => {
       return !!(fila && inst.apartados && inst.apartados.some(ap => fila[ap.id] != null && fila[ap.id] !== ''));
     };
     const mediaUdAlumno = (a, insts) => {
-      const notas = insts
-        .filter(i => !modoTodas || Calc.instrumentoParaAlumno(i, claseSel, a.id))
+      const aplican = insts.filter(i => !modoTodas || Calc.instrumentoParaAlumno(i, claseSel, a.id));
+      // Si ningún instrumento de la UD está corregido, no hay media que mostrar:
+      // se enseña «—» y no un 0 (el 0 es una nota corregida que resulta en cero).
+      if (!aplican.some(i => instrumentoEvaluado(i, a.id))) return null;
+      const notas = aplican
         .map(i => {
           if (instrumentoEvaluado(i, a.id)) return Calc.notaInstrumento(i, a.id);
           return sinNotaEsCero ? 0 : null;
@@ -57,19 +71,26 @@ const CuadriculaView = (() => {
       return notas.length ? notas.reduce((x, y) => x + y, 0) / notas.length : null;
     };
     const cabecerasGrupo = g => g.plegada
-      ? `<th class="celda-plegada" colspan="${g.insts.length}"></th>`
+      ? (() => {
+          const c = coloresUd[g.ud];
+          const estilo = c ? `style="background:${c.suave}"` : '';
+          return `<th class="celda-plegada" ${estilo} colspan="${g.insts.length}"></th>`;
+        })()
       : g.insts.map(cabeceraInst).join('');
     const celdasGrupo = (a, g) => g.plegada
       ? (() => {
           const m = mediaUdAlumno(a, g.insts);
-          return `<td class="celda-plegada num" colspan="${g.insts.length}" title="Nota media de la UD">${m == null ? '<span class="badge na">—</span>' : Calc.badgeHtml(m)}</td>`;
+          const c = coloresUd[g.ud];
+          const estilo = c ? `style="background:${c.suave}"` : '';
+          return `<td class="celda-plegada num" ${estilo} colspan="${g.insts.length}" title="Nota media de la UD">${m == null ? '<span class="badge na">—</span>' : Calc.badgeHtml(m)}</td>`;
         })()
       : g.insts.map(i => {
         const ud = `data-ud="${Utils.esc(i.unidad || '')}"`;
         if (modoTodas && !Calc.instrumentoParaAlumno(i, claseSel, a.id)) {
           return `<td class="celda-nota num" ${ud} style="color:var(--tinta-suave);opacity:.35" title="No aplica a este alumno">—</td>`;
         }
-        const n = Calc.notaInstrumento(i, a.id);
+        // Sin corregir no hay nota: se enseña «—» y no un 0.
+        const n = instrumentoEvaluado(i, a.id) ? Calc.notaInstrumento(i, a.id) : null;
         return `<td class="celda-nota num" ${ud} data-inst="${i.id}" data-alumno="${Utils.esc(a.id)}">${n == null ? '<span class="badge na">—</span>' : Calc.badgeHtml(n)}</td>`;
       }).join('');
     const thead = conBarra
@@ -91,6 +112,42 @@ const CuadriculaView = (() => {
       <p class="no-print" style="color:var(--tinta-suave);font-size:13px">${modoTodas
         ? 'Vista de todo el grupo: cada alumno se evalúa con los criterios de su nivel y la columna «Evaluación» armoniza su nota. «—» en gris = el examen no aplica a ese alumno.'
         : 'La columna «Evaluación» aplica las ponderaciones de los criterios del nivel mostrado' + (periodo === 'Final' ? ' sobre todo el curso' : ' en ' + periodo) + '. Toca una nota para corregir y una cabecera para editar.'}</p>`;
+  }
+
+  // Menú contextual de color de una UD (clic derecho sobre su barra, o
+  // Mayús+F10 / tecla ContextMenu con la barra enfocada).
+  let menuColorUd = null;
+  function cerrarMenuColorUd() {
+    if (menuColorUd && menuColorUd.parentNode) menuColorUd.parentNode.removeChild(menuColorUd);
+    menuColorUd = null;
+    document.onclick = null;
+    document.onkeydown = null;
+  }
+  function abrirMenuColorUd(el, ud, x, y) {
+    cerrarMenuColorUd();
+    const m = document.createElement('div');
+    m.id = 'menu-color-ud';
+    m.className = 'menu-color-ud';
+    m.setAttribute('role', 'menu');
+    m.innerHTML = `<div class="rejilla">${ColoresUd.PALETA.map((p, i) =>
+      `<button type="button" class="muestra" data-i="${i}" style="background:${p.intenso}" title="Color ${i + 1}" aria-label="Color ${i + 1}"></button>`
+    ).join('')}</div><button type="button" class="btn btn-mini sin-color">Sin color</button>`;
+    document.body.appendChild(m);
+    const r = m.getBoundingClientRect();
+    m.style.left = Math.max(4, Math.min(x, window.innerWidth - r.width - 4)) + 'px';
+    m.style.top = Math.max(4, Math.min(y, window.innerHeight - r.height - 4)) + 'px';
+    m.onclick = ev => {
+      const b = ev.target.closest('button');
+      if (!b) return;
+      if (b.classList.contains('sin-color')) Storage.fijarColorUd(ud, null);
+      else if (b.classList.contains('muestra')) Storage.fijarColorUd(ud, ColoresUd.PALETA[Number(b.dataset.i)].intenso);
+      Storage.save();
+      cerrarMenuColorUd();
+      render(el);
+    };
+    menuColorUd = m;
+    document.onclick = ev => { if (menuColorUd && !menuColorUd.contains(ev.target)) cerrarMenuColorUd(); };
+    document.onkeydown = ev => { if (ev.key === 'Escape') cerrarMenuColorUd(); };
   }
 
   function tablaCriterios(alumnos, modoTodas, claseSel, periodo) {
@@ -357,10 +414,12 @@ const CuadriculaView = (() => {
     window.print();
   }
 
-  // `opciones.tab` permite fijar la pestaña activa (uso interno y pruebas) y
-  // `opciones.unidadesAbiertas` las unidades que deben verse desplegadas.
+  // `opciones.tab` permite fijar la pestaña activa (uso interno y pruebas),
+  // `opciones.unidadesAbiertas` las unidades que deben verse desplegadas y
+  // `opciones.periodo` el trimestre visible.
   function render(el, opciones) {
     if (opciones && opciones.tab) tab = opciones.tab;
+    if (opciones && opciones.periodo) periodo = opciones.periodo;
     if (opciones && opciones.unidadesAbiertas) {
       udsAbiertas.clear();
       opciones.unidadesAbiertas.forEach(u => udsAbiertas.add(u));
@@ -389,9 +448,11 @@ const CuadriculaView = (() => {
       .filter(i => modoTodas || Calc.instrumentoParaNivel(i, nivelSel))
       .sort((a, b) => (String(a.unidad || '').localeCompare(String(b.unidad || ''), 'es'))
         || (a.fecha || '').localeCompare(b.fecha || ''));
-    // Las unidades se ven en el orden en que se despliegan en la propia tabla:
-    // el plegado de las barras es el único filtro que se ofrece (D-45).
-    const insts = instsNivel;
+    // El selector de trimestre también filtra las columnas: T1/T2/T3 muestran solo
+    // sus instrumentos; «Final» muestra todo el curso (todas las UDs).
+    const insts = periodo === 'Final'
+      ? instsNivel
+      : instsNivel.filter(i => i.periodo === periodo);
 
     const selNivel = nivelesAci.length ? `
       <select id="sel-nivel" style="max-width:220px">
@@ -527,12 +588,23 @@ const CuadriculaView = (() => {
       ch.onclick = () => { tab = ch.dataset.tab; render(el); };
     });
 
-    // Plegar o desplegar las columnas de una unidad didáctica.
+    // Plegar o desplegar las columnas de una unidad didáctica. El clic derecho
+    // (o Mayús+F10) abre el menú de color de la UD.
     el.querySelectorAll('[data-toggle-ud]').forEach(th => {
       th.onclick = () => {
         const clave = th.dataset.toggleUd || '';
         if (udsAbiertas.has(clave)) udsAbiertas.delete(clave); else udsAbiertas.add(clave);
         render(el);
+      };
+      th.oncontextmenu = e => { e.preventDefault(); abrirMenuColorUd(el, th.dataset.toggleUd, e.clientX, e.clientY); };
+      th.setAttribute('tabindex', '0');
+      th.onkeydown = e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); th.onclick(); }
+        else if ((e.key === 'F10' && e.shiftKey) || e.key === 'ContextMenu') {
+          e.preventDefault();
+          const r = th.getBoundingClientRect();
+          abrirMenuColorUd(el, th.dataset.toggleUd, r.left, r.bottom);
+        }
       };
     });
 

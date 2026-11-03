@@ -48,6 +48,9 @@ const Storage = {
       // false (por defecto) = no cuenta (solo promedia lo evaluado, «Media»);
       // true = el vacio vale 0 (punitivo). Se rellena solo con migrar().
       configuracion: { sinNotaEsCero: true },
+      // Color por unidad didáctica en la cuadrícula: mapa { ud: '#hex' | null }.
+      // undefined = automático (primer color libre de la paleta), null = sin color.
+      coloresUd: {},
       registros: {},
       // Observaciones del docente por instrumento (D-74c): propuestas de mejora
       // a criterio del maestro. Se guardan localmente, offline.
@@ -353,6 +356,7 @@ const Storage = {
     if (!db.meta || typeof db.meta !== 'object') db.meta = { ultimaExportacion: null };
     if (db.meta.cambiosSinCopia == null) db.meta.cambiosSinCopia = false;
     if (db.observaciones == null) db.observaciones = {};
+    if (db.coloresUd == null || typeof db.coloresUd !== 'object') db.coloresUd = {};
     db.grupos.forEach(g => { if (g.etapa == null) g.etapa = ''; });
     // La asignatura recuerda de qué curso es su currículo (p. ej. «6º») y su
     // fuente legal (la cita del decreto). Backups antiguos no los traen.
@@ -440,6 +444,54 @@ const Storage = {
       this.reparadosCriterios = Calc.repararCriteriosDeInstrumentos(db);
     }
     return db;
+  },
+
+  // --- Color por unidad didáctica (cuadrícula de Instrumentos) ---
+
+  // Mapa { ud: { h, intenso, suave } | null } para las UDs indicadas. Si una UD
+  // no tiene color, se le asigna el primer color libre de la paleta y se marca
+  // `cambios` para que el llamador guarde. `null` = «Sin color» (barra neutral).
+  coloresUdPara(uds) {
+    const mapa = {};
+    let cambios = false;
+    const usados = new Set();
+    for (const v of Object.values(this.db.coloresUd || {})) {
+      if (v && ColoresUd.esValido(v)) usados.add(v);
+    }
+    for (const ud of uds || []) {
+      if (!ud) continue;
+      const actual = this.db.coloresUd ? this.db.coloresUd[ud] : undefined;
+      if (actual === null) { mapa[ud] = null; continue; }
+      if (actual && ColoresUd.esValido(actual)) {
+        mapa[ud] = ColoresUd.entradaPorIntenso(actual);
+        continue;
+      }
+      const entrada = ColoresUd.primerLibre(usados);
+      this.db.coloresUd[ud] = entrada.intenso;
+      usados.add(entrada.intenso);
+      mapa[ud] = entrada;
+      cambios = true;
+    }
+    return { mapa, cambios };
+  },
+
+  // Renombrar una UD conserva su color: al guardar un instrumento, si la UD
+  // anterior ya no la usa ningún instrumento, su color pasa al nombre nuevo.
+  migrarColorUd(antes, despues) {
+    if (!antes || !despues || antes === despues) return;
+    const queda = (this.db.instrumentos || []).some(i => (i.unidad || '') === antes);
+    if (queda) return;
+    const color = this.db.coloresUd ? this.db.coloresUd[antes] : undefined;
+    if (color == null) return;
+    if (this.db.coloresUd[despues] == null) this.db.coloresUd[despues] = color;
+    delete this.db.coloresUd[antes];
+  },
+
+  // Color manual de una UD: un `intenso` de la paleta, o null para «Sin color».
+  fijarColorUd(ud, color) {
+    if (!ud) return;
+    if (color == null || color === '') this.db.coloresUd[ud] = null;
+    else if (ColoresUd.esValido(color)) this.db.coloresUd[ud] = color;
   },
 
   claveDesdeDescriptores(descriptores) {

@@ -207,6 +207,7 @@ function columnasNivel(filas) {
       textoGuardar: esNueva ? 'Crear' : 'Guardar cambios',
       alCerrar,
       alGuardar(body) {
+        const unidadAnterior = inst ? (inst.unidad || '') : '';
         const titulo = body.querySelector('#f-titulo').value.trim();
         const tipo = body.querySelector('#f-tipo').value;
         const periodo = body.querySelector('#f-periodo').value;
@@ -270,6 +271,9 @@ function columnasNivel(filas) {
         } else {
           Object.assign(inst, { tipo, titulo, fecha, periodo, saberes, unidad, nivel, niveles: nivelesInst, apartados, criteriosModo, criterioIdsGlobal, url });
         }
+        // Si la UD cambió de nombre y la anterior ya no la usa nadie, su color
+        // pasa al nombre nuevo (conserva la identidad visual de la unidad).
+        Storage.migrarColorUd(unidadAnterior, unidad);
         Storage.save();
       }
     });

@@ -5,8 +5,14 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const { raiz, makeEl, cargarApp } = require('./arnes');
+const { raiz, makeEl, cargarApp, ARCHIVOS } = require('./arnes');
 const { estadoPrueba, resumen } = require('./datos-prueba');
+
+// `js/colores-ud.js` define el global `ColoresUd` que usan Storage y la
+// cuadrícula. La lista ARCHIVOS del arnés es cerrada (y tools/arnes.js queda
+// fuera de las superficies permitidas), así que se inserta aquí, en el mismo
+// orden en que lo carga index.html: tras js/calc.js.
+ARCHIVOS.splice(ARCHIVOS.indexOf('js/calc.js') + 1, 0, 'js/colores-ud.js');
 
 let total = 0;
 let fallos = 0;
@@ -419,10 +425,11 @@ async function main() {
     // En «Todos los niveles» deben verse todos los alumnos y, si hay ACI, las notas
     // de los adaptados llevan «*» para distinguirlos del nivel base.
 
-    check('cabecera agrupada por UD1 y UD2', h.includes('ud-grupo') && h.includes('>UD1<small>') && h.includes('>UD2<small>'));
+    check('cabecera agrupada por UD1 y UD2', h.includes('ud-grupo') && h.includes('>UD1<small') && h.includes('>UD2<small'));
     check('las unidades se pueden plegar', h.includes('data-toggle-ud="UD1"') && h.includes('data-toggle-ud="UD2"'));
     check('las columnas de las unidades empiezan plegadas', h.includes('celda-plegada') && h.includes('ud-flecha">▸'));
-    check('la barra plegada indica cuántos instrumentos tiene', h.includes('>UD1<small>(1)</small>') && h.includes('>UD2<small>(1)</small>'));
+    check('la barra plegada indica cuántos instrumentos tiene',
+      /UD1<small[^>]*>\(1\)<\/small>/.test(h) && /UD2<small[^>]*>\(1\)<\/small>/.test(h));
 
     // Regresión: al plegar una unidad sus columnas NO se borran; una celda con
     // colspan las ocupa en cada fila. Si desaparecieran, las filas quedarían
@@ -473,8 +480,26 @@ async function main() {
     // colspan sin depender del orden de atributos.
     const colspan2Plegada = /<td[^>]*class="celda-plegada num"[^>]*colspan="2"[^>]*>/;
     check('la unidad plegada con 2 instrumentos ocupa sus 2 columnas con una sola celda',
-      /<th class="celda-plegada" colspan="2">/.test(h6) && colspan2Plegada.test(h6));
+      /<th[^>]*class="celda-plegada"[^>]*colspan="2"[^>]*>/.test(h6) && colspan2Plegada.test(h6));
     check('la nota final sigue cuadrando con columnas plegadas de varias posiciones', cuadra(h6));
+
+    // Sin corregir no hay nota: la celda muestra «—» y no un 0.
+    const estSinCorregir = estadoAci();
+    estSinCorregir.registros = {};
+    const app7 = cargarApp();
+    app7.Storage.load();
+    await importarJson(app7, estSinCorregir);
+    const elSin = makeEl();
+    app7.CuadriculaView.render(elSin, { unidadesAbiertas: ['UD1', 'UD2'] });
+    const hSin = elSin.innerHTML;
+    check('sin corregir, las celdas de nota muestran «—»', hSin.includes('badge na">—</span>'));
+    check('sin corregir, ninguna celda muestra un 0',
+      (hSin.match(/badge (?:ko|ok|na)">0<\/span>/g) || []).length === 0);
+    const elSinPleg = makeEl();
+    app7.CuadriculaView.render(elSinPleg, { unidadesAbiertas: [] });
+    const hSinPleg = elSinPleg.innerHTML;
+    check('sin corregir, la media de la UD plegada muestra «—»',
+      hSinPleg.includes('celda-plegada num" style="background:') && hSinPleg.includes('badge na">—</span>'));
 
     // Con un grupo grande debe aparecer el buscador de alumnado, en todas las pestañas.
     const est = estadoAci();
@@ -551,6 +576,112 @@ async function main() {
     app4.CuadriculaView.render(el5);
     const h5 = el5.innerHTML;
     check('con una sola unidad sigue habiendo barra para desplegarla', h5.includes('data-toggle-ud="UD1"') && h5.includes('celda-plegada'));
+  }
+
+  console.log('\n== Color por unidad didáctica (cuadrícula de Instrumentos) ==');
+  {
+    const app = cargarApp();
+    app.Storage.load();
+    await importarJson(app, estadoAci());
+    const S = app.Storage;
+    // El arnés no expone los `const` globales del bundle (no son propiedades del
+    // objeto de contexto), así que se recupera el objeto del sandbox para
+    // comprobar la paleta directamente.
+    const ColoresUd = S.constructor.constructor('return ColoresUd')();
+
+    check('la paleta tiene 15 entradas', ColoresUd.PALETA.length === 15, String(ColoresUd.PALETA.length));
+    const intensos = ColoresUd.PALETA.map(c => c.intenso);
+    const suaves = ColoresUd.PALETA.map(c => c.suave);
+    check('la paleta tiene intensos únicos', new Set(intensos).size === 15);
+    check('la paleta tiene suaves únicos', new Set(suaves).size === 15);
+    check('todos los tonos son hex válidos',
+      intensos.every(h => ColoresUd.esValido(h)) && suaves.every(h => ColoresUd.esValido(h)));
+
+    check('primerLibre no devuelve un tono ya usado',
+      ColoresUd.primerLibre(['#e07b7b']).intenso !== '#e07b7b',
+      ColoresUd.primerLibre(['#e07b7b']).intenso);
+
+    const r1 = S.coloresUdPara(['UD1', 'UD2']);
+    check('coloresUdPara asigna dos colores distintos',
+      !!(r1.mapa['UD1'] && r1.mapa['UD2']) && r1.mapa['UD1'].intenso !== r1.mapa['UD2'].intenso,
+      JSON.stringify(r1.mapa));
+    check('coloresUdPara marca cambios la primera vez', r1.cambios === true);
+    const r2 = S.coloresUdPara(['UD1', 'UD2']);
+    check('coloresUdPara no marca cambios la segunda vez', r2.cambios === false);
+
+    S.fijarColorUd('UD1', null);
+    const r3 = S.coloresUdPara(['UD1']);
+    check('fijarColorUd(null) deja la UD sin color', r3.mapa['UD1'] === null, JSON.stringify(r3.mapa['UD1']));
+    check('una UD sin color no marca cambios', r3.cambios === false);
+
+    // Migrar el color al renombrar la UD: solo si nadie más usa la anterior.
+    S.db.coloresUd = { UD1: '#e07b7b' };
+    S.db.instrumentos = [{ id: 'x1', claseId: 'c1', unidad: 'UD2' }];
+    S.migrarColorUd('UD1', 'UD2');
+    check('migrarColorUd mueve el color si la UD anterior ya no se usa',
+      S.db.coloresUd['UD2'] === '#e07b7b' && S.db.coloresUd['UD1'] === undefined,
+      JSON.stringify(S.db.coloresUd));
+    S.db.coloresUd = { UD1: '#e07b7b' };
+    S.db.instrumentos = [{ id: 'x1', claseId: 'c1', unidad: 'UD1' }];
+    S.migrarColorUd('UD1', 'UD2');
+    check('migrarColorUd NO mueve el color si la UD anterior sigue en uso',
+      S.db.coloresUd['UD1'] === '#e07b7b' && S.db.coloresUd['UD2'] === undefined,
+      JSON.stringify(S.db.coloresUd));
+
+    // La vista pinta el tono intenso en la barra de la UD y el suave en las
+    // cabeceras de instrumento.
+    const app2 = cargarApp();
+    app2.Storage.load();
+    await importarJson(app2, estadoAci());
+    const el = makeEl();
+    // Desplegadas, para que se pinten también las cabeceras de instrumento.
+    app2.CuadriculaView.render(el, { unidadesAbiertas: ['UD1', 'UD2'] });
+    const h = el.innerHTML;
+    const entradaUd1 = app2.Storage.coloresUdPara(['UD1']).mapa['UD1'];
+    check('la barra de la UD pinta su tono intenso',
+      !!entradaUd1 && h.includes('background:' + entradaUd1.intenso),
+      entradaUd1 ? entradaUd1.intenso : 'sin entrada');
+    check('la cabecera de instrumento pinta el tono suave',
+      !!entradaUd1 && h.includes('background:' + entradaUd1.suave),
+      entradaUd1 ? entradaUd1.suave : 'sin entrada');
+    check('la barra de la UD conserva el plegado y el menú de color',
+      h.includes('data-toggle-ud="UD1"') && h.includes('clic derecho para cambiar el color'));
+
+    // La celda plegada usa el tono suave de su UD (antes era azul genérico).
+    const app3 = cargarApp();
+    app3.Storage.load();
+    await importarJson(app3, estadoAci());
+    const elPleg = makeEl();
+    app3.CuadriculaView.render(elPleg);
+    const hPleg = elPleg.innerHTML;
+    const entradaUd1b = app3.Storage.coloresUdPara(['UD1']).mapa['UD1'];
+    check('la celda plegada pinta el tono suave de su UD',
+      !!entradaUd1b && hPleg.includes('celda-plegada num" style="background:' + entradaUd1b.suave + '"'),
+      entradaUd1b ? entradaUd1b.suave : 'sin entrada');
+    check('la celda plegada ya no usa el azul genérico',
+      !hPleg.includes('background:var(--acento-suave)'));
+
+    // El selector de trimestre filtra las columnas: T1 muestra solo sus
+    // instrumentos; «Final» muestra todo el curso.
+    const estPeriodos = estadoAci();
+    estPeriodos.instrumentos.push({
+      id: 'iT2', claseId: 'c1', tipo: 'Control', titulo: 'Control T2', fecha: '2026-03-01',
+      periodo: 'T2', nivel: 'BASE', unidad: 'UD3',
+      apartados: [{ id: 't2p', orden: 1, descripcion: 'e', maxPts: 10, criterioIds: ['k1'] }]
+    });
+    const app6 = cargarApp();
+    app6.Storage.load();
+    await importarJson(app6, estPeriodos);
+    const elT1 = makeEl();
+    app6.CuadriculaView.render(elT1, { periodo: 'T1' });
+    const hT1 = elT1.innerHTML;
+    check('T1 no muestra la UD de T2', !hT1.includes('data-toggle-ud="UD3"'));
+    check('T1 muestra sus UDs', hT1.includes('data-toggle-ud="UD1"') && hT1.includes('data-toggle-ud="UD2"'));
+    const elFin = makeEl();
+    app6.CuadriculaView.render(elFin, { periodo: 'Final' });
+    const hFin = elFin.innerHTML;
+    check('Final muestra la UD de T2', hFin.includes('data-toggle-ud="UD3"'));
+    check('Final muestra las UDs de T1', hFin.includes('data-toggle-ud="UD1"') && hFin.includes('data-toggle-ud="UD2"'));
   }
 
   console.log('\n== Niveles ACI: normalización de códigos (el alumnado no puede desaparecer) ==');

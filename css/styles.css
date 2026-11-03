@@ -229,8 +229,16 @@ main { max-width: 1440px; margin: 0 auto; padding: 20px 18px 60px; }
 .tabla-cuadricula th:not(:first-child),
 .tabla-cuadricula td:not(:first-child) { text-align: center; }
 .tabla-cuadricula .num { text-align: center; }
-.tabla-cuadricula .fila-ud .ud-grupo { text-align: center; background: var(--acento-suave); color: var(--acento); }
+/* El color de la barra lo pone el inline de cada UD; sin color queda el tono
+   de acento por defecto. */
+.tabla-cuadricula .fila-ud .ud-grupo { text-align: center; color: var(--acento); }
 .tabla-cuadricula .fila-ud th { border-bottom: 2px solid var(--linea); }
+/* Separadores de puntos finos entre columnas (no en la columna del alumno ni
+   en la de Evaluación, que ya llevan su sombra). */
+.tabla-cuadricula th:not(:first-child):not(.col-eval),
+.tabla-cuadricula td:not(:first-child):not(.col-eval) {
+  border-left: 1px dotted var(--linea);
+}
 
 input[type="text"], input[type="number"], input[type="date"], select, textarea {
   font: inherit; color: inherit;
@@ -419,14 +427,32 @@ input:focus, select:focus, textarea:focus { border-color: var(--acento); }
 
 /* Cuadrícula · pestaña Instrumentos: plegado de columnas por unidad */
 /* Celda que ocupa las columnas de una unidad plegada: mantiene la tabla cuadrada
-   (la nota final no se desplaza) y una banda tenue señala que está plegada. */
-.tabla-cuadricula .celda-plegada { background: var(--acento-suave); }
+   (la nota final no se desplaza). Su color lo pinta inline la vista con el tono
+   `suave` de la UD (ver js/colores-ud.js), para que combine con la barra. */
 .tabla-cuadricula .ud-grupo.plegable { cursor: pointer; user-select: none; }
 .tabla-cuadricula .ud-grupo.plegable:hover { filter: brightness(.95); }
 .tabla-cuadricula .ud-grupo .ud-flecha { margin-right: 5px; font-size: 11px; }
 /* Mismo aspecto que las barras de unidad de la vista Instrumentos. */
 .tabla-cuadricula .ud-grupo { text-transform: none; letter-spacing: normal; }
 .tabla-cuadricula .ud-grupo small { margin-left: 6px; color: var(--tinta-suave); font-weight: 400; }
+.tabla-cuadricula .ud-grupo:focus-visible { outline: 3px solid var(--acento); outline-offset: 2px; }
+
+/* Menú contextual de color de una UD (clic derecho sobre su barra). */
+.menu-color-ud {
+  position: fixed; z-index: 1000;
+  background: #fff; border: 1px solid var(--linea); border-radius: 10px;
+  box-shadow: var(--sombra); padding: 8px; min-width: 170px;
+}
+.menu-color-ud .rejilla {
+  display: grid; grid-template-columns: repeat(5, 28px); gap: 6px; margin-bottom: 6px;
+}
+.menu-color-ud .muestra {
+  width: 28px; height: 28px; padding: 0;
+  border: 1px solid var(--linea); border-radius: 6px; cursor: pointer;
+}
+.menu-color-ud .muestra:hover { transform: scale(1.1); }
+.menu-color-ud .sin-color { width: 100%; }
+
 .barra-tab { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
 
 /* Cabecera de informe: solo existe al imprimir, para que el PDF se lea solo. */
