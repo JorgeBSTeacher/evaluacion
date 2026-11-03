@@ -280,6 +280,10 @@ const CuadriculaView = (() => {
             Vista actual (lo que se ve en pantalla)
           </label>
           <label style="display:flex;gap:8px;align-items:center">
+            <input type="radio" name="imp-alcance" value="analisis">
+            Informe de análisis (todas las secciones del Informe)
+          </label>
+          <label style="display:flex;gap:8px;align-items:center">
             <input type="radio" name="imp-alcance" value="clase">
             Informe de la clase (base + cada nivel ACI)
           </label>
@@ -311,7 +315,7 @@ const CuadriculaView = (() => {
     };
     const refresca = () => {
       selAlumno.disabled = alcance() !== 'alumno';
-      cajaBloques.style.display = alcance() === 'vista' ? 'none' : 'flex';
+      cajaBloques.style.display = (alcance() === 'vista' || alcance() === 'analisis') ? 'none' : 'flex';
     };
     mbody.querySelectorAll('input[name=imp-alcance]').forEach(r => { r.onchange = refresca; });
     refresca();
@@ -321,6 +325,11 @@ const CuadriculaView = (() => {
       if (donde === 'vista') {
         UI.closeModal();
         imprimirVistaActual(el, insts);
+        return;
+      }
+      if (donde === 'analisis') {
+        UI.closeModal();
+        imprimirInforme(InformeView.informeHtml());
         return;
       }
       const criterios = mbody.querySelector('#imp-criterios').checked;

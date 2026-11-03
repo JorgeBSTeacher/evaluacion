@@ -78,8 +78,6 @@ const InformeView = (function () {
       <div class="chips no-print" style="margin-bottom:14px">
         ${vistas.map(v =>
           `<label class="chip ${subVista === v.id ? 'on' : ''}" data-subvista="${v.id}" ${subVista === v.id ? 'aria-current="true"' : ''}>${v.nombre}</label>`).join('')}
-        <button class="btn" id="btn-informe-pdf" title="Pasar a PDF todas las subvistas del informe"
-                style="margin-left:auto">Imprimir / PDF</button>
       </div>`;
   }
 
@@ -403,14 +401,14 @@ const InformeView = (function () {
       <p style="margin-bottom:${filtrado ? 4 : 14}px"><strong>${mediaTxt}:</strong> ${media.toFixed(1).replace('.', ',')} / 10</p>
       ${filtrado ? '<p class="no-print" style="margin-bottom:14px;font-size:12px;color:var(--tinta-suave)">Nivel filtrado con el selector superior de la cuadrícula.</p>' : ''}
       <div class="stat-grid">
-        <div class="stat" title="Nota media del grupo en este alcance: suma de todas las notas dividida entre el número de notas."><span class="stat-label">Media</span><span class="stat-value">${media.toFixed(1).replace('.', ',')}</span></div>
-        <div class="stat" title="Nota central: la mitad del grupo tiene una nota igual o menor, y la otra mitad igual o mayor. Más robusta que la media cuando hay valores extremos."><span class="stat-label">Mediana</span><span class="stat-value">${mediana.toFixed(1).replace('.', ',')}</span></div>
-        <div class="stat" title="Distancia típica de cada nota respecto a la media. Baja = grupo homogéneo; alta = notas muy dispersas. Se interpreta junto a la media."><span class="stat-label">Desv. típica</span><span class="stat-value">${desv.toFixed(1).replace('.', ',')}</span></div>
-        <div class="stat" title="Dispersión relativa = desviación / media. Al no tener unidades, permite comparar la dispersión entre grupos o asignaturas con medias distintas."><span class="stat-label">Dispersión rel. (CV)</span><span class="stat-value">${stats.cv == null ? '—' : (stats.cv * 100).toFixed(0).replace('.', ',') + '%'}</span></div>
-        <div class="stat" title="Diferencia entre la nota más baja y la más alta del alcance."><span class="stat-label">Rango</span><span class="stat-value">${min.toFixed(1).replace('.', ',')}–${max.toFixed(1).replace('.', ',')}</span></div>
-        <div class="stat" title="El intervalo de nota (de 1 punto) con más alumnos."><span class="stat-label">Tramo más poblado</span><span class="stat-value">${moda.rango}</span></div>
-        <div class="stat" title="Número de alumnos con nota en este alcance."><span class="stat-label">Alumnos</span><span class="stat-value">${total} <small>con nota</small></span></div>
-        ${sinNota ? `<div class="stat" title="Alumnos evaluables (a los que les aplica algún instrumento del alcance) sin nota agregada: no hizo ninguna versión aplicable o está pendiente."><span class="stat-label">Sin nota</span><span class="stat-value">${sinNota}</span></div>` : ''}
+        <div class="stat" title="Suma de las notas entre el número de notas. Referencia rápida del nivel general del grupo."><span class="stat-label">Media</span><span class="stat-value">${media.toFixed(1).replace('.', ',')}</span></div>
+        <div class="stat" title="Nota que deja al 50% del grupo por encima y al 50% por debajo. Si difiere mucho de la media, hay notas extremas tirando de ella."><span class="stat-label">Mediana</span><span class="stat-value">${mediana.toFixed(1).replace('.', ',')}</span></div>
+        <div class="stat" title="Cuánto se alejan típicamente las notas de la media. Baja (0,5) = grupo muy igualado; alta (3) = hay mucha diferencia entre alumnos."><span class="stat-label">Desv. típica</span><span class="stat-value">${desv.toFixed(1).replace('.', ',')}</span></div>
+        <div class="stat" title="Dispersión relativa = desviación / media, en %. Compara la dispersión entre grupos o asignaturas con medias distintas: mismo % = misma dispersión relativa."><span class="stat-label">Dispersión rel. (CV)</span><span class="stat-value">${stats.cv == null ? '—' : (stats.cv * 100).toFixed(0).replace('.', ',') + '%'}</span></div>
+        <div class="stat" title="Nota más baja y más alta. Da el salto máximo dentro del grupo."><span class="stat-label">Rango</span><span class="stat-value">${min.toFixed(1).replace('.', ',')}–${max.toFixed(1).replace('.', ',')}</span></div>
+        <div class="stat" title="El intervalo de nota (de 1 punto) donde se concentra más alumnado. Muestra dónde está el grueso del grupo."><span class="stat-label">Tramo más poblado</span><span class="stat-value">${moda.rango}</span></div>
+        <div class="stat" title="Cuántos alumnos tienen nota en este alcance. El histograma solo cuenta estos."><span class="stat-label">Alumnos</span><span class="stat-value">${total} <small>con nota</small></span></div>
+        ${sinNota ? `<div class="stat" title="Alumnos a los que les aplica algún instrumento pero no tienen nota: no hicieron ninguna versión o está pendiente de calificar."><span class="stat-label">Sin nota</span><span class="stat-value">${sinNota}</span></div>` : ''}
       </div>
       <div style="display:flex;gap:8px;align-items:flex-end;position:relative;
                   height:${ALTO + 30}px;border-bottom:2px solid #ccc;margin:8px 0 4px">
@@ -673,12 +671,9 @@ const InformeView = (function () {
         if (selInstInfo.value) { Storage.db.observaciones[selInstInfo.value] = e.target.value; Storage.save(); }
       };
     }
-    // La Cuadrícula inyecta la función de impresión (opciones.imprimir); sin
-    // ella (arnés de pruebas) el botón no hace nada.
-    const btnPdf = el.querySelector('#btn-informe-pdf');
-    if (btnPdf && opciones.imprimir) {
-      btnPdf.onclick = () => opciones.imprimir(informeHtml());
-    }
+    // La impresión del informe se hace desde el botón global de la pestaña
+    // («Imprimir / PDF» → «Informe de análisis»); no hay botón propio aquí para
+    // evitar dos entradas duplicadas.
   }
 
   return { render, informeHtml };
