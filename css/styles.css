@@ -274,6 +274,13 @@ input:focus, select:focus, textarea:focus { border-color: var(--acento); }
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+  cursor: help;
+  transition: box-shadow .15s ease, border-color .15s ease, transform .15s ease;
+}
+.stat:hover {
+  border-color: var(--acento);
+  box-shadow: var(--sombra);
+  transform: translateY(-1px);
 }
 .stat-label {
   font-size: 10px;

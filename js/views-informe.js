@@ -403,14 +403,14 @@ const InformeView = (function () {
       <p style="margin-bottom:${filtrado ? 4 : 14}px"><strong>${mediaTxt}:</strong> ${media.toFixed(1).replace('.', ',')} / 10</p>
       ${filtrado ? '<p class="no-print" style="margin-bottom:14px;font-size:12px;color:var(--tinta-suave)">Nivel filtrado con el selector superior de la cuadrícula.</p>' : ''}
       <div class="stat-grid">
-        <div class="stat"><span class="stat-label">Media</span><span class="stat-value">${media.toFixed(1).replace('.', ',')}</span></div>
-        <div class="stat"><span class="stat-label">Mediana</span><span class="stat-value">${mediana.toFixed(1).replace('.', ',')}</span></div>
-        <div class="stat"><span class="stat-label">Desv. típica</span><span class="stat-value">${desv.toFixed(1).replace('.', ',')}</span></div>
-        <div class="stat"><span class="stat-label">Dispersión rel. (CV)</span><span class="stat-value">${stats.cv == null ? '—' : (stats.cv * 100).toFixed(0).replace('.', ',') + '%'}</span></div>
-        <div class="stat"><span class="stat-label">Rango</span><span class="stat-value">${min.toFixed(1).replace('.', ',')}–${max.toFixed(1).replace('.', ',')}</span></div>
-        <div class="stat"><span class="stat-label">Tramo más poblado</span><span class="stat-value">${moda.rango}</span></div>
-        <div class="stat"><span class="stat-label">Alumnos</span><span class="stat-value">${total} <small>con nota</small></span></div>
-        ${sinNota ? `<div class="stat"><span class="stat-label">Sin nota</span><span class="stat-value">${sinNota}</span></div>` : ''}
+        <div class="stat" title="Nota media del grupo en este alcance: suma de todas las notas dividida entre el número de notas."><span class="stat-label">Media</span><span class="stat-value">${media.toFixed(1).replace('.', ',')}</span></div>
+        <div class="stat" title="Nota central: la mitad del grupo tiene una nota igual o menor, y la otra mitad igual o mayor. Más robusta que la media cuando hay valores extremos."><span class="stat-label">Mediana</span><span class="stat-value">${mediana.toFixed(1).replace('.', ',')}</span></div>
+        <div class="stat" title="Distancia típica de cada nota respecto a la media. Baja = grupo homogéneo; alta = notas muy dispersas. Se interpreta junto a la media."><span class="stat-label">Desv. típica</span><span class="stat-value">${desv.toFixed(1).replace('.', ',')}</span></div>
+        <div class="stat" title="Dispersión relativa = desviación / media. Al no tener unidades, permite comparar la dispersión entre grupos o asignaturas con medias distintas."><span class="stat-label">Dispersión rel. (CV)</span><span class="stat-value">${stats.cv == null ? '—' : (stats.cv * 100).toFixed(0).replace('.', ',') + '%'}</span></div>
+        <div class="stat" title="Diferencia entre la nota más baja y la más alta del alcance."><span class="stat-label">Rango</span><span class="stat-value">${min.toFixed(1).replace('.', ',')}–${max.toFixed(1).replace('.', ',')}</span></div>
+        <div class="stat" title="El intervalo de nota (de 1 punto) con más alumnos."><span class="stat-label">Tramo más poblado</span><span class="stat-value">${moda.rango}</span></div>
+        <div class="stat" title="Número de alumnos con nota en este alcance."><span class="stat-label">Alumnos</span><span class="stat-value">${total} <small>con nota</small></span></div>
+        ${sinNota ? `<div class="stat" title="Alumnos evaluables (a los que les aplica algún instrumento del alcance) sin nota agregada: no hizo ninguna versión aplicable o está pendiente."><span class="stat-label">Sin nota</span><span class="stat-value">${sinNota}</span></div>` : ''}
       </div>
       <div style="display:flex;gap:8px;align-items:flex-end;position:relative;
                   height:${ALTO + 30}px;border-bottom:2px solid #ccc;margin-bottom:4px">
@@ -426,9 +426,7 @@ const InformeView = (function () {
                    title="${b.rango}: ${b.cantidad} alumno${b.cantidad === 1 ? '' : 's'}"></div>
             </div>`;
         }).join('')}
-        <div style="position:absolute;top:-6px;bottom:0;left:50%;border-left:2px dashed #888"></div>
-        <span style="position:absolute;top:-22px;left:50%;transform:translateX(-50%);
-                     font-size:11px;color:#888">5 (aprobado)</span>
+        <div style="position:absolute;top:0;bottom:0;left:50%;border-left:2px dashed #888"></div>
       </div>
       <div style="display:flex;gap:8px;font-size:11px;color:var(--tinta-suave)">
         ${buckets.map((b, i) => `<span style="flex:1;text-align:center">${i}</span>`).join('')}
