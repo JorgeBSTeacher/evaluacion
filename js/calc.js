@@ -695,8 +695,8 @@ const Calc = {
     return n >= 5 ? 'ok' : 'ko';
   },
 
-  badgeHtml(n) {
-    return '<span class="badge ' + this.clasif(n) + '">' + Utils.fmt(n) + '</span>';
+  badgeHtml(n, real) {
+    return '<span class="badge ' + this.clasif(n) + '">' + (real ? Utils.fmtReal(n) : Utils.fmt(n)) + '</span>';
   },
 
   // === Saberes por instrumento (D-74c) ===

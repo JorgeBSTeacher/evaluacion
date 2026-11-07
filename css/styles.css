@@ -207,6 +207,12 @@ main { max-width: 1440px; margin: 0 auto; padding: 20px 18px 60px; }
 
 .scroll-x { overflow-x: auto; }
 
+/* Corrección: la tabla tiene su propio scroll (vertical y horizontal) para que
+   la cabecera quede fija mientras se puntúa a los últimos alumnos. Sin el
+   contenedor con scroll, el thead sticky se anclaría a .scroll-x (que no
+   desplaza en vertical) y la cabecera se iría con el contenido. */
+.scroll-correccion { overflow: auto; max-height: 72vh; }
+
 /* Filas de los paneles de Inicio: al tocarlas se abre la vista correspondiente. */
 .fila-inicio { cursor: pointer; }
 .fila-inicio:hover td { background: #faf9f4; }

@@ -740,6 +740,21 @@ async function main() {
     check('la corrección incluye la barra de navegación', h.includes('id="barra-nav"') && h.includes('id="nav-info"'));
     check('el botón «Guardar y siguiente» existe', h.includes('id="btn-siguiente"') && h.includes('Guardar y siguiente'));
 
+    // Nota real: la cabecera no debe redondear a 1 decimal (1,25 y no 1,3).
+    check('fmtReal no redondea a 1 decimal', app.Utils.fmtReal(1.25) === '1,25', app.Utils.fmtReal(1.25));
+    check('fmtReal quita los ceros de más', app.Utils.fmtReal(6.9) === '6,9' && app.Utils.fmtReal(5) === '5');
+    const appReal = cargarApp();
+    appReal.Storage.load();
+    await importarJson(appReal, estadoAci());
+    const instReal = appReal.Storage.db.instrumentos.find(i => i.id === 'iBase');
+    instReal.apartados[0].maxPts = 1.25;
+    const elReal = makeEl();
+    appReal.InstrumentosView.renderCorreccion(elReal, 'iBase');
+    check('la cabecera muestra el máximo real (1,25 y no 1,3)',
+      elReal.innerHTML.includes('sobre 1,25'), elReal.innerHTML.slice(0, 160));
+    check('la tabla de corrección usa el contenedor con scroll propio',
+      elReal.innerHTML.includes('scroll-correccion'));
+
     // Un instrumento con enlace ofrece abrirlo mientras se corrige.
     app.Storage.db.instrumentos.find(i => i.id === 'iBase').url = 'https://ejemplo.test/control';
     const el2 = makeEl();

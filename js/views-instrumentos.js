@@ -596,10 +596,10 @@ function columnasNivel(filas) {
           <span id="nav-info"></span>
           <button class="btn btn-mini btn-primario" id="btn-siguiente">Guardar y siguiente →</button>
         </div>
-        <div class="scroll-x">
+        <div class="scroll-correccion">
           <table class="tabla" id="tabla-corrige">
             <thead><tr><th>Alumno</th>${inst.apartados.map(ap =>
-              `<th title="${Utils.esc(descripcionNiveles(inst, ap))}">${Utils.esc(ap.descripcion)}<br><small>${esRubrica ? 'niveles 1 a ' + Calc.nivelesDeApartado(inst, ap).length : 'sobre ' + Utils.fmt(ap.maxPts)}</small></th>`
+              `<th title="${Utils.esc(descripcionNiveles(inst, ap))}">${Utils.esc(ap.descripcion)}<br><small>${esRubrica ? 'niveles 1 a ' + Calc.nivelesDeApartado(inst, ap).length : 'sobre ' + Utils.fmtReal(ap.maxPts)}</small></th>`
             ).join('')}<th>Nota</th></tr></thead>
             <tbody>
               ${alumnos.map(a => {
@@ -643,14 +643,14 @@ function columnasNivel(filas) {
     function notaFila(tr) {
       const alumnoId = tr.dataset.alumno;
       const n = Calc.notaInstrumento(inst, alumnoId);
-      tr.querySelector('.celda-nota-final').innerHTML = Calc.badgeHtml(n);
+      tr.querySelector('.celda-nota-final').innerHTML = Calc.badgeHtml(n, true);
     }
 
     const persistir = Utils.debounce(() => Storage.save(), 400);
     // El aviso se agrupa: si alguien teclea «77» en un apartado de 1 punto, el
     // recorte salta en la primera tecla y no queremos un toast por tecla.
     const avisarRecorte = Utils.debounce((max) => {
-      UI.toast('Esta pregunta vale como máximo ' + Utils.fmt(max) + '; se ha ajustado a esa puntuación');
+      UI.toast('Esta pregunta vale como máximo ' + Utils.fmtReal(max) + '; se ha ajustado a esa puntuación');
     }, 800);
 
     // Escape cierra la edición de la celda: suelta el foco (desaparece el cursor)

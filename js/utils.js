@@ -27,6 +27,15 @@ const Utils = {
     if (n == null || isNaN(n)) return '—';
     return (Math.round(n * 10) / 10).toFixed(1).replace('.', ',');
   },
+  // Nota real: hasta 2 decimales, sin el redondeo a 1 que hace `fmt`
+  // (1,25 en vez de 1,3; 6,9 en vez de 6,90; 5 en vez de 5,0). Se usa donde
+  // importa el valor exacto que se puede teclear (p. ej. el máximo de una
+  // pregunta o la nota de un instrumento).
+  fmtReal(n) {
+    if (n == null || isNaN(n)) return '—';
+    const r = Math.round(n * 100) / 100;
+    return String(r).replace('.', ',');
+  },
   pct(n) {
     if (n == null || isNaN(n)) return '—';
     return Math.round(n) + '%';
