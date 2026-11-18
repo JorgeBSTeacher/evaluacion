@@ -4071,6 +4071,8 @@ function columnasNivel(filas) {
     UI.openModal({
       titulo: esNueva ? 'Nuevo instrumento' : 'Editar instrumento',
       cuerpo: `
+        <label class="campo"><span>Título</span>
+          <input type="text" id="f-titulo" value="${Utils.esc(inst ? inst.titulo : '')}" placeholder="Ej. Control de unidades 1-3"></label>
         <div class="fila-campos">
           <label class="campo"><span>Tipo</span>
             <select id="f-tipo">${TIPOS.map(t => `<option ${t === tipoIni ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
@@ -4079,8 +4081,6 @@ function columnasNivel(filas) {
           <label class="campo"><span>Fecha</span>
             <input type="date" id="f-fecha" value="${inst ? inst.fecha : Utils.hoy()}"></label>
         </div>
-        <label class="campo"><span>Título</span>
-          <input type="text" id="f-titulo" value="${Utils.esc(inst ? inst.titulo : '')}" placeholder="Ej. Control de unidades 1-3"></label>
         <div class="fila-campos">
           <label class="campo"><span>Unidad (agrupa exámenes del mismo tema)</span>
             <input type="text" id="f-unidad" list="lista-unidades" value="${Utils.esc(inst ? (inst.unidad || '') : '')}" placeholder="Ej. UD5" title="Puedes elegir una unidad ya usada o escribir una nueva">
@@ -4089,15 +4089,14 @@ function columnasNivel(filas) {
             <select id="f-nivel">${opcionesNivel}</select></label>` : '<input type="hidden" id="f-nivel" value="">'}
         </div>
         <div class="fila-campos" id="fila-critmodo" style="margin-bottom:10px">
-          <label class="campo"><span>Criterios</span>
+          <label class="campo"><span>¿Cómo se evalúan los criterios?</span>
             <select id="f-critmodo">
-              <option value="desglosado" ${(inst && inst.criteriosModo) === 'desglosado' ? 'selected' : (!inst ? 'selected' : '')}>Desglosado (por apartado/parte)</option>
-              <option value="global" ${(inst && inst.criteriosModo) === 'global' ? 'selected' : ''}>Global al instrumento</option>
+              <option value="desglosado" ${(inst && inst.criteriosModo) === 'desglosado' ? 'selected' : (!inst ? 'selected' : '')}>Desglosado: cada apartado marca sus criterios</option>
+              <option value="global" ${(inst && inst.criteriosModo) === 'global' ? 'selected' : ''}>Global: todo el instrumento evalúa los mismos criterios</option>
             </select>
+            <small class="hint">«Desglosado» es lo habitual. «Global» sirve cuando toda la prueba cuenta lo mismo.</small>
           </label>
         </div>
-        <label class="campo"><span>Saberes básicos (informativo)</span>
-          <textarea id="f-saberes" rows="2" placeholder="Opcional">${Utils.esc(inst ? inst.saberes : '')}</textarea></label>
 
         <div id="bloque-niveles" style="display:none">
           ${esNueva ? `<div class="aviso" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
@@ -4117,6 +4116,8 @@ function columnasNivel(filas) {
           <div id="lista-apartados"></div>
         </label>
         <button class="btn btn-mini" type="button" id="add-ap">Añadir apartado</button>
+        <label class="campo" style="margin-top:14px"><span>Saberes básicos (opcional, informativo)</span>
+          <textarea id="f-saberes" rows="2" placeholder="Opcional">${Utils.esc(inst ? inst.saberes : '')}</textarea></label>
         <label class="campo" style="margin-top:14px"><span>Enlace (opcional)</span>
           <input type="url" id="f-url" value="${Utils.esc(inst ? (inst.url || '') : '')}" placeholder="https://… (examen, proyecto, materiales)">
           <small class="hint">Dirección del examen, del proyecto o de los materiales. Quedará a mano en el listado y al corregir.</small></label>`,
