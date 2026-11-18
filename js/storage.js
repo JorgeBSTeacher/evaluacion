@@ -52,6 +52,9 @@ const Storage = {
       // false (por defecto) = no cuenta (solo promedia lo evaluado, «Media»);
       // true = el vacio vale 0 (punitivo). Se rellena solo con migrar().
       configuracion: { sinNotaEsCero: true },
+      // Identidad visual elegida por el docente: color del tema (cabecera,
+      // acento, isotipo y favicon) y organización de los menús.
+      tema: { color: '#1f5c6b', nav: 'topbar' },
       // Color por unidad didáctica en la cuadrícula: mapa { ud: '#hex' | null }.
       // undefined = automático (primer color libre de la paleta), null = sin color.
       coloresUd: {},
@@ -414,6 +417,9 @@ const Storage = {
     if (db.meta.cambiosSinCopia == null) db.meta.cambiosSinCopia = false;
     if (db.observaciones == null) db.observaciones = {};
     if (db.coloresUd == null || typeof db.coloresUd !== 'object') db.coloresUd = {};
+    if (db.tema == null || typeof db.tema !== 'object') db.tema = { color: '#1f5c6b', nav: 'topbar' };
+    if (typeof db.tema.color !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(db.tema.color)) db.tema.color = '#1f5c6b';
+    if (typeof db.tema.nav !== 'string') db.tema.nav = 'topbar';
     db.grupos.forEach(g => { if (g.etapa == null) g.etapa = ''; });
     // La asignatura recuerda de qué curso es su currículo (p. ej. «6º») y su
     // fuente legal (la cita del decreto). Backups antiguos no los traen.

@@ -85,8 +85,11 @@ function cargarApp(opciones) {
     // dispara un guardado se cae (y no por un fallo de la app).
     s.document = crearDocumento({ ids: [
       'nav', 'app', 'estado-guardado', 'btn-guardar', 'btn-exportar', 'btn-importar',
-      'input-importar', 'informe-impresion', 'modal-root', 'toast-root'
+      'input-importar', 'informe-impresion', 'modal-root', 'modal-root-2', 'toast-root', 'acciones'
     ] });
+    // La cabecera real lleva un `.actions`; el modo barra lateral cuelga su
+    // conmutador de ahí, así que el arnés lo reproduce.
+    s.document.getElementById('acciones').className = 'actions';
     s.__alertas = [];
     s.alert = m => s.__alertas.push(String(m));
     s.confirm = () => true;

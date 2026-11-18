@@ -100,7 +100,9 @@ function columnasNivel(filas) {
     }
 
   function plantillaColumnas(nColsNivel) {
-    return `28px minmax(150px,1.5fr) 82px ${'minmax(130px,1fr) '.repeat(nColsNivel)}auto auto`;
+    // Debe tener exactamente las mismas columnas que la cabecera y la fila:
+    // descripción · peso · N niveles · botón criterios · quitar.
+    return `minmax(150px,1.5fr) 82px ${'minmax(130px,1fr) '.repeat(nColsNivel)}auto auto`;
   }
 
   function filaApartado(ap, grupos, esRubrica, modoGlobal, columnasNv) {
@@ -130,7 +132,6 @@ function columnasNivel(filas) {
   function cabeceraRubrica(columnasNv) {
     return `
       <div class="rub-head" style="grid-template-columns:${plantillaColumnas(columnasNv.length)}">
-        <span></span>
         <span>Criterio</span>
         <span>Peso</span>
         ${columnasNv.map((nv, k) => `<span title="${Utils.esc(nv.descriptor || '')}">Nivel ${k + 1}<br><small>${nv.pct}%</small></span>`).join('')}
@@ -340,6 +341,38 @@ function columnasNivel(filas) {
       fila.querySelector('.toggle-crit').textContent = 'Criterios (' + n + ')';
     }
 
+    // Modal de segunda capa para elegir los criterios de un apartado. Evita que
+    // la fila crezca sin límite (un instrumento común tiene 68 chips).
+    function modalCriteriosApartado(fila, grupos) {
+      const zona = fila.querySelector('.zona-crit');
+      const seleccion = new Set(UI.valoresChips(zona));
+      const detalle = g => `<details class="chips-nivel"${g._abierto ? ' open' : ''}><summary>${Utils.esc(g.etiqueta)} · <span class="chips-nivel-cuenta">${g.criterios.filter(c => seleccion.has(c.id)).length}</span></summary><div class="chips-grupo">${g.criterios.map(c => `<label class="chip ${seleccion.has(c.id) ? 'on' : ''}"><input type="checkbox" value="${c.id}" ${seleccion.has(c.id) ? 'checked' : ''}>${Utils.esc(c.codigo)} · ${Utils.esc(c.descripcion)}</label>`).join('')}</div></details>`;
+      const gruposHtml = grupos.map((g, i) => { g._abierto = i === 0; return g; });
+      const body = UI.openModal({
+        titulo: 'Criterios del apartado',
+        cuerpo: `<p class="hint">Marca los criterios que evalúa este apartado. Cada alumno se evalúa con los criterios de su nivel.</p>
+          <input type="search" id="busca-crit" placeholder="Buscar por código o descripción" style="margin-bottom:8px">
+          <div id="lista-niveles">${gruposHtml.map(detalle).join('')}</div>`,
+        textoGuardar: 'Listo',
+        alGuardar(body2) {
+          const elegidos = new Set(UI.valoresChips(body2.querySelector('#lista-niveles')));
+          zona.innerHTML = UI.chipsCriteriosMulti(grupos, elegidos);
+          UI.wireChips(zona);
+          zona.querySelectorAll('.chip input').forEach(inp =>
+            inp.addEventListener('change', () => actualizaEtiquetaCrit(fila)));
+          actualizaEtiquetaCrit(fila);
+          return true;
+        }
+      }, 2);
+      const busca = body.querySelector('#busca-crit');
+      if (busca) busca.oninput = () => {
+        const q = busca.value.trim().toLowerCase();
+        body.querySelectorAll('#lista-niveles .chip').forEach(ch => {
+          ch.style.display = !q || ch.textContent.toLowerCase().includes(q) ? '' : 'none';
+        });
+      };
+    }
+
     function addFilaApartado(ap, nivel, cols) {
       const esRubrica = selTipo.value === 'Rúbrica';
       const modoGlobal = !esRubrica && (body.querySelector('#f-critmodo') || {}).value === 'global';
@@ -350,8 +383,7 @@ function columnasNivel(filas) {
       fila.querySelector('.quitar-ap').onclick = () => { fila.remove(); };
       if (fila.querySelector('.toggle-crit')) {
         fila.querySelector('.toggle-crit').onclick = () => {
-          const zona = fila.querySelector('.zona-crit');
-          zona.style.display = zona.style.display === 'none' ? '' : 'none';
+          modalCriteriosApartado(fila, Calc.nivelesParaInstrumento(claseId, nivelActual()));
         };
       }
       UI.wireChips(fila);
@@ -646,9 +678,15 @@ function columnasNivel(filas) {
 
     const tabla = el.querySelector('#tabla-corrige');
 
+    // Un instrumento sin ninguna anotación no tiene nota: se muestra «—» y no
+    // un 0 (un 0 es una nota puesta que resulta en cero).
+    const tieneNota = (alumnoId) => {
+      const fila = ((Storage.db.registros && Storage.db.registros[inst.id]) || {})[alumnoId] || {};
+      return inst.apartados.some(ap => fila[ap.id] != null && fila[ap.id] !== '');
+    };
     function notaFila(tr) {
       const alumnoId = tr.dataset.alumno;
-      const n = Calc.notaInstrumento(inst, alumnoId);
+      const n = tieneNota(alumnoId) ? Calc.notaInstrumento(inst, alumnoId) : null;
       tr.querySelector('.celda-nota-final').innerHTML = Calc.badgeHtml(n, true);
     }
 

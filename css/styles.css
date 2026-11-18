@@ -3,8 +3,11 @@
   --tinta: #2b2a26;
   --tinta-suave: #6b685e;
   --linea: #d5d0c0;
-  --acento: #4f46e5;
-  --acento-suave: #eceafd;
+  --acento: #1f5c6b;
+  --acento-suave: #e4ebed;
+  /* Color de marca (cabecera, isotipo y favicon). Lo fija el docente en
+     Configuración → Tema y menús; por defecto azul petróleo. */
+  --marca: #1f5c6b;
   --ok: #15803d;
   --ok-suave: #e8f7ee;
   --ko: #b91c1c;
@@ -32,18 +35,110 @@ body {
   position: sticky; top: 0; z-index: 50;
   display: flex; align-items: center; gap: 16px;
   padding: 10px 18px;
-  background: rgba(245, 243, 236, .92);
+  background: var(--marca);
   backdrop-filter: blur(6px);
-  border-bottom: 1px solid var(--linea);
+  border-bottom: 1px solid transparent;
   flex-wrap: wrap;
 }
+/* La cabecera va a todo color: texto y controles en blanco sobre la marca. */
+.topbar .brand-txt strong { color: #fff; }
+.topbar .brand-txt small { color: rgba(255, 255, 255, .82); }
+.topbar .nav button { color: rgba(255, 255, 255, .74); }
+.topbar .nav button:hover { background: rgba(255, 255, 255, .16); color: #fff; }
+.topbar .nav button.activo {
+  background: #fff; color: var(--marca); font-weight: 700;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .26);
+}
+.topbar .nav button.peligro-activo { background: rgba(255, 255, 255, .16); color: #fff; }
+.topbar .icon-btn { color: rgba(255, 255, 255, .88); }
+.topbar .icon-btn:hover { background: rgba(255, 255, 255, .2); color: #fff; }
+.topbar .btn { background: rgba(255, 255, 255, .16); border-color: rgba(255, 255, 255, .4); color: #fff; }
+.topbar .btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, .26); border-color: rgba(255, 255, 255, .55); color: #fff;
+}
+.topbar .save-dot { box-shadow: 0 0 0 2px rgba(255, 255, 255, .35); }
+
+/* Navegación configurable (Configuración → Tema y menús). */
+.nav-fab { position: fixed; left: 16px; bottom: 16px; z-index: 9998; padding: 12px 16px;
+  border: 0; border-radius: 999px; background: var(--marca); color: #fff;
+  font-family: inherit; font-size: 14px; font-weight: 600; line-height: 1.1;
+  cursor: pointer; box-shadow: 0 6px 18px rgba(0,0,0,.28); }
+.nav-fab:hover { filter: brightness(1.08); }
+.nav-menu { position: fixed; left: 16px; bottom: 68px; z-index: 9998; width: 260px;
+  background: #fff; border: 1px solid var(--linea); border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(0,0,0,.28); padding: 8px; }
+.nav-menu[hidden] { display: none; }
+.nav-menu button, .nav-dock button, .nav-drawer button {
+  font-family: inherit; font-size: 14px; font-weight: 600; line-height: 1.2;
+  cursor: pointer; color: var(--tinta); }
+.nav-menu button { display: block; width: 100%; text-align: left; padding: 10px 12px;
+  border: 0; background: transparent; border-radius: 8px; }
+.nav-menu button:hover { background: var(--acento-suave); color: var(--acento); }
+.nav-menu button.activo { background: var(--acento); color: #fff; }
+body.modo-fab main, body.modo-dock main { padding-bottom: 84px; }
+.nav-dock { position: fixed; left: 50%; transform: translateX(-50%); bottom: 10px; z-index: 9998;
+  display: flex; gap: 2px; padding: 6px; max-width: calc(100% - 20px); overflow-x: auto;
+  background: rgba(255,255,255,.96);
+  border: 1px solid var(--linea); border-radius: 14px; box-shadow: 0 6px 20px rgba(0,0,0,.20); }
+.nav-dock button { min-width: 74px; padding: 8px 6px; border: 0; background: transparent;
+  border-radius: 10px; font-size: 11px; color: var(--tinta-suave); }
+.nav-dock button:hover { background: var(--acento-suave); color: var(--acento); }
+.nav-dock button.activo { background: var(--acento); color: #fff; }
+.nav-drawer { position: fixed; left: 0; top: 0; bottom: 0; width: 200px; z-index: 40;
+  background: #fff; border-right: 1px solid var(--linea); padding: 76px 8px 14px; overflow: auto; }
+.nav-drawer[hidden] { display: none; }
+.nav-drawer button { display: block; width: 100%; text-align: left; padding: 10px 12px;
+  margin-bottom: 2px; border: 0; background: transparent; border-radius: 8px; }
+.nav-drawer button:hover { background: var(--acento-suave); color: var(--acento); }
+.nav-drawer button.activo { background: var(--acento); color: #fff; }
+body.modo-drawer .topbar, body.modo-drawer main { margin-left: 200px; }
+
+/* Modo básico: la nav baja a una fila propia, bajo la cabecera. */
+body.modo-basic .topbar { flex-wrap: wrap; }
+body.modo-basic #nav {
+  order: 3; flex: 1 1 100%;
+  margin: 0 -18px; padding: 6px 12px;
+  background: #fff; border-top: 1px solid rgba(255,255,255,.22);
+  overflow-x: auto;
+}
+body.modo-basic #nav button { color: var(--marca); }
+body.modo-basic #nav button:hover { background: var(--acento-suave); color: var(--marca); }
+body.modo-basic #nav button.activo { background: var(--marca); color: #fff; box-shadow: none; }
+@media (max-width: 520px) {
+  body.modo-basic .brand-txt small { display: none; }
+  .nav-dock { left: 10px; right: 10px; transform: none; max-width: none; }
+  .nav-dock button { min-width: 58px; font-size: 10px; }
+}
+/* En pantallas estrechas la barra lateral superpuesta no desplaza el contenido. */
+@media (max-width: 720px) {
+  body.modo-drawer .topbar, body.modo-drawer main { margin-left: 0; }
+  .nav-drawer { width: 220px; box-shadow: 0 0 30px rgba(0, 0, 0, .3); }
+}
+
+/* Vista «Montaje» (modo básico). */
+.lista-montaje { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.btn-montaje {
+  display: flex; flex-direction: column; gap: 4px; text-align: left;
+  padding: 14px; border: 1px solid var(--linea); border-radius: 12px;
+  background: var(--papel); cursor: pointer; font-family: inherit; font-size: 14px;
+}
+.btn-montaje:hover { border-color: var(--acento); background: var(--acento-suave); }
+.btn-montaje b { color: var(--acento); font-size: 15px; }
+.btn-montaje span { color: var(--tinta-suave); font-size: 13px; }
 
 .brand { display: flex; align-items: center; gap: 10px; }
 .logo {
   display: inline-flex; align-items: center; justify-content: center;
   width: 40px; height: 40px; border-radius: 12px;
   background: var(--acento); color: #fff; font-weight: 800; font-size: 15px;
+  flex: none;
 }
+/* Isotipo en la cabecera: pastilla blanca con el color del tema. */
+.logo.isotipo {
+  background: #fff; color: var(--marca);
+  border: 1px solid rgba(255, 255, 255, .55);
+}
+.logo.isotipo svg { width: 26px; height: 26px; display: block; }
 .brand-txt { line-height: 1.1; }
 .brand-txt small { display: block; color: var(--tinta-suave); font-size: 11px; }
 
@@ -127,6 +222,21 @@ main { max-width: 1440px; margin: 0 auto; padding: 20px 18px 60px; }
 .campo--toggle { display: flex; align-items: center; gap: 10px; cursor: pointer; }
 .campo--toggle input { width: auto; flex: 0 0 auto; margin: 0; }
 .campo--toggle span { flex: 1; }
+
+/* Configuración con pestañas (submenú, no un cajón de sastre). */
+.tabs-ajustes { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.ajuste-seccion { display: none; }
+.ajuste-seccion.activa { display: block; }
+.bloque-tema { margin-top: 14px; padding: 12px 14px; border: 1px solid var(--linea); border-radius: 10px; background: var(--papel); }
+.bloque-tema > b { display: block; margin-bottom: 4px; }
+.bloque-tema > p { margin: 0 0 10px; font-size: 13px; color: var(--tinta-suave); }
+.tonos { display: grid; grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); gap: 6px; }
+.tono {
+  width: 34px; height: 34px; padding: 0; border-radius: 8px; cursor: pointer;
+  border: 2px solid transparent;
+}
+.tono:hover { transform: scale(1.06); }
+.tono.on { border-color: var(--tinta); }
 /* Bloque de copias de seguridad del modal Configuración. */
 .bloque-copias {
   margin-top: 14px; padding: 12px 14px;
@@ -364,10 +474,12 @@ input:focus, select:focus, textarea:focus { border-color: var(--acento); }
 .vacio-grande { text-align: center; color: var(--tinta-suave); padding: 40px 20px; }
 .vacio-grande strong { display: block; font-size: 17px; color: var(--tinta); margin-bottom: 6px; }
 
-#modal-root .velo {
+#modal-root .velo, #modal-root-2 .velo {
   position: fixed; inset: 0; background: rgba(43, 42, 38, .45);
   display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px;
 }
+/* El modal anidado (p. ej. criterios dentro del instrumento) va por encima. */
+#modal-root-2 .velo { z-index: 200; }
 .modal {
   background: #fff; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,.25);
   width: min(720px, 100%); max-height: 90vh; display: flex; flex-direction: column;

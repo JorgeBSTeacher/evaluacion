@@ -33,8 +33,12 @@ function enfocarModal(raiz) {
 }
 
 const UI = {
-  openModal({ titulo, cuerpo, textoGuardar, alGuardar, peligro }) {
-    const root = document.getElementById('modal-root');
+  // `capa` (1 por defecto, 2 para modales anidados, p. ej. elegir criterios
+  // dentro del modal de instrumento) permite abrir un segundo modal por encima
+  // sin destruir el primero.
+  openModal({ titulo, cuerpo, textoGuardar, alGuardar, peligro }, capa) {
+    const nivel = capa === 2 ? 2 : 1;
+    const root = document.getElementById(nivel === 2 ? 'modal-root-2' : 'modal-root');
     elementoFocoPrevio = (document.activeElement && document.activeElement.focus) ? document.activeElement : null;
     const idTitulo = 'modal-titulo';
     root.innerHTML = `
@@ -61,7 +65,8 @@ const UI = {
       btn.onclick = () => {
         if (alGuardar(body, cerrar) !== false) {
           cerrar();
-          if (typeof App !== 'undefined' && App.refrescar) App.refrescar();
+          // La segunda capa no refresca la vista: el modal padre sigue abierto.
+          if (nivel === 1 && typeof App !== 'undefined' && App.refrescar) App.refrescar();
         }
       };
     }
@@ -83,8 +88,13 @@ const UI = {
   },
 
   closeModal() {
-    document.getElementById('modal-root').innerHTML = '';
-    document.getElementById('modal-root').onkeydown = null;
+    // Cierra la capa superior abierta (la 2 si la hay; si no, la 1).
+    const raiz2 = document.getElementById('modal-root-2');
+    const hay2 = !!(raiz2 && raiz2.innerHTML);
+    const root = document.getElementById(hay2 ? 'modal-root-2' : 'modal-root');
+    if (!root) { elementoFocoPrevio = null; return; }
+    root.innerHTML = '';
+    root.onkeydown = null;
     // Devolver el foco al disparador, si sigue vivo (un repintado pudo
     // sustituirlo). `isConnected` evita enfocar un nodo huérfano.
     const previo = elementoFocoPrevio;
@@ -121,7 +131,9 @@ const UI = {
   // Chips de criterios agrupados por nivel (para un instrumento «común», que es
   // para todo el alumnado). `grupos` = [{ etiqueta, criterios }].
   chipsCriteriosMulti(grupos, seleccionados) {
-    const sel = seleccionados || [];
+    // Acepta un array o un Set de ids marcados.
+    const sel = seleccionados == null ? []
+      : (typeof seleccionados.has === 'function' ? [...seleccionados] : seleccionados);
     const partes = [];
     // Compatibilidad: si llega un asignaturaId (string), se trata como un único grupo.
     const lista = (typeof grupos === 'string')

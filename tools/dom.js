@@ -191,6 +191,18 @@ function crearNodo(tag) {
   });
 
   el.appendChild = n => { el._sucio = true; return el._meter(n); };
+  el.insertBefore = (n, ref) => {
+    if (!ref) return el.appendChild(n);
+    const i = el.childNodes.indexOf(ref);
+    el._sucio = true;
+    if (i >= 0) el.childNodes.splice(i, 0, n);
+    else el.childNodes.push(n);
+    n.parentNode = el;
+    return n;
+  };
+  el.prepend = (...nodos) => {
+    nodos.slice().reverse().forEach(n => el.insertBefore(n, el.childNodes[0] || null));
+  };
   el.removeChild = n => {
     const i = el.childNodes.indexOf(n);
     if (i >= 0) {

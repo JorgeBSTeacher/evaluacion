@@ -800,6 +800,19 @@ async function main() {
       !!celda && celda.dataset.alumno === 'a1',
       celda ? 'data-alumno=' + celda.dataset.alumno : '(sin celda)');
 
+    // Un instrumento sin ninguna anotación no tiene nota: se muestra «—», no un 0.
+    const appSin = cargarApp({ dom: true });
+    appSin.Storage.load();
+    await importarJson(appSin, estadoAci());
+    appSin.Storage.db.registros.iBase = {};
+    const elSin = appSin.document.createElement('div');
+    appSin.document.getElementById('app').appendChild(elSin);
+    appSin.InstrumentosView.renderCorreccion(elSin, 'iBase');
+    const notasSin = Array.from(elSin.querySelectorAll('#tabla-corrige tbody tr[data-alumno] td:last-child'))
+      .map(td => td.textContent.trim());
+    check('la corrección muestra «—» y no 0 cuando no hay ninguna anotación',
+      notasSin.length > 0 && notasSin.every(t => t === '—'), notasSin.slice(0, 4).join(','));
+
     // --- Nota por encima del máximo: NUNCA se acepta (bug del valor fantasma) ---
     // El caso que la batería no cubría: todos los apartados de prueba valían 10, así
     // que teclear de más no se probaba nunca. Un 7 en un apartado de 1 punto hacía
@@ -975,8 +988,8 @@ async function main() {
       const cab = IV.cabeceraRubrica(cols);
       const fila = IV.filaApartado({ id: 'x', descripcion: 'Ortografía', criterioIds: [], peso: 3, niveles: [] }, 's1', true, false, cols);
       const tokens = plantilla.trim().split(/\s+(?![^(]*\))/).length;
-      check(`plantilla de ${n} niveles = ${n + 5} columnas`, tokens === n + 5, 'tokens=' + tokens);
-      check(`la cabecera de ${n} niveles tiene ${n + 5} celdas`, cuenta(cab, /<span/g) === n + 5);
+      check(`plantilla de ${n} niveles = ${n + 4} columnas`, tokens === n + 4, 'tokens=' + tokens);
+      check(`la cabecera de ${n} niveles tiene ${n + 4} celdas`, cuenta(cab, /<span/g) === n + 4);
       // La fila de rúbrica lleva descripción, peso, n niveles, botón y quitar (n+4).
       check(`la fila de ${n} niveles tiene ${n + 4} campos`, cuenta(fila, /<(input|button|span)/g) === n + 4);
       check(`la fila crea ${n} entradas de nivel`, cuenta(fila, /class="ap-nv"/g) === n);
@@ -4130,6 +4143,102 @@ async function main() {
       'ok=' + ok + ' escritos=' + escritos);
     await S.importar({ _text: JSON.stringify(estadoAci()), name: 'mi-curso.json' });
     check('importar recuerda el nombre del fichero cargado', S.nombreFichero === 'mi-curso.json', S.nombreFichero);
+  }
+
+  console.log('\n== Configuración con pestañas y tema ==');
+  {
+    const app = cargarApp({ dom: true });
+    app.Storage.load();
+    await importarJson(app, estadoAci());
+    const doc = app.document;
+    app.App.abrirAjustes();
+    const tabs = Array.from(doc.querySelectorAll('#tabs-ajustes .chip')).map(c => c.textContent.trim());
+    check('Configuración se organiza en pestañas',
+      tabs.length === 5 && tabs.indexOf('Tema y menús') !== -1, tabs.join(', '));
+    doc.querySelector('[data-ajuste="tema"]').click();
+    check('la pestaña Tema muestra los 22 tonos', doc.querySelectorAll('#tonos-tema .tono').length === 22,
+      String(doc.querySelectorAll('#tonos-tema .tono').length));
+    doc.querySelector('[data-color="#3b4d63"]').click();
+    check('elegir un tono lo guarda en db.tema.color',
+      app.Storage.db.tema && app.Storage.db.tema.color === '#3b4d63',
+      JSON.stringify(app.Storage.db.tema));
+    check('el acento de énfasis sigue al color del tema',
+      doc.documentElement.style['--acento'] === '#3b4d63', doc.documentElement.style['--acento']);
+    check('el tinte suave sigue al color del tema',
+      !!doc.documentElement.style['--acento-suave'], doc.documentElement.style['--acento-suave']);
+  }
+
+  console.log('\n== Navegación configurable (organización de menús) ==');
+  {
+    const app = cargarApp({ dom: true });
+    app.Storage.load();
+    await importarJson(app, estadoAci());
+    const doc = app.document;
+    const nav = doc.getElementById('nav');
+    const botonesNav = () => Array.from(nav.querySelectorAll('button')).map(b => b.textContent);
+    app.Storage.db.tema.nav = 'topbar';
+    app.App.ir('inicio');
+    check('por defecto la nav es la barra superior con 6 destinos',
+      nav.style.display !== 'none' && botonesNav().length === 6, botonesNav().join(', '));
+    app.Storage.db.tema.nav = 'basic';
+    app.App.ir('inicio');
+    check('el modo básico deja 4 destinos y añade Montaje',
+      botonesNav().length === 4 && botonesNav().indexOf('Montaje') !== -1, botonesNav().join(', '));
+    check('el modo básico sigue mostrando Instrumentos',
+      botonesNav().indexOf('Instrumentos') !== -1, botonesNav().join(', '));
+    check('el modo básico guarda Alumnos y Currículo',
+      botonesNav().indexOf('Alumnos y grupos') === -1 && botonesNav().indexOf('Currículo') === -1,
+      botonesNav().join(', '));
+    app.App.ir('montaje');
+    check('la vista Montaje enlaza las tres vistas de preparación',
+      ['alumnos', 'clases', 'curriculo'].every(id => !!doc.querySelector(`[data-ir="${id}"]`)),
+      Array.from(doc.querySelectorAll('[data-ir]')).map(b => b.dataset.ir).join(', '));
+    doc.querySelector('[data-ir="curriculo"]').click();
+    check('en modo básico Montaje queda activo dentro de una vista de preparación',
+      !!(nav.querySelector('button.activo') && nav.querySelector('button.activo').textContent === 'Montaje'),
+      nav.querySelector('button.activo') ? nav.querySelector('button.activo').textContent : '(ninguno)');
+    app.Storage.db.tema.nav = 'fab';
+    app.App.ir('inicio');
+    check('el modo flotante crea el botón de vistas y su menú',
+      !!doc.querySelector('.nav-fab') && !!doc.querySelector('.nav-menu'), '');
+    check('el menú flotante recoge las 6 vistas',
+      doc.querySelectorAll('.nav-menu button').length === 6, String(doc.querySelectorAll('.nav-menu button').length));
+    app.Storage.db.tema.nav = 'dock';
+    app.App.ir('inicio');
+    check('el modo dock crea una barra inferior con 6 destinos',
+      !!doc.querySelector('.nav-dock') && doc.querySelectorAll('.nav-dock button').length === 6,
+      String(doc.querySelectorAll('.nav-dock button').length));
+    app.Storage.db.tema.nav = 'drawer';
+    app.App.ir('inicio');
+    check('el modo barra lateral crea el panel y su conmutador',
+      !!doc.querySelector('.nav-drawer') && !!doc.querySelector('.nav-drawer-toggle'), '');
+    check('la barra lateral recoge los 6 destinos',
+      doc.querySelectorAll('.nav-drawer button').length === 6, String(doc.querySelectorAll('.nav-drawer button').length));
+  }
+
+  console.log('\n== Modal de criterios del instrumento (capa 2) ==');
+  {
+    const app = cargarApp({ dom: true });
+    app.Storage.load();
+    await importarJson(app, estadoAci());
+    const doc = app.document;
+    app.InstrumentosView.modalInstrumento(null, 'c1');
+    const btn = doc.querySelector('.toggle-crit');
+    check('el botón de criterios del apartado está presente', !!btn, btn ? btn.textContent.trim() : '(sin botón)');
+    if (btn) btn.click();
+    const raiz2 = doc.getElementById('modal-root-2');
+    check('abre un modal de criterios en una segunda capa',
+      !!(raiz2 && raiz2.innerHTML) && /Criterios del apartado/.test(raiz2.textContent));
+    check('el modal de criterios agrupa por nivel y lleva buscador',
+      !!(raiz2 && raiz2.querySelectorAll('.chips-nivel').length >= 1 && raiz2.querySelector('#busca-crit')));
+    check('el modal del instrumento sigue abierto debajo', !!doc.querySelector('#lista-apartados .apartado-fila'));
+    const marca = raiz2 ? raiz2.querySelector('.chip input') : null;
+    if (marca) { marca.checked = true; marca.click(); }
+    if (raiz2 && raiz2.querySelector('.guardar')) raiz2.querySelector('.guardar').click();
+    const btn2 = doc.querySelector('.toggle-crit');
+    check('«Listo» cierra la capa 2 y deja la selección en el apartado',
+      (raiz2 ? !raiz2.innerHTML : true) && !!btn2 && /1/.test(btn2.textContent),
+      btn2 ? btn2.textContent.trim() : '(sin botón)');
   }
 
   console.log('\n' + (fallos ? 'FALLOS: ' + fallos + '/' + total : 'TODO OK: ' + total + ' comprobaciones')
