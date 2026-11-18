@@ -2650,6 +2650,7 @@ async function main() {
     ];
     const el = makeEl({ querySelectorAll: sel => (sel === '[data-subvista]' ? chips : []) });
     app.InformeView.render(el, { claseSel: 'c1', nivelSel: '__todas__' });
+    chips[0].onclick(); // la vista por defecto ahora es Resumen; se elige Hallazgos
     const h = el.innerHTML;
     check('el informe muestra el resumen de severidad',
       /\d+ críticos?/.test(h) && h.includes('de atención'), h.slice(0, 160));
@@ -2679,6 +2680,29 @@ async function main() {
     check('el informe de análisis imprime las cuatro subvistas',
       infAn.includes('>Hallazgos</h2>') && infAn.includes('>Criterios</h2>')
       && infAn.includes('>Distribución</h2>') && infAn.includes('>Alumnos en riesgo</h2>'));
+  }
+
+  console.log('\n== Informe: subvista Resumen (por defecto) ==');
+  {
+    const app = cargarApp();
+    app.Storage.load();
+    await importarJson(app, estadoInforme());
+    const chips = [
+      { dataset: { subvista: 'resumen' } },
+      { dataset: { subvista: 'hallazgos' } },
+      { dataset: { subvista: 'alumnos' } }
+    ];
+    const el = makeEl({ querySelectorAll: sel => (sel === '[data-subvista]' ? chips : []) });
+    app.InformeView.render(el, { claseSel: 'c1', nivelSel: '__todas__' });
+    const h = el.innerHTML;
+    check('la vista por defecto es Resumen',
+      h.includes('Alumnos a los que atender') && h.includes('Criterios con dificultad'));
+    check('el resumen lleva las tarjetas de media, aprobados, riesgo y criterios',
+      h.includes('Media') && h.includes('Aprueban') && h.includes('Alumnos en riesgo')
+      && h.includes('Criterios con dificultad'));
+    chips[2].onclick();
+    check('el enlace del resumen lleva a la subvista Alumnos',
+      el.innerHTML.includes('alumnos con criterios por debajo del 50%'));
   }
 
   // Criterios y Distribución con niveles: una tabla por nivel y filtro de alumnado.
@@ -2754,9 +2778,15 @@ async function main() {
     const viDb = vi.Storage.db;
     viDb.registros.iAci = { c1al: { q1: 0 }, c2al: { q1: 0 } };
     const vel = vi.document.createElement('div');
+    // La vista por defecto es Resumen; estos controles miran Hallazgos.
+    const irAHallazgos = () => {
+      const chip = vel.querySelector('[data-subvista="hallazgos"]');
+      if (chip) chip.click();
+    };
 
     // Con Base, el control de 4º no se ofrece ni se analiza.
     vi.InformeView.render(vel, { claseSel: 'c1', nivelSel: '' });
+    irAHallazgos();
     const selBase = vel.querySelector('#alc-instrumento');
     const opsBase = selBase ? Array.from(selBase.querySelectorAll('option')).map(o => o.textContent) : [];
     check('D-69 · con «Base» el alcance no ofrece el control de otro nivel',
@@ -2769,6 +2799,7 @@ async function main() {
 
     // Con «todos los niveles» sí aparece.
     vi.InformeView.render(vel, { claseSel: 'c1', nivelSel: '__todas__' });
+    irAHallazgos();
     const selTod = vel.querySelector('#alc-instrumento');
     const opsTod = selTod ? Array.from(selTod.querySelectorAll('option')).map(o => o.textContent) : [];
     check('D-69 · con «todos los niveles» el alcance sí ofrece el control ACI',
@@ -2786,6 +2817,7 @@ async function main() {
     const selTod2 = vel.querySelector('#alc-instrumento');
     selTod2.value = 'iAci';
     selTod2.onchange({ target: { value: 'iAci' } });
+    irAHallazgos();
     const antes = (vel.querySelector('#informe-cuerpo') || {}).textContent || '';
     check('D-69 · con el control ACI elegido, el informe se ciñe a él',
       antes.includes('Control 4º') && !antes.includes('Control A (base)'),
@@ -2795,6 +2827,7 @@ async function main() {
     // instrumentos y sale vacío aunque el control de base tenga fallos.
     viDb.registros.iBase = { a1: { p1: 0 }, a2: { p1: 0 }, c1al: { p1: 9 } };
     vi.InformeView.render(vel, { claseSel: 'c1', nivelSel: '' });
+    irAHallazgos();
     const selLimpio = vel.querySelector('#alc-instrumento');
     const cuerpoSuelto = (vel.querySelector('#informe-cuerpo') || {}).textContent || '';
     check('D-69 · un filtro de instrumento que el nivel deja fuera se suelta solo',
@@ -2878,6 +2911,8 @@ async function main() {
     // se cuela hasta Calc, esa regla descarta todos los instrumentos y la tabla
     // desaparece aunque el resto del informe siga pintándose.
     app.InformeView.render(el, { claseSel: claseId, nivelSel: '__todas__' });
+    const chipH = el.querySelector('[data-subvista="hallazgos"]');
+    if (chipH) chipH.click();
     const cuerpo = (el.querySelector('#informe-cuerpo') || {}).textContent || '';
     check('D-71 · con «Todos los niveles» la tabla de preguntas sale',
       cuerpo.includes('Preguntas con fallos'), cuerpo.replace(/\s+/g, ' ').slice(0, 160));
@@ -3015,6 +3050,8 @@ async function main() {
     // currículo (no de si hay notas): sus criterios deben aparecer en algún
     // apartado del instrumento (o en los criterios globales, en modo global).
     const puede = (inst, aluId) => {
+      // Un instrumento «común» (sin nivel) es para todo el alumnado.
+      if (!inst.nivel) return true;
       const ids = new Set(Calc.criteriosDeAlumno(inst.claseId, aluId).map(cr => cr.id));
       if (inst.criteriosModo === 'global') return (inst.criterioIdsGlobal || []).some(id => ids.has(id));
       return (inst.apartados || []).some(ap => (ap.criterioIds || []).some(id => ids.has(id)));
@@ -3280,13 +3317,36 @@ async function main() {
     check('F19 · un instrumento «BASE» excluye al alumnado con ACI',
       db.instrumentos.filter(i => i.nivel === 'BASE').every(i =>
         Calc.alumnosDeInstrumento(i).every(a => !Calc.nivelDeAlumno(i.claseId, a.id))));
-    check('F20 · un instrumento común incluye a todo el alumnado sin adaptación',
+    check('F20 · un instrumento común incluye a todo el alumnado (también el ACI)',
       db.instrumentos.filter(i => !i.nivel).every(i =>
-        Calc.alumnosDeInstrumento(i).length === baseDe(Calc.clase(i.claseId)).length
-        && Calc.alumnosDeInstrumento(i).every(a => !Calc.nivelDeAlumno(i.claseId, a.id))));
-    check('F21 · el alumnado ACI solo entra en los instrumentos donde puede puntuar',
-      db.instrumentos.every(i => Calc.alumnosDeInstrumento(i)
-        .every(a => !Calc.nivelDeAlumno(i.claseId, a.id) || puede(i, a.id))));
+        Calc.alumnosDeInstrumento(i).length === Calc.alumnosDeClase(i.claseId).length));
+    check('F21 · el alumnado ACI solo entra en su nivel o en instrumentos comunes',
+      db.instrumentos.every(i => Calc.alumnosDeInstrumento(i).every(a => {
+        const nv = Calc.nivelDeAlumno(i.claseId, a.id);
+        return !nv || !i.nivel || Calc.nivelNorm(i.nivel) === nv;
+      })));
+
+    // Un instrumento «común» es para todo el grupo; cada alumno se evalúa con
+    // los criterios de SU nivel (el apartado puede mapear criterios de varios).
+    check('F22 · un instrumento común evalúa a cada alumno con los criterios de su nivel',
+      (() => {
+        const c = clases[0];
+        const critBase = Calc.criteriosDeClase(c.id)[0];
+        const nv = Calc.nivelesAciDeClase(c.id)[0];
+        const critAci = Calc.criteriosDeNivel(c.id, nv.codigo)[0];
+        const inst = {
+          id: '__comun', claseId: c.id, tipo: 'Control', titulo: 'x', periodo: 'T1', nivel: '', unidad: 'UD1',
+          apartados: [{ id: 'p', orden: 1, descripcion: 'x', maxPts: 2, criterioIds: [critBase.id, critAci.id] }]
+        };
+        if (Calc.alumnosDeInstrumento(inst).length !== Calc.alumnosDeClase(c.id).length) return false;
+        const aluBase = Calc.alumnosDeClase(c.id).find(a => !Calc.nivelDeAlumno(c.id, a.id));
+        const aluAci = Calc.alumnosDeClase(c.id).find(a => Calc.nivelDeAlumno(c.id, a.id) === nv.codigo);
+        Storage.db.registros.__comun = { [aluBase.id]: { p: 1.5 }, [aluAci.id]: { p: 1 } };
+        const lb = Calc.logroCriterioEnInsts(critBase.id, c.id, aluBase.id, [inst]);
+        const la = Calc.logroCriterioEnInsts(critAci.id, c.id, aluAci.id, [inst]);
+        delete Storage.db.registros.__comun;
+        return lb === 0.75 && la === 0.5;
+      })());
 
     // --- G. Vistas ---
     const errores = [];
@@ -4051,6 +4111,25 @@ async function main() {
     // navegador, pero render respeta subVista si se setea antes). Como subVista es
     // interna, verificamos el cálculo puro (arriba) y que render no lanza.
     check('render de InformeView no lanza con datos D-74c', typeof el.innerHTML === 'string');
+  }
+
+  console.log('\n== Guardado: sobrescribe el fichero de trabajo ==');
+  {
+    const app = cargarApp({ dom: true });
+    app.Storage.load();
+    await importarJson(app, estadoAci());
+    const S = app.Storage;
+    let escritos = 0;
+    S.ficheroHandle = {
+      name: 'evalcrit.json',
+      queryPermission: async () => 'granted',
+      createWritable: async () => ({ write: async () => { escritos++; }, close: async () => {} })
+    };
+    const ok = await S.guardar();
+    check('guardar() usa el manejador recordado y no exporta', ok === true && escritos === 1,
+      'ok=' + ok + ' escritos=' + escritos);
+    await S.importar({ _text: JSON.stringify(estadoAci()), name: 'mi-curso.json' });
+    check('importar recuerda el nombre del fichero cargado', S.nombreFichero === 'mi-curso.json', S.nombreFichero);
   }
 
   console.log('\n' + (fallos ? 'FALLOS: ' + fallos + '/' + total : 'TODO OK: ' + total + ' comprobaciones')

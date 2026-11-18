@@ -103,7 +103,7 @@ function columnasNivel(filas) {
     return `28px minmax(150px,1.5fr) 82px ${'minmax(130px,1fr) '.repeat(nColsNivel)}auto auto`;
   }
 
-  function filaApartado(ap, asignaturaId, esRubrica, modoGlobal, columnasNv) {
+  function filaApartado(ap, grupos, esRubrica, modoGlobal, columnasNv) {
     const peso = ap.peso != null ? ap.peso : (esRubrica ? 1 : ap.maxPts);
     const cols = esRubrica ? (columnasNv || []) : [];
     return `
@@ -122,7 +122,7 @@ function columnasNivel(filas) {
           ? '<small style="color:var(--tinta-suave)">aplica criterios globales</small>'
           : `<button type="button" class="btn btn-mini toggle-crit" title="Elegir criterios evaluados">Criterios</button>`}
         <button type="button" class="btn btn-mini quitar-ap">Quitar</button>
-        ${modoGlobal ? '' : `<div class="zona-crit" style="display:none">${UI.chipsCriterios(asignaturaId, ap.criterioIds)}</div>`}
+        ${modoGlobal ? '' : `<div class="zona-crit" style="display:none">${UI.chipsCriteriosMulti(grupos, ap.criterioIds)}</div>`}
       </div>`;
   }
 
@@ -288,8 +288,10 @@ function columnasNivel(filas) {
     const selTipo = body.querySelector('#f-tipo');
     const listaAp = body.querySelector('#lista-apartados');
     const chipsGlobal = body.querySelector('#chips-criterios-global');
-    chipsGlobal.dataset.asig = asig.id;
-    chipsGlobal.innerHTML = UI.chipsCriterios(asig.id, inst ? (inst.criterioIdsGlobal || []) : []);
+    chipsGlobal.dataset.asig = String(nivelIni || '');
+    chipsGlobal.innerHTML = UI.chipsCriteriosMulti(
+      Calc.nivelesParaInstrumento(claseId, nivelIni || ''),
+      inst ? (inst.criterioIdsGlobal || []) : []);
     UI.wireChips(chipsGlobal);
 
     // Columnas de la cuadrícula de rúbrica: la unión de los niveles propios de
@@ -340,9 +342,9 @@ function columnasNivel(filas) {
     function addFilaApartado(ap, nivel, cols) {
       const esRubrica = selTipo.value === 'Rúbrica';
       const modoGlobal = !esRubrica && (body.querySelector('#f-critmodo') || {}).value === 'global';
-      const asigCrit = Calc.asignaturaDeNivel(claseId, nivel || nivelActual());
+      const grupos = Calc.nivelesParaInstrumento(claseId, nivel || nivelActual());
       const div = document.createElement('div');
-      div.innerHTML = filaApartado(ap || { id: 'nuevo', descripcion: '', maxPts: '', criterioIds: [] }, asigCrit ? asigCrit.id : asig.id, esRubrica, modoGlobal, cols).trim();
+      div.innerHTML = filaApartado(ap || { id: 'nuevo', descripcion: '', maxPts: '', criterioIds: [] }, grupos, esRubrica, modoGlobal, cols).trim();
       const fila = div.firstElementChild;
       fila.querySelector('.quitar-ap').onclick = () => { fila.remove(); };
       if (fila.querySelector('.toggle-crit')) {
@@ -373,21 +375,24 @@ function columnasNivel(filas) {
 
     function refrescaNivel() {
       const nivel = nivelActual();
-      const asigCrit = Calc.asignaturaDeNivel(claseId, nivel);
-      const idNuevo = String(asigCrit ? asigCrit.id : asig.id);
-      // Si ya estábamos pintando este mismo currículo, respetamos lo que el
-      // docente tenga marcado; si venimos de otro (o es la primera pintada),
-      // partimos de los criterios guardados del instrumento. Así, al editar un
-      // control ya hecho, sus criterios salen marcados.
+      const grupos = Calc.nivelesParaInstrumento(claseId, nivel);
+      const idNuevo = String(nivel);
+      // Si ya estábamos pintando este mismo nivel, respetamos lo que el docente
+      // tenga marcado; si venimos de otro (o es la primera pintada), partimos de
+      // los criterios guardados del instrumento.
       const seleccion = (chipsGlobal.dataset.asig === idNuevo)
         ? UI.valoresChips(chipsGlobal)
         : (inst ? (inst.criterioIdsGlobal || []) : []);
       chipsGlobal.dataset.asig = idNuevo;
       const hint = body.querySelector('#hint-asig-crit');
-      if (hint) hint.textContent = 'Criterios del currículo de ' + (asigCrit ? asigCrit.nombre : '') +
-        (nivel && nivel !== 'BASE' ? ' (nivel ' + Calc.etiquetaNivel(claseId, nivel) + ')' : '');
+      if (hint) {
+        hint.textContent = nivel
+          ? 'Criterios del currículo de ' + ((Calc.asignaturaDeNivel(claseId, nivel) || {}).nombre || '') +
+            ' (nivel ' + Calc.etiquetaNivel(claseId, nivel) + ')'
+          : 'Criterios de todos los niveles: el instrumento es común a todo el grupo y cada alumno se evalúa con los suyos.';
+      }
       pintaFilas(estadoFilas(), nivel);
-      chipsGlobal.innerHTML = UI.chipsCriterios(asigCrit ? asigCrit.id : asig.id, seleccion);
+      chipsGlobal.innerHTML = UI.chipsCriteriosMulti(grupos, seleccion);
       UI.wireChips(chipsGlobal);
     }
     selTipo.onchange = refrescaTipo;

@@ -11,6 +11,10 @@ const Storage = {
   // Días sin copia de seguridad a partir de los cuales se avisa en Inicio.
   DIAS_COPIA: 7,
   db: null,
+  // Fichero de trabajo: nombre y manejador. Permiten sobrescribir el mismo
+  // fichero al guardar en lugar de amontonar backups con fecha.
+  nombreFichero: 'evalcrit.json',
+  ficheroHandle: null,
 
   defaults() {
     const hoy = new Date();
@@ -227,36 +231,98 @@ const Storage = {
     }
   },
 
-  async guardar() {
-    // Guarda siempre en el mismo fichero (evalcrit.json) dentro de la carpeta
-    // de backups elegida: sobrescribe, evitando amontonar archivos.
-    const contenido = JSON.stringify(this.db, null, 2);
-    if (!this.puedeCarpeta()) return this.exportar();
-    let dir = await this.idbLeer('dir');
-    if (!dir) dir = await this.elegirCarpetaBackup();
-    if (!dir) return false; // el usuario canceló
-    let perm = 'granted';
-    if (dir.queryPermission) perm = await dir.queryPermission({ mode: 'readwrite' });
-    if (perm !== 'granted' && dir.requestPermission) {
-      perm = await dir.requestPermission({ mode: 'readwrite' });
-    }
-    if (perm !== 'granted') {
-      // Sin permiso: caemos al export normal para no perder nada.
-      return this.exportar();
-    }
+  // Escribe en un manejador de fichero (File System Access). Devuelve false si
+  // no hay permiso o falla, para que el llamador pruebe otra via.
+  async escribeHandle(fh, contenido) {
     try {
-      const fh = await dir.getFileHandle('evalcrit.json', { create: true });
+      let perm = 'granted';
+      if (fh.queryPermission) perm = await fh.queryPermission({ mode: 'readwrite' });
+      if (perm !== 'granted' && fh.requestPermission) perm = await fh.requestPermission({ mode: 'readwrite' });
+      if (perm !== 'granted') return false;
       const w = await fh.createWritable();
       await w.write(contenido);
       await w.close();
-      this.marcarCopia();
-      UI.toast('Guardado en «' + dir.name + '/evalcrit.json»');
       return true;
     } catch (e) {
       if (e && e.name === 'AbortError') return false;
       console.error(e);
-      return this.exportar();
+      return false;
     }
+  },
+
+  // Guarda en el fichero de trabajo y lo SOBRESCRIBE. No crea backups nuevos:
+  // eso es lo que hace «Exportar backup» (explícito, en Configuración).
+  async guardar() {
+    const contenido = JSON.stringify(this.db, null, 2);
+    const nombre = this.nombreFichero || 'evalcrit.json';
+    // 1. Manejador recordado (misma sesión o IndexedDB tras recargar).
+    const fh = this.ficheroHandle || await this.idbLeer('fileHandle');
+    if (fh && await this.escribeHandle(fh, contenido)) {
+      this.marcarCopia();
+      UI.toast('Guardado en «' + fh.name + '»');
+      return true;
+    }
+    // 2. Carpeta de backups: siempre el mismo «evalcrit.json».
+    if (this.puedeCarpeta()) {
+      let dir = await this.idbLeer('dir');
+      if (!dir) dir = await this.elegirCarpetaBackup();
+      if (dir) {
+        let perm = 'granted';
+        if (dir.queryPermission) perm = await dir.queryPermission({ mode: 'readwrite' });
+        if (perm !== 'granted' && dir.requestPermission) perm = await dir.requestPermission({ mode: 'readwrite' });
+        if (perm === 'granted') {
+          try {
+            const fh2 = await dir.getFileHandle('evalcrit.json', { create: true });
+            const w = await fh2.createWritable();
+            await w.write(contenido);
+            await w.close();
+            this.marcarCopia();
+            UI.toast('Guardado en «' + dir.name + '/evalcrit.json»');
+            return true;
+          } catch (e) {
+            if (e && e.name === 'AbortError') return false;
+            console.error(e);
+          }
+        }
+      }
+    }
+    // 3. Selector de fichero con nombre estable (Chrome/Edge).
+    if (typeof window !== 'undefined' && typeof window.showSaveFilePicker === 'function') {
+      try {
+        const fh3 = await window.showSaveFilePicker({
+          suggestedName: nombre,
+          types: [{ description: 'Copia Evalora (JSON)', accept: { 'application/json': ['.json'] } }]
+        });
+        this.ficheroHandle = fh3;
+        await this.idbEscribir('fileHandle', fh3);
+        if (await this.escribeHandle(fh3, contenido)) {
+          this.marcarCopia();
+          UI.toast('Guardado en «' + fh3.name + '»');
+          return true;
+        }
+      } catch (e) {
+        if (e && e.name === 'AbortError') return false;
+        console.error(e);
+      }
+    }
+    // 4. Descarga con nombre estable (funciona en file://).
+    return this.descargar(contenido, nombre);
+  },
+
+  // Descarga por Blob (universal, file:// incluido) con un nombre estable.
+  descargar(contenido, nombre) {
+    const blob = new Blob([contenido], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nombre;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { try { a.remove(); } catch (e) {} URL.revokeObjectURL(url); }, 1000);
+    this.marcarCopia();
+    UI.toast('Copia en Descargas (' + nombre + '): pásala a la carpeta backups/ del proyecto');
+    return true;
   },
 
   async exportar() {
@@ -303,22 +369,10 @@ const Storage = {
     if (!destino) {
       // Fallback universal: descarga por Blob. En file:// (Opera, Chrome...) este
       // es el unico camino que funciona sin servidor.
-      const blob = new Blob([contenido], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = nombre;
-      a.style.display = 'none';
-      document.body.appendChild(a);
-      a.click();
-      // Revocamos la URL tras un breve retardo para no bloquear la descarga.
-      setTimeout(() => { try { a.remove(); } catch (e) {} URL.revokeObjectURL(url); }, 1000);
-      destino = 'Descargas';
+      return this.descargar(contenido, nombre);
     }
     this.marcarCopia();
-    UI.toast(destino === 'Descargas'
-      ? 'Backup en Descargas (' + nombre + '): copialo a la carpeta backups/ del proyecto'
-      : `Backup guardado en ${destino}`);
+    UI.toast(`Backup guardado en ${destino}`);
     return true;
   },
 
@@ -335,6 +389,9 @@ const Storage = {
           // deshacerlo (solo si había algo que perder).
           const copiada = this.vacio() ? false : this.copiarAntesDeImportar();
           this.db = this.migrar(datos);
+          // Recuerda el nombre del fichero cargado: el botón «Guardar» lo
+          // sobrescribe en lugar de crear un backup nuevo.
+          if (archivo && archivo.name) this.nombreFichero = archivo.name;
           this.save();
           resolve(copiada);
         } catch (e) {

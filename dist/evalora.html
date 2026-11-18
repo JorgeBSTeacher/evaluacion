@@ -313,6 +313,23 @@ input:focus, select:focus, textarea:focus { border-color: var(--acento); }
   box-shadow: var(--sombra);
   transform: translateY(-1px);
 }
+
+/* Resumen del informe: dos tarjetas con listas compactas. */
+.resumen-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+.resumen-lista { list-style: none; margin: 0; padding: 0; }
+.resumen-lista li {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 8px 0; border-bottom: 1px solid var(--linea);
+}
+.resumen-lista li:last-child { border-bottom: none; }
+.resumen-detalle { color: var(--tinta-suave); font-size: 12px; }
+.resumen-mas { color: var(--tinta-suave); font-size: 12px; margin: 6px 0 0; }
+.resumen-enlace { margin: 10px 0 0; }
 .stat-label {
   font-size: 10px;
   font-weight: 700;
@@ -338,6 +355,23 @@ input:focus, select:focus, textarea:focus { border-color: var(--acento); }
 }
 .chip.on { background: var(--acento); border-color: var(--acento); color: #fff; }
 .chip input { position: absolute; width: 1px; height: 1px; opacity: 0; margin: 0; }
+/* Criterios agrupados por nivel (instrumento «común» a todo el grupo), plegados
+   en <details> para no desplegar 60+ chips a la vez. */
+.chips-nivel { border-top: 1px dashed var(--linea); padding: 2px 0; }
+.chips-nivel:first-child { border-top: 0; }
+.chips-nivel > summary {
+  cursor: pointer; list-style: none; padding: 4px 0;
+  font-size: 12px; font-weight: 700; color: var(--tinta-suave);
+}
+.chips-nivel > summary::-webkit-details-marker { display: none; }
+.chips-nivel > summary::before { content: "▸ "; }
+.chips-nivel[open] > summary::before { content: "▾ "; }
+.chips-nivel-cuenta {
+  display: inline-block; min-width: 16px; text-align: center; margin-left: 4px;
+  background: var(--acento-suave); color: var(--acento); border-radius: 999px;
+  font-size: 11px; padding: 0 6px;
+}
+.chips-grupo { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; padding: 2px 0 6px; }
 .chip:has(input:focus-visible) { outline: 2px solid var(--acento); outline-offset: 2px; }
 
 .aviso {
@@ -708,6 +742,10 @@ const Storage = {
   // Días sin copia de seguridad a partir de los cuales se avisa en Inicio.
   DIAS_COPIA: 7,
   db: null,
+  // Fichero de trabajo: nombre y manejador. Permiten sobrescribir el mismo
+  // fichero al guardar en lugar de amontonar backups con fecha.
+  nombreFichero: 'evalcrit.json',
+  ficheroHandle: null,
 
   defaults() {
     const hoy = new Date();
@@ -924,36 +962,98 @@ const Storage = {
     }
   },
 
-  async guardar() {
-    // Guarda siempre en el mismo fichero (evalcrit.json) dentro de la carpeta
-    // de backups elegida: sobrescribe, evitando amontonar archivos.
-    const contenido = JSON.stringify(this.db, null, 2);
-    if (!this.puedeCarpeta()) return this.exportar();
-    let dir = await this.idbLeer('dir');
-    if (!dir) dir = await this.elegirCarpetaBackup();
-    if (!dir) return false; // el usuario canceló
-    let perm = 'granted';
-    if (dir.queryPermission) perm = await dir.queryPermission({ mode: 'readwrite' });
-    if (perm !== 'granted' && dir.requestPermission) {
-      perm = await dir.requestPermission({ mode: 'readwrite' });
-    }
-    if (perm !== 'granted') {
-      // Sin permiso: caemos al export normal para no perder nada.
-      return this.exportar();
-    }
+  // Escribe en un manejador de fichero (File System Access). Devuelve false si
+  // no hay permiso o falla, para que el llamador pruebe otra via.
+  async escribeHandle(fh, contenido) {
     try {
-      const fh = await dir.getFileHandle('evalcrit.json', { create: true });
+      let perm = 'granted';
+      if (fh.queryPermission) perm = await fh.queryPermission({ mode: 'readwrite' });
+      if (perm !== 'granted' && fh.requestPermission) perm = await fh.requestPermission({ mode: 'readwrite' });
+      if (perm !== 'granted') return false;
       const w = await fh.createWritable();
       await w.write(contenido);
       await w.close();
-      this.marcarCopia();
-      UI.toast('Guardado en «' + dir.name + '/evalcrit.json»');
       return true;
     } catch (e) {
       if (e && e.name === 'AbortError') return false;
       console.error(e);
-      return this.exportar();
+      return false;
     }
+  },
+
+  // Guarda en el fichero de trabajo y lo SOBRESCRIBE. No crea backups nuevos:
+  // eso es lo que hace «Exportar backup» (explícito, en Configuración).
+  async guardar() {
+    const contenido = JSON.stringify(this.db, null, 2);
+    const nombre = this.nombreFichero || 'evalcrit.json';
+    // 1. Manejador recordado (misma sesión o IndexedDB tras recargar).
+    const fh = this.ficheroHandle || await this.idbLeer('fileHandle');
+    if (fh && await this.escribeHandle(fh, contenido)) {
+      this.marcarCopia();
+      UI.toast('Guardado en «' + fh.name + '»');
+      return true;
+    }
+    // 2. Carpeta de backups: siempre el mismo «evalcrit.json».
+    if (this.puedeCarpeta()) {
+      let dir = await this.idbLeer('dir');
+      if (!dir) dir = await this.elegirCarpetaBackup();
+      if (dir) {
+        let perm = 'granted';
+        if (dir.queryPermission) perm = await dir.queryPermission({ mode: 'readwrite' });
+        if (perm !== 'granted' && dir.requestPermission) perm = await dir.requestPermission({ mode: 'readwrite' });
+        if (perm === 'granted') {
+          try {
+            const fh2 = await dir.getFileHandle('evalcrit.json', { create: true });
+            const w = await fh2.createWritable();
+            await w.write(contenido);
+            await w.close();
+            this.marcarCopia();
+            UI.toast('Guardado en «' + dir.name + '/evalcrit.json»');
+            return true;
+          } catch (e) {
+            if (e && e.name === 'AbortError') return false;
+            console.error(e);
+          }
+        }
+      }
+    }
+    // 3. Selector de fichero con nombre estable (Chrome/Edge).
+    if (typeof window !== 'undefined' && typeof window.showSaveFilePicker === 'function') {
+      try {
+        const fh3 = await window.showSaveFilePicker({
+          suggestedName: nombre,
+          types: [{ description: 'Copia Evalora (JSON)', accept: { 'application/json': ['.json'] } }]
+        });
+        this.ficheroHandle = fh3;
+        await this.idbEscribir('fileHandle', fh3);
+        if (await this.escribeHandle(fh3, contenido)) {
+          this.marcarCopia();
+          UI.toast('Guardado en «' + fh3.name + '»');
+          return true;
+        }
+      } catch (e) {
+        if (e && e.name === 'AbortError') return false;
+        console.error(e);
+      }
+    }
+    // 4. Descarga con nombre estable (funciona en file://).
+    return this.descargar(contenido, nombre);
+  },
+
+  // Descarga por Blob (universal, file:// incluido) con un nombre estable.
+  descargar(contenido, nombre) {
+    const blob = new Blob([contenido], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nombre;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { try { a.remove(); } catch (e) {} URL.revokeObjectURL(url); }, 1000);
+    this.marcarCopia();
+    UI.toast('Copia en Descargas (' + nombre + '): pásala a la carpeta backups/ del proyecto');
+    return true;
   },
 
   async exportar() {
@@ -1000,22 +1100,10 @@ const Storage = {
     if (!destino) {
       // Fallback universal: descarga por Blob. En file:// (Opera, Chrome...) este
       // es el unico camino que funciona sin servidor.
-      const blob = new Blob([contenido], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = nombre;
-      a.style.display = 'none';
-      document.body.appendChild(a);
-      a.click();
-      // Revocamos la URL tras un breve retardo para no bloquear la descarga.
-      setTimeout(() => { try { a.remove(); } catch (e) {} URL.revokeObjectURL(url); }, 1000);
-      destino = 'Descargas';
+      return this.descargar(contenido, nombre);
     }
     this.marcarCopia();
-    UI.toast(destino === 'Descargas'
-      ? 'Backup en Descargas (' + nombre + '): copialo a la carpeta backups/ del proyecto'
-      : `Backup guardado en ${destino}`);
+    UI.toast(`Backup guardado en ${destino}`);
     return true;
   },
 
@@ -1032,6 +1120,9 @@ const Storage = {
           // deshacerlo (solo si había algo que perder).
           const copiada = this.vacio() ? false : this.copiarAntesDeImportar();
           this.db = this.migrar(datos);
+          // Recuerda el nombre del fichero cargado: el botón «Guardar» lo
+          // sobrescribe en lugar de crear un backup nuevo.
+          if (archivo && archivo.name) this.nombreFichero = archivo.name;
           this.save();
           resolve(copiada);
         } catch (e) {
@@ -1883,6 +1974,33 @@ const Calc = {
     return this.criteriosDeNivel(claseId, this.nivelDeAlumno(claseId, alumnoId));
   },
 
+  // Niveles cuyos criterios puede elegir el docente al crear un instrumento.
+  // Un instrumento «común» (sin nivel) es para TODO el alumnado: se ofrecen los
+  // criterios de todos los niveles, para que cada alumno se evalúe con los suyos.
+  // Un instrumento de un nivel concreto ofrece solo el de ese nivel.
+  nivelesParaInstrumento(claseId, nivel) {
+    const cl = this.clase(claseId);
+    const base = {
+      codigo: '', etiqueta: 'Base',
+      asignaturaId: cl ? cl.asignaturaId : null,
+      criterios: this.criteriosDeClase(claseId)
+    };
+    if (nivel) {
+      return [{
+        codigo: nivel,
+        etiqueta: nivel === 'BASE' ? 'Base' : (this.etiquetaNivel(claseId, nivel) || nivel),
+        asignaturaId: (this.asignaturaDeNivel(claseId, nivel) || {}).id || (cl ? cl.asignaturaId : null),
+        criterios: this.criteriosDeNivel(claseId, nivel)
+      }];
+    }
+    return [base].concat(this.nivelesAciDeClase(claseId).map(n => ({
+      codigo: n.codigo,
+      etiqueta: n.etiqueta || n.codigo,
+      asignaturaId: (this.asignaturaDeNivel(claseId, n.codigo) || {}).id || (cl ? cl.asignaturaId : null),
+      criterios: this.criteriosDeNivel(claseId, n.codigo)
+    })));
+  },
+
   // --- Criterios de un instrumento frente al currículo de su nivel ACI ---
   // Un instrumento con nivel solo debe evaluar criterios de SU currículo; si
   // apunta a otro (p. ej. una copia de examen paralelo), sus notas no salen en
@@ -2087,6 +2205,11 @@ const Calc = {
   // corregir» para siempre, sin que sus notas contaran para nada.
   instrumentoParaAlumno(inst, claseId, alumnoId) {
     if (!this.instrumentoParaNivel(inst, this.nivelDeAlumno(claseId, alumnoId))) return false;
+    // Un instrumento «común» (sin nivel) es para TODO el alumnado, como dice su
+    // etiqueta: no se filtra por criterios. El filtro por criterios solo tiene
+    // sentido en pruebas de un nivel concreto (Base o ACI), donde el currículo
+    // del alumno debe poder puntuarlas.
+    if (!inst.nivel) return true;
     const ids = new Set(this.criteriosDeAlumno(claseId, alumnoId).map(c => c.id));
     if ((inst.criteriosModo || 'desglosado') === 'global') {
       const globales = inst.criterioIdsGlobal || [];
@@ -2685,6 +2808,31 @@ const UI = {
       const on = (seleccionados || []).includes(c.id);
       return `<label class="chip ${on ? 'on' : ''}"><input type="checkbox" value="${c.id}" ${on ? 'checked' : ''}>${Utils.esc(c.codigo)} · ${Utils.esc(c.descripcion)}</label>`;
     }).join('') + '</div>';
+  },
+
+  // Chips de criterios agrupados por nivel (para un instrumento «común», que es
+  // para todo el alumnado). `grupos` = [{ etiqueta, criterios }].
+  chipsCriteriosMulti(grupos, seleccionados) {
+    const sel = seleccionados || [];
+    const partes = [];
+    // Compatibilidad: si llega un asignaturaId (string), se trata como un único grupo.
+    const lista = (typeof grupos === 'string')
+      ? [{ etiqueta: 'Criterios', criterios: Storage.db.criterios.filter(c => c.asignaturaId === grupos) }]
+      : (grupos || []);
+    lista.forEach(g => {
+      const lista = (g.criterios || []).slice()
+        .sort((a, b) => String(a.codigo).localeCompare(String(b.codigo), 'es'));
+      if (!lista.length) return;
+      const marcados = lista.filter(c => sel.includes(c.id)).length;
+      partes.push('<details class="chips-nivel"><summary>' + Utils.esc(g.etiqueta) +
+        ' · <span class="chips-nivel-cuenta">' + marcados + '</span></summary>' +
+        '<div class="chips-grupo">' + lista.map(c => {
+          const on = sel.includes(c.id);
+          return `<label class="chip ${on ? 'on' : ''}"><input type="checkbox" value="${c.id}" ${on ? 'checked' : ''}>${Utils.esc(c.codigo)} · ${Utils.esc(c.descripcion)}</label>`;
+        }).join('') + '</div></details>');
+    });
+    if (!partes.length) return '<div class="aviso">Primero crea criterios en la sección Currículo.</div>';
+    return `<div class="chips" data-campo="criterios">` + partes.join('') + '</div>';
   },
 
   wireChips(container) {
@@ -3871,7 +4019,7 @@ function columnasNivel(filas) {
     return `28px minmax(150px,1.5fr) 82px ${'minmax(130px,1fr) '.repeat(nColsNivel)}auto auto`;
   }
 
-  function filaApartado(ap, asignaturaId, esRubrica, modoGlobal, columnasNv) {
+  function filaApartado(ap, grupos, esRubrica, modoGlobal, columnasNv) {
     const peso = ap.peso != null ? ap.peso : (esRubrica ? 1 : ap.maxPts);
     const cols = esRubrica ? (columnasNv || []) : [];
     return `
@@ -3890,7 +4038,7 @@ function columnasNivel(filas) {
           ? '<small style="color:var(--tinta-suave)">aplica criterios globales</small>'
           : `<button type="button" class="btn btn-mini toggle-crit" title="Elegir criterios evaluados">Criterios</button>`}
         <button type="button" class="btn btn-mini quitar-ap">Quitar</button>
-        ${modoGlobal ? '' : `<div class="zona-crit" style="display:none">${UI.chipsCriterios(asignaturaId, ap.criterioIds)}</div>`}
+        ${modoGlobal ? '' : `<div class="zona-crit" style="display:none">${UI.chipsCriteriosMulti(grupos, ap.criterioIds)}</div>`}
       </div>`;
   }
 
@@ -4056,8 +4204,10 @@ function columnasNivel(filas) {
     const selTipo = body.querySelector('#f-tipo');
     const listaAp = body.querySelector('#lista-apartados');
     const chipsGlobal = body.querySelector('#chips-criterios-global');
-    chipsGlobal.dataset.asig = asig.id;
-    chipsGlobal.innerHTML = UI.chipsCriterios(asig.id, inst ? (inst.criterioIdsGlobal || []) : []);
+    chipsGlobal.dataset.asig = String(nivelIni || '');
+    chipsGlobal.innerHTML = UI.chipsCriteriosMulti(
+      Calc.nivelesParaInstrumento(claseId, nivelIni || ''),
+      inst ? (inst.criterioIdsGlobal || []) : []);
     UI.wireChips(chipsGlobal);
 
     // Columnas de la cuadrícula de rúbrica: la unión de los niveles propios de
@@ -4108,9 +4258,9 @@ function columnasNivel(filas) {
     function addFilaApartado(ap, nivel, cols) {
       const esRubrica = selTipo.value === 'Rúbrica';
       const modoGlobal = !esRubrica && (body.querySelector('#f-critmodo') || {}).value === 'global';
-      const asigCrit = Calc.asignaturaDeNivel(claseId, nivel || nivelActual());
+      const grupos = Calc.nivelesParaInstrumento(claseId, nivel || nivelActual());
       const div = document.createElement('div');
-      div.innerHTML = filaApartado(ap || { id: 'nuevo', descripcion: '', maxPts: '', criterioIds: [] }, asigCrit ? asigCrit.id : asig.id, esRubrica, modoGlobal, cols).trim();
+      div.innerHTML = filaApartado(ap || { id: 'nuevo', descripcion: '', maxPts: '', criterioIds: [] }, grupos, esRubrica, modoGlobal, cols).trim();
       const fila = div.firstElementChild;
       fila.querySelector('.quitar-ap').onclick = () => { fila.remove(); };
       if (fila.querySelector('.toggle-crit')) {
@@ -4141,21 +4291,24 @@ function columnasNivel(filas) {
 
     function refrescaNivel() {
       const nivel = nivelActual();
-      const asigCrit = Calc.asignaturaDeNivel(claseId, nivel);
-      const idNuevo = String(asigCrit ? asigCrit.id : asig.id);
-      // Si ya estábamos pintando este mismo currículo, respetamos lo que el
-      // docente tenga marcado; si venimos de otro (o es la primera pintada),
-      // partimos de los criterios guardados del instrumento. Así, al editar un
-      // control ya hecho, sus criterios salen marcados.
+      const grupos = Calc.nivelesParaInstrumento(claseId, nivel);
+      const idNuevo = String(nivel);
+      // Si ya estábamos pintando este mismo nivel, respetamos lo que el docente
+      // tenga marcado; si venimos de otro (o es la primera pintada), partimos de
+      // los criterios guardados del instrumento.
       const seleccion = (chipsGlobal.dataset.asig === idNuevo)
         ? UI.valoresChips(chipsGlobal)
         : (inst ? (inst.criterioIdsGlobal || []) : []);
       chipsGlobal.dataset.asig = idNuevo;
       const hint = body.querySelector('#hint-asig-crit');
-      if (hint) hint.textContent = 'Criterios del currículo de ' + (asigCrit ? asigCrit.nombre : '') +
-        (nivel && nivel !== 'BASE' ? ' (nivel ' + Calc.etiquetaNivel(claseId, nivel) + ')' : '');
+      if (hint) {
+        hint.textContent = nivel
+          ? 'Criterios del currículo de ' + ((Calc.asignaturaDeNivel(claseId, nivel) || {}).nombre || '') +
+            ' (nivel ' + Calc.etiquetaNivel(claseId, nivel) + ')'
+          : 'Criterios de todos los niveles: el instrumento es común a todo el grupo y cada alumno se evalúa con los suyos.';
+      }
       pintaFilas(estadoFilas(), nivel);
-      chipsGlobal.innerHTML = UI.chipsCriterios(asigCrit ? asigCrit.id : asig.id, seleccion);
+      chipsGlobal.innerHTML = UI.chipsCriteriosMulti(grupos, seleccion);
       UI.wireChips(chipsGlobal);
     }
     selTipo.onchange = refrescaTipo;
@@ -4843,7 +4996,7 @@ const InformeView = (function () {
   let claseSel = null;
   let nivelSel = '';
   let alcance = { periodo: '', unidad: '', instrumentoId: '' };
-  let subVista = 'hallazgos'; // 'hallazgos' | 'criterios' | 'distribucion' | 'alumnos' | 'instrumentos'
+  let subVista = 'resumen'; // 'resumen' | 'hallazgos' | 'criterios' | 'distribucion' | 'alumnos' | 'instrumentos'
   let contenedor = null;
   // Instrumento elegido en la subvista «Instrumentos» (D-74c). Se resetea al
   // cambiar de clase (el render restablece el alcance).
@@ -4902,6 +5055,7 @@ const InformeView = (function () {
   // ------------------------------------------------------------- subvistas
   function htmlSubVista() {
     const vistas = [
+      { id: 'resumen', nombre: 'Resumen' },
       { id: 'hallazgos', nombre: 'Hallazgos' },
       { id: 'criterios', nombre: 'Criterios' },
       { id: 'distribucion', nombre: 'Distribución' },
@@ -4954,6 +5108,100 @@ const InformeView = (function () {
     if (alcance.instrumentoId && !insts.some(i => i.id === alcance.instrumentoId)) {
       alcance.instrumentoId = '';
     }
+  }
+
+  // --------------------------------------------------------------- resumen
+  // Subvista por defecto: lo esencial en una ojeada. Reutiliza las mismas
+  // reglas que Alumnos (criterios bajo el 50 %) y Hallazgos (criterios con
+  // dificultad), para que el número que ve aquí coincida con el del detalle.
+  function htmlResumen(claseId, insts, nivelFiltro) {
+    const dist = Calc.distribucionNotas(claseId, insts, nivelFiltro);
+    const stats = Calc.estadisticasNotas(dist.notas);
+    const total = dist.notas.length;
+    const aprobados = dist.notas.filter(n => n >= 5).length;
+
+    // Alumnos en riesgo: misma regla que la subvista «Alumnos».
+    let alumnos = Calc.alumnosDeClase(claseId);
+    if (nivelFiltro !== undefined && nivelFiltro !== null) {
+      const nv = Calc.nivelNorm(nivelFiltro);
+      alumnos = alumnos.filter(a => Calc.nivelDeAlumno(claseId, a.id) === nv);
+    }
+    const riesgo = alumnos.map(a => {
+      const bajo = Calc.criteriosDeAlumno(claseId, a.id)
+        .map(c => ({ c, logro: Calc.logroCriterioEnInsts(c.id, claseId, a.id, insts) }))
+        .filter(x => x.logro != null && x.logro < UMB_RIESGO);
+      return { a, nota: Calc.notaEnInsts(claseId, a.id, insts), bajo };
+    }).filter(f => f.bajo.length)
+      .sort((x, y) => y.bajo.length - x.bajo.length
+        || (x.nota == null ? 99 : x.nota) - (y.nota == null ? 99 : y.nota));
+
+    // Criterios con dificultad: misma regla que la subvista «Hallazgos».
+    const nivelesAci = Calc.nivelesAciDeClase(claseId);
+    const niveles = [{ codigo: '', etiqueta: 'Base', criterios: Calc.criteriosDeClase(claseId) }]
+      .concat(nivelesAci.map(nv => ({
+        codigo: nv.codigo,
+        etiqueta: nv.etiqueta || nv.codigo,
+        criterios: Calc.criteriosDeNivel(claseId, nv.codigo)
+      })));
+    const seleccion = esTodas(nivelSel)
+      ? niveles
+      : niveles.filter(nv => nv.codigo === Calc.nivelNorm(nivelSel));
+    const dificiles = [];
+    for (const nv of seleccion) {
+      Calc.hallazgos(claseId, insts, nv.criterios, nv.codigo)
+        .filter(h => h.tipo === 'criterio')
+        .forEach(h => dificiles.push({ ...h, nivelEtiqueta: nv.etiqueta }));
+    }
+
+    if (!total && !riesgo.length) {
+      return '<div class="aviso">Todavía no hay notas en este alcance. Corrige desde «Calificaciones» y vuelve.</div>';
+    }
+
+    const mediaTxt = stats.media == null ? '—' : Utils.fmtReal(stats.media);
+    const tarjetas = `
+      <div class="stat-grid">
+        <div class="stat"><span class="stat-label">Media</span><span class="stat-value">${mediaTxt}</span></div>
+        <div class="stat"><span class="stat-label">Aprueban</span><span class="stat-value">${aprobados} de ${total}</span></div>
+        <div class="stat"><span class="stat-label">Alumnos en riesgo</span><span class="stat-value">${riesgo.length}</span></div>
+        <div class="stat"><span class="stat-label">Criterios con dificultad</span><span class="stat-value">${dificiles.length}</span></div>
+      </div>`;
+
+    const listaRiesgo = riesgo.length
+      ? `<ul class="resumen-lista">
+          ${riesgo.slice(0, 6).map(f => `
+            <li>
+              <b>${Utils.esc(f.a.apellidos)}, ${Utils.esc(f.a.nombre)}</b>
+              ${Calc.badgeHtml(f.nota)}
+              <span class="resumen-detalle">${f.bajo.length} criterio${f.bajo.length === 1 ? '' : 's'} bajo el 50%</span>
+            </li>`).join('')}
+        </ul>
+        ${riesgo.length > 6 ? `<p class="resumen-mas">y ${riesgo.length - 6} más…</p>` : ''}`
+      : '<p class="aviso">Ningún alumno con criterios por debajo del 50%.</p>';
+
+    const listaDificiles = dificiles.length
+      ? `<ul class="resumen-lista">
+          ${dificiles.map(h => `
+            <li>
+              <span class="badge ${h.nivel === 'critico' ? 'ko' : 'warn'}">${Utils.esc(h.codigo)}</span>
+              <span class="resumen-detalle">${h.pct}% del alumnado por debajo del 50%${h.nivelEtiqueta !== 'Base' ? ' · ' + Utils.esc(h.nivelEtiqueta) : ''}</span>
+            </li>`).join('')}
+        </ul>`
+      : '<p class="aviso">Ningún criterio con dificultad significativa.</p>';
+
+    return `
+      ${tarjetas}
+      <div class="resumen-grid">
+        <section class="card">
+          <div class="card-head"><h2>Alumnos a los que atender</h2></div>
+          ${listaRiesgo}
+          <p class="resumen-enlace no-print"><label class="chip" data-subvista="alumnos">Ver el detalle</label></p>
+        </section>
+        <section class="card">
+          <div class="card-head"><h2>Criterios con dificultad</h2></div>
+          ${listaDificiles}
+          <p class="resumen-enlace no-print"><label class="chip" data-subvista="hallazgos">Ver los hallazgos</label></p>
+        </section>
+      </div>`;
   }
 
   // ------------------------------------------------------------ hallazgos
@@ -5458,7 +5706,8 @@ const InformeView = (function () {
       ${htmlAlcance(claseSel)}
       ${htmlSubVista()}
       <div id="informe-cuerpo">
-        ${subVista === 'hallazgos' ? htmlHallazgos(claseSel, insts)
+        ${subVista === 'resumen' ? htmlResumen(claseSel, insts, todas ? undefined : nivelSel)
+          : subVista === 'hallazgos' ? htmlHallazgos(claseSel, insts)
           : subVista === 'criterios' ? htmlCriterios(claseSel, insts)
           : subVista === 'distribucion' ? htmlDistribucion(claseSel, insts, todas ? undefined : nivelSel)
           : subVista === 'instrumentos' ? htmlInstrumentos(claseSel, insts)

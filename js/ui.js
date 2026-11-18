@@ -118,6 +118,31 @@ const UI = {
     }).join('') + '</div>';
   },
 
+  // Chips de criterios agrupados por nivel (para un instrumento «común», que es
+  // para todo el alumnado). `grupos` = [{ etiqueta, criterios }].
+  chipsCriteriosMulti(grupos, seleccionados) {
+    const sel = seleccionados || [];
+    const partes = [];
+    // Compatibilidad: si llega un asignaturaId (string), se trata como un único grupo.
+    const lista = (typeof grupos === 'string')
+      ? [{ etiqueta: 'Criterios', criterios: Storage.db.criterios.filter(c => c.asignaturaId === grupos) }]
+      : (grupos || []);
+    lista.forEach(g => {
+      const lista = (g.criterios || []).slice()
+        .sort((a, b) => String(a.codigo).localeCompare(String(b.codigo), 'es'));
+      if (!lista.length) return;
+      const marcados = lista.filter(c => sel.includes(c.id)).length;
+      partes.push('<details class="chips-nivel"><summary>' + Utils.esc(g.etiqueta) +
+        ' · <span class="chips-nivel-cuenta">' + marcados + '</span></summary>' +
+        '<div class="chips-grupo">' + lista.map(c => {
+          const on = sel.includes(c.id);
+          return `<label class="chip ${on ? 'on' : ''}"><input type="checkbox" value="${c.id}" ${on ? 'checked' : ''}>${Utils.esc(c.codigo)} · ${Utils.esc(c.descripcion)}</label>`;
+        }).join('') + '</div></details>');
+    });
+    if (!partes.length) return '<div class="aviso">Primero crea criterios en la sección Currículo.</div>';
+    return `<div class="chips" data-campo="criterios">` + partes.join('') + '</div>';
+  },
+
   wireChips(container) {
     container.querySelectorAll('.chip input').forEach(inp => {
       inp.addEventListener('change', () => {

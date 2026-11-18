@@ -296,6 +296,23 @@ input:focus, select:focus, textarea:focus { border-color: var(--acento); }
   box-shadow: var(--sombra);
   transform: translateY(-1px);
 }
+
+/* Resumen del informe: dos tarjetas con listas compactas. */
+.resumen-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+.resumen-lista { list-style: none; margin: 0; padding: 0; }
+.resumen-lista li {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 8px 0; border-bottom: 1px solid var(--linea);
+}
+.resumen-lista li:last-child { border-bottom: none; }
+.resumen-detalle { color: var(--tinta-suave); font-size: 12px; }
+.resumen-mas { color: var(--tinta-suave); font-size: 12px; margin: 6px 0 0; }
+.resumen-enlace { margin: 10px 0 0; }
 .stat-label {
   font-size: 10px;
   font-weight: 700;
@@ -321,6 +338,23 @@ input:focus, select:focus, textarea:focus { border-color: var(--acento); }
 }
 .chip.on { background: var(--acento); border-color: var(--acento); color: #fff; }
 .chip input { position: absolute; width: 1px; height: 1px; opacity: 0; margin: 0; }
+/* Criterios agrupados por nivel (instrumento «común» a todo el grupo), plegados
+   en <details> para no desplegar 60+ chips a la vez. */
+.chips-nivel { border-top: 1px dashed var(--linea); padding: 2px 0; }
+.chips-nivel:first-child { border-top: 0; }
+.chips-nivel > summary {
+  cursor: pointer; list-style: none; padding: 4px 0;
+  font-size: 12px; font-weight: 700; color: var(--tinta-suave);
+}
+.chips-nivel > summary::-webkit-details-marker { display: none; }
+.chips-nivel > summary::before { content: "▸ "; }
+.chips-nivel[open] > summary::before { content: "▾ "; }
+.chips-nivel-cuenta {
+  display: inline-block; min-width: 16px; text-align: center; margin-left: 4px;
+  background: var(--acento-suave); color: var(--acento); border-radius: 999px;
+  font-size: 11px; padding: 0 6px;
+}
+.chips-grupo { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; padding: 2px 0 6px; }
 .chip:has(input:focus-visible) { outline: 2px solid var(--acento); outline-offset: 2px; }
 
 .aviso {

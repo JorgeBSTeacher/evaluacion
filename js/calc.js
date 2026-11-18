@@ -114,6 +114,33 @@ const Calc = {
     return this.criteriosDeNivel(claseId, this.nivelDeAlumno(claseId, alumnoId));
   },
 
+  // Niveles cuyos criterios puede elegir el docente al crear un instrumento.
+  // Un instrumento «común» (sin nivel) es para TODO el alumnado: se ofrecen los
+  // criterios de todos los niveles, para que cada alumno se evalúe con los suyos.
+  // Un instrumento de un nivel concreto ofrece solo el de ese nivel.
+  nivelesParaInstrumento(claseId, nivel) {
+    const cl = this.clase(claseId);
+    const base = {
+      codigo: '', etiqueta: 'Base',
+      asignaturaId: cl ? cl.asignaturaId : null,
+      criterios: this.criteriosDeClase(claseId)
+    };
+    if (nivel) {
+      return [{
+        codigo: nivel,
+        etiqueta: nivel === 'BASE' ? 'Base' : (this.etiquetaNivel(claseId, nivel) || nivel),
+        asignaturaId: (this.asignaturaDeNivel(claseId, nivel) || {}).id || (cl ? cl.asignaturaId : null),
+        criterios: this.criteriosDeNivel(claseId, nivel)
+      }];
+    }
+    return [base].concat(this.nivelesAciDeClase(claseId).map(n => ({
+      codigo: n.codigo,
+      etiqueta: n.etiqueta || n.codigo,
+      asignaturaId: (this.asignaturaDeNivel(claseId, n.codigo) || {}).id || (cl ? cl.asignaturaId : null),
+      criterios: this.criteriosDeNivel(claseId, n.codigo)
+    })));
+  },
+
   // --- Criterios de un instrumento frente al currículo de su nivel ACI ---
   // Un instrumento con nivel solo debe evaluar criterios de SU currículo; si
   // apunta a otro (p. ej. una copia de examen paralelo), sus notas no salen en
@@ -318,6 +345,11 @@ const Calc = {
   // corregir» para siempre, sin que sus notas contaran para nada.
   instrumentoParaAlumno(inst, claseId, alumnoId) {
     if (!this.instrumentoParaNivel(inst, this.nivelDeAlumno(claseId, alumnoId))) return false;
+    // Un instrumento «común» (sin nivel) es para TODO el alumnado, como dice su
+    // etiqueta: no se filtra por criterios. El filtro por criterios solo tiene
+    // sentido en pruebas de un nivel concreto (Base o ACI), donde el currículo
+    // del alumno debe poder puntuarlas.
+    if (!inst.nivel) return true;
     const ids = new Set(this.criteriosDeAlumno(claseId, alumnoId).map(c => c.id));
     if ((inst.criteriosModo || 'desglosado') === 'global') {
       const globales = inst.criterioIdsGlobal || [];

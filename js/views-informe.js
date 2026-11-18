@@ -9,7 +9,7 @@ const InformeView = (function () {
   let claseSel = null;
   let nivelSel = '';
   let alcance = { periodo: '', unidad: '', instrumentoId: '' };
-  let subVista = 'hallazgos'; // 'hallazgos' | 'criterios' | 'distribucion' | 'alumnos' | 'instrumentos'
+  let subVista = 'resumen'; // 'resumen' | 'hallazgos' | 'criterios' | 'distribucion' | 'alumnos' | 'instrumentos'
   let contenedor = null;
   // Instrumento elegido en la subvista «Instrumentos» (D-74c). Se resetea al
   // cambiar de clase (el render restablece el alcance).
@@ -68,6 +68,7 @@ const InformeView = (function () {
   // ------------------------------------------------------------- subvistas
   function htmlSubVista() {
     const vistas = [
+      { id: 'resumen', nombre: 'Resumen' },
       { id: 'hallazgos', nombre: 'Hallazgos' },
       { id: 'criterios', nombre: 'Criterios' },
       { id: 'distribucion', nombre: 'Distribución' },
@@ -120,6 +121,100 @@ const InformeView = (function () {
     if (alcance.instrumentoId && !insts.some(i => i.id === alcance.instrumentoId)) {
       alcance.instrumentoId = '';
     }
+  }
+
+  // --------------------------------------------------------------- resumen
+  // Subvista por defecto: lo esencial en una ojeada. Reutiliza las mismas
+  // reglas que Alumnos (criterios bajo el 50 %) y Hallazgos (criterios con
+  // dificultad), para que el número que ve aquí coincida con el del detalle.
+  function htmlResumen(claseId, insts, nivelFiltro) {
+    const dist = Calc.distribucionNotas(claseId, insts, nivelFiltro);
+    const stats = Calc.estadisticasNotas(dist.notas);
+    const total = dist.notas.length;
+    const aprobados = dist.notas.filter(n => n >= 5).length;
+
+    // Alumnos en riesgo: misma regla que la subvista «Alumnos».
+    let alumnos = Calc.alumnosDeClase(claseId);
+    if (nivelFiltro !== undefined && nivelFiltro !== null) {
+      const nv = Calc.nivelNorm(nivelFiltro);
+      alumnos = alumnos.filter(a => Calc.nivelDeAlumno(claseId, a.id) === nv);
+    }
+    const riesgo = alumnos.map(a => {
+      const bajo = Calc.criteriosDeAlumno(claseId, a.id)
+        .map(c => ({ c, logro: Calc.logroCriterioEnInsts(c.id, claseId, a.id, insts) }))
+        .filter(x => x.logro != null && x.logro < UMB_RIESGO);
+      return { a, nota: Calc.notaEnInsts(claseId, a.id, insts), bajo };
+    }).filter(f => f.bajo.length)
+      .sort((x, y) => y.bajo.length - x.bajo.length
+        || (x.nota == null ? 99 : x.nota) - (y.nota == null ? 99 : y.nota));
+
+    // Criterios con dificultad: misma regla que la subvista «Hallazgos».
+    const nivelesAci = Calc.nivelesAciDeClase(claseId);
+    const niveles = [{ codigo: '', etiqueta: 'Base', criterios: Calc.criteriosDeClase(claseId) }]
+      .concat(nivelesAci.map(nv => ({
+        codigo: nv.codigo,
+        etiqueta: nv.etiqueta || nv.codigo,
+        criterios: Calc.criteriosDeNivel(claseId, nv.codigo)
+      })));
+    const seleccion = esTodas(nivelSel)
+      ? niveles
+      : niveles.filter(nv => nv.codigo === Calc.nivelNorm(nivelSel));
+    const dificiles = [];
+    for (const nv of seleccion) {
+      Calc.hallazgos(claseId, insts, nv.criterios, nv.codigo)
+        .filter(h => h.tipo === 'criterio')
+        .forEach(h => dificiles.push({ ...h, nivelEtiqueta: nv.etiqueta }));
+    }
+
+    if (!total && !riesgo.length) {
+      return '<div class="aviso">Todavía no hay notas en este alcance. Corrige desde «Calificaciones» y vuelve.</div>';
+    }
+
+    const mediaTxt = stats.media == null ? '—' : Utils.fmtReal(stats.media);
+    const tarjetas = `
+      <div class="stat-grid">
+        <div class="stat"><span class="stat-label">Media</span><span class="stat-value">${mediaTxt}</span></div>
+        <div class="stat"><span class="stat-label">Aprueban</span><span class="stat-value">${aprobados} de ${total}</span></div>
+        <div class="stat"><span class="stat-label">Alumnos en riesgo</span><span class="stat-value">${riesgo.length}</span></div>
+        <div class="stat"><span class="stat-label">Criterios con dificultad</span><span class="stat-value">${dificiles.length}</span></div>
+      </div>`;
+
+    const listaRiesgo = riesgo.length
+      ? `<ul class="resumen-lista">
+          ${riesgo.slice(0, 6).map(f => `
+            <li>
+              <b>${Utils.esc(f.a.apellidos)}, ${Utils.esc(f.a.nombre)}</b>
+              ${Calc.badgeHtml(f.nota)}
+              <span class="resumen-detalle">${f.bajo.length} criterio${f.bajo.length === 1 ? '' : 's'} bajo el 50%</span>
+            </li>`).join('')}
+        </ul>
+        ${riesgo.length > 6 ? `<p class="resumen-mas">y ${riesgo.length - 6} más…</p>` : ''}`
+      : '<p class="aviso">Ningún alumno con criterios por debajo del 50%.</p>';
+
+    const listaDificiles = dificiles.length
+      ? `<ul class="resumen-lista">
+          ${dificiles.map(h => `
+            <li>
+              <span class="badge ${h.nivel === 'critico' ? 'ko' : 'warn'}">${Utils.esc(h.codigo)}</span>
+              <span class="resumen-detalle">${h.pct}% del alumnado por debajo del 50%${h.nivelEtiqueta !== 'Base' ? ' · ' + Utils.esc(h.nivelEtiqueta) : ''}</span>
+            </li>`).join('')}
+        </ul>`
+      : '<p class="aviso">Ningún criterio con dificultad significativa.</p>';
+
+    return `
+      ${tarjetas}
+      <div class="resumen-grid">
+        <section class="card">
+          <div class="card-head"><h2>Alumnos a los que atender</h2></div>
+          ${listaRiesgo}
+          <p class="resumen-enlace no-print"><label class="chip" data-subvista="alumnos">Ver el detalle</label></p>
+        </section>
+        <section class="card">
+          <div class="card-head"><h2>Criterios con dificultad</h2></div>
+          ${listaDificiles}
+          <p class="resumen-enlace no-print"><label class="chip" data-subvista="hallazgos">Ver los hallazgos</label></p>
+        </section>
+      </div>`;
   }
 
   // ------------------------------------------------------------ hallazgos
@@ -624,7 +719,8 @@ const InformeView = (function () {
       ${htmlAlcance(claseSel)}
       ${htmlSubVista()}
       <div id="informe-cuerpo">
-        ${subVista === 'hallazgos' ? htmlHallazgos(claseSel, insts)
+        ${subVista === 'resumen' ? htmlResumen(claseSel, insts, todas ? undefined : nivelSel)
+          : subVista === 'hallazgos' ? htmlHallazgos(claseSel, insts)
           : subVista === 'criterios' ? htmlCriterios(claseSel, insts)
           : subVista === 'distribucion' ? htmlDistribucion(claseSel, insts, todas ? undefined : nivelSel)
           : subVista === 'instrumentos' ? htmlInstrumentos(claseSel, insts)
