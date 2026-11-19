@@ -3860,17 +3860,20 @@ async function main() {
       && html.indexOf('bloque-perfil') < html.indexOf('bloque-ajustes')
       && html.indexOf('bloque-ajustes') < html.indexOf('bloque-copias'),
       html.slice(0, 200));
-    // Por defecto el checkbox está marcado (sinNotaEsCero=true).
-    check('D74-32d · el toggle arranca marcado (sinNotaEsCero=true por defecto)',
-      !!chkSinNota && chkSinNota.checked === true);
+    // Por defecto el checkbox está DESmarcado (sinNotaEsCero=false).
+    check('D74-32d · el toggle arranca desmarcado (sinNotaEsCero=false por defecto)',
+      !!chkSinNota && chkSinNota.checked === false);
     if (chkSinNota) {
-      chkSinNota.checked = false;
-      chkSinNota._dispara('change');
-      check('D74-32e · al desmarcar se guarda sinNotaEsCero=false en db.configuracion',
-        app.Storage.db.configuracion && app.Storage.db.configuracion.sinNotaEsCero === false,
-        JSON.stringify(app.Storage.db.configuracion));
       chkSinNota.checked = true;
       chkSinNota._dispara('change');
+      check('D74-32e · al marcar se guarda sinNotaEsCero=true en db.configuracion',
+        app.Storage.db.configuracion && app.Storage.db.configuracion.sinNotaEsCero === true,
+        JSON.stringify(app.Storage.db.configuracion));
+      chkSinNota.checked = false;
+      chkSinNota._dispara('change');
+      check('D74-32f · al desmarcar se guarda sinNotaEsCero=false en db.configuracion',
+        app.Storage.db.configuracion && app.Storage.db.configuracion.sinNotaEsCero === false,
+        JSON.stringify(app.Storage.db.configuracion));
     }
     if (nombre && centro) {
       nombre.value = 'Jorge "JB"';
@@ -4010,7 +4013,7 @@ async function main() {
       const m = h.match(/celda-plegada num"[^>]*>[\s\S]*?<span class="badge (ok|ko|na)">([\d,]+)<\/span>/);
       return m ? m[2] : null;
     };
-    check('D74-47 · sinNotaEsCero por defecto (true) cuenta el vacío como 0 (media=3,5)', mediaDe(true) === '3,5', mediaDe(true));
+    check('D74-47 · sinNotaEsCero=true cuenta el vacío como 0 (media=3,5)', mediaDe(true) === '3,5', mediaDe(true));
     check('D74-48 · sinNotaEsCero=false excluye el vacío (media=7,0)', mediaDe(false) === '7,0', mediaDe(false));
   }
 
@@ -4021,18 +4024,18 @@ async function main() {
     await importarJson(app, estadoInforme());
     app.Storage.db.configuracion = { sinNotaEsCero: true };
     app.Storage.save();
-    // Recargar desde el mismo localStorage: la configuración persiste.
-    const app2 = cargarApp();
-    app2.Storage.load();
+    // Recargar desde el MISMO almacenamiento (cargarApp crea un localStorage
+    // nuevo por contexto): la configuración persiste.
+    app.Storage.load();
     check('D74-49 · configuracion.sinNotaEsCero persiste al recargar',
-      app2.Storage.db.configuracion && app2.Storage.db.configuracion.sinNotaEsCero === true,
-      JSON.stringify(app2.Storage.db.configuracion));
+      app.Storage.db.configuracion && app.Storage.db.configuracion.sinNotaEsCero === true,
+      JSON.stringify(app.Storage.db.configuracion));
     // Un backup antiguo (sin la clave) migra al valor por defecto.
     const app3 = cargarApp();
     app3.Storage.load();
     app3.Storage.db = app3.Storage.migrar({ schemaVersion: 1, cursoEscolar: '2025/2026' });
-    check('D74-50 · un backup antiguo sin configuracion migra a sinNotaEsCero=true (por defecto)',
-      app3.Storage.db.configuracion && app3.Storage.db.configuracion.sinNotaEsCero === true,
+    check('D74-50 · un backup antiguo sin configuracion migra a sinNotaEsCero=false (por defecto)',
+      app3.Storage.db.configuracion && app3.Storage.db.configuracion.sinNotaEsCero === false,
       JSON.stringify(app3.Storage.db.configuracion));
   }
 
@@ -4239,6 +4242,125 @@ async function main() {
     check('«Listo» cierra la capa 2 y deja la selección en el apartado',
       (raiz2 ? !raiz2.innerHTML : true) && !!btn2 && /1/.test(btn2.textContent),
       btn2 ? btn2.textContent.trim() : '(sin botón)');
+  }
+
+  console.log('\n== Exclusión por alumno (noRealiza) y sinNotaEsCero por defecto ==');
+  {
+    const htmlDe = el => (el.innerHTML != null && el.innerHTML !== '' ? el.innerHTML : (el._html || ''));
+
+    // 1) Instalación nueva y normalización del ajuste en migrar().
+    const appNueva = cargarApp();
+    appNueva.Storage.load();
+    check('EXC-1 · una instalación nueva tiene sinNotaEsCero=false',
+      appNueva.Storage.db.configuracion.sinNotaEsCero === false,
+      JSON.stringify(appNueva.Storage.db.configuracion));
+    const appMig = cargarApp();
+    const m1 = appMig.Storage.migrar({ schemaVersion: 1, cursoEscolar: '2025/2026' });
+    check('EXC-2 · un backup sin configuracion migra a false',
+      m1.configuracion && m1.configuracion.sinNotaEsCero === false, JSON.stringify(m1.configuracion));
+    const m2 = appMig.Storage.migrar({ schemaVersion: 1, configuracion: {} });
+    check('EXC-3 · un backup con configuracion vacía queda en false',
+      m2.configuracion.sinNotaEsCero === false, JSON.stringify(m2.configuracion));
+    const m3 = appMig.Storage.migrar({ schemaVersion: 1, configuracion: { sinNotaEsCero: 'true' } });
+    check('EXC-4 · un valor no booleano se normaliza a false',
+      m3.configuracion.sinNotaEsCero === false, JSON.stringify(m3.configuracion));
+    const m4 = appMig.Storage.migrar({ schemaVersion: 1, configuracion: { sinNotaEsCero: true } });
+    check('EXC-5 · un true booleano se respeta al migrar',
+      m4.configuracion.sinNotaEsCero === true, JSON.stringify(m4.configuracion));
+
+    // 2) Motor: nota, logro y progreso.
+    const app = cargarApp();
+    app.Storage.load();
+    await importarJson(app, estadoAci());
+    const inst = app.Storage.db.instrumentos.find(i => i.id === 'iBase');
+    const notaAntes = app.Calc.notaInstrumento(inst, 'a1');
+    const logroAntes = app.Calc.logroCriterioEnInstrumento(inst, 'a1', 'k1');
+    const progAntes = app.Calc.progresoInstrumento(inst);
+    // Marcar noRealiza aplica la regla de limpieza: se borran los apartados.
+    delete app.Storage.db.registros.iBase.a1.p1;
+    app.Storage.db.registros.iBase.a1.noRealiza = true;
+    check('EXC-6 · con noRealiza, notaInstrumento devuelve null',
+      app.Calc.notaInstrumento(inst, 'a1') === null, String(app.Calc.notaInstrumento(inst, 'a1')));
+    check('EXC-7 · con noRealiza, logroCriterioEnInstrumento devuelve null',
+      app.Calc.logroCriterioEnInstrumento(inst, 'a1', 'k1') === null,
+      String(app.Calc.logroCriterioEnInstrumento(inst, 'a1', 'k1')));
+    const progDesp = app.Calc.progresoInstrumento(inst);
+    check('EXC-8 · con noRealiza no cuenta como pendiente ni en el total',
+      progAntes.pendientes === 0 && progAntes.total === 2
+      && progDesp.total === 1 && progDesp.hechos === 1 && progDesp.pendientes === 0,
+      'antes=' + JSON.stringify(progAntes) + ' después=' + JSON.stringify(progDesp));
+    check('EXC-9 · antes de excluir, a1 sí tenía nota y logro',
+      notaAntes === 8 && logroAntes === 0.8, 'nota=' + notaAntes + ' logro=' + logroAntes);
+
+    // 3) Cuadrícula: media de la UD y insignia en la celda, con sinNotaEsCero=true
+    // (la exclusión debe ganar al ajuste punitivo).
+    const appMed = cargarApp();
+    appMed.Storage.load();
+    appMed.Storage.db = appMed.Storage.migrar({
+      schemaVersion: 1, cursoEscolar: '2025/2026',
+      meta: { ultimaExportacion: null, cambiosSinCopia: false },
+      grupos: [{ id: 'g1', nombre: '6ºA', etapa: 'Primaria' }],
+      alumnos: [{ id: 'a1', nombre: 'Ana', apellidos: 'Uno', grupoId: 'g1' }],
+      asignaturas: [{ id: 's1', nombre: 'Matemáticas 6º', etapa: 'Primaria' }],
+      clases: [{ id: 'c1', asignaturaId: 's1', grupoId: 'g1' }],
+      competenciasEspecificas: [{ id: 'e1', asignaturaId: 's1', codigo: 'CE1', descripcion: 'x' }],
+      criterios: [{ id: 'k1', asignaturaId: 's1', codigo: 'C1', descripcion: 'c1', peso: 100, espIds: ['e1'] }],
+      instrumentos: [
+        { id: 'i1', claseId: 'c1', tipo: 'Control', titulo: 'Control 1', fecha: '2026-01-10',
+          periodo: 'T1', unidad: 'UD1', nivel: 'BASE',
+          apartados: [{ id: 'p1', orden: 1, descripcion: 'a', maxPts: 10, criterioIds: ['k1'] }] },
+        { id: 'i2', claseId: 'c1', tipo: 'Control', titulo: 'Control 2', fecha: '2026-01-20',
+          periodo: 'T1', unidad: 'UD1', nivel: 'BASE',
+          apartados: [{ id: 'p2', orden: 1, descripcion: 'b', maxPts: 10, criterioIds: ['k1'] }] }
+      ],
+      registros: { i1: { a1: { p1: 7 } }, i2: { a1: { p2: 9, noRealiza: true } } },
+      configuracion: { sinNotaEsCero: true }
+    });
+    const elMed = makeEl();
+    appMed.CuadriculaView.render(elMed, { claseId: 'c1', periodo: 'T1', nivelSel: '', tab: 'notas' });
+    const hMed = htmlDe(elMed);
+    const mMed = hMed.match(/celda-plegada num"[^>]*>[\s\S]*?<span class="badge (ok|ko|na)">([\d,]+)<\/span>/);
+    check('EXC-10 · la media de la UD excluye al noRealiza (7,0 y no 3,5)',
+      !!mMed && mMed[2] === '7,0', mMed ? mMed[2] : hMed.slice(0, 220));
+    const elMed2 = makeEl();
+    appMed.CuadriculaView.render(elMed2, { claseId: 'c1', periodo: 'T1', nivelSel: '', tab: 'notas', unidadesAbiertas: ['UD1'] });
+    const hMed2 = htmlDe(elMed2);
+    check('EXC-11 · la cuadrícula muestra la insignia «No realiza» en su celda',
+      /data-inst="i2" data-alumno="a1"[^>]*><span class="badge no-realiza">No realiza<\/span>/.test(hMed2),
+      hMed2.slice(0, 320));
+
+    // 4) UI: el nombre es un botón, abre el panel y al guardar aplica las reglas.
+    const appUi = cargarApp({ dom: true });
+    appUi.Storage.load();
+    await importarJson(appUi, estadoAci());
+    const elUi = appUi.document.createElement('div');
+    appUi.document.getElementById('app').appendChild(elUi);
+    appUi.InstrumentosView.renderCorreccion(elUi, 'iBase');
+    const btnNom = elUi.querySelector('button.nombre-alumno[data-alumno="a1"]');
+    check('EXC-12 · en corrección el nombre del alumno es un botón',
+      !!btnNom, btnNom ? btnNom.textContent.trim() : '(sin botón)');
+    if (btnNom) btnNom.click();
+    const rootModal = appUi.document.getElementById('modal-root');
+    const chk = rootModal.querySelector('#no-realiza');
+    check('EXC-13 · al tocar el nombre se abre el panel «No realiza esta evaluación»',
+      !!chk && /No realiza esta evaluación/.test(rootModal.textContent),
+      rootModal.textContent.slice(0, 140));
+    if (chk) {
+      chk.checked = true;
+      rootModal.querySelector('.guardar').click();
+    }
+    const regUi = (appUi.Storage.db.registros.iBase || {}).a1 || {};
+    check('EXC-14 · al guardar se marca noRealiza', regUi.noRealiza === true, JSON.stringify(regUi));
+    check('EXC-15 · al guardar se borran los apartados del alumno',
+      Object.keys(regUi).every(k => k === 'noRealiza'), JSON.stringify(regUi));
+    check('EXC-16 · el panel se cierra al guardar', rootModal.innerHTML === '', rootModal.innerHTML.slice(0, 80));
+    check('EXC-17 · la corrección vuelve a pintarse con la insignia',
+      /badge no-realiza/.test(elUi.innerHTML), elUi.innerHTML.slice(0, 220));
+    const inpUi = elUi.querySelector('tr[data-alumno="a1"] .inp-nota');
+    if (inpUi) { inpUi.value = '5'; inpUi._dispara('input'); }
+    check('EXC-18 · escribir un apartado con valor quita la exclusión',
+      ((appUi.Storage.db.registros.iBase || {}).a1 || {}).noRealiza === undefined,
+      JSON.stringify((appUi.Storage.db.registros.iBase || {}).a1));
   }
 
   console.log('\n' + (fallos ? 'FALLOS: ' + fallos + '/' + total : 'TODO OK: ' + total + ' comprobaciones')

@@ -377,8 +377,11 @@ const Calc = {
   // pendiente (una ausencia también queda en blanco, y así se ve).
   progresoInstrumento(inst) {
     if (!inst) return { hechos: 0, total: 0, pendientes: 0 };
-    const alumnos = this.alumnosDeInstrumento(inst);
     const registros = (Storage.db.registros || {})[inst.id] || {};
+    // El alumnado excluido («no realiza esta evaluación») no es evaluable: no
+    // cuenta como pendiente ni entra en el total.
+    const alumnos = this.alumnosDeInstrumento(inst)
+      .filter(a => !(registros[a.id] && registros[a.id].noRealiza === true));
     let hechos = 0;
     if (inst.apartados && inst.apartados.length) {
       alumnos.forEach(a => {
@@ -406,6 +409,7 @@ const Calc = {
   logroCriterioEnInstrumento(inst, alumnoId, criterioId) {
     const modo = inst.criteriosModo || 'desglosado';
     const reg = (Storage.db.registros[inst.id] || {})[alumnoId] || {};
+    if (reg.noRealiza === true) return null;
     if (modo === 'global') {
       const globalIds = inst.criterioIdsGlobal || [];
       if (globalIds.length && !globalIds.includes(criterioId)) return null;
@@ -521,6 +525,8 @@ const Calc = {
 
   notaInstrumento(inst, alumnoId) {
     const reg = (Storage.db.registros[inst.id] || {})[alumnoId] || {};
+    // Excluido de este instrumento: no tiene nota (un 0 seria una nota puesta).
+    if (reg.noRealiza === true) return null;
     const esRubrica = inst.tipo === 'Rúbrica';
     if (esRubrica) {
       let suma = 0, pesos = 0;
@@ -655,9 +661,13 @@ const Calc = {
       // hizo este alumnado.
       if (!todos && !this.instrumentoParaNivel(inst, alcance)) continue;
       const alumnosAp = this.alumnosDeInstrumento(inst);
+      const regInst = Storage.db.registros[inst.id] || {};
       for (const ap of inst.apartados || []) {
         const notas = alumnosAp
-          .map(a => ((Storage.db.registros[inst.id] || {})[a.id] || {})[ap.id])
+          // Excluido de este instrumento: sus apartados están en blanco, pero
+          // se filtra por si acaso para no contar su ausencia como un fallo.
+          .filter(a => !(regInst[a.id] && regInst[a.id].noRealiza === true))
+          .map(a => (regInst[a.id] || {})[ap.id])
           .filter(v => v != null && v !== '' && !isNaN(v))
           .map(Number);
         if (notas.length < 2) continue;

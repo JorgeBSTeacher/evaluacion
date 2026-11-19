@@ -329,6 +329,22 @@ main { max-width: 1440px; margin: 0 auto; padding: 20px 18px 60px; }
 .tabla .num { text-align: right; font-variant-numeric: tabular-nums; }
 .tabla tbody tr:hover { background: #faf9f4; }
 
+/* Nombre del alumno en la corrección: un botón con aspecto de enlace, punto de
+   entrada de «no realiza esta evaluación». */
+.nombre-alumno {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: var(--acento);
+  text-align: left;
+  cursor: pointer;
+}
+.nombre-alumno:hover { text-decoration: underline; }
+.nombre-alumno .badge { margin-left: 5px; vertical-align: middle; }
+
 /* Nota tecleada que todavía no es un número válido (p. ej. «-» o texto suelto): se
    marca mientras dure, para que no se guarde un valor a medias sin que el docente lo vea. */
 .inp-nota.nota-invalida { border-color: var(--ko); background: var(--ko-suave); }
@@ -399,6 +415,8 @@ input:focus, select:focus, textarea:focus { border-color: var(--acento); }
 .badge.na { background: var(--na-suave); color: #4b5563; }
 .badge.info { background: var(--acento-suave); color: #3730a3; }
 .badge.warn { background: var(--aviso-suave); color: #92400e; }
+/* Alumnado excluido de un instrumento: ni «sin corregir» ni un 0. */
+.badge.no-realiza { background: var(--aviso-suave); color: #92400e; }
 
 /* Estadísticos de la pestaña Distribución (Informe): rejilla de tarjetas. */
 .stat-grid {
@@ -920,8 +938,8 @@ const Storage = {
       // Ajustes del comportamiento de la app (D-74b): como se calcula la media
       // de una UD plegada en Calificaciones cuando un instrumento no tiene nota.
       // false (por defecto) = no cuenta (solo promedia lo evaluado, «Media»);
-      // true = el vacio vale 0 (punitivo). Se rellena solo con migrar().
-      configuracion: { sinNotaEsCero: true },
+      // true = el vacio vale 0 (punitivo). migrar() lo normaliza a booleano.
+      configuracion: { sinNotaEsCero: false },
       // Identidad visual elegida por el docente: color del tema (cabecera,
       // acento, isotipo y favicon) y organización de los menús.
       tema: { color: '#1f5c6b', nav: 'topbar' },
@@ -1283,6 +1301,11 @@ const Storage = {
     for (const k of Object.keys(d)) {
       if (db[k] == null) db[k] = d[k];
     }
+    // Ajustes (D-74b): `configuracion` debe ser un objeto y `sinNotaEsCero` un
+    // booleano. Un backup antiguo puede traer la clave ausente o con otro tipo
+    // (p. ej. "true" de un volcado a mano): en ese caso manda el defecto false.
+    if (!db.configuracion || typeof db.configuracion !== 'object') db.configuracion = {};
+    if (typeof db.configuracion.sinNotaEsCero !== 'boolean') db.configuracion.sinNotaEsCero = false;
     if (!db.meta || typeof db.meta !== 'object') db.meta = { ultimaExportacion: null };
     if (db.meta.cambiosSinCopia == null) db.meta.cambiosSinCopia = false;
     if (db.observaciones == null) db.observaciones = {};
@@ -2382,8 +2405,11 @@ const Calc = {
   // pendiente (una ausencia también queda en blanco, y así se ve).
   progresoInstrumento(inst) {
     if (!inst) return { hechos: 0, total: 0, pendientes: 0 };
-    const alumnos = this.alumnosDeInstrumento(inst);
     const registros = (Storage.db.registros || {})[inst.id] || {};
+    // El alumnado excluido («no realiza esta evaluación») no es evaluable: no
+    // cuenta como pendiente ni entra en el total.
+    const alumnos = this.alumnosDeInstrumento(inst)
+      .filter(a => !(registros[a.id] && registros[a.id].noRealiza === true));
     let hechos = 0;
     if (inst.apartados && inst.apartados.length) {
       alumnos.forEach(a => {
@@ -2411,6 +2437,7 @@ const Calc = {
   logroCriterioEnInstrumento(inst, alumnoId, criterioId) {
     const modo = inst.criteriosModo || 'desglosado';
     const reg = (Storage.db.registros[inst.id] || {})[alumnoId] || {};
+    if (reg.noRealiza === true) return null;
     if (modo === 'global') {
       const globalIds = inst.criterioIdsGlobal || [];
       if (globalIds.length && !globalIds.includes(criterioId)) return null;
@@ -2526,6 +2553,8 @@ const Calc = {
 
   notaInstrumento(inst, alumnoId) {
     const reg = (Storage.db.registros[inst.id] || {})[alumnoId] || {};
+    // Excluido de este instrumento: no tiene nota (un 0 seria una nota puesta).
+    if (reg.noRealiza === true) return null;
     const esRubrica = inst.tipo === 'Rúbrica';
     if (esRubrica) {
       let suma = 0, pesos = 0;
@@ -2660,9 +2689,13 @@ const Calc = {
       // hizo este alumnado.
       if (!todos && !this.instrumentoParaNivel(inst, alcance)) continue;
       const alumnosAp = this.alumnosDeInstrumento(inst);
+      const regInst = Storage.db.registros[inst.id] || {};
       for (const ap of inst.apartados || []) {
         const notas = alumnosAp
-          .map(a => ((Storage.db.registros[inst.id] || {})[a.id] || {})[ap.id])
+          // Excluido de este instrumento: sus apartados están en blanco, pero
+          // se filtra por si acaso para no contar su ausencia como un fallo.
+          .filter(a => !(regInst[a.id] && regInst[a.id].noRealiza === true))
+          .map(a => (regInst[a.id] || {})[ap.id])
           .filter(v => v != null && v !== '' && !isNaN(v))
           .map(Number);
         if (notas.length < 2) continue;
@@ -4101,16 +4134,18 @@ const InstrumentosView = (() => {
   // Fila de la tabla de instrumentos (sin columna de periodo: el trimestre ya
   // es el encabezado de sección).
   function filaInstrumento(i) {
-    // sinNotaEsCero (D-74b): true = el vacio vale 0 (por defecto, coherente con
-    // el resto de la app); false = solo promedia los alumnos con nota. El toggle
-    // vive en Configuracion y se autoguarda; App.refrescar() lo re-lee al pulsar.
+    // sinNotaEsCero (D-74b): false (por defecto) = solo promedia los alumnos con
+    // nota; true = el vacio vale 0. El toggle vive en Configuracion y se
+    // autoguarda; App.refrescar() lo re-lee al pulsar.
     const sinNotaEsCero = !!(Storage.db && Storage.db.configuracion && Storage.db.configuracion.sinNotaEsCero);
     // Un alumno tiene nota si algun apartado del instrumento tiene valor en su
     // registro (notaInstrumento devuelve 0 tanto para "todo a 0" como para "sin
-    // nota", asi que hay que mirar el registro para distinguirlos).
+    // nota", asi que hay que mirar el registro para distinguirlos). Quien esta
+    // excluido («no realiza esta evaluacion») nunca tiene nota.
     const tieneNota = (alumnoId) => {
       const fila = ((Storage.db.registros && Storage.db.registros[i.id]) || {})[alumnoId];
-      return !!(fila && i.apartados && i.apartados.some(ap => fila[ap.id] != null && fila[ap.id] !== ''));
+      if (!fila || fila.noRealiza === true) return false;
+      return !!(i.apartados && i.apartados.some(ap => fila[ap.id] != null && fila[ap.id] !== ''));
     };
     const notas = Calc.alumnosDeInstrumento(i)
       .map(a => (tieneNota(a.id) ? Calc.notaInstrumento(i, a.id) : (sinNotaEsCero ? 0 : null)))
@@ -4674,6 +4709,49 @@ function columnasNivel(filas) {
     });
   }
 
+  // Marca o desmarca «no realiza esta evaluación» para un alumno en un
+  // instrumento. Al marcar se borran sus apartados (una exclusión con notas
+  // viejas seria una contradicción); al desmarcar se deja el registro limpio.
+  // La escritura de un apartado con valor también quita la marca (ver
+  // renderCorreccion), porque volver a corregir es volver a evaluar.
+  function toggleNoRealiza(inst, alumnoId, valor) {
+    if (!Storage.db.registros[inst.id]) Storage.db.registros[inst.id] = {};
+    if (!Storage.db.registros[inst.id][alumnoId]) Storage.db.registros[inst.id][alumnoId] = {};
+    const reg = Storage.db.registros[inst.id][alumnoId];
+    if (valor) {
+      reg.noRealiza = true;
+      (inst.apartados || []).forEach(ap => delete reg[ap.id]);
+    } else {
+      delete reg.noRealiza;
+      if (!Object.keys(reg).length) delete Storage.db.registros[inst.id][alumnoId];
+    }
+    Storage.save();
+  }
+
+  // Panel de exclusión: se abre al tocar el nombre del alumno en la corrección.
+  function modalNoRealiza(inst, alumnoId, el, volverA, alumnoIdVista) {
+    const a = Calc.alumno(alumnoId) || {};
+    const reg = ((Storage.db.registros && Storage.db.registros[inst.id]) || {})[alumnoId] || {};
+    UI.openModal({
+      titulo: '¿Realiza esta evaluación?',
+      cuerpo: `
+        <p class="hint"><b>${Utils.esc(a.apellidos || '')}, ${Utils.esc(a.nombre || '')}</b> · ${Utils.esc(inst.titulo)}</p>
+        <label class="campo campo--toggle"><input type="checkbox" id="no-realiza"${reg.noRealiza === true ? ' checked' : ''}><span>No realiza esta evaluación</span></label>
+        <p class="hint">Si lo marcas, se dejan en blanco sus apartados y no cuenta en la nota del instrumento, en el progreso ni en la media de la UD.</p>`,
+      textoGuardar: 'Guardar',
+      alGuardar(body, cerrar) {
+        const chk = body.querySelector('#no-realiza');
+        toggleNoRealiza(inst, alumnoId, !!(chk && chk.checked));
+        // Cerramos a mano y devolvemos false: UI.openModal cerraría y llamaría
+        // a App.refrescar(), que sacaria al docente de la corrección. Aqui
+        // manda el repintado de renderCorreccion.
+        cerrar();
+        renderCorreccion(el, inst.id, volverA, alumnoIdVista);
+        return false;
+      }
+    });
+  }
+
   // `volverA` permite volver a la vista desde la que se abrió (p. ej. la
   // Cuadrícula) en lugar de ir siempre al listado de Instrumentos.
   // `alumnoId` arranca la corrección en ese alumno (por ejemplo, al tocar su
@@ -4684,6 +4762,13 @@ function columnasNivel(filas) {
     const alumnos = Calc.alumnosDeInstrumento(inst);
     const esRubrica = inst.tipo === 'Rúbrica';
     const url = Utils.urlPintable(inst.url);
+    // ¿Este alumno queda excluido de la evaluación? Al marcarse se borran sus
+    // apartados; al escribir cualquier apartado se quita la marca.
+    const esNoRealiza = (alumnoId) => {
+      const fila = ((Storage.db.registros && Storage.db.registros[inst.id]) || {})[alumnoId] || {};
+      return fila.noRealiza === true;
+    };
+    const insigniaNoRealiza = '<span class="badge no-realiza">No realiza</span>';
 
     el.innerHTML = `
       <section class="card no-print">
@@ -4716,7 +4801,7 @@ function columnasNivel(filas) {
               ${alumnos.map(a => {
                 const reg = (Storage.db.registros[inst.id] || {})[a.id] || {};
                 return `<tr data-alumno="${a.id}">
-                  <td>${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}</td>
+                  <td><button type="button" class="nombre-alumno" data-alumno="${a.id}" title="Toca para marcar si realiza esta evaluación">${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}${esNoRealiza(a.id) ? ' ' + insigniaNoRealiza : ''}</button></td>
                   ${inst.apartados.map(ap => `
                     <td data-apartado="${ap.id}">
                       ${esRubrica
@@ -4755,10 +4840,16 @@ function columnasNivel(filas) {
     // un 0 (un 0 es una nota puesta que resulta en cero).
     const tieneNota = (alumnoId) => {
       const fila = ((Storage.db.registros && Storage.db.registros[inst.id]) || {})[alumnoId] || {};
+      if (fila.noRealiza === true) return false;
       return inst.apartados.some(ap => fila[ap.id] != null && fila[ap.id] !== '');
     };
     function notaFila(tr) {
       const alumnoId = tr.dataset.alumno;
+      // Excluido: se dice por extenso, no con un «—» (que es «sin corregir»).
+      if (esNoRealiza(alumnoId)) {
+        tr.querySelector('.celda-nota-final').innerHTML = insigniaNoRealiza;
+        return;
+      }
       const n = tieneNota(alumnoId) ? Calc.notaInstrumento(inst, alumnoId) : null;
       tr.querySelector('.celda-nota-final').innerHTML = Calc.badgeHtml(n, true);
     }
@@ -4783,6 +4874,16 @@ function columnasNivel(filas) {
 
     tabla.querySelectorAll('tbody tr[data-alumno]').forEach(tr => {
       const alumnoId = tr.dataset.alumno;
+
+      // El nombre es el punto de entrada de la exclusión. `stopPropagation`
+      // evita que el click llegue al gesto de «ir a la fila» de la tabla.
+      const btnNombre = tr.querySelector('.nombre-alumno');
+      if (btnNombre) {
+        btnNombre.onclick = ev => {
+          ev.stopPropagation();
+          modalNoRealiza(inst, btnNombre.dataset.alumno, el, volverA, alumnoId);
+        };
+      }
 
       tr.querySelectorAll('.inp-nota').forEach(inp => {
         // Único camino para escribir una nota: leer, validar, recortar y guardar
@@ -4816,6 +4917,9 @@ function columnasNivel(filas) {
               return;
             }
             inp.classList.remove('nota-invalida');
+            // Escribir un apartado con valor reactiva al alumno: fuera la
+            // marca de «no realiza».
+            if (regAlu.noRealiza === true) delete regAlu.noRealiza;
             if (!isNaN(max) && num > max) {
               // No se acepta nunca un valor por encima del máximo: se recorta en
               // el MODELO (no solo en el DOM, que era el fallo del valor fantasma)
@@ -4846,6 +4950,8 @@ function columnasNivel(filas) {
             td.querySelectorAll('button.on').forEach(x => x.classList.remove('on'));
             btn.classList.add('on');
             regAlu[apartadoId] = parseFloat(btn.dataset.val);
+            // Puntuar un nivel de la rúbrica también reactiva al alumno.
+            if (regAlu.noRealiza === true) delete regAlu.noRealiza;
           }
           Storage.save();
           notaFila(tr);
@@ -6015,7 +6121,14 @@ const CuadriculaView = (() => {
     // instrumento tiene nota se mira el registro del alumno (si hay al menos un
     // apartado con valor, cuenta; si no, es «sin nota»).
     const sinNotaEsCero = !!(Storage.db && Storage.db.configuracion && Storage.db.configuracion.sinNotaEsCero);
+    // ¿Este alumno queda excluido de este instrumento? La exclusión no cuenta
+    // ni como nota ni como vacío, con independencia de sinNotaEsCero.
+    const noRealizaEn = (inst, alumnoId) => {
+      const fila = ((Storage.db.registros && Storage.db.registros[inst.id]) || {})[alumnoId] || {};
+      return fila.noRealiza === true;
+    };
     const instrumentoEvaluado = (inst, alumnoId) => {
+      if (noRealizaEn(inst, alumnoId)) return false;
       const fila = ((Storage.db.registros && Storage.db.registros[inst.id]) || {})[alumnoId];
       return !!(fila && inst.apartados && inst.apartados.some(ap => fila[ap.id] != null && fila[ap.id] !== ''));
     };
@@ -6025,6 +6138,9 @@ const CuadriculaView = (() => {
       // se enseña «—» y no un 0 (el 0 es una nota corregida que resulta en cero).
       if (!aplican.some(i => instrumentoEvaluado(i, a.id))) return null;
       const notas = aplican
+        // Excluidos fuera, siempre: sinNotaEsCero solo decide sobre lo que está
+        // sin corregir, nunca sobre quien no se evalúa.
+        .filter(i => !noRealizaEn(i, a.id))
         .map(i => {
           if (instrumentoEvaluado(i, a.id)) return Calc.notaInstrumento(i, a.id);
           return sinNotaEsCero ? 0 : null;
@@ -6042,14 +6158,22 @@ const CuadriculaView = (() => {
     const celdasGrupo = (a, g) => g.plegada
       ? (() => {
           const m = mediaUdAlumno(a, g.insts);
+          const todasExcluidas = g.insts.length > 0 && g.insts.every(i => noRealizaEn(i, a.id));
           const c = coloresUd[g.ud];
           const estilo = c ? `style="background:${c.suave}"` : '';
-          return `<td class="celda-plegada num" ${estilo} colspan="${g.insts.length}" title="Nota media de la UD">${m == null ? '<span class="badge na">—</span>' : Calc.badgeHtml(m)}</td>`;
+          const contenido = todasExcluidas
+            ? '<span class="badge no-realiza">No realiza</span>'
+            : (m == null ? '<span class="badge na">—</span>' : Calc.badgeHtml(m));
+          return `<td class="celda-plegada num" ${estilo} colspan="${g.insts.length}" title="${todasExcluidas ? 'No realiza esta evaluación' : 'Nota media de la UD'}">${contenido}</td>`;
         })()
       : g.insts.map(i => {
         const ud = `data-ud="${Utils.esc(i.unidad || '')}"`;
         if (modoTodas && !Calc.instrumentoParaAlumno(i, claseSel, a.id)) {
           return `<td class="celda-nota num" ${ud} style="color:var(--tinta-suave);opacity:.35" title="No aplica a este alumno">—</td>`;
+        }
+        // Excluido de la evaluación: insignia propia, distinta de «sin corregir».
+        if (noRealizaEn(i, a.id)) {
+          return `<td class="celda-nota num" ${ud} data-inst="${i.id}" data-alumno="${Utils.esc(a.id)}" title="No realiza esta evaluación"><span class="badge no-realiza">No realiza</span></td>`;
         }
         // Sin corregir no hay nota: se enseña «—» y no un 0.
         const n = instrumentoEvaluado(i, a.id) ? Calc.notaInstrumento(i, a.id) : null;

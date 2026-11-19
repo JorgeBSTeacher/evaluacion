@@ -50,8 +50,8 @@ const Storage = {
       // Ajustes del comportamiento de la app (D-74b): como se calcula la media
       // de una UD plegada en Calificaciones cuando un instrumento no tiene nota.
       // false (por defecto) = no cuenta (solo promedia lo evaluado, «Media»);
-      // true = el vacio vale 0 (punitivo). Se rellena solo con migrar().
-      configuracion: { sinNotaEsCero: true },
+      // true = el vacio vale 0 (punitivo). migrar() lo normaliza a booleano.
+      configuracion: { sinNotaEsCero: false },
       // Identidad visual elegida por el docente: color del tema (cabecera,
       // acento, isotipo y favicon) y organización de los menús.
       tema: { color: '#1f5c6b', nav: 'topbar' },
@@ -413,6 +413,11 @@ const Storage = {
     for (const k of Object.keys(d)) {
       if (db[k] == null) db[k] = d[k];
     }
+    // Ajustes (D-74b): `configuracion` debe ser un objeto y `sinNotaEsCero` un
+    // booleano. Un backup antiguo puede traer la clave ausente o con otro tipo
+    // (p. ej. "true" de un volcado a mano): en ese caso manda el defecto false.
+    if (!db.configuracion || typeof db.configuracion !== 'object') db.configuracion = {};
+    if (typeof db.configuracion.sinNotaEsCero !== 'boolean') db.configuracion.sinNotaEsCero = false;
     if (!db.meta || typeof db.meta !== 'object') db.meta = { ultimaExportacion: null };
     if (db.meta.cambiosSinCopia == null) db.meta.cambiosSinCopia = false;
     if (db.observaciones == null) db.observaciones = {};

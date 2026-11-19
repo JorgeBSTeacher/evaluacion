@@ -311,6 +311,22 @@ main { max-width: 1440px; margin: 0 auto; padding: 20px 18px 60px; }
 .tabla .num { text-align: right; font-variant-numeric: tabular-nums; }
 .tabla tbody tr:hover { background: #faf9f4; }
 
+/* Nombre del alumno en la corrección: un botón con aspecto de enlace, punto de
+   entrada de «no realiza esta evaluación». */
+.nombre-alumno {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: var(--acento);
+  text-align: left;
+  cursor: pointer;
+}
+.nombre-alumno:hover { text-decoration: underline; }
+.nombre-alumno .badge { margin-left: 5px; vertical-align: middle; }
+
 /* Nota tecleada que todavía no es un número válido (p. ej. «-» o texto suelto): se
    marca mientras dure, para que no se guarde un valor a medias sin que el docente lo vea. */
 .inp-nota.nota-invalida { border-color: var(--ko); background: var(--ko-suave); }
@@ -381,6 +397,8 @@ input:focus, select:focus, textarea:focus { border-color: var(--acento); }
 .badge.na { background: var(--na-suave); color: #4b5563; }
 .badge.info { background: var(--acento-suave); color: #3730a3; }
 .badge.warn { background: var(--aviso-suave); color: #92400e; }
+/* Alumnado excluido de un instrumento: ni «sin corregir» ni un 0. */
+.badge.no-realiza { background: var(--aviso-suave); color: #92400e; }
 
 /* Estadísticos de la pestaña Distribución (Informe): rejilla de tarjetas. */
 .stat-grid {

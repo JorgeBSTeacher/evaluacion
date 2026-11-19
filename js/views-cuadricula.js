@@ -53,7 +53,14 @@ const CuadriculaView = (() => {
     // instrumento tiene nota se mira el registro del alumno (si hay al menos un
     // apartado con valor, cuenta; si no, es «sin nota»).
     const sinNotaEsCero = !!(Storage.db && Storage.db.configuracion && Storage.db.configuracion.sinNotaEsCero);
+    // ¿Este alumno queda excluido de este instrumento? La exclusión no cuenta
+    // ni como nota ni como vacío, con independencia de sinNotaEsCero.
+    const noRealizaEn = (inst, alumnoId) => {
+      const fila = ((Storage.db.registros && Storage.db.registros[inst.id]) || {})[alumnoId] || {};
+      return fila.noRealiza === true;
+    };
     const instrumentoEvaluado = (inst, alumnoId) => {
+      if (noRealizaEn(inst, alumnoId)) return false;
       const fila = ((Storage.db.registros && Storage.db.registros[inst.id]) || {})[alumnoId];
       return !!(fila && inst.apartados && inst.apartados.some(ap => fila[ap.id] != null && fila[ap.id] !== ''));
     };
@@ -63,6 +70,9 @@ const CuadriculaView = (() => {
       // se enseña «—» y no un 0 (el 0 es una nota corregida que resulta en cero).
       if (!aplican.some(i => instrumentoEvaluado(i, a.id))) return null;
       const notas = aplican
+        // Excluidos fuera, siempre: sinNotaEsCero solo decide sobre lo que está
+        // sin corregir, nunca sobre quien no se evalúa.
+        .filter(i => !noRealizaEn(i, a.id))
         .map(i => {
           if (instrumentoEvaluado(i, a.id)) return Calc.notaInstrumento(i, a.id);
           return sinNotaEsCero ? 0 : null;
@@ -80,14 +90,22 @@ const CuadriculaView = (() => {
     const celdasGrupo = (a, g) => g.plegada
       ? (() => {
           const m = mediaUdAlumno(a, g.insts);
+          const todasExcluidas = g.insts.length > 0 && g.insts.every(i => noRealizaEn(i, a.id));
           const c = coloresUd[g.ud];
           const estilo = c ? `style="background:${c.suave}"` : '';
-          return `<td class="celda-plegada num" ${estilo} colspan="${g.insts.length}" title="Nota media de la UD">${m == null ? '<span class="badge na">—</span>' : Calc.badgeHtml(m)}</td>`;
+          const contenido = todasExcluidas
+            ? '<span class="badge no-realiza">No realiza</span>'
+            : (m == null ? '<span class="badge na">—</span>' : Calc.badgeHtml(m));
+          return `<td class="celda-plegada num" ${estilo} colspan="${g.insts.length}" title="${todasExcluidas ? 'No realiza esta evaluación' : 'Nota media de la UD'}">${contenido}</td>`;
         })()
       : g.insts.map(i => {
         const ud = `data-ud="${Utils.esc(i.unidad || '')}"`;
         if (modoTodas && !Calc.instrumentoParaAlumno(i, claseSel, a.id)) {
           return `<td class="celda-nota num" ${ud} style="color:var(--tinta-suave);opacity:.35" title="No aplica a este alumno">—</td>`;
+        }
+        // Excluido de la evaluación: insignia propia, distinta de «sin corregir».
+        if (noRealizaEn(i, a.id)) {
+          return `<td class="celda-nota num" ${ud} data-inst="${i.id}" data-alumno="${Utils.esc(a.id)}" title="No realiza esta evaluación"><span class="badge no-realiza">No realiza</span></td>`;
         }
         // Sin corregir no hay nota: se enseña «—» y no un 0.
         const n = instrumentoEvaluado(i, a.id) ? Calc.notaInstrumento(i, a.id) : null;
