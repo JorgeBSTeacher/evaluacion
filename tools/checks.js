@@ -811,27 +811,26 @@ async function main() {
     const appDom = cargarApp({ dom: true });
     appDom.Storage.load();
     await importarJson(appDom, estadoAci());
-    const filaActiva = el2 => {
-      const tr = el2.querySelector('tbody tr.fila-actual');
-      return tr ? tr.dataset.alumno : null;
-    };
+    // El marcado ya no marca al alumnado corregido (M-12/petición del docente):
+    // la posición se verifica con el rótulo «Alumno N de M».
+    const posicionEn = el2 => (el2.querySelector('#nav-info') || {}).textContent || '';
     const elDom = appDom.document.createElement('div');
     appDom.InstrumentosView.renderCorreccion(elDom, 'iBase', null, 'a2');
     check('la corrección arranca en el alumno tocado, no en el primero',
-      filaActiva(elDom) === 'a2',
-      'fila-actual=' + filaActiva(elDom) + ' · ' + elDom.querySelector('#nav-info').textContent.trim());
+      posicionEn(elDom).includes('Alumno 2 de 2'),
+      'pos=' + posicionEn(elDom).trim());
 
     // Sin alumno indicado se mantiene el comportamiento de siempre: el primero.
     const elDom2 = appDom.document.createElement('div');
     appDom.InstrumentosView.renderCorreccion(elDom2, 'iBase');
     check('sin alumno indicado la corrección arranca en el primero',
-      filaActiva(elDom2) === 'a1', 'fila-actual=' + filaActiva(elDom2));
+      posicionEn(elDom2).includes('Alumno 1 de 2'), 'pos=' + posicionEn(elDom2).trim());
 
     // Un alumno ajeno al instrumento (nivel ACI) no rompe: cae al primero.
     const elDom3 = appDom.document.createElement('div');
     appDom.InstrumentosView.renderCorreccion(elDom3, 'iBase', null, 'c2al');
     check('un alumno ajeno al instrumento cae al primero sin romper',
-      filaActiva(elDom3) === 'a1', 'fila-actual=' + filaActiva(elDom3));
+      posicionEn(elDom3).includes('Alumno 1 de 2'), 'pos=' + posicionEn(elDom3).trim());
 
     // La celda de la Cuadrícula lleva el alumno, que es lo que permite el salto.
     // Las columnas por unidad nacen plegadas, así que se abren UD1 y UD2.
@@ -4615,6 +4614,16 @@ async function main() {
     check('pulsar «Corregir» en la cola entra en la corrección',
       vistaHtml().includes('id="tabla-corrige"') && vistaHtml().includes('id="btn-siguiente"'),
       vistaHtml().slice(0, 160));
+    // Asignar una nota quita el marcado del alumno (ya no está pendiente).
+    const filaMarcada = doc.querySelector('#app .fila-actual');
+    const inpNota = filaMarcada ? filaMarcada.querySelector('.inp-nota') : null;
+    if (inpNota) {
+      inpNota.value = '5';
+      inpNota._dispara('input');
+      check('asignar una nota quita el marcado del alumno',
+        !doc.querySelector('#app .fila-actual'),
+        doc.querySelector('#app .fila-actual') ? 'sigue marcado' : 'sin marcado');
+    }
     // Al terminar el último alumno se limpia el resaltado y se vuelve al
     // listado: el «estás aquí» no queda pegado para siempre.
     if (filaComun) {

@@ -995,6 +995,8 @@ function columnasNivel(filas) {
             }
           }
           persistir();
+          // Nota asignada: fuera el marcado del alumno (ya no está pendiente).
+          if (tieneNota(alumnoId)) tr.classList.remove('fila-actual');
           notaFila(tr);
         });
       });
@@ -1017,6 +1019,8 @@ function columnasNivel(filas) {
             if (regAlu.noRealiza === true) delete regAlu.noRealiza;
           }
           Storage.save();
+          // Nota asignada: fuera el marcado del alumno (ya no está pendiente).
+          if (tieneNota(alumnoId)) tr.classList.remove('fila-actual');
           notaFila(tr);
         };
       });
@@ -1047,7 +1051,9 @@ function columnasNivel(filas) {
       const op = opciones || {};
       if (!filas.length) return;
       idx = Math.max(0, Math.min(filas.length - 1, i));
-      filas.forEach((tr, k) => tr.classList.toggle('fila-actual', k === idx));
+      // El marcado vive mientras el alumno está pendiente: en cuanto tiene
+      // nota asignada, desaparece (petición del docente).
+      filas.forEach((tr, k) => tr.classList.toggle('fila-actual', k === idx && !tieneNota(tr.dataset.alumno)));
       if (op.scroll !== false && filas[idx].scrollIntoView) filas[idx].scrollIntoView({ block: 'center', behavior: 'smooth' });
       const primer = filas[idx].querySelector('.inp-nota');
       if (primer && op.foco !== false) primer.focus({ preventScroll: true });
