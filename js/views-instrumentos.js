@@ -38,17 +38,14 @@ const InstrumentosView = (() => {
     return 'Nivel ACI ' + Calc.etiquetaNivel(claseId, nv) + ': se evalúa con el currículo de ' + asig;
   }
 
-  // Fila de la tabla de instrumentos (sin columna de periodo: el trimestre ya
-  // es el encabezado de sección).
-  function filaInstrumento(i) {
-    // sinNotaEsCero (D-74b): false (por defecto) = solo promedia los alumnos con
-    // nota; true = el vacio vale 0. El toggle vive en Configuracion y se
-    // autoguarda; App.refrescar() lo re-lee al pulsar.
+  // Media de las notas corregidas de un instrumento (la misma cuenta que usa
+  // la fila del listado). sinNotaEsCero (D-74b): false (por defecto) = solo
+  // promedia los alumnos con nota; true = el vacio vale 0. Un alumno tiene
+  // nota si algun apartado tiene valor en su registro (notaInstrumento
+  // devuelve 0 tanto para "todo a 0" como para "sin nota"); quien esta
+  // excluido («no realiza esta evaluacion») nunca tiene nota.
+  function mediaDeInstrumento(i) {
     const sinNotaEsCero = !!(Storage.db && Storage.db.configuracion && Storage.db.configuracion.sinNotaEsCero);
-    // Un alumno tiene nota si algun apartado del instrumento tiene valor en su
-    // registro (notaInstrumento devuelve 0 tanto para "todo a 0" como para "sin
-    // nota", asi que hay que mirar el registro para distinguirlos). Quien esta
-    // excluido («no realiza esta evaluacion») nunca tiene nota.
     const tieneNota = (alumnoId) => {
       const fila = ((Storage.db.registros && Storage.db.registros[i.id]) || {})[alumnoId];
       if (!fila || fila.noRealiza === true) return false;
@@ -57,13 +54,112 @@ const InstrumentosView = (() => {
     const notas = Calc.alumnosDeInstrumento(i)
       .map(a => (tieneNota(a.id) ? Calc.notaInstrumento(i, a.id) : (sinNotaEsCero ? 0 : null)))
       .filter(n => n != null);
-    const media = notas.length ? notas.reduce((x, y) => x + y, 0) / notas.length : null;
-    const nivelTxt = i.nivel ? Calc.etiquetaNivel(i.claseId, i.nivel) : '';
+    return notas.length ? notas.reduce((x, y) => x + y, 0) / notas.length : null;
+  }
+
+  // Celdas compartidas de las filas de instrumento (título con enlace, la
+  // pareja nivel · unidad y las 2 acciones) para no duplicar su HTML entre la
+  // fila normal y la fila de un título único dentro de un bloque con variantes.
+  function celdaTitulo(i) {
     const url = Utils.urlPintable(i.url);
+    return url
+      ? `<a href="${Utils.esc(url)}" target="_blank" rel="noopener" title="Enlace del instrumento: ${Utils.esc(url)}"><b>${Utils.esc(i.titulo)}</b></a>`
+      : `<b>${Utils.esc(i.titulo)}</b>`;
+  }
+  function celdaNivelUnidad(i) {
+    const nivelTxt = i.nivel ? Calc.etiquetaNivel(i.claseId, i.nivel) : '';
+    return `${nivelTxt ? `<span class="badge info" title="${Utils.esc(titleNivel(i.claseId, i.nivel))}">${Utils.esc(nivelTxt)}</span> ` : ''}${i.unidad ? `<span class="badge na">${Utils.esc(i.unidad)}</span>` : ''}${!nivelTxt && !i.unidad ? '<span style="color:var(--tinta-suave)">—</span>' : ''}`;
+  }
+  function celdaAcciones(i) {
+    return `<div class="acciones">
+          <button class="btn btn-mini btn-primario corregir">Corregir</button>
+          <button class="icon-btn mas-acciones" title="Más acciones" aria-label="Más acciones de ${Utils.esc(i.titulo)}">⋯</button>
+        </div>`;
+  }
+
+  // Fila de la tabla de instrumentos (sin columna de periodo: el trimestre ya
+  // es el encabezado de sección).
+  function filaInstrumento(i) {
+    const media = mediaDeInstrumento(i);
     return `<tr data-inst="${i.id}">
-      <td>${url ? `<a href="${Utils.esc(url)}" target="_blank" rel="noopener" title="Enlace del instrumento: ${Utils.esc(url)}"><b>${Utils.esc(i.titulo)}</b></a>` : `<b>${Utils.esc(i.titulo)}</b>`}</td>
+      <td>${celdaTitulo(i)}</td>
       <td><span class="badge info">${Utils.esc(i.tipo)}</span></td>
-      <td>${nivelTxt ? `<span class="badge info" title="${Utils.esc(titleNivel(i.claseId, i.nivel))}">${Utils.esc(nivelTxt)}</span> ` : ''}${i.unidad ? `<span class="badge na">${Utils.esc(i.unidad)}</span>` : ''}${!nivelTxt && !i.unidad ? '<span style="color:var(--tinta-suave)">—</span>' : ''}</td>
+      <td>${celdaNivelUnidad(i)}</td>
+      <td>${Utils.esc(i.fecha)}</td>
+      <td>${i.apartados.length} ${i.tipo === 'Proyecto' ? 'partes/fases' : 'apartados'}</td>
+      <td>${Calc.badgeHtml(media)}</td>
+      <td>${celdaAcciones(i)}</td>
+    </tr>`;
+  }
+
+  // M-17: fila de un título único dentro de un bloque con variantes: la misma
+  // fila de siempre, con sus celdas reordenadas para casar con la cabecera
+  // «Título · Nivel · Tipo» de la tabla agrupada.
+  function filaUnicaGrupo(i) {
+    const media = mediaDeInstrumento(i);
+    return `<tr data-inst="${i.id}">
+      <td>${celdaTitulo(i)}</td>
+      <td>${celdaNivelUnidad(i)}</td>
+      <td><span class="badge info">${Utils.esc(i.tipo)}</span></td>
+      <td>${Utils.esc(i.fecha)}</td>
+      <td>${i.apartados.length} ${i.tipo === 'Proyecto' ? 'partes/fases' : 'apartados'}</td>
+      <td>${Calc.badgeHtml(media)}</td>
+      <td>${celdaAcciones(i)}</td>
+    </tr>`;
+  }
+
+  // M-17: clave de agrupación por título: sin espacios sobrantes e insensible
+  // a mayúsculas/minúsculas. Dos instrumentos con la misma clave son variantes
+  // del mismo instrumento (p. ej. la versión base y la ACI de un examen).
+  function claveTitulo(t) {
+    return String(t || '').trim().toLowerCase();
+  }
+
+  // M-17: agrupa los instrumentos de un bloque por título, conservando el
+  // orden actual (cada grupo ocupa la posición de su primera aparición).
+  // Los títulos únicos quedan como grupos de 1: quien llama decide si se
+  // agrupan o se pintan como fila normal.
+  function gruposDeTitulo(insts) {
+    const grupos = [];
+    (insts || []).forEach(i => {
+      const clave = claveTitulo(i.titulo);
+      let g = grupos.find(x => x.clave === clave);
+      if (!g) { g = { clave, titulo: i.titulo, insts: [] }; grupos.push(g); }
+      g.insts.push(i);
+    });
+    return grupos;
+  }
+
+  // M-17: fila de grupo (colspan completo) de un título con variantes:
+  // título común, cuántas variantes hay y el total de pendientes del grupo.
+  function filaGrupoInst(g) {
+    const n = g.insts.length;
+    const progreso = g.insts.reduce((acc, i) => {
+      const p = Calc.progresoInstrumento(i);
+      acc.pendientes += p.pendientes;
+      acc.total += p.total;
+      return acc;
+    }, { pendientes: 0, total: 0 });
+    const marca = !progreso.total
+      ? '<span class="badge na">Sin alumnado</span>'
+      : progreso.pendientes
+        ? `<span class="badge warn">${progreso.pendientes} pendiente${progreso.pendientes === 1 ? '' : 's'}</span>`
+        : '<span class="badge ok">Al día</span>';
+    return `<tr class="fila-grupo-inst">
+      <td colspan="7"><b>${Utils.esc(g.titulo)}</b> <span class="badge info">${n} variante${n === 1 ? '' : 's'}</span> ${marca}</td>
+    </tr>`;
+  }
+
+  // M-17: fila de una variante (mismo título que su grupo): el nivel como
+  // primera celda (badge con el title del nivel) y después tipo, fecha,
+  // apartados, media y sus 2 acciones. La celda del nivel ocupa 2 columnas
+  // (título y nivel de la cabecera) para que la fila cuadre con las 7 columnas.
+  function filaVariante(i) {
+    const media = mediaDeInstrumento(i);
+    const nivelTxt = i.nivel ? Calc.etiquetaNivel(i.claseId, i.nivel) : '';
+    return `<tr data-inst="${i.id}">
+      <td colspan="2">${nivelTxt ? `<span class="badge info" title="${Utils.esc(titleNivel(i.claseId, i.nivel))}">${Utils.esc(nivelTxt)}</span>` : '<span style="color:var(--tinta-suave)">—</span>'}</td>
+      <td><span class="badge info">${Utils.esc(i.tipo)}</span></td>
       <td>${Utils.esc(i.fecha)}</td>
       <td>${i.apartados.length} ${i.tipo === 'Proyecto' ? 'partes/fases' : 'apartados'}</td>
       <td>${Calc.badgeHtml(media)}</td>
@@ -77,9 +173,23 @@ const InstrumentosView = (() => {
   }
 
   function tablaInstrumentos(insts) {
+    // M-17: solo se agrupa si algún título del bloque tiene varias variantes
+    // (base y ACI, por ejemplo); con títulos únicos, la tabla de siempre.
+    const grupos = gruposDeTitulo(insts);
+    if (!grupos.some(g => g.insts.length > 1)) {
+      return `<table class="tabla">
+        <thead><tr><th>Título</th><th>Tipo</th><th>Nivel · Unidad</th><th>Fecha</th><th>Apartados</th><th>Media</th><th></th></tr></thead>
+        <tbody>${insts.map(filaInstrumento).join('')}</tbody>
+      </table>`;
+    }
+    // Con variantes: el título común va en la fila de grupo y cada variante
+    // se identifica por su nivel. Los títulos únicos del bloque siguen como
+    // filas normales (misma forma que siempre).
     return `<table class="tabla">
-      <thead><tr><th>Título</th><th>Tipo</th><th>Nivel · Unidad</th><th>Fecha</th><th>Apartados</th><th>Media</th><th></th></tr></thead>
-      <tbody>${insts.map(filaInstrumento).join('')}</tbody>
+      <thead><tr><th>Título</th><th>Nivel</th><th>Tipo</th><th>Fecha</th><th>Apartados</th><th>Media</th><th></th></tr></thead>
+      <tbody>${grupos.map(g => g.insts.length > 1
+        ? filaGrupoInst(g) + g.insts.map(filaVariante).join('')
+        : filaUnicaGrupo(g.insts[0])).join('')}</tbody>
     </table>`;
   }
 

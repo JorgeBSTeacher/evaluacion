@@ -26,12 +26,12 @@ recordar dónde está cada cosa y consulte informes según una pregunta concreta
 | M-09 | Diferenciar estados en la cuadrícula (`Pend.` / `N/A` / `No realiza`) y menú contextual | Media | Pendiente |
 | M-10 | Tooltips en chips de nivel y códigos de criterio | Media | **Hecha** |
 | M-11 | Contraste y tamaño mínimo (≥12 px); no depender solo del color | Alta | **Hecha** |
-| M-12 | Modo privacidad (nombres → iniciales) para proyectar/imprimir | Media | Pendiente |
+| M-12 | Modo privacidad (nombres → iniciales) para proyectar/imprimir | Media | **Hecha** — estado solo de sesión (`App.esAnonimo/nombreVisible/toggleAnonimo`); iniciales «G. J.» en la Cuadrícula (3 pestañas), el Informe y los informes imprimibles, con el mismo conmutador «Ocultar/Mostrar nombres» en Cuadrícula e Informe; la corrección mantiene el nombre |
 | M-13 | Inicio adaptativo (plegar montaje/flujo, KPI de pendientes y copia) | Media | **Hecha (Fase 3)** |
 | M-14 | Accesos duplicados: unificar o documentar | Baja | Pendiente |
 | M-15 | Revisar estado activo/hover del menú | Baja | Pendiente |
 | M-16 | Móvil: bottom tab bar y corrección a pantalla completa | Media | **Apartada** (mejora propia) |
-| M-17 | Agrupar instrumentos por nombre con variantes por nivel | Baja | Pendiente |
+| M-17 | Agrupar instrumentos por nombre con variantes por nivel | Baja | **Hecha** — en cada bloque de unidad, los instrumentos con el mismo título (insensible a mayúsculas y espacios) forman un grupo: fila de grupo (título · N variantes · pendientes del grupo) + una fila por variante con el nivel como primera celda; un título único sigue como fila normal y sus acciones (Corregir + ⋯) funcionan por fila |
 
 ---
 

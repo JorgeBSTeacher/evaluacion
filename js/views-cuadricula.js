@@ -121,7 +121,7 @@ const CuadriculaView = (() => {
         <thead>${thead}</thead>
         <tbody>
           ${alumnos.map(a => `<tr>
-            <td>${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}</td>
+            <td>${Utils.esc(App.nombreVisible(a))}</td>
             ${grupos.map(g => celdasGrupo(a, g)).join('')}
             <td class="num col-eval">${Calc.badgeHtml(Calc.notaEvaluacion(claseSel, a.id, periodo))}</td>
           </tr>`).join('')}
@@ -179,7 +179,7 @@ const CuadriculaView = (() => {
         ).join('')}<th class="num col-eval">Evaluación</th></tr></thead>
         <tbody>
           ${alumnos.map(a => `<tr>
-            <td>${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}</td>
+            <td>${Utils.esc(App.nombreVisible(a))}</td>
             ${criterios.map(c => {
               const l = Calc.logroCriterio(c.id, claseSel, a.id, periodo);
               const n = (l == null ? null : l * 10);
@@ -207,7 +207,7 @@ const CuadriculaView = (() => {
           ).join('')}</tr></thead>
           <tbody>
             ${alumnos.map(a => `<tr>
-              <td>${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}</td>
+              <td>${Utils.esc(App.nombreVisible(a))}</td>
               ${lista.map(x => {
                 const n = fnNota(a, x);
                 return `<td class="num">${Calc.badgeHtml(n)}</td>`;
@@ -294,7 +294,7 @@ const CuadriculaView = (() => {
     }
 
     const quien = alu
-      ? Utils.esc(`${alu.apellidos}, ${alu.nombre}`)
+      ? Utils.esc(App.nombreVisible(alu))
       : `${Calc.alumnosDeClase(claseId).length} alumno(s)`;
     return `<div class="informe-cab">
         ${Storage.perfilHtml()}
@@ -541,6 +541,7 @@ const CuadriculaView = (() => {
               ${['T1', 'T2', 'T3', 'Final'].map(p => `<option ${p === periodo ? 'selected' : ''}>${p}</option>`).join('')}
             </select>
             <button class="btn no-print" id="btn-imprimir">Imprimir / PDF</button>
+            <button class="btn no-print" id="btn-anonimo" title="Modo privacidad: muestra iniciales en pantalla y en el PDF">${App.esAnonimo() ? 'Mostrar nombres' : 'Ocultar nombres'}</button>
           </div>
         </div>
         <div class="chips no-print" id="tabs" style="margin-bottom:14px">
@@ -597,6 +598,10 @@ const CuadriculaView = (() => {
     }
 
     el.querySelector('#btn-imprimir').onclick = () => modalImprimir(el, insts);
+
+    // M-12: modo privacidad — alterna iniciales/nombres y repinta la vista.
+    const btnAnon = el.querySelector('#btn-anonimo');
+    if (btnAnon) btnAnon.onclick = () => { App.toggleAnonimo(); render(el); };
 
     el.querySelectorAll('#tabs .chip').forEach(ch => {
       ch.onclick = () => {

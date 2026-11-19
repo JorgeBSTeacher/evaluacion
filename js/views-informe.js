@@ -108,6 +108,7 @@ const InformeView = (function () {
           ${instsUd.map(i =>
             `<option value="${i.id}" ${alcance.instrumentoId === i.id ? 'selected' : ''}>${Utils.esc(i.titulo)}</option>`).join('')}
         </select>` : ''}
+        <button class="btn" id="btn-anonimo" title="Modo privacidad: muestra iniciales en pantalla y en el PDF">${App.esAnonimo() ? 'Mostrar nombres' : 'Ocultar nombres'}</button>
         <button class="btn btn-primario" id="btn-informe-imprimir"
                 title="Genera el PDF del informe de análisis con este alcance">Imprimir / PDF</button>
       </div>${htmlAvisoAlumnos(claseId)}`;
@@ -264,7 +265,7 @@ const InformeView = (function () {
       ? `<ul class="resumen-lista">
           ${riesgo.slice(0, 6).map(f => `
             <li>
-              <b>${Utils.esc(f.a.apellidos)}, ${Utils.esc(f.a.nombre)}</b>
+              <b>${Utils.esc(App.nombreVisible(f.a))}</b>
               ${Calc.badgeHtml(f.nota)}
               <span class="resumen-detalle">${f.bajo.length} criterio${f.bajo.length === 1 ? '' : 's'} bajo el 50%</span>
             </li>`).join('')}
@@ -540,7 +541,7 @@ const InformeView = (function () {
             <tbody>
               ${g.alumnos.map(a => `
                 <tr>
-                  <td>${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}</td>
+                  <td>${Utils.esc(App.nombreVisible(a))}</td>
                   ${g.columnas.map(f => {
                     const fl = f.filas.find(x => x.alumno.id === a.id);
                     return fl ? celda(f, fl) : '<td class="num">—</td>';
@@ -683,7 +684,7 @@ const InformeView = (function () {
           <tbody>
             ${enRiesgo.map(f => `
               <tr>
-                <td>${Utils.esc(f.alumno.apellidos)}, ${Utils.esc(f.alumno.nombre)}</td>
+                <td>${Utils.esc(App.nombreVisible(f.alumno))}</td>
                 <td><span class="badge info" title="${Utils.esc(titleNivel(claseId, f.nivelCodigo))}" style="font-size:12px;white-space:nowrap">${Utils.esc(f.nivel || 'Base')}</span></td>
                 <td class="num">${Calc.badgeHtml(f.nota)}</td>
                 <td class="num"><span class="badge ${f.bajo.length >= 2 ? 'ko' : 'warn'}">${f.bajo.length}</span></td>
@@ -737,7 +738,7 @@ const InformeView = (function () {
             <tbody>
               ${alumnos.map(a => `
                 <tr>
-                  <td>${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}</td>
+                  <td>${Utils.esc(App.nombreVisible(a))}</td>
                   ${saberes.map(s => `<td style="text-align:center">${badgeCelda(Calc.dominioSaber(instId, a.id, s.saber))}</td>`).join('')}
                 </tr>`).join('')}
             </tbody>
@@ -913,6 +914,10 @@ const InformeView = (function () {
       alcance.instrumentoId = e.target.value;
       render(el, op);
     };
+    // M-12: modo privacidad — el mismo conmutador que la Cuadrícula, aquí en
+    // el panel de contexto: alterna iniciales/nombres y repinta la subvista.
+    const btnAnon = el.querySelector('#btn-anonimo');
+    if (btnAnon) btnAnon.onclick = () => { App.toggleAnonimo(); render(el, op); };
     el.querySelectorAll('[data-subvista]').forEach(ch => {
       ch.onclick = () => { subVista = ch.dataset.subvista; render(el, op); };
     });

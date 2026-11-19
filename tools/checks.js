@@ -5050,6 +5050,144 @@ async function main() {
       elR.innerHTML.slice(0, 300));
   }
 
+  console.log('\n== M-12 · Modo privacidad (nombres → iniciales) ==');
+  {
+    const app = cargarApp({ dom: true });
+    app.Storage.load();
+    await importarJson(app, estadoAci());
+    // Ana pasa a estar en riesgo (logro 0,2) para que el Informe la cite en
+    // el Resumen y en Alumnos: así se comprueba que su nombre se anonimiza.
+    app.Storage.db.registros.iBase.a1.p1 = 2;
+    app.Storage.db.registros.iComun.a1.r1 = 2;
+    const doc = app.document;
+    const App = app.App;
+    const vista = () => doc.getElementById('app').innerHTML;
+
+    check('M12-1 · por defecto el modo privacidad está desactivado', App.esAnonimo() === false);
+    App.ir('cuadricula');
+    check('M12-2 · la Cuadrícula muestra «Apellidos, Nombre» y ofrece ocultarlos',
+      vista().includes('Base, Ana') && vista().includes('Base, Beto')
+      && vista().includes('id="btn-anonimo"') && vista().includes('Ocultar nombres'),
+      'sin nombres o sin conmutador');
+    doc.querySelector('#app #btn-anonimo').click();
+    check('M12-3 · el conmutador de la Cuadrícula alterna el estado', App.esAnonimo() === true);
+    check('M12-4 · con el modo activo la Cuadrícula muestra iniciales',
+      vista().includes('B. A.') && vista().includes('B. B.')
+      && !vista().includes('Base, Ana') && !vista().includes('Base, Beto'),
+      'quedan nombres completos o no salen iniciales');
+    check('M12-5 · el conmutador pasa a ofrecer «Mostrar nombres»',
+      vista().includes('Mostrar nombres') && !vista().includes('Ocultar nombres'));
+    const elCrit = makeEl();
+    app.CuadriculaView.render(elCrit, { tab: 'criterios' });
+    check('M12-6 · la pestaña Criterios también muestra iniciales', elCrit.innerHTML.includes('B. A.'));
+
+    App.ir('informes');
+    check('M12-7 · el Informe muestra iniciales en pantalla',
+      vista().includes('B. A.') && !vista().includes('Base, Ana'),
+      'sin iniciales o con nombres completos');
+    doc.querySelector('#app [data-subvista="alumnos"]').click();
+    check('M12-8 · la subvista Alumnos también muestra iniciales',
+      vista().includes('B. A.') && !vista().includes('Base, Ana'));
+    check('M12-9 · el Informe ofrece el mismo conmutador en su panel de contexto',
+      vista().includes('id="btn-anonimo"') && vista().includes('Mostrar nombres'));
+
+    const infAnon = app.InformeView.informeHtml({ claseSel: 'c1', nivelSel: '__todas__' });
+    check('M12-10 · el informe imprimible del Informe también anonimiza',
+      infAnon.includes('B. A.') && infAnon.includes('A. C.')
+      && !infAnon.includes('Base, Ana') && !infAnon.includes('Aci, Carla'));
+    const cuadAnon = app.CuadriculaView.informeHtml('c1', 'T1');
+    check('M12-11 · el informe imprimible de la Cuadrícula también anonimiza',
+      cuadAnon.includes('B. A.') && !cuadAnon.includes('Base, Ana'));
+    const indiAnon = app.CuadriculaView.informeHtml('c1', 'T1', { alumnoId: 'a1' });
+    check('M12-12 · el informe individual imprime las iniciales del alumno', indiAnon.includes('B. A.'));
+
+    doc.querySelector('#app #btn-anonimo').click();
+    check('M12-13 · al desactivar vuelven los nombres completos',
+      App.esAnonimo() === false && vista().includes('Base, Ana'));
+
+    // La corrección es la excepción: ahí el docente necesita el nombre.
+    App.toggleAnonimo();
+    app.InstrumentosView.renderCorreccion(doc.getElementById('app'), 'iBase');
+    check('M12-14 · la corrección mantiene el nombre completo con el modo activo',
+      App.esAnonimo() === true && vista().includes('Base, Ana') && vista().includes('Base, Beto'));
+
+    check('M12-15 · el modo es estado de sesión: no se guarda en db ni viaja en el backup',
+      !('anonimo' in app.Storage.db) && JSON.stringify(app.Storage.db).indexOf('anonimo') === -1);
+  }
+
+  console.log('\n== M-17 · Instrumentos agrupados por título con variantes por nivel ==');
+  {
+    const app = cargarApp();
+    app.Storage.load();
+    const est = estadoAci();
+    // Dos variantes del mismo examen (base y ACI, con el título escrito de
+    // forma distinta) en el bloque de UD1, junto a un título único.
+    est.instrumentos.push(
+      { id: 'vBase', claseId: 'c1', tipo: 'Control', titulo: 'Examen UD1', fecha: '2026-01-10', periodo: 'T1', nivel: '', unidad: 'UD1', saberes: '',
+        apartados: [{ id: 'vp1', orden: 1, descripcion: 'a', maxPts: 10, criterioIds: ['k1'] }] },
+      { id: 'vAci', claseId: 'c1', tipo: 'Control', titulo: 'examen ud1', fecha: '2026-01-12', periodo: 'T1', nivel: '4', unidad: 'UD1', saberes: '',
+        apartados: [{ id: 'vq1', orden: 1, descripcion: 'a', maxPts: 10, criterioIds: ['m1'] }] },
+      { id: 'vUnico', claseId: 'c1', tipo: 'Proyecto', titulo: 'Proyecto UD1', fecha: '2026-01-15', periodo: 'T1', unidad: 'UD1', saberes: '',
+        apartados: [{ id: 'vr1', orden: 1, descripcion: 'a', maxPts: 10, criterioIds: ['k1'] }] }
+    );
+    await importarJson(app, est);
+    const el = makeEl();
+    app.InstrumentosView.render(el);
+    const h = el.innerHTML;
+    const filaDe = id => (h.match(new RegExp('<tr data-inst="' + id + '">[\\s\\S]*?</tr>')) || [''])[0];
+
+    check('M17-1 · un título repetido produce una fila de grupo con su título',
+      h.includes('class="fila-grupo-inst"') && h.includes('<b>Examen UD1</b>'));
+    check('M17-2 · la fila de grupo cuenta sus variantes', h.includes('2 variantes'));
+    check('M17-3 · la fila de grupo suma los pendientes del grupo', h.includes('6 pendientes'));
+    const filaV = filaDe('vAci');
+    check('M17-4 · cada variante es una fila con el nivel como primera celda',
+      !!filaV && /^<tr data-inst="vAci">\s*<td colspan="2">\s*<span class="badge info" title="Nivel ACI/.test(filaV),
+      filaV.slice(0, 140));
+    check('M17-5 · la variante conserva tipo, fecha y sus 2 acciones',
+      !!filaV && filaV.includes('>Control</span>') && filaV.includes('2026-01-12')
+      && filaV.includes('btn-primario corregir') && filaV.includes('mas-acciones'));
+    check('M17-6 · el agrupado no distingue mayúsculas y conserva el orden',
+      !!filaDe('vBase') && h.indexOf('data-inst="vBase"') < h.indexOf('data-inst="vAci"'));
+    const filaU = filaDe('vUnico');
+    check('M17-7 · un título único no se agrupa: fila normal con título y acciones',
+      !!filaU && filaU.includes('<b>Proyecto UD1</b>') && filaU.includes('btn-primario corregir'));
+    check('M17-8 · no se cuenta ninguna variante de más',
+      !h.includes('1 variante') && (h.match(/variante/g) || []).length === 1);
+    check('M17-9 · la fila de grupo precede a sus variantes',
+      h.indexOf('class="fila-grupo-inst"') < h.indexOf('data-inst="vBase"'));
+  }
+
+  console.log('\n== M-17 · los manejadores por fila siguen funcionando ==');
+  {
+    const app = cargarApp({ dom: true });
+    app.Storage.load();
+    const est = estadoAci();
+    est.instrumentos.push(
+      { id: 'vBase', claseId: 'c1', tipo: 'Control', titulo: 'Examen UD1', fecha: '2026-01-10', periodo: 'T1', nivel: '', unidad: 'UD1', saberes: '',
+        apartados: [{ id: 'vp1', orden: 1, descripcion: 'a', maxPts: 10, criterioIds: ['k1'] }] },
+      { id: 'vAci', claseId: 'c1', tipo: 'Control', titulo: 'examen ud1', fecha: '2026-01-12', periodo: 'T1', nivel: '4', unidad: 'UD1', saberes: '',
+        apartados: [{ id: 'vq1', orden: 1, descripcion: 'a', maxPts: 10, criterioIds: ['m1'] }] }
+    );
+    await importarJson(app, est);
+    const doc = app.document;
+    const filaVariante = () => Array.from(doc.querySelectorAll('#app tr[data-inst]'))
+      .find(tr => tr.dataset.inst === 'vAci');
+
+    app.App.ir('instrumentos');
+    filaVariante().querySelector('.corregir').click();
+    check('M17-10 · «Corregir» desde una variante abre SU corrección',
+      doc.getElementById('app').innerHTML.includes('id="tabla-corrige"')
+      && doc.getElementById('app').innerHTML.includes('data-alumno="c1al"'),
+      'no abre la corrección de la variante ACI');
+    app.App.ir('instrumentos');
+    filaVariante().querySelector('.mas-acciones').click();
+    check('M17-11 · el «⋯» de una variante abre su menú de acciones',
+      (doc.querySelector('#modal-root .modal h3') || {}).textContent === 'Acciones de examen ud1',
+      (doc.querySelector('#modal-root .modal h3') || {}).textContent || '(sin modal)');
+    doc.querySelector('#modal-root .cerrar').click();
+  }
+
   console.log('\n' + (fallos ? 'FALLOS: ' + fallos + '/' + total : 'TODO OK: ' + total + ' comprobaciones')
     + (avisos ? ' · ' + avisos + ' aviso(s)' : ''));
   process.exitCode = fallos ? 1 : 0;

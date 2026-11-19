@@ -700,6 +700,14 @@ details.guia-inicio > summary .guia-titulo { display: inline; font-size: 16px; f
 .ud-bloque.abierta .ud-cuerpo { display: block; }
 .ud-cuerpo .tabla { margin: 0; }
 
+/* M-17: fila de grupo de variantes (mismo título, niveles distintos). Destaca
+   sobre sus filas de variantes sin depender solo del color: lleva borde. */
+.fila-grupo-inst > td {
+  background: var(--acento-suave);
+  border-top: 2px solid var(--acento);
+  font-weight: 600;
+}
+
 /* Cuadrícula · pestaña Instrumentos: plegado de columnas por unidad */
 /* Celda que ocupa las columnas de una unidad plegada: mantiene la tabla cuadrada
    (la nota final no se desplaza). Su color lo pinta inline la vista con el tono

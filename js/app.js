@@ -58,6 +58,25 @@ const App = (() => {
   };
   let actual = 'inicio';
 
+  // M-12: modo privacidad (nombres → iniciales) para proyectar o imprimir.
+  // Estado SOLO de sesión: no se guarda en `db` ni viaja en el backup; al
+  // recargar la página se vuelven a mostrar los nombres.
+  let anonimo = false;
+
+  // M-12: cómo se pinta un alumno. Con el modo privacidad activo devuelve las
+  // iniciales («G. J.»: inicial del primer apellido + inicial del nombre); si
+  // no, «Apellidos, Nombre» como siempre. La corrección (renderCorreccion) NO
+  // pasa por aquí: ahí el docente necesita el nombre completo.
+  function nombreVisible(a) {
+    if (!a) return '';
+    if (!anonimo) return `${a.apellidos}, ${a.nombre}`;
+    const ap = String(a.apellidos || '').trim();
+    const nom = String(a.nombre || '').trim();
+    const iniAp = ap ? ap.split(/\s+/)[0][0].toUpperCase() + '.' : '';
+    const iniNom = nom ? nom[0].toUpperCase() + '.' : '';
+    return [iniAp, iniNom].filter(Boolean).join(' ');
+  }
+
   function opcionesCurso(valorActual) {
     const m = /^(\d{4})\//.exec(String(valorActual || ''));
     const base = m ? parseInt(m[1], 10) : new Date().getMonth() >= 6 ? new Date().getFullYear() : new Date().getFullYear() - 1;
@@ -911,6 +930,10 @@ const App = (() => {
     irSeccion,
     seccionActual,
     refrescarNav: pintaNav,
+    // M-12: modo privacidad — consulta, helper de nombre y conmutación.
+    esAnonimo() { return anonimo; },
+    nombreVisible,
+    toggleAnonimo() { anonimo = !anonimo; return anonimo; },
     // Paneles de Inicio expuestos para poder comprobarlos sin navegador.
     panelesInicio: { estado: panelesEstadoHtml, cobertura: panelesCoberturaHtml, aci: panelesAciHtml, pendientes: panelPendientesHtml },
     // Configuración expuesta por el mismo motivo (la cabecera no existe en el arnés).
