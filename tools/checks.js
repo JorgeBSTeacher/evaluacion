@@ -5221,10 +5221,13 @@ async function main() {
     check('M11-3 · ninguna fuente inline de las vistas baja de 12 px',
       jsPeq.length === 0, jsPeq.join(' | '));
 
-    check('M11-4 · el semáforo lleva símbolo además del color (✓ / ● / ▼ en los badges de estado)',
-      cssTxt.includes('.badge.ok::before { content: "✓ "; }')
-      && cssTxt.includes('.badge.warn::before { content: "● "; }')
-      && cssTxt.includes('.badge.ko::before { content: "▼ "; }'));
+    // El símbolo del semáforo se retiró a petición del docente: en la cuadrícula
+    // añadía ruido y la nota + color bastan. Los badges llevan su valor o su
+    // etiqueta como texto, así que el estado no depende solo del color.
+    check('M11-4b · los badges de estado no llevan símbolo añadido (la nota y el color bastan)',
+      !cssTxt.includes('.badge.ok::before')
+      && !cssTxt.includes('.badge.warn::before')
+      && !cssTxt.includes('.badge.ko::before'));
 
     // Render con datos en suspensos (el bloque anterior deja la app cargada solo
     // dentro de su ámbito; aquí se recarga con el mismo estado).

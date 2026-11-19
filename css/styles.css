@@ -453,10 +453,9 @@ input:focus, select:focus, textarea:focus { border-color: var(--acento); }
    badge de estado lleva un símbolo propio además del tono — ✓ correcto,
    ● atención, ▼ crítico —. El contenido generado llega también a los lectores
    de pantalla y se imprime. El resto de badges (info, na, no-realiza) ya
-   distingue su estado con texto propio. */
-.badge.ok::before { content: "✓ "; }
-.badge.warn::before { content: "● "; }
-.badge.ko::before { content: "▼ "; }
+   distingue su estado con texto propio. El símbolo del semáforo (✓/●/▼) se
+   retiró a petición del docente: la nota y el color bastan, y el símbolo
+   añadía ruido en la cuadrícula. */
 
 /* Estadísticos de la pestaña Distribución (Informe): rejilla de tarjetas. */
 .stat-grid {

@@ -252,6 +252,10 @@ Inicio · Corregir · Evaluación · Informes · Ajustes
   valor numérico ya distingue, el símbolo refuerza). Las barras de severidad
   de Atención estrenan `▼`/`●` con `title`, y la tabla de saberes pasa de
   `✓`/`✗` a «Domina»/«Mejorar» en texto.
+  **Revisto (a petición del docente)**: el símbolo del semáforo se retira —
+  en la cuadrícula añadía ruido y basta la nota (o la etiqueta) con el color.
+  Ningún badge queda dependiendo solo del color: todos llevan su valor o su
+  etiqueta como texto.
 
 ## 11. Ajustes de la petición del docente (2026-11-19)
 
