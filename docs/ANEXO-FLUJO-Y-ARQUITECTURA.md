@@ -137,9 +137,17 @@ por niveles de rúbrica). La nota final competencial pondera criterios.
 Más el engranaje de cabecera (**Configuración**, con **F2**): pestañas Perfil,
 Calificación, Copias y seguridad, Tema y menús, Acerca de.
 
+El **menú principal** tiene 5 secciones: **Inicio · Corregir · Evaluación ·
+Informes · Ajustes**. Es un mapeo temporal sobre las vistas actuales: Inicio →
+Inicio, Corregir → Instrumentos, Evaluación → Calificaciones, Informes →
+Calificaciones con la pestaña Informe y Ajustes → Configuración (modal). Las
+vistas de preparación (Alumnos y grupos, Asignaturas y clases, Currículo y
+Montaje) siguen accesibles desde Inicio/Montaje y por su hash, y pertenencen a
+la sección Evaluación.
+
 La **navegación** es configurable (Configuración → Tema y menús): barra
 superior, menú flotante, dock inferior, barra lateral o modo básico
-(`Inicio · Calificaciones · Instrumentos · Montaje`).
+(`Inicio · Corregir · Evaluación · Informes`).
 
 ### 3.2 Flujo recomendado (7 pasos)
 

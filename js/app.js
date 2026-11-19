@@ -5,17 +5,39 @@ const App = (() => {
     { id: 'clases', label: 'Asignaturas y clases', render: el => ClasesView.render(el) },
     { id: 'curriculo', label: 'Currículo', render: el => CurriculoView.render(el), riesgo: true },
     { id: 'instrumentos', label: 'Instrumentos', render: el => InstrumentosView.render(el) },
-    { id: 'cuadricula', label: 'Calificaciones', render: el => CuadriculaView.render(el) },
-    // «Montaje» solo se ofrece en el modo básico: agrupa las vistas de
-    // preparación (grupos, asignaturas y currículo) para que no atesten la nav.
+    // La cuadrícula acepta opciones (pestaña, clase, periodo): hay que
+    // reenviárselas o se perderían (p. ej. el tab de la sección Informes).
+    { id: 'cuadricula', label: 'Calificaciones', render: (el, opciones) => CuadriculaView.render(el, opciones) },
+    // «Montaje» agrupa las vistas de preparación (grupos, asignaturas y
+    // currículo) para que no atesten la nav: sigue accesible por su hash y
+    // desde Inicio/Montaje, ya no como botón del modo básico.
     { id: 'montaje', label: 'Montaje', render: renderMontaje, soloBasica: true }
   ];
-  // Destinos de la navegación según la organización elegida. El modo básico se
-  // queda con el circuito diario (Inicio · Calificaciones · Instrumentos) y
-  // guarda el montaje una capa más, porque no se puede prescindir de él.
-  const NAV_AVANZADO = ['inicio', 'alumnos', 'clases', 'curriculo', 'instrumentos', 'cuadricula'];
-  const NAV_BASICO = ['inicio', 'cuadricula', 'instrumentos', 'montaje'];
-  const IDS_MONTAJE = ['alumnos', 'clases', 'curriculo'];
+  // Secciones del menú principal (Fase 1 de la remodelación de la navegación):
+  // Inicio · Corregir · Evaluación · Informes · Ajustes. Es un mapeo temporal
+  // sobre las vistas actuales, no una reubicación: cada sección apunta a la vista
+  // que hoy cumple su tarea, con alias para no romper ningún acceso. El modo
+  // básico omite Ajustes.
+  const SECCIONES = [
+    { id: 'inicio', label: 'Inicio', vista: 'inicio' },
+    { id: 'corregir', label: 'Corregir', vista: 'instrumentos' },
+    // Evaluación abre la pestaña principal de la cuadrícula: si se está en
+    // Informes, pulsar Evaluación debe volver a las notas.
+    { id: 'evaluacion', label: 'Evaluación', vista: 'cuadricula', tab: 'notas' },
+    { id: 'informes', label: 'Informes', vista: 'cuadricula', tab: 'informe' },
+    { id: 'ajustes', label: 'Ajustes', modal: true }
+  ];
+  const SECCIONES_BASICAS = ['inicio', 'corregir', 'evaluacion', 'informes'];
+  const SECCION_DE_VISTA = {
+    inicio: 'inicio',
+    instrumentos: 'corregir',
+    cuadricula: 'evaluacion',
+    alumnos: 'evaluacion',
+    clases: 'evaluacion',
+    curriculo: 'evaluacion',
+    montaje: 'evaluacion'
+  };
+  let tabCuadricula = 'notas';
   let actual = 'inicio';
 
   function opcionesCurso(valorActual) {
@@ -164,7 +186,7 @@ const App = (() => {
     { id: 'fab', nombre: 'Menú de vistas flotante' },
     { id: 'dock', nombre: 'Dock inferior' },
     { id: 'drawer', nombre: 'Barra lateral plegable' },
-    { id: 'basic', nombre: 'Modo básico (Inicio · Calificaciones · Instrumentos · Montaje)' }
+    { id: 'basic', nombre: 'Modo básico (Inicio · Corregir · Evaluación · Informes)' }
   ];
 
   // Isotipo inscrito en un círculo blanco: el círculo cubre el viewBox y el
@@ -559,20 +581,17 @@ const App = (() => {
     document.body.classList.toggle('modo-drawer', modo === 'drawer');
 
     const esBasica = modo === 'basic';
-    const ids = esBasica ? NAV_BASICO : NAV_AVANZADO;
+    const secciones = esBasica
+      ? SECCIONES_BASICAS.map(id => SECCIONES.find(s => s.id === id)).filter(Boolean)
+      : SECCIONES;
     const pinta = contenedor => {
-      ids.forEach(id => {
-        const v = VISTAS.find(x => x.id === id);
-        if (!v) return;
+      secciones.forEach(s => {
         const b = document.createElement('button');
         b.type = 'button';
-        b.textContent = v.label;
-        // En modo básico, «Montaje» se marca activo también cuando se ha
-        // entrado a una de las vistas que agrupa.
-        const activa = v.id === actual || (esBasica && v.id === 'montaje' && IDS_MONTAJE.includes(actual));
-        if (activa) { b.classList.add('activo'); b.setAttribute('aria-current', 'page'); }
-        if (v.riesgo && v.id !== actual) b.classList.add('peligro-activo');
-        b.onclick = () => ir(v.id);
+        b.textContent = s.label;
+        b.setAttribute('data-seccion', s.id);
+        if (seccionActual() === s.id) { b.classList.add('activo'); b.setAttribute('aria-current', 'page'); }
+        b.onclick = () => irSeccion(s.id);
         contenedor.appendChild(b);
       });
     };
@@ -610,7 +629,7 @@ const App = (() => {
     }
   }
 
-  // Vista «Montaje»: el atajo a las vistas de preparación en modo básico.
+  // Vista «Montaje»: el atajo a las vistas de preparación.
   function renderMontaje(el) {
     el.innerHTML = `
       <section class="card">
@@ -625,12 +644,34 @@ const App = (() => {
     el.querySelectorAll('[data-ir]').forEach(b => { b.onclick = () => ir(b.dataset.ir); });
   }
 
+  // Sección activa según la vista y, en su caso, la pestaña de la cuadrícula.
+  function seccionActual() {
+    if (actual === 'cuadricula') {
+      const t = (typeof CuadriculaView !== 'undefined' && CuadriculaView.tabActivo)
+        ? CuadriculaView.tabActivo() : tabCuadricula;
+      return t === 'informe' ? 'informes' : 'evaluacion';
+    }
+    return SECCION_DE_VISTA[actual] || 'inicio';
+  }
+
+  // Navega a una sección del menú: Ajustes abre Configuración; el resto, su vista
+  // (con la pestaña indicada, si la tiene).
+  function irSeccion(s) {
+    const sec = SECCIONES.find(x => x.id === s);
+    if (!sec) return;
+    if (sec.modal) { modalAjustes(); return; }
+    ir(sec.vista, sec.tab ? { tab: sec.tab } : undefined);
+  }
+
   function ir(id, opciones) {
     actual = id;
+    if (opciones && opciones.tab) tabCuadricula = opciones.tab;
     const vista = VISTAS.find(v => v.id === id);
-    pintaNav();
     UI.closeModal();
     vista.render(document.getElementById('app'), opciones);
+    // La nav se pinta DESPUÉS de renderizar: así la sección activa (p. ej.
+    // Informes) ya conoce la pestaña que ha fijado la vista.
+    pintaNav();
     window.scrollTo(0, 0);
     history.replaceState(null, '', '#' + id);
   }
@@ -700,6 +741,10 @@ const App = (() => {
     ir,
     arrancar,
     refrescar() { ir(actual); },
+    // Secciones del menú principal (Fase 1) y utilidades para recorrerlas.
+    irSeccion,
+    seccionActual,
+    refrescarNav: pintaNav,
     // Paneles de Inicio expuestos para poder comprobarlos sin navegador.
     panelesInicio: { estado: panelesEstadoHtml, cobertura: panelesCoberturaHtml, aci: panelesAciHtml },
     // Configuración expuesta por el mismo motivo (la cabecera no existe en el arnés).

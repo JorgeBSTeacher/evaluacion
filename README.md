@@ -12,7 +12,7 @@ Funciona **sin conexión**: no hay servidor, no hay nube y **los datos no salen 
 - **Informes de análisis**: hallazgos, criterios en dificultad, alumnado en riesgo y distribución de notas, con impresión en PDF.
 - **Backup manual en JSON** que guarda todo (grupos, alumnado, clases, currículos, instrumentos y notas).
 
-Las vistas son: Inicio, Alumnos y grupos, Asignaturas y clases, Currículo, Instrumentos y Calificaciones. La configuración, las copias de seguridad y el bloque «Acerca de» viven en el engranaje de la cabecera.
+Las secciones del menú son: **Inicio · Corregir · Evaluación · Informes · Ajustes**. Corregir es la vista de Instrumentos, Evaluación la de Calificaciones, Informes la pestaña de informe de Calificaciones y Ajustes abre la Configuración. Las vistas de preparación (Alumnos y grupos, Asignaturas y clases, Currículo y Montaje) siguen accesibles desde Inicio/Montaje y por su hash. La configuración, las copias de seguridad y el bloque «Acerca de» viven en el engranaje de la cabecera.
 
 ## Cómo se usa
 
@@ -38,7 +38,7 @@ Los datos se guardan en el `localStorage` de **ese navegador y ese equipo**. Si 
 | `index.html`, `css/`, `js/` | Código fuente de la aplicación |
 | `plantillas/` | Currículo oficial extraído del Decreto 66/2022 (**inmutable**) |
 | `tools/` | Comprobaciones, extracción del decreto y build del fichero único |
-| `docs/` | Documento único de verdad (SSOT), guía del docente y plan de interfaz |
+| `docs/` | Documento único de verdad (SSOT) y plan de interfaz. La guía del docente está retirada hasta que se pida |
 | `dist/evalora.html` | Entregable: la app completa en un solo fichero |
 
 ## Desarrollo

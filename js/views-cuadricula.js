@@ -603,7 +603,12 @@ const CuadriculaView = (() => {
     el.querySelector('#btn-imprimir').onclick = () => modalImprimir(el, insts);
 
     el.querySelectorAll('#tabs .chip').forEach(ch => {
-      ch.onclick = () => { tab = ch.dataset.tab; render(el); };
+      ch.onclick = () => {
+        tab = ch.dataset.tab;
+        render(el);
+        // La sección activa del menú depende de la pestaña: repinta la nav.
+        if (typeof App !== 'undefined' && App.refrescarNav) App.refrescarNav();
+      };
     });
 
     // Plegar o desplegar las columnas de una unidad didáctica. El clic derecho
@@ -641,5 +646,10 @@ const CuadriculaView = (() => {
     });
   }
 
-  return { render, informeHtml };
+  return {
+    render,
+    informeHtml,
+    // Pestaña activa: la usa el menú principal para marcar Evaluación o Informes.
+    tabActivo() { return tab; }
+  };
 })();

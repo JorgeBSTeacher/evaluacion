@@ -4171,7 +4171,7 @@ async function main() {
       !!doc.documentElement.style['--acento-suave'], doc.documentElement.style['--acento-suave']);
   }
 
-  console.log('\n== Navegación configurable (organización de menús) ==');
+  console.log('\n== Navegación por secciones (Inicio · Corregir · Evaluación · Informes · Ajustes) ==');
   {
     const app = cargarApp({ dom: true });
     app.Storage.load();
@@ -4179,44 +4179,87 @@ async function main() {
     const doc = app.document;
     const nav = doc.getElementById('nav');
     const botonesNav = () => Array.from(nav.querySelectorAll('button')).map(b => b.textContent);
+    const pulsar = id => {
+      const b = nav.querySelector(`[data-seccion="${id}"]`);
+      if (b) b.click();
+      return !!b;
+    };
+    const vistaHtml = () => doc.getElementById('app').innerHTML;
+    const estado = () => app.App.seccionActual() + ' · pestaña ' + app.CuadriculaView.tabActivo();
+
     app.Storage.db.tema.nav = 'topbar';
     app.App.ir('inicio');
-    check('por defecto la nav es la barra superior con 6 destinos',
-      nav.style.display !== 'none' && botonesNav().length === 6, botonesNav().join(', '));
+    check('por defecto la nav es la barra superior con 5 secciones',
+      nav.style.display !== 'none' && botonesNav().length === 5, botonesNav().join(', '));
+    check('las secciones son Inicio · Corregir · Evaluación · Informes · Ajustes',
+      botonesNav().join(' · ') === 'Inicio · Corregir · Evaluación · Informes · Ajustes',
+      botonesNav().join(' · '));
+    check('Inicio queda activa al arrancar', app.App.seccionActual() === 'inicio', app.App.seccionActual());
+
+    check('pulsar Inicio lleva a la vista Inicio',
+      pulsar('inicio') && app.App.seccionActual() === 'inicio' && vistaHtml().includes('Bienvenido a Evalora'),
+      app.App.seccionActual());
+    check('pulsar Corregir lleva a Instrumentos',
+      pulsar('corregir') && app.App.seccionActual() === 'corregir' && vistaHtml().includes('Instrumentos de evaluación'),
+      app.App.seccionActual());
+    check('pulsar Evaluación lleva a la cuadrícula, pestaña Instrumentos',
+      pulsar('evaluacion') && app.App.seccionActual() === 'evaluacion' && app.CuadriculaView.tabActivo() === 'notas',
+      estado());
+    check('el botón activo del menú es Evaluación',
+      (nav.querySelector('button.activo') || {}).textContent === 'Evaluación',
+      (nav.querySelector('button.activo') || {}).textContent || '(ninguno)');
+    // Alias: las rutas y vistas antiguas siguen llegando a su sección. Se
+    // comprueba aquí, con la pestaña de la cuadrícula en «Instrumentos».
+    app.App.ir('cuadricula');
+    check('alias ir("cuadricula") → Evaluación', app.App.seccionActual() === 'evaluacion', app.App.seccionActual());
+    check('pulsar Informes lleva a la cuadrícula con la pestaña Informe',
+      pulsar('informes') && app.App.seccionActual() === 'informes' && app.CuadriculaView.tabActivo() === 'informe',
+      estado());
+    check('el botón activo del menú es Informes',
+      (nav.querySelector('button.activo') || {}).textContent === 'Informes',
+      (nav.querySelector('button.activo') || {}).textContent || '(ninguno)');
+    check('pulsar Ajustes abre Configuración',
+      pulsar('ajustes') && !!doc.getElementById('tabs-ajustes'),
+      doc.getElementById('tabs-ajustes') ? 'modal abierto' : '(sin modal)');
+
+    app.App.ir('instrumentos');
+    check('alias ir("instrumentos") → Corregir', app.App.seccionActual() === 'corregir', app.App.seccionActual());
+    app.App.ir('alumnos');
+    check('alias ir("alumnos") → Evaluación', app.App.seccionActual() === 'evaluacion', app.App.seccionActual());
+    app.App.ir('montaje');
+    check('la vista Montaje sigue accesible y pertenece a Evaluación',
+      app.App.seccionActual() === 'evaluacion' &&
+      ['alumnos', 'clases', 'curriculo'].every(id => !!doc.querySelector(`[data-ir="${id}"]`)),
+      app.App.seccionActual() + ' · ' + Array.from(doc.querySelectorAll('[data-ir]')).map(b => b.dataset.ir).join(','));
+
     app.Storage.db.tema.nav = 'basic';
     app.App.ir('inicio');
-    check('el modo básico deja 4 destinos y añade Montaje',
-      botonesNav().length === 4 && botonesNav().indexOf('Montaje') !== -1, botonesNav().join(', '));
-    check('el modo básico sigue mostrando Instrumentos',
-      botonesNav().indexOf('Instrumentos') !== -1, botonesNav().join(', '));
-    check('el modo básico guarda Alumnos y Currículo',
-      botonesNav().indexOf('Alumnos y grupos') === -1 && botonesNav().indexOf('Currículo') === -1,
-      botonesNav().join(', '));
-    app.App.ir('montaje');
-    check('la vista Montaje enlaza las tres vistas de preparación',
-      ['alumnos', 'clases', 'curriculo'].every(id => !!doc.querySelector(`[data-ir="${id}"]`)),
-      Array.from(doc.querySelectorAll('[data-ir]')).map(b => b.dataset.ir).join(', '));
-    doc.querySelector('[data-ir="curriculo"]').click();
-    check('en modo básico Montaje queda activo dentro de una vista de preparación',
-      !!(nav.querySelector('button.activo') && nav.querySelector('button.activo').textContent === 'Montaje'),
+    check('el modo básico deja 4 secciones y no muestra Ajustes',
+      botonesNav().length === 4 && botonesNav().indexOf('Ajustes') === -1, botonesNav().join(', '));
+    check('el modo básico muestra Inicio · Corregir · Evaluación · Informes',
+      botonesNav().join(' · ') === 'Inicio · Corregir · Evaluación · Informes', botonesNav().join(' · '));
+    app.App.ir('alumnos');
+    check('en modo básico una vista de preparación marca Evaluación',
+      !!(nav.querySelector('button.activo') && nav.querySelector('button.activo').textContent === 'Evaluación'),
       nav.querySelector('button.activo') ? nav.querySelector('button.activo').textContent : '(ninguno)');
+
     app.Storage.db.tema.nav = 'fab';
     app.App.ir('inicio');
     check('el modo flotante crea el botón de vistas y su menú',
       !!doc.querySelector('.nav-fab') && !!doc.querySelector('.nav-menu'), '');
-    check('el menú flotante recoge las 6 vistas',
-      doc.querySelectorAll('.nav-menu button').length === 6, String(doc.querySelectorAll('.nav-menu button').length));
+    check('el menú flotante recoge las 5 secciones',
+      doc.querySelectorAll('.nav-menu button').length === 5, String(doc.querySelectorAll('.nav-menu button').length));
     app.Storage.db.tema.nav = 'dock';
     app.App.ir('inicio');
-    check('el modo dock crea una barra inferior con 6 destinos',
-      !!doc.querySelector('.nav-dock') && doc.querySelectorAll('.nav-dock button').length === 6,
+    check('el modo dock crea una barra inferior con 5 secciones',
+      !!doc.querySelector('.nav-dock') && doc.querySelectorAll('.nav-dock button').length === 5,
       String(doc.querySelectorAll('.nav-dock button').length));
     app.Storage.db.tema.nav = 'drawer';
     app.App.ir('inicio');
     check('el modo barra lateral crea el panel y su conmutador',
       !!doc.querySelector('.nav-drawer') && !!doc.querySelector('.nav-drawer-toggle'), '');
-    check('la barra lateral recoge los 6 destinos',
-      doc.querySelectorAll('.nav-drawer button').length === 6, String(doc.querySelectorAll('.nav-drawer button').length));
+    check('la barra lateral recoge las 5 secciones',
+      doc.querySelectorAll('.nav-drawer button').length === 5, String(doc.querySelectorAll('.nav-drawer button').length));
   }
 
   console.log('\n== Modal de criterios del instrumento (capa 2) ==');

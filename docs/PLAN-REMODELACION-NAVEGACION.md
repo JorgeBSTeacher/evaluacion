@@ -1,0 +1,159 @@
+# Plan de remodelación de la navegación (Fase 0: auditoría)
+
+Documento de trabajo para la primera mejora del índice: la **remodelación de la
+navegación por tareas**. Alcance acordado: **navegación y agrupación**
+(vista + reubicación, con alias), sin tocar `Calc` ni el modelo de datos. El
+**móvil** va aparte, como mejora propia.
+
+Objetivo de la remodelación: que el docente sepa qué tiene pendiente al abrir
+la app, corrija en el mínimo número de pasos, prepare la evaluación sin
+recordar dónde está cada cosa y consulte informes según una pregunta concreta.
+
+---
+
+## 0. Índice de mejoras pendientes
+
+| ID | Mejora | Prioridad | Estado |
+|---|---|---|---|
+| **M-01** | **Remodelación de navegación por tareas** (`Inicio · Corregir · Evaluación · Informes · Ajustes`) | Alta | **En curso (Fase 0)** |
+| M-02 | Indicador de backup y «Guardar» como acción de copia (con estado) | Alta | Pendiente |
+| M-03 | Unificar «pendientes» (misma unidad y fuente en Inicio y Calificaciones) | Alta | Pendiente |
+| M-04 | Chip del ajuste `sinNotaEsCero` visible en Calificaciones | Media | Pendiente |
+| M-05 | Diferenciar visualmente los 3 niveles de navegación (barra / pestañas / chips) | Media | Pendiente |
+| M-06 | Filtro único y contexto visible en Informes (sin selector de periodo duplicado) | Alta | Pendiente |
+| M-07 | Renombrar y reagrupar las subvistas de Informe | Media | Pendiente |
+| M-08 | Menú ⋯ por instrumento (dejar 2 acciones visibles) | Media | Pendiente |
+| M-09 | Diferenciar estados en la cuadrícula (`Pend.` / `N/A` / `No realiza`) y menú contextual | Media | Pendiente |
+| M-10 | Tooltips en chips de nivel y códigos de criterio | Media | Pendiente |
+| M-11 | Contraste y tamaño mínimo (≥12 px); no depender solo del color | Alta | Pendiente |
+| M-12 | Modo privacidad (nombres → iniciales) para proyectar/imprimir | Media | Pendiente |
+| M-13 | Inicio adaptativo (plegar montaje/flujo, KPI de pendientes y copia) | Media | Pendiente |
+| M-14 | Accesos duplicados: unificar o documentar | Baja | Pendiente |
+| M-15 | Revisar estado activo/hover del menú | Baja | Pendiente |
+| M-16 | Móvil: bottom tab bar y corrección a pantalla completa | Media | **Apartada** (mejora propia) |
+| M-17 | Agrupar instrumentos por nombre con variantes por nivel | Baja | Pendiente |
+
+---
+
+## 1. Inventario de la navegación actual
+
+### 1.1 Vistas de primer nivel (`js/app.js:2-18`)
+
+| id | label | notas |
+|---|---|---|
+| `inicio` | Inicio | paneles + accesos |
+| `alumnos` | Alumnos y grupos | — |
+| `clases` | Asignaturas y clases | — |
+| `curriculo` | Currículo | `riesgo` |
+| `instrumentos` | Instrumentos | — |
+| `cuadricula` | Calificaciones | — |
+| `montaje` | Montaje | `soloBasica` |
+
+Navegación por `ir(id)` + hash `#id` (`js/app.js:628-636`, `695-696`).
+
+### 1.2 Modos de navegación (`js/app.js:549-611`)
+
+`topbar` (por defecto), `fab`, `dock`, `drawer`, `basic`. Se elige en
+Configuración → Tema y menús (`#nav-modo`, `js/app.js:286-291`).
+
+### 1.3 Pestañas y subvistas
+
+- **Cuadrícula** (`views-cuadricula.js:534-537`): `notas · criterios ·
+  competencias · informe`.
+- **Informe** (`views-informe.js:70-77`): `resumen · hallazgos · criterios ·
+  distribucion · alumnos · instrumentos`, con selectores de periodo/unidad/
+  instrumento (`:48-64`) y sincronía de periodo con la cuadrícula (`:694-701`).
+- **Instrumentos** (`views-instrumentos.js`): bloques trimestre → unidad
+  (`:77-89`, `:1115-1129`) y corrección (`renderCorreccion`, `:653`).
+
+### 1.4 Modales (19)
+
+Configuración y Restablecer (`app.js`); Imprimir (`views-cuadricula.js:349`);
+criterio y competencia (`views-curriculo.js:15,63`); grupo, alumno y alta masiva
+(`views-alumnos.js:14,41,60`); asignatura, clase y ACI
+(`views-clases.js:188,298,329,479`); instrumento, criterios de apartado, banco,
+corregir, no-realiza, examen paralelo e importar rúbrica
+(`views-instrumentos.js:158,353,495,532,596,629,914,1038`).
+
+### 1.5 Acciones por fila
+
+- **Instrumentos** (`views-instrumentos.js:1168-1175`): Corregir, Editar,
+  Duplicar, Al banco, Eliminar.
+- **Cuadrícula**: corregir, crear instrumento, imprimir, plegar UD, tocar nota
+  para corregir, tocar cabecera para editar.
+
+### 1.6 Accesos duplicados (bronces)
+
+- **Crear instrumento**: Instrumentos, Cuadrícula, importar rúbrica.
+- **Corregir**: Cuadrícula (botón), Cuadrícula (nota), Instrumentos (fila),
+  `modalCalificar`. **Cuatro entradas.**
+- **Abrir currículo**: nav, Inicio, Montaje.
+- **Ver informe**: pestaña Informe e impresión «Informe de análisis».
+- **Configuración**: cabecera y F2.
+
+---
+
+## 2. Estructura propuesta
+
+```text
+Inicio · Corregir · Evaluación · Informes · Ajustes
+```
+
+- **Inicio**: qué tengo pendiente hoy (correcciones, backup, currículo).
+- **Corregir**: instrumentos pendientes + corrección por alumno + «No realiza».
+- **Evaluación**: preparar y revisar (grupos/alumnos, clases, currículo,
+  instrumentos, banco, **cuadrícula**).
+- **Informes**: solo lectura (resumen, atención, criterios, alumnos,
+  instrumentos).
+- **Ajustes**: Configuración.
+
+---
+
+## 3. Correspondencia
+
+| Actual | Propuesta | Acción | Frecuencia | Riesgo |
+|---|---|---|---|---|
+| `inicio` | Inicio | mantener (rediseñar paneles, M-13) | diaria | medio |
+| `cuadricula` (pestañas Notas/Criterios/Competencias) | **Evaluación** (vista principal) | mover | diaria | medio |
+| `instrumentos` (gestión) | Evaluación | mover | semanal | bajo |
+| `alumnos`, `clases`, `curriculo` | Evaluación | mover | occasional | bajo |
+| `montaje` | — | **disolver**: su guía pasa a Evaluación | — | bajo |
+| subvistas de `informe` | Informes | mover + renombrar (M-07) | diaria | medio |
+| Configuración | Ajustes | renombrar | rara | bajo |
+| modos `fab`/`dock`/`drawer` | variaciones de presentación | mantener | — | bajo |
+| Corrección (`renderCorreccion`) | Corregir | mover | diaria | medio |
+| Botón Guardar | acción de copia con estado (M-02) | rediseñar | — | medio |
+
+---
+
+## 4. Decisiones de la Fase 0 (cerradas)
+
+1. **Cuadrícula → Evaluación**: el cuaderno de notas es la vista principal de
+   Evaluación; **Informes** queda como análisis solo lectura.
+2. **Alias**: se mantienen las rutas y funciones antiguas como equivalentes, para
+   no romper ningún acceso.
+3. **Nombres**: se renombran en la UI (Calificaciones, Informe) y se actualizan
+   el SSOT, el README y el anexo en la misma fase.
+
+---
+
+## 5. Plan por fases
+
+- **Fase 0 — Auditoría** (este documento).
+- **Fase 1 — Menú principal**: `Inicio · Corregir · Evaluación · Informes ·
+  Ajustes`, con alias y sin pérdida de funciones.
+- **Fase 2 — Reubicación**: corrección a Corregir; montaje a Evaluación;
+  Configuración a Ajustes.
+- **Fase 3 — Inicio**: panel de pendientes, estado de backup y accesos rápidos.
+- **Fase 4 — Informes**: contexto único, renombrado de subvistas y avisos de
+  exclusión.
+- **Fase 5 — Pulido**: 360 px, teclado, estados vacío/carga/error.
+- **Aparte**: mejora de móvil (M-16).
+
+## 6. Criterios de aceptación (globales)
+
+- Todas las funciones anteriores siguen accesibles.
+- Las rutas antiguas tienen equivalencia (alias).
+- Ninguna función duplicada en más de dos lugares.
+- Máximo 5 secciones principales.
+- `node tools/checks.js` en verde y `node tools/build-singlefile.js --check`.
