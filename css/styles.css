@@ -220,6 +220,11 @@ main { max-width: 1440px; margin: 0 auto; padding: 20px 18px 60px; }
 .acciones { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .card-head .acciones { margin-left: auto; }
 .tabla .acciones { flex-wrap: nowrap; }
+
+/* M-08: modal «Acciones de <instrumento>» — un botón por línea, a lo ancho y
+   alineado a la izquierda, para elegir con seguridad también en táctil. */
+.acciones-modal { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
+.acciones-modal .btn { text-align: left; }
 .flujo { line-height: 1.6; }
 
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }

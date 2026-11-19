@@ -22,7 +22,7 @@ recordar dónde está cada cosa y consulte informes según una pregunta concreta
 | M-05 | Diferenciar visualmente los 3 niveles de navegación (barra / pestañas / chips) | Media | **Hecha** — nivel 2 como pestañas subrayadas (subnav en fila blanca y pestañas de la Cuadrícula) y nivel 3 como chips pequeños |
 | M-06 | Filtro único y contexto visible en Informes (sin selector de periodo duplicado) | Alta | **Hecha (Fase 4a)**: Informes es una vista propia con su contexto completo (clase, nivel, periodo, unidad, instrumento); ya no hay selector duplicado con la Cuadrícula |
 | M-07 | Renombrar y reagrupar las subvistas de Informe | Media | **Hecha (Fase 4b)**: 5 subvistas `Resumen · Atención · Criterios · Alumnos · Instrumentos`; la Distribución vive dentro del Resumen y los ids antiguos quedan como alias |
-| M-08 | Menú ⋯ por instrumento (dejar 2 acciones visibles) | Media | Pendiente |
+| M-08 | Menú ⋯ por instrumento (dejar 2 acciones visibles) | Media | **Hecha** — fila con Corregir + ⋯ que abre el modal de acciones (Editar · Duplicar · Al banco · Eliminar) |
 | M-09 | Diferenciar estados en la cuadrícula (`Pend.` / `N/A` / `No realiza`) y menú contextual | Media | Pendiente |
 | M-10 | Tooltips en chips de nivel y códigos de criterio | Media | Pendiente |
 | M-11 | Contraste y tamaño mínimo (≥12 px); no depender solo del color | Alta | Pendiente |

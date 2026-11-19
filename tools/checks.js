@@ -4569,6 +4569,68 @@ async function main() {
       subnav() ? String(subnav().querySelectorAll('button').length) : '(sin subnav)');
   }
 
+  console.log('\n== M-08 · Fila de instrumentos: 2 acciones visibles y menú «⋯» ==');
+  {
+    const app = cargarApp({ dom: true });
+    app.Storage.load();
+    await importarJson(app, estadoPrueba());
+    const doc = app.document;
+    const db = app.Storage.db;
+    app.App.ir('instrumentos');
+    const filaDe = () => doc.querySelector('#app tr[data-inst]');
+
+    const fila = filaDe();
+    check('M-08 · la fila muestra exactamente 2 acciones: Corregir + «⋯»',
+      !!fila && fila.querySelectorAll('button').length === 2
+      && !!fila.querySelector('button.corregir') && !!fila.querySelector('button.mas-acciones'),
+      fila ? fila.querySelectorAll('button').length + ' botones' : '(sin fila)');
+    const inst = app.Calc.instrumento(fila.dataset.inst);
+    check('M-08 · el «⋯» lleva aria-label con el título del instrumento',
+      fila.querySelector('.mas-acciones').getAttribute('aria-label') === 'Más acciones de ' + inst.titulo,
+      fila.querySelector('.mas-acciones').getAttribute('aria-label') || '(sin aria-label)');
+
+    fila.querySelector('.mas-acciones').click();
+    const mbody = doc.querySelector('#modal-root .modal-body');
+    const ops = Array.from(mbody.querySelectorAll('.acciones-modal button')).map(b => b.dataset.acc);
+    check('M-08 · el «⋯» abre «Acciones de <título>» con las 4 opciones',
+      (doc.querySelector('#modal-root .modal h3') || {}).textContent === 'Acciones de ' + inst.titulo
+      && ops.join(',') === 'editar,duplicar,al-banco,eliminar',
+      (doc.querySelector('#modal-root .modal h3') || {}).textContent + ' · ' + ops.join(','));
+
+    // Editar: el menú se cierra y abre el modal de instrumento que ya existía.
+    mbody.querySelector('[data-acc=editar]').click();
+    check('M-08 · Editar cierra el menú y abre el modal del instrumento',
+      !!doc.querySelector('#modal-root #f-titulo')
+      && (doc.querySelector('#modal-root .modal h3') || {}).textContent !== 'Acciones de ' + inst.titulo,
+      (doc.querySelector('#modal-root .modal h3') || {}).textContent || '(sin modal)');
+    doc.querySelector('#modal-root .cerrar').click();
+
+    filaDe().querySelector('.mas-acciones').click();
+    const nAntes = db.instrumentos.length;
+    doc.querySelector('#modal-root .modal-body [data-acc=al-banco]').click();
+    // El molde guardado es una copia con id propio: se comprueba por título.
+    check('M-08 · Al banco guarda el molde y cierra el menú sin tocar el original',
+      db.bancoInstrumentos.some(m => m.titulo === inst.titulo) && db.instrumentos.length === nAntes
+      && doc.querySelector('#modal-root').innerHTML === '',
+      'banco=' + db.bancoInstrumentos.length + ' · insts=' + db.instrumentos.length);
+
+    filaDe().querySelector('.mas-acciones').click();
+    // Eliminar conserva su confirmación explícita (el arnés responde true) y
+    // borra el instrumento junto con sus notas.
+    doc.querySelector('#modal-root .modal-body [data-acc=eliminar]').click();
+    check('M-08 · Eliminar mantiene el confirm y borra instrumento y notas',
+      !db.instrumentos.some(i => i.id === inst.id) && db.registros[inst.id] === undefined
+      && doc.querySelector('#modal-root').innerHTML === '',
+      'quedan=' + db.instrumentos.length);
+
+    filaDe().querySelector('.mas-acciones').click();
+    doc.querySelector('#modal-root .modal-body [data-acc=duplicar]').click();
+    check('M-08 · Duplicar cierra el menú y abre el modal de examen paralelo',
+      (doc.querySelector('#modal-root .modal h3') || {}).textContent === 'Examen paralelo',
+      (doc.querySelector('#modal-root .modal h3') || {}).textContent || '(sin modal)');
+    doc.querySelector('#modal-root .cerrar').click();
+  }
+
   console.log('\n== Estados vacios con salida (Corregir e Informes) ==');
   {
     const app = cargarApp({ dom: true });

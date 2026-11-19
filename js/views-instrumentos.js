@@ -57,10 +57,7 @@ const InstrumentosView = (() => {
       <td>
         <div class="acciones">
           <button class="btn btn-mini btn-primario corregir">Corregir</button>
-          <button class="btn btn-mini editar">Editar</button>
-          <button class="btn btn-mini duplicar" title="Crear examen paralelo para un nivel ACI">Duplicar</button>
-          <button class="btn btn-mini al-banco" title="Guardar una copia en el banco para reutilizarla en otra clase o el curso siguiente">Al banco</button>
-          <button class="icon-btn borrar-inst" title="Eliminar">×</button>
+          <button class="icon-btn mas-acciones" title="Más acciones" aria-label="Más acciones de ${Utils.esc(i.titulo)}">⋯</button>
         </div>
       </td>
     </tr>`;
@@ -481,6 +478,33 @@ function columnasNivel(filas) {
     Storage.guardarEnBanco(inst);
     UI.toast('Guardado en el banco: ' + inst.titulo);
     render(el);
+  }
+
+  // M-08: menú de acciones secundarias de una fila. En la fila solo quedan
+  // visibles «Corregir» (lo más frecuente) y este «⋯»; Editar, Duplicar, Al
+  // banco y Eliminar viven aquí, un botón por línea, para que en táctil no
+  // quepan dos toques cerca (el borrado ya no va pegado a las demás acciones).
+  function accionesInstrumento(el, inst) {
+    const body = UI.openModal({
+      titulo: `Acciones de ${inst.titulo}`,
+      cuerpo: `<div class="acciones-modal">
+        <button class="btn" data-acc="editar">Editar</button>
+        <button class="btn" data-acc="duplicar">Duplicar</button>
+        <button class="btn" data-acc="al-banco">Al banco</button>
+        <button class="btn btn-peligro" data-acc="eliminar">Eliminar</button>
+      </div>`
+    });
+    body.querySelectorAll('.acciones-modal button').forEach(b => {
+      b.onclick = () => {
+        // El menú se cierra primero: cada acción abre su propio modal (o pide
+        // confirmación) y refresca por su cuenta, igual que desde la fila.
+        UI.closeModal();
+        if (b.dataset.acc === 'editar') modalInstrumento(inst);
+        else if (b.dataset.acc === 'duplicar') duplicarInstrumento(inst);
+        else if (b.dataset.acc === 'al-banco') guardarAlBanco(el, inst);
+        else if (b.dataset.acc === 'eliminar') borrarInstrumento(el, inst);
+      };
+    });
   }
 
   // Lista del banco para añadir una copia a la clase activa, con las notas en
@@ -1214,10 +1238,7 @@ ${codigos}`;
     el.querySelectorAll('tr[data-inst]').forEach(tr => {
       const inst = Calc.instrumento(tr.dataset.inst);
       tr.querySelector('.corregir').onclick = () => renderCorreccion(el, inst.id);
-      tr.querySelector('.editar').onclick = () => modalInstrumento(inst);
-      tr.querySelector('.duplicar').onclick = () => duplicarInstrumento(inst);
-      tr.querySelector('.al-banco').onclick = () => guardarAlBanco(el, inst);
-      tr.querySelector('.borrar-inst').onclick = () => borrarInstrumento(el, inst);
+      tr.querySelector('.mas-acciones').onclick = () => accionesInstrumento(el, inst);
     });
   }
 
