@@ -130,7 +130,7 @@ Inicio · Corregir · Evaluación · Informes · Ajustes
 | Configuración | Ajustes | renombrar | rara | bajo | Hecha (Fase 1) |
 | modos `fab`/`dock`/`drawer` | variaciones de presentación | mantener (con subnav) | — | bajo | Hecha (2a) |
 | Corrección (`renderCorreccion`) | **Corregir** (vista propia: cola de pendientes) | mover | diaria | medio | Hecha (2b) |
-| Botón Guardar | acción de copia con estado (M-02) | rediseñar | — | medio | Pendiente |
+| Botón Guardar | acción de copia con estado (M-02) | rediseñar | — | medio | Hecha (Fase 3 + M-02) |
 
 ---
 
