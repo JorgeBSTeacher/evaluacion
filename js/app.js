@@ -360,6 +360,15 @@ const App = (() => {
         <div class="bloque-copias">
           <b>Copias de seguridad</b>
           <p>Última copia: <b>${ultima}</b>. El backup guarda <b>todo</b> (grupos, alumnos, clases, currículos, instrumentos y notas).</p>
+          ${Storage.puedeCarpeta() ? `
+          <div class="campo">
+            <span>Carpeta de backups</span>
+            <div class="acciones">
+              <button class="btn btn-mini" id="btn-carpeta-ajustes">Elegir carpeta…</button>
+              <span class="hint" id="carpeta-estado">…</span>
+            </div>
+            <p class="hint">Con carpeta elegida, «Guardar» sobrescribe <code>evalcrit.json</code> en ella. «Exportar backup» crea uno nuevo con fecha.</p>
+          </div>` : '<p class="hint">Tu navegador no permite elegir carpeta de guardado: las copias irán a Descargas.</p>'}
           <div class="acciones">
             <button class="btn btn-primario btn-mini" id="btn-exportar-ajustes">Exportar backup</button>
             <button class="btn btn-mini" id="btn-importar-ajustes">Importar backup</button>
@@ -519,6 +528,19 @@ const App = (() => {
         .catch(e => alert('Error al exportar: ' + e.message));
     body.querySelector('#btn-importar-ajustes').onclick = () =>
       document.getElementById('input-importar').click();
+    // Carpeta de backups: con carpeta elegida, «Guardar» sobrescribe
+    // `evalcrit.json` en ella; «Exportar backup» crea uno nuevo con fecha.
+    const btnCarpetaAjustes = body.querySelector('#btn-carpeta-ajustes');
+    const carpetaEstado = body.querySelector('#carpeta-estado');
+    const pintaCarpeta = dir => {
+      if (carpetaEstado) carpetaEstado.textContent = dir ? `Carpeta: «${dir.name}»` : 'Sin carpeta: la copia irá a Descargas.';
+      if (btnCarpetaAjustes) btnCarpetaAjustes.textContent = dir ? 'Cambiar carpeta…' : 'Elegir carpeta…';
+    };
+    if (btnCarpetaAjustes) btnCarpetaAjustes.onclick = async () => {
+      const h = await Storage.elegirCarpetaBackup();
+      if (h) { pintaCarpeta(h); pintaEstadoCopia(); }
+    };
+    Storage.idbLeer('dir').then(pintaCarpeta).catch(() => {});
     body.querySelector('#btn-reiniciar').onclick = () => {
       UI.openModal({
         titulo: 'Restablecer aplicación',
@@ -871,7 +893,12 @@ const App = (() => {
         : 'Se han corregido los criterios de ' + Storage.reparadosCriterios + ' instrumentos para que coincidan con su nivel.');
     }
     document.getElementById('btn-guardar').onclick = () => Storage.guardar()
-      .then(ok => { if (ok) pintaEstadoCopia(); })
+      .then(ok => {
+        pintaEstadoCopia();
+        // Sin esto, un fallo silencioso (permiso denegado, cancelado) se lee
+        // como «el botón no hace nada».
+        if (!ok) UI.toast('No se ha guardado la copia. Prueba de nuevo o usa Configuración → Copias de seguridad.', 'error');
+      })
       .catch(e => alert('Error al guardar: ' + e.message));
     document.getElementById('btn-ajustes').onclick = () => modalAjustes();
 

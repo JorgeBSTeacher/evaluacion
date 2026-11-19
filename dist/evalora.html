@@ -921,11 +921,11 @@ c28 -90 50 -167 47 -169 -7 -7 -144 29 -263 70 -498 170 -897 556 -1095 1058
       </svg>
     </button>
     <span id="estado-copia" class="estado-copia" role="status" aria-live="polite"></span>
-    <button id="btn-guardar" class="btn btn-primario" title="Guarda una copia del estado actual en tu disco">
+    <button id="btn-guardar" class="btn btn-primario" title="Sobrescribe la copia en tu disco (el mismo JSON elegido); el estado también queda guardado en este navegador">
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
         <path fill-rule="evenodd" d="M4 2h13a1 1 0 0 1 .7.3l4 4A1 1 0 0 1 22 7v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1Zm1 2v16h14V7.4L15.6 4H5Zm3 1h6v4H8V5Zm1 1.5V8h4V6.5H9Zm-1 8h8a1 1 0 0 1 1 1v4H7v-4a1 1 0 0 1 1-1Zm1 3h6v-1.5H9V17Z"/>
       </svg>
-      Copia de seguridad
+      Guardar
     </button>
     <input type="file" id="input-importar" accept=".json,application/json" hidden>
   </div>
@@ -1263,15 +1263,10 @@ const Storage = {
   async guardar() {
     const contenido = JSON.stringify(this.db, null, 2);
     const nombre = this.nombreFichero || 'evalcrit.json';
-    // En file:// el API de acceso al sistema de ficheros NO funciona (R-03): el
-    // selector ni siquiera se abre y la espera se cuelga, de modo que el botón
-    // «Copia de seguridad» parecería no hacer nada. Mismo guard que `exportar`:
-    // en ese origen la única vía fiable es la descarga por Blob.
+    // En file:// el SELECTOR de fichero no se abre y la espera se cuelga: el
+    // botón parecería no hacer nada (R-03). El manejador recordado y la carpeta
+    // elegida siguen siendo la vía de sobrescribir; sin ellos, descarga.
     const esFile = typeof location !== 'undefined' && location.protocol === 'file:';
-    if (esFile) {
-      UI.toast('Desde un fichero local el navegador no permite sobrescribir: la copia se descarga.');
-      return this.descargar(contenido, nombre);
-    }
     // 1. Manejador recordado (misma sesión o IndexedDB tras recargar).
     const fh = this.ficheroHandle || await this.idbLeer('fileHandle');
     if (fh && await this.escribeHandle(fh, contenido)) {
@@ -1303,8 +1298,9 @@ const Storage = {
         }
       }
     }
-    // 3. Selector de fichero con nombre estable (Chrome/Edge).
-    if (typeof window !== 'undefined' && typeof window.showSaveFilePicker === 'function') {
+    // 3. Selector de fichero con nombre estable (Chrome/Edge). Solo fuera de
+    // file://: en fichero local no abre el selector y la espera se cuelga.
+    if (!esFile && typeof window !== 'undefined' && typeof window.showSaveFilePicker === 'function') {
       try {
         const fh3 = await window.showSaveFilePicker({
           suggestedName: nombre,
@@ -7903,6 +7899,15 @@ const App = (() => {
         <div class="bloque-copias">
           <b>Copias de seguridad</b>
           <p>Última copia: <b>${ultima}</b>. El backup guarda <b>todo</b> (grupos, alumnos, clases, currículos, instrumentos y notas).</p>
+          ${Storage.puedeCarpeta() ? `
+          <div class="campo">
+            <span>Carpeta de backups</span>
+            <div class="acciones">
+              <button class="btn btn-mini" id="btn-carpeta-ajustes">Elegir carpeta…</button>
+              <span class="hint" id="carpeta-estado">…</span>
+            </div>
+            <p class="hint">Con carpeta elegida, «Guardar» sobrescribe <code>evalcrit.json</code> en ella. «Exportar backup» crea uno nuevo con fecha.</p>
+          </div>` : '<p class="hint">Tu navegador no permite elegir carpeta de guardado: las copias irán a Descargas.</p>'}
           <div class="acciones">
             <button class="btn btn-primario btn-mini" id="btn-exportar-ajustes">Exportar backup</button>
             <button class="btn btn-mini" id="btn-importar-ajustes">Importar backup</button>
@@ -8062,6 +8067,19 @@ const App = (() => {
         .catch(e => alert('Error al exportar: ' + e.message));
     body.querySelector('#btn-importar-ajustes').onclick = () =>
       document.getElementById('input-importar').click();
+    // Carpeta de backups: con carpeta elegida, «Guardar» sobrescribe
+    // `evalcrit.json` en ella; «Exportar backup» crea uno nuevo con fecha.
+    const btnCarpetaAjustes = body.querySelector('#btn-carpeta-ajustes');
+    const carpetaEstado = body.querySelector('#carpeta-estado');
+    const pintaCarpeta = dir => {
+      if (carpetaEstado) carpetaEstado.textContent = dir ? `Carpeta: «${dir.name}»` : 'Sin carpeta: la copia irá a Descargas.';
+      if (btnCarpetaAjustes) btnCarpetaAjustes.textContent = dir ? 'Cambiar carpeta…' : 'Elegir carpeta…';
+    };
+    if (btnCarpetaAjustes) btnCarpetaAjustes.onclick = async () => {
+      const h = await Storage.elegirCarpetaBackup();
+      if (h) { pintaCarpeta(h); pintaEstadoCopia(); }
+    };
+    Storage.idbLeer('dir').then(pintaCarpeta).catch(() => {});
     body.querySelector('#btn-reiniciar').onclick = () => {
       UI.openModal({
         titulo: 'Restablecer aplicación',
@@ -8414,7 +8432,12 @@ const App = (() => {
         : 'Se han corregido los criterios de ' + Storage.reparadosCriterios + ' instrumentos para que coincidan con su nivel.');
     }
     document.getElementById('btn-guardar').onclick = () => Storage.guardar()
-      .then(ok => { if (ok) pintaEstadoCopia(); })
+      .then(ok => {
+        pintaEstadoCopia();
+        // Sin esto, un fallo silencioso (permiso denegado, cancelado) se lee
+        // como «el botón no hace nada».
+        if (!ok) UI.toast('No se ha guardado la copia. Prueba de nuevo o usa Configuración → Copias de seguridad.', 'error');
+      })
       .catch(e => alert('Error al guardar: ' + e.message));
     document.getElementById('btn-ajustes').onclick = () => modalAjustes();
 

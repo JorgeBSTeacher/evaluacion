@@ -253,15 +253,10 @@ const Storage = {
   async guardar() {
     const contenido = JSON.stringify(this.db, null, 2);
     const nombre = this.nombreFichero || 'evalcrit.json';
-    // En file:// el API de acceso al sistema de ficheros NO funciona (R-03): el
-    // selector ni siquiera se abre y la espera se cuelga, de modo que el botón
-    // «Copia de seguridad» parecería no hacer nada. Mismo guard que `exportar`:
-    // en ese origen la única vía fiable es la descarga por Blob.
+    // En file:// el SELECTOR de fichero no se abre y la espera se cuelga: el
+    // botón parecería no hacer nada (R-03). El manejador recordado y la carpeta
+    // elegida siguen siendo la vía de sobrescribir; sin ellos, descarga.
     const esFile = typeof location !== 'undefined' && location.protocol === 'file:';
-    if (esFile) {
-      UI.toast('Desde un fichero local el navegador no permite sobrescribir: la copia se descarga.');
-      return this.descargar(contenido, nombre);
-    }
     // 1. Manejador recordado (misma sesión o IndexedDB tras recargar).
     const fh = this.ficheroHandle || await this.idbLeer('fileHandle');
     if (fh && await this.escribeHandle(fh, contenido)) {
@@ -293,8 +288,9 @@ const Storage = {
         }
       }
     }
-    // 3. Selector de fichero con nombre estable (Chrome/Edge).
-    if (typeof window !== 'undefined' && typeof window.showSaveFilePicker === 'function') {
+    // 3. Selector de fichero con nombre estable (Chrome/Edge). Solo fuera de
+    // file://: en fichero local no abre el selector y la espera se cuelga.
+    if (!esFile && typeof window !== 'undefined' && typeof window.showSaveFilePicker === 'function') {
       try {
         const fh3 = await window.showSaveFilePicker({
           suggestedName: nombre,

@@ -3125,9 +3125,9 @@ async function main() {
       /id="btn-guardar"/.test(topbar) && /id="input-importar"/.test(topbar));
     // M-02: el botón de la cabecera es una acción de copia, con su indicador
     // de estado permanente delante (anunciado a lectores de pantalla).
-    check('el botón de la cabecera se llama «Copia de seguridad» y explica su funcion',
-      topbar.includes('Copia de seguridad') &&
-      /id="btn-guardar"[^>]*title="Guarda una copia del estado actual en tu disco"/.test(topbar),
+    check('el botón de la cabecera se llama «Guardar» y explica que sobrescribe la copia',
+      /\bGuardar\s*<\/button>/.test(topbar) &&
+      /id="btn-guardar"[^>]*title="Sobrescribe la copia en tu disco[^"]*"/.test(topbar),
       topbar.match(/<button id="btn-guardar"[\s\S]*?<\/button>/));
     check('la cabecera lleva el indicador de copia como estado, no como boton',
       /<span id="estado-copia" class="estado-copia" role="status" aria-live="polite"><\/span>/.test(topbar) &&
@@ -3195,6 +3195,11 @@ async function main() {
     check('Configuracion ofrece exportar e importar en su bloque de copias',
       !!body.querySelector('.bloque-copias #btn-exportar-ajustes') &&
       !!body.querySelector('.bloque-copias #btn-importar-ajustes'));
+    check('la sección Copias y seguridad ofrece elegir carpeta si el navegador lo permite',
+      app.Storage.puedeCarpeta()
+        ? (!!body.querySelector('.bloque-copias #btn-carpeta-ajustes') &&
+           !!body.querySelector('.bloque-copias #carpeta-estado'))
+        : body.textContent.includes('no permite elegir carpeta'));
     check('el borrado total vive dentro de la zona peligrosa',
       !!body.querySelector('.zona-peligro') && !!body.querySelector('.zona-peligro #btn-reiniciar'));
     // Importar reutiliza el selector que sigue en la cabecera.
