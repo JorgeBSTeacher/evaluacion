@@ -778,7 +778,7 @@ function columnasNivel(filas) {
     UI.openModal({
       titulo: '¿Realiza esta evaluación?',
       cuerpo: `
-        <p class="hint"><b>${Utils.esc(a.apellidos || '')}, ${Utils.esc(a.nombre || '')}</b> · ${Utils.esc(inst.titulo)}</p>
+        <p class="hint"><b>${Utils.esc(App.nombreVisible(a))}</b> · ${Utils.esc(inst.titulo)}</p>
         <label class="campo campo--toggle"><input type="checkbox" id="no-realiza"${reg.noRealiza === true ? ' checked' : ''}><span>No realiza esta evaluación</span></label>
         <p class="hint">Si lo marcas, se dejan en blanco sus apartados y no cuenta en la nota del instrumento, en el progreso ni en la media de la UD.</p>`,
       textoGuardar: 'Guardar',
@@ -819,6 +819,7 @@ function columnasNivel(filas) {
           <h2>${Utils.esc(inst.titulo)}</h2>
           <div class="acciones">
             ${url ? `<a class="btn" href="${Utils.esc(url)}" target="_blank" rel="noopener" title="${Utils.esc(url)}">Abrir enlace</a>` : ''}
+            <span id="slot-privacidad"></span>
             <button class="btn" id="volver">Volver</button>
           </div>
         </div>
@@ -844,7 +845,7 @@ function columnasNivel(filas) {
               ${alumnos.map(a => {
                 const reg = (Storage.db.registros[inst.id] || {})[a.id] || {};
                 return `<tr data-alumno="${a.id}">
-                  <td><button type="button" class="nombre-alumno" data-alumno="${a.id}" title="Toca para marcar si realiza esta evaluación">${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}${esNoRealiza(a.id) ? ' ' + insigniaNoRealiza : ''}</button></td>
+                  <td><button type="button" class="nombre-alumno" data-alumno="${a.id}" title="Toca para marcar si realiza esta evaluación">${Utils.esc(App.nombreVisible(a))}${esNoRealiza(a.id) ? ' ' + insigniaNoRealiza : ''}</button></td>
                   ${inst.apartados.map(ap => `
                     <td data-apartado="${ap.id}">
                       ${esRubrica
@@ -875,6 +876,18 @@ function columnasNivel(filas) {
         La nota mostrada es la del instrumento (informativa). Las ponderaciones por criterio se aplican en la Cuadrícula.
       </p>`;
 
+    // Privacidad también en la corrección: el docente puede proyectarla.
+    if (typeof App !== 'undefined' && App.crearBotonPrivacidad) {
+      const slot = el.querySelector('#slot-privacidad');
+      if (slot && typeof slot.replaceWith === 'function') {
+        slot.replaceWith(App.crearBotonPrivacidad(() => renderCorreccion(el, instId, volverA, alumnoId)));
+      } else if (slot && slot.parentNode && typeof slot.parentNode.insertBefore === 'function') {
+        // El DOM del arnés no tiene replaceWith: inserta delante y quita el hueco.
+        const btn = App.crearBotonPrivacidad(() => renderCorreccion(el, instId, volverA, alumnoId));
+        slot.parentNode.insertBefore(btn, slot);
+        if (typeof slot.remove === 'function') slot.remove();
+      }
+    }
     el.querySelector('#volver').onclick = () => (volverA ? volverA() : render(el));
 
     const tabla = el.querySelector('#tabla-corrige');
@@ -1020,7 +1033,7 @@ function columnasNivel(filas) {
     function pintaNav() {
       if (!filas.length) return;
       const a = alumnos[idx];
-      navInfo.innerHTML = `Alumno <b>${idx + 1}</b> de <b>${filas.length}</b> · ${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}`;
+      navInfo.innerHTML = `Alumno <b>${idx + 1}</b> de <b>${filas.length}</b> · ${Utils.esc(App.nombreVisible(a))}`;
     }
 
     function irA(i, opciones) {

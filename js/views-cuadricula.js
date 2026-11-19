@@ -345,7 +345,7 @@ const CuadriculaView = (() => {
   // alumno) y qué bloques incluir (criterios / competencias) al generar el PDF.
   function modalImprimir(el, insts) {
     const alumnos = Calc.alumnosDeClase(claseSel)
-      .map(a => ({ id: a.id, nom: `${a.apellidos}, ${a.nombre}` }));
+      .map(a => ({ id: a.id, nom: App.nombreVisible(a) }));
     const mbody = UI.openModal({
       titulo: 'Imprimir / PDF',
       cuerpo: `<p class="hint">Elige qué quieres pasar a PDF.</p>

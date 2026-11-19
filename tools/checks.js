@@ -5160,9 +5160,14 @@ async function main() {
     b.click();
     check('M12-3 · un clic sobre el ojo oculta los nombres', App.esAnonimo() === true);
     check('M12-4 · con el modo activo la Cuadrícula muestra iniciales',
-      vista().includes('B. A.') && vista().includes('B. B.')
+      vista().includes('A. B.') && vista().includes('B. B.')
       && !vista().includes('Base, Ana') && !vista().includes('Base, Beto'),
       'quedan nombres completos o no salen iniciales');
+    check('M12-4b · las iniciales son Nombre, primer y segundo apellido (N. P. S.)',
+      App.nombreVisible({ nombre: 'Ana', apellidos: 'Dos Apellidos' }) === 'A. D. A.'
+      && App.nombreVisible({ nombre: 'Ana', apellidos: 'Base' }) === 'A. B.'
+      && App.nombreVisible({ nombre: 'José Luis', apellidos: 'García Pérez' }) === 'J. G. P.',
+      App.nombreVisible({ nombre: 'José Luis', apellidos: 'García Pérez' }));
     b = btnPriv();
     check('M12-5 · oculto, el ojo va tachado y pide mantener pulsado',
       b.getAttribute('aria-pressed') === 'true'
@@ -5211,28 +5216,28 @@ async function main() {
     oculta();
     const elCrit = makeEl();
     app.CuadriculaView.render(elCrit, { tab: 'criterios' });
-    check('M12-15 · la pestaña Criterios también muestra iniciales', elCrit.innerHTML.includes('B. A.'));
+    check('M12-15 · la pestaña Criterios también muestra iniciales', elCrit.innerHTML.includes('A. B.'));
 
     App.ir('informes');
     check('M12-16 · el Informe muestra iniciales en pantalla',
-      vista().includes('B. A.') && !vista().includes('Base, Ana'),
+      vista().includes('A. B.') && !vista().includes('Base, Ana'),
       'sin iniciales o con nombres completos');
     check('M12-17 · el Informe usa el mismo componente de ojo en su panel de contexto',
       !!btnPriv() && btnPriv().getAttribute('aria-pressed') === 'true'
       && !!doc.querySelector('#app .informe-alcance .btn-privacidad'));
     doc.querySelector('#app [data-subvista="alumnos"]').click();
     check('M12-18 · la subvista Alumnos también muestra iniciales',
-      vista().includes('B. A.') && !vista().includes('Base, Ana'));
+      vista().includes('A. B.') && !vista().includes('Base, Ana'));
 
     const infAnon = app.InformeView.informeHtml({ claseSel: 'c1', nivelSel: '__todas__' });
     check('M12-19 · el informe imprimible del Informe también anonimiza',
-      infAnon.includes('B. A.') && infAnon.includes('A. C.')
+      infAnon.includes('A. B.') && infAnon.includes('C. A.')
       && !infAnon.includes('Base, Ana') && !infAnon.includes('Aci, Carla'));
     const cuadAnon = app.CuadriculaView.informeHtml('c1', 'T1');
     check('M12-20 · el informe imprimible de la Cuadrícula también anonimiza',
-      cuadAnon.includes('B. A.') && !cuadAnon.includes('Base, Ana'));
+      cuadAnon.includes('A. B.') && !cuadAnon.includes('Base, Ana'));
     const indiAnon = app.CuadriculaView.informeHtml('c1', 'T1', { alumnoId: 'a1' });
-    check('M12-21 · el informe individual imprime las iniciales del alumno', indiAnon.includes('B. A.'));
+    check('M12-21 · el informe individual imprime las iniciales del alumno', indiAnon.includes('A. B.'));
 
     // Ambos conmutadores revelan igual: mantener pulsado en el Informe.
     const bInf = btnPriv();
@@ -5241,11 +5246,18 @@ async function main() {
     check('M12-22 · mantener pulsado el ojo del Informe también revela',
       App.esAnonimo() === false && vista().includes('Base, Ana'));
 
-    // La corrección es la excepción: ahí el docente necesita el nombre.
+    // La corrección también respeta el modo (se puede proyectar), y ofrece el
+    // ojo para volver a mostrar los nombres.
     App.toggleAnonimo();
     app.InstrumentosView.renderCorreccion(doc.getElementById('app'), 'iBase');
-    check('M12-23 · la corrección mantiene el nombre completo con el modo activo',
-      App.esAnonimo() === true && vista().includes('Base, Ana') && vista().includes('Base, Beto'));
+    check('M12-23 · la corrección respeta el modo y muestra iniciales',
+      App.esAnonimo() === true && vista().includes('A. B.') && vista().includes('B. B.'));
+    check('M12-25 · la corrección ofrece el ojo para volver a mostrar los nombres',
+      !!doc.querySelector('#app .btn-privacidad'));
+    app.App.toggleAnonimo();
+    app.InstrumentosView.renderCorreccion(doc.getElementById('app'), 'iBase');
+    check('M12-26 · con el modo apagado la corrección vuelve a los nombres completos',
+      vista().includes('Base, Ana') && vista().includes('Base, Beto'));
 
     check('M12-24 · el modo es estado de sesión: no se guarda en db ni viaja en el backup',
       !('anonimo' in app.Storage.db) && JSON.stringify(app.Storage.db).indexOf('anonimo') === -1);

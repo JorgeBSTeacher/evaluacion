@@ -59,16 +59,17 @@ const App = (() => {
 
   // M-12: cómo se pinta un alumno. Con el modo privacidad activo devuelve las
   // iniciales («G. J.»: inicial del primer apellido + inicial del nombre); si
-  // no, «Apellidos, Nombre» como siempre. La corrección (renderCorreccion) NO
-  // pasa por aquí: ahí el docente necesita el nombre completo.
+  // no, «Apellidos, Nombre» como siempre. La corrección (renderCorreccion) SÍ
+  // pasa por aquí: tiene su propio ojo para ocultar/mostrar.
   function nombreVisible(a) {
     if (!a) return '';
     if (!anonimo) return `${a.apellidos}, ${a.nombre}`;
-    const ap = String(a.apellidos || '').trim();
+    // Iniciales «N. P. S.»: nombre, primer apellido y segundo apellido, en
+    // ese orden (petición del docente). Sin segundo apellido queda «N. P.».
+    const ap = String(a.apellidos || '').trim().split(/\s+/).filter(Boolean);
     const nom = String(a.nombre || '').trim();
-    const iniAp = ap ? ap.split(/\s+/)[0][0].toUpperCase() + '.' : '';
-    const iniNom = nom ? nom[0].toUpperCase() + '.' : '';
-    return [iniAp, iniNom].filter(Boolean).join(' ');
+    const inicial = x => x ? x.charAt(0).toUpperCase() + '.' : '';
+    return [inicial(nom), inicial(ap[0]), inicial(ap[1])].filter(Boolean).join(' ');
   }
 
   // M-12: botón de privacidad con icono de ojo (sustituye a los botones de

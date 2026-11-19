@@ -5018,7 +5018,7 @@ function columnasNivel(filas) {
     UI.openModal({
       titulo: '¿Realiza esta evaluación?',
       cuerpo: `
-        <p class="hint"><b>${Utils.esc(a.apellidos || '')}, ${Utils.esc(a.nombre || '')}</b> · ${Utils.esc(inst.titulo)}</p>
+        <p class="hint"><b>${Utils.esc(App.nombreVisible(a))}</b> · ${Utils.esc(inst.titulo)}</p>
         <label class="campo campo--toggle"><input type="checkbox" id="no-realiza"${reg.noRealiza === true ? ' checked' : ''}><span>No realiza esta evaluación</span></label>
         <p class="hint">Si lo marcas, se dejan en blanco sus apartados y no cuenta en la nota del instrumento, en el progreso ni en la media de la UD.</p>`,
       textoGuardar: 'Guardar',
@@ -5059,6 +5059,7 @@ function columnasNivel(filas) {
           <h2>${Utils.esc(inst.titulo)}</h2>
           <div class="acciones">
             ${url ? `<a class="btn" href="${Utils.esc(url)}" target="_blank" rel="noopener" title="${Utils.esc(url)}">Abrir enlace</a>` : ''}
+            <span id="slot-privacidad"></span>
             <button class="btn" id="volver">Volver</button>
           </div>
         </div>
@@ -5084,7 +5085,7 @@ function columnasNivel(filas) {
               ${alumnos.map(a => {
                 const reg = (Storage.db.registros[inst.id] || {})[a.id] || {};
                 return `<tr data-alumno="${a.id}">
-                  <td><button type="button" class="nombre-alumno" data-alumno="${a.id}" title="Toca para marcar si realiza esta evaluación">${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}${esNoRealiza(a.id) ? ' ' + insigniaNoRealiza : ''}</button></td>
+                  <td><button type="button" class="nombre-alumno" data-alumno="${a.id}" title="Toca para marcar si realiza esta evaluación">${Utils.esc(App.nombreVisible(a))}${esNoRealiza(a.id) ? ' ' + insigniaNoRealiza : ''}</button></td>
                   ${inst.apartados.map(ap => `
                     <td data-apartado="${ap.id}">
                       ${esRubrica
@@ -5115,6 +5116,18 @@ function columnasNivel(filas) {
         La nota mostrada es la del instrumento (informativa). Las ponderaciones por criterio se aplican en la Cuadrícula.
       </p>`;
 
+    // Privacidad también en la corrección: el docente puede proyectarla.
+    if (typeof App !== 'undefined' && App.crearBotonPrivacidad) {
+      const slot = el.querySelector('#slot-privacidad');
+      if (slot && typeof slot.replaceWith === 'function') {
+        slot.replaceWith(App.crearBotonPrivacidad(() => renderCorreccion(el, instId, volverA, alumnoId)));
+      } else if (slot && slot.parentNode && typeof slot.parentNode.insertBefore === 'function') {
+        // El DOM del arnés no tiene replaceWith: inserta delante y quita el hueco.
+        const btn = App.crearBotonPrivacidad(() => renderCorreccion(el, instId, volverA, alumnoId));
+        slot.parentNode.insertBefore(btn, slot);
+        if (typeof slot.remove === 'function') slot.remove();
+      }
+    }
     el.querySelector('#volver').onclick = () => (volverA ? volverA() : render(el));
 
     const tabla = el.querySelector('#tabla-corrige');
@@ -5260,7 +5273,7 @@ function columnasNivel(filas) {
     function pintaNav() {
       if (!filas.length) return;
       const a = alumnos[idx];
-      navInfo.innerHTML = `Alumno <b>${idx + 1}</b> de <b>${filas.length}</b> · ${Utils.esc(a.apellidos)}, ${Utils.esc(a.nombre)}`;
+      navInfo.innerHTML = `Alumno <b>${idx + 1}</b> de <b>${filas.length}</b> · ${Utils.esc(App.nombreVisible(a))}`;
     }
 
     function irA(i, opciones) {
@@ -6941,7 +6954,7 @@ const CuadriculaView = (() => {
   // alumno) y qué bloques incluir (criterios / competencias) al generar el PDF.
   function modalImprimir(el, insts) {
     const alumnos = Calc.alumnosDeClase(claseSel)
-      .map(a => ({ id: a.id, nom: `${a.apellidos}, ${a.nombre}` }));
+      .map(a => ({ id: a.id, nom: App.nombreVisible(a) }));
     const mbody = UI.openModal({
       titulo: 'Imprimir / PDF',
       cuerpo: `<p class="hint">Elige qué quieres pasar a PDF.</p>
@@ -7663,16 +7676,17 @@ const App = (() => {
 
   // M-12: cómo se pinta un alumno. Con el modo privacidad activo devuelve las
   // iniciales («G. J.»: inicial del primer apellido + inicial del nombre); si
-  // no, «Apellidos, Nombre» como siempre. La corrección (renderCorreccion) NO
-  // pasa por aquí: ahí el docente necesita el nombre completo.
+  // no, «Apellidos, Nombre» como siempre. La corrección (renderCorreccion) SÍ
+  // pasa por aquí: tiene su propio ojo para ocultar/mostrar.
   function nombreVisible(a) {
     if (!a) return '';
     if (!anonimo) return `${a.apellidos}, ${a.nombre}`;
-    const ap = String(a.apellidos || '').trim();
+    // Iniciales «N. P. S.»: nombre, primer apellido y segundo apellido, en
+    // ese orden (petición del docente). Sin segundo apellido queda «N. P.».
+    const ap = String(a.apellidos || '').trim().split(/\s+/).filter(Boolean);
     const nom = String(a.nombre || '').trim();
-    const iniAp = ap ? ap.split(/\s+/)[0][0].toUpperCase() + '.' : '';
-    const iniNom = nom ? nom[0].toUpperCase() + '.' : '';
-    return [iniAp, iniNom].filter(Boolean).join(' ');
+    const inicial = x => x ? x.charAt(0).toUpperCase() + '.' : '';
+    return [inicial(nom), inicial(ap[0]), inicial(ap[1])].filter(Boolean).join(' ');
   }
 
   // M-12: botón de privacidad con icono de ojo (sustituye a los botones de
