@@ -180,6 +180,30 @@ body.modo-basic .subnav button.activo { background: var(--marca); border-color: 
 .save-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--ok); display: inline-block; transition: background .3s; }
 .save-dot.guardando { background: #f59e0b; }
 
+/* Indicador permanente de copia de seguridad (M-02): punto de color + texto,
+   junto al botón «Copia de seguridad». Colores de estado con texto más oscuro
+   que el punto (mismo criterio que .badge) para superar el contraste AA. */
+.estado-copia { display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 600; color: var(--tinta-suave); }
+/* El atributo `hidden` (app sin datos) debe ganar a la regla display. */
+.estado-copia[hidden] { display: none; }
+.estado-copia::before { content: ''; width: 9px; height: 9px; border-radius: 50%; background: var(--tinta-suave); }
+.estado-copia.ok::before { background: var(--ok); }
+.estado-copia.ok { color: var(--ok); }
+.estado-copia.pendiente::before, .estado-copia.antigua::before { background: var(--aviso); }
+.estado-copia.pendiente, .estado-copia.antigua { color: var(--aviso); }
+.estado-copia.nunca::before { background: var(--ko); }
+.estado-copia.nunca { color: var(--ko); }
+/* En la cabecera a todo color: el texto acompaña en blanco translúcido, como
+   el resto de la barra; el punto conserva su color de estado (con anillo para
+   destacar sobre el fondo de marca). */
+.topbar .estado-copia { color: rgba(255, 255, 255, .82); }
+.topbar .estado-copia::before { box-shadow: 0 0 0 2px rgba(255, 255, 255, .35); }
+/* Móvil: solo el punto; el `title` del elemento explica el estado. */
+@media (max-width: 520px) {
+  .estado-copia { font-size: 0; gap: 0; }
+}
+
 main { max-width: 1440px; margin: 0 auto; padding: 20px 18px 60px; }
 
 .card {

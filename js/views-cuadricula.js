@@ -508,6 +508,13 @@ const CuadriculaView = (() => {
       <span>${Utils.esc(asigImp)} · ${Utils.esc(grupoImp)} · ${periodo} · ${nivelImp} · impreso el ${Utils.hoy().split('-').reverse().join('/')}</span>
     </div>`;
 
+    // Insignia del ajuste de notas sin corregir (M-04): informativa, no botón.
+    // Da contexto a la media de la cuadrícula sea cual sea la pestaña activa.
+    const sinNotaEsCero = !!(db.configuracion && db.configuracion.sinNotaEsCero);
+    const badgeSinNota = sinNotaEsCero
+      ? '<span class="badge warn" title="Un instrumento sin corregir cuenta como 0 en la media de la unidad. Cámbialo en Configuración → Calificación.">Sin corregir cuenta como 0</span>'
+      : '<span class="badge" title="Un instrumento sin corregir NO cuenta en la media de la unidad. Cámbialo en Configuración → Calificación.">Sin corregir no cuenta</span>';
+
     // El buscador de la cabecera filtra la tabla de notas; el selector de
     // periodo gobierna el alcance de la cuadrícula.
     el.innerHTML = `
@@ -515,6 +522,7 @@ const CuadriculaView = (() => {
         ${cabeceraImp}
         <div class="card-head no-print">
           <h2>Calificaciones</h2>
+          ${badgeSinNota}
           ${(() => {
             const lblNivel = modoTodas
               ? ' · <b>todos los niveles</b>'

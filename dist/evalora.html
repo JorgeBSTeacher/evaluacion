@@ -198,6 +198,30 @@ body.modo-basic .subnav button.activo { background: var(--marca); border-color: 
 .save-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--ok); display: inline-block; transition: background .3s; }
 .save-dot.guardando { background: #f59e0b; }
 
+/* Indicador permanente de copia de seguridad (M-02): punto de color + texto,
+   junto al botón «Copia de seguridad». Colores de estado con texto más oscuro
+   que el punto (mismo criterio que .badge) para superar el contraste AA. */
+.estado-copia { display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 600; color: var(--tinta-suave); }
+/* El atributo `hidden` (app sin datos) debe ganar a la regla display. */
+.estado-copia[hidden] { display: none; }
+.estado-copia::before { content: ''; width: 9px; height: 9px; border-radius: 50%; background: var(--tinta-suave); }
+.estado-copia.ok::before { background: var(--ok); }
+.estado-copia.ok { color: var(--ok); }
+.estado-copia.pendiente::before, .estado-copia.antigua::before { background: var(--aviso); }
+.estado-copia.pendiente, .estado-copia.antigua { color: var(--aviso); }
+.estado-copia.nunca::before { background: var(--ko); }
+.estado-copia.nunca { color: var(--ko); }
+/* En la cabecera a todo color: el texto acompaña en blanco translúcido, como
+   el resto de la barra; el punto conserva su color de estado (con anillo para
+   destacar sobre el fondo de marca). */
+.topbar .estado-copia { color: rgba(255, 255, 255, .82); }
+.topbar .estado-copia::before { box-shadow: 0 0 0 2px rgba(255, 255, 255, .35); }
+/* Móvil: solo el punto; el `title` del elemento explica el estado. */
+@media (max-width: 520px) {
+  .estado-copia { font-size: 0; gap: 0; }
+}
+
 main { max-width: 1440px; margin: 0 auto; padding: 20px 18px 60px; }
 
 .card {
@@ -848,11 +872,12 @@ c28 -90 50 -167 47 -169 -7 -7 -144 29 -263 70 -498 170 -897 556 -1095 1058
         <path d="M20.3 13.2a8.6 8.6 0 0 0 0-2.4l2-1.5a.6.6 0 0 0 .1-.7l-1.9-3.3a.6.6 0 0 0-.7-.3l-2.4 1a8.7 8.7 0 0 0-2-1.2l-.4-2.5a.6.6 0 0 0-.6-.5h-3.8a.6.6 0 0 0-.6.5l-.4 2.5a8.7 8.7 0 0 0-2 1.2l-2.4-1a.6.6 0 0 0-.7.3L2.6 8.6a.6.6 0 0 0 .1.7l2 1.5a8.6 8.6 0 0 0 0 2.4l-2 1.5a.6.6 0 0 0-.1.7l1.9 3.3a.6.6 0 0 0 .7.3l2.4-1a8.7 8.7 0 0 0 2 1.2l.4 2.5a.6.6 0 0 0 .6.5h3.8a.6.6 0 0 0 .6-.5l.4-2.5a8.7 8.7 0 0 0 2-1.2l2.4 1a.6.6 0 0 0 .7-.3l1.9-3.3a.6.6 0 0 0-.1-.7l-2-1.5Zm-2.1-.3-.1 1.6.1 1.6 1.8 1.4-.7 1.2-2.2-.9-1.4.8-1.2 1.4-.4 2.3h-1.4l-.4-2.3-1.2-1.4-1.4-.8-2.2.9-.7-1.2 1.8-1.4.1-1.6-.1-1.6-1.8-1.4.7-1.2 2.2.9 1.4-.8 1.2-1.4.4-2.3h1.4l.4 2.3 1.2 1.4 1.4.8 2.2-.9.7 1.2-1.8 1.4Z"/>
       </svg>
     </button>
-    <button id="btn-guardar" class="btn btn-primario">
+    <span id="estado-copia" class="estado-copia" role="status" aria-live="polite"></span>
+    <button id="btn-guardar" class="btn btn-primario" title="Guarda una copia del estado actual en tu disco">
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
         <path fill-rule="evenodd" d="M4 2h13a1 1 0 0 1 .7.3l4 4A1 1 0 0 1 22 7v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1Zm1 2v16h14V7.4L15.6 4H5Zm3 1h6v4H8V5Zm1 1.5V8h4V6.5H9Zm-1 8h8a1 1 0 0 1 1 1v4H7v-4a1 1 0 0 1 1-1Zm1 3h6v-1.5H9V17Z"/>
       </svg>
-      Guardar
+      Copia de seguridad
     </button>
     <input type="file" id="input-importar" accept=".json,application/json" hidden>
   </div>
@@ -6813,6 +6838,13 @@ const CuadriculaView = (() => {
       <span>${Utils.esc(asigImp)} · ${Utils.esc(grupoImp)} · ${periodo} · ${nivelImp} · impreso el ${Utils.hoy().split('-').reverse().join('/')}</span>
     </div>`;
 
+    // Insignia del ajuste de notas sin corregir (M-04): informativa, no botón.
+    // Da contexto a la media de la cuadrícula sea cual sea la pestaña activa.
+    const sinNotaEsCero = !!(db.configuracion && db.configuracion.sinNotaEsCero);
+    const badgeSinNota = sinNotaEsCero
+      ? '<span class="badge warn" title="Un instrumento sin corregir cuenta como 0 en la media de la unidad. Cámbialo en Configuración → Calificación.">Sin corregir cuenta como 0</span>'
+      : '<span class="badge" title="Un instrumento sin corregir NO cuenta en la media de la unidad. Cámbialo en Configuración → Calificación.">Sin corregir no cuenta</span>';
+
     // El buscador de la cabecera filtra la tabla de notas; el selector de
     // periodo gobierna el alcance de la cuadrícula.
     el.innerHTML = `
@@ -6820,6 +6852,7 @@ const CuadriculaView = (() => {
         ${cabeceraImp}
         <div class="card-head no-print">
           <h2>Calificaciones</h2>
+          ${badgeSinNota}
           ${(() => {
             const lblNivel = modoTodas
               ? ' · <b>todos los niveles</b>'
@@ -7768,7 +7801,7 @@ const App = (() => {
     }
     body.querySelector('#btn-exportar-ajustes').onclick = () =>
       Storage.exportar()
-        .then(ok => { if (ok) { UI.toast('Backup exportado'); modalAjustes(); } })
+        .then(ok => { if (ok) { UI.toast('Backup exportado'); pintaEstadoCopia(); modalAjustes(); } })
         .catch(e => alert('Error al exportar: ' + e.message));
     body.querySelector('#btn-importar-ajustes').onclick = () =>
       document.getElementById('input-importar').click();
@@ -7909,7 +7942,7 @@ const App = (() => {
     const btnCorregirPend = el.querySelector('#btn-corregir-pendientes');
     if (btnCorregirPend) btnCorregirPend.onclick = () => ir('corregir');
     const hacerBackup = () => Storage.exportar()
-      .then(ok => { if (ok) { UI.toast('Backup exportado'); App.ir('inicio'); } })
+      .then(ok => { if (ok) { UI.toast('Backup exportado'); pintaEstadoCopia(); App.ir('inicio'); } })
       .catch(e => alert('Error al exportar: ' + e.message));
     const btnBackupAviso = el.querySelector('#btn-backup-aviso');
     if (btnBackupAviso) btnBackupAviso.onclick = hacerBackup;
@@ -7931,8 +7964,45 @@ const App = (() => {
     });
   }
 
+  // Indicador de copia de la cabecera (M-02): estado permanente del backup,
+  // junto al botón «Copia de seguridad». Sin datos no se muestra: con la app
+  // vacía no hay nada que copiar ni que perder. No se llama desde Storage
+  // (solo lectura del estado); la repintan la navegación (pintaNav) y las
+  // acciones que sellan la copia (guardar, exportar, importar).
+  function pintaEstadoCopia() {
+    const el = document.getElementById('estado-copia');
+    if (!el) return; // La cabecera no existe en el arnés de pruebas.
+    const est = Storage.estadoCopia();
+    if (!est.hayDatos) {
+      el.hidden = true;
+      el.textContent = '';
+      return;
+    }
+    const NIVELES = {
+      ok: ['ok', 'Copia al día'],
+      pendiente: ['pendiente', 'Cambios sin copia'],
+      antigua: ['antigua', `Copia antigua · ${est.dias} días`],
+      nunca: ['nunca', 'Sin copia de seguridad']
+    };
+    const [cls, texto] = NIVELES[est.nivel] || NIVELES.ok;
+    el.hidden = false;
+    el.className = 'estado-copia ' + cls;
+    el.textContent = texto;
+    // `title` y `aria-label` con el mismo texto. En el arnés sin DOM los
+    // elementos son falsos (sin setAttribute): se asignan como propiedad y,
+    // si el elemento admite atributos, también reflejados.
+    el.title = texto;
+    if (typeof el.setAttribute === 'function') {
+      el.setAttribute('title', texto);
+      el.setAttribute('aria-label', texto);
+    }
+  }
+
   // Navegación según la organización elegida en Configuración → Tema y menús.
   function pintaNav() {
+    // El indicador de copia (M-02) vive en la cabecera y no depende del modo
+    // de navegación: se repinta al entrar en cada vista.
+    pintaEstadoCopia();
     const modo = (Storage.db && Storage.db.tema && Storage.db.tema.nav) || 'topbar';
     document.querySelectorAll('.nav-fab,.nav-menu,.nav-dock,.nav-drawer,.nav-drawer-toggle')
       .forEach(e => e.remove());
@@ -8086,7 +8156,9 @@ const App = (() => {
         ? 'Se han corregido los criterios de 1 instrumento para que coincidan con su nivel.'
         : 'Se han corregido los criterios de ' + Storage.reparadosCriterios + ' instrumentos para que coincidan con su nivel.');
     }
-    document.getElementById('btn-guardar').onclick = () => Storage.guardar().catch(e => alert('Error al guardar: ' + e.message));
+    document.getElementById('btn-guardar').onclick = () => Storage.guardar()
+      .then(ok => { if (ok) pintaEstadoCopia(); })
+      .catch(e => alert('Error al guardar: ' + e.message));
     document.getElementById('btn-ajustes').onclick = () => modalAjustes();
 
     // La importación se lanza desde «Configuración → Importar backup», pero el
@@ -8104,6 +8176,10 @@ const App = (() => {
             : 'Backup importado');
           UI.closeModal();
           ir(actual);
+          // Tras importar, el indicador de copia refleja el estado nuevo
+          // (p. ej. «Sin copia de seguridad» si el backup traía datos y
+          // ninguna exportación).
+          pintaEstadoCopia();
         })
         .catch(() => alert('El archivo no es un backup válido de Evalora'));
     };
@@ -8143,7 +8219,9 @@ const App = (() => {
     // Paneles de Inicio expuestos para poder comprobarlos sin navegador.
     panelesInicio: { estado: panelesEstadoHtml, cobertura: panelesCoberturaHtml, aci: panelesAciHtml, pendientes: panelPendientesHtml },
     // Configuración expuesta por el mismo motivo (la cabecera no existe en el arnés).
-    abrirAjustes: modalAjustes
+    abrirAjustes: modalAjustes,
+    // Indicador de copia de la cabecera (M-02): comprobable sin navegador.
+    pintaEstadoCopia
   };
 })();
 

@@ -496,7 +496,7 @@ const App = (() => {
     }
     body.querySelector('#btn-exportar-ajustes').onclick = () =>
       Storage.exportar()
-        .then(ok => { if (ok) { UI.toast('Backup exportado'); modalAjustes(); } })
+        .then(ok => { if (ok) { UI.toast('Backup exportado'); pintaEstadoCopia(); modalAjustes(); } })
         .catch(e => alert('Error al exportar: ' + e.message));
     body.querySelector('#btn-importar-ajustes').onclick = () =>
       document.getElementById('input-importar').click();
@@ -637,7 +637,7 @@ const App = (() => {
     const btnCorregirPend = el.querySelector('#btn-corregir-pendientes');
     if (btnCorregirPend) btnCorregirPend.onclick = () => ir('corregir');
     const hacerBackup = () => Storage.exportar()
-      .then(ok => { if (ok) { UI.toast('Backup exportado'); App.ir('inicio'); } })
+      .then(ok => { if (ok) { UI.toast('Backup exportado'); pintaEstadoCopia(); App.ir('inicio'); } })
       .catch(e => alert('Error al exportar: ' + e.message));
     const btnBackupAviso = el.querySelector('#btn-backup-aviso');
     if (btnBackupAviso) btnBackupAviso.onclick = hacerBackup;
@@ -659,8 +659,45 @@ const App = (() => {
     });
   }
 
+  // Indicador de copia de la cabecera (M-02): estado permanente del backup,
+  // junto al botón «Copia de seguridad». Sin datos no se muestra: con la app
+  // vacía no hay nada que copiar ni que perder. No se llama desde Storage
+  // (solo lectura del estado); la repintan la navegación (pintaNav) y las
+  // acciones que sellan la copia (guardar, exportar, importar).
+  function pintaEstadoCopia() {
+    const el = document.getElementById('estado-copia');
+    if (!el) return; // La cabecera no existe en el arnés de pruebas.
+    const est = Storage.estadoCopia();
+    if (!est.hayDatos) {
+      el.hidden = true;
+      el.textContent = '';
+      return;
+    }
+    const NIVELES = {
+      ok: ['ok', 'Copia al día'],
+      pendiente: ['pendiente', 'Cambios sin copia'],
+      antigua: ['antigua', `Copia antigua · ${est.dias} días`],
+      nunca: ['nunca', 'Sin copia de seguridad']
+    };
+    const [cls, texto] = NIVELES[est.nivel] || NIVELES.ok;
+    el.hidden = false;
+    el.className = 'estado-copia ' + cls;
+    el.textContent = texto;
+    // `title` y `aria-label` con el mismo texto. En el arnés sin DOM los
+    // elementos son falsos (sin setAttribute): se asignan como propiedad y,
+    // si el elemento admite atributos, también reflejados.
+    el.title = texto;
+    if (typeof el.setAttribute === 'function') {
+      el.setAttribute('title', texto);
+      el.setAttribute('aria-label', texto);
+    }
+  }
+
   // Navegación según la organización elegida en Configuración → Tema y menús.
   function pintaNav() {
+    // El indicador de copia (M-02) vive en la cabecera y no depende del modo
+    // de navegación: se repinta al entrar en cada vista.
+    pintaEstadoCopia();
     const modo = (Storage.db && Storage.db.tema && Storage.db.tema.nav) || 'topbar';
     document.querySelectorAll('.nav-fab,.nav-menu,.nav-dock,.nav-drawer,.nav-drawer-toggle')
       .forEach(e => e.remove());
@@ -814,7 +851,9 @@ const App = (() => {
         ? 'Se han corregido los criterios de 1 instrumento para que coincidan con su nivel.'
         : 'Se han corregido los criterios de ' + Storage.reparadosCriterios + ' instrumentos para que coincidan con su nivel.');
     }
-    document.getElementById('btn-guardar').onclick = () => Storage.guardar().catch(e => alert('Error al guardar: ' + e.message));
+    document.getElementById('btn-guardar').onclick = () => Storage.guardar()
+      .then(ok => { if (ok) pintaEstadoCopia(); })
+      .catch(e => alert('Error al guardar: ' + e.message));
     document.getElementById('btn-ajustes').onclick = () => modalAjustes();
 
     // La importación se lanza desde «Configuración → Importar backup», pero el
@@ -832,6 +871,10 @@ const App = (() => {
             : 'Backup importado');
           UI.closeModal();
           ir(actual);
+          // Tras importar, el indicador de copia refleja el estado nuevo
+          // (p. ej. «Sin copia de seguridad» si el backup traía datos y
+          // ninguna exportación).
+          pintaEstadoCopia();
         })
         .catch(() => alert('El archivo no es un backup válido de Evalora'));
     };
@@ -871,7 +914,9 @@ const App = (() => {
     // Paneles de Inicio expuestos para poder comprobarlos sin navegador.
     panelesInicio: { estado: panelesEstadoHtml, cobertura: panelesCoberturaHtml, aci: panelesAciHtml, pendientes: panelPendientesHtml },
     // Configuración expuesta por el mismo motivo (la cabecera no existe en el arnés).
-    abrirAjustes: modalAjustes
+    abrirAjustes: modalAjustes,
+    // Indicador de copia de la cabecera (M-02): comprobable sin navegador.
+    pintaEstadoCopia
   };
 })();
 

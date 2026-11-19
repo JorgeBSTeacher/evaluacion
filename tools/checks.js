@@ -414,6 +414,28 @@ async function main() {
     check('la cuadrícula ofrece «Corregir» lo que falta', h.includes('id="btn-corregir"'));
     check('la cuadrícula ofrece «Corregir» habilitado con pendientes', !/id="btn-corregir"[^>]*disabled/.test(h));
     check('«Corregir» indica cuántos instrumentos están sin corregir', h.includes('Corregir · 1 pendiente</button>'));
+
+    // Chip del ajuste de notas sin corregir (M-04): informativo, cambia con el
+    // ajuste y se ve en las 3 pestañas de la Cuadrícula.
+    check('la cuadrícula muestra el chip del ajuste (por defecto: no cuenta)',
+      h.includes('class="badge"') && h.includes('Sin corregir no cuenta') &&
+      h.includes('Cámbialo en Configuración → Calificación'), 'chip ausente o con otro texto');
+    ['criterios', 'competencias'].forEach(t => {
+      const elChip = makeEl();
+      app.CuadriculaView.render(elChip, { tab: t });
+      check(`el chip del ajuste se ve también en la pestaña «${t}»`,
+        elChip.innerHTML.includes('Sin corregir no cuenta'), 'chip ausente');
+    });
+    app.Storage.db.configuracion.sinNotaEsCero = true;
+    const elCero = makeEl();
+    app.CuadriculaView.render(elCero, { tab: 'notas' });
+    check('con sinNotaEsCero el chip avisa «cuenta como 0»',
+      elCero.innerHTML.includes('class="badge warn"') && elCero.innerHTML.includes('Sin corregir cuenta como 0'),
+      'chip sin cambiar');
+    app.Storage.db.configuracion.sinNotaEsCero = false;
+    // La pestaña es estado del módulo: la devuelvo a «Instrumentos», que es lo
+    // que asume el resto de comprobaciones de este bloque.
+    app.CuadriculaView.render(makeEl(), { tab: 'notas' });
     check('la cuadrícula lleva cabecera de informe solo para imprimir', h.includes('class="solo-impresion cabecera-impresion"'));
 
     // El modal «¿Qué quieres corregir?» se apoya en estas filas.
@@ -3099,11 +3121,66 @@ async function main() {
     check('la cabecera ofrece el engranaje de Configuracion', /id="btn-ajustes"/.test(topbar));
     check('la cabecera ya no lleva exportar ni importar',
       !/id="btn-exportar"/.test(topbar) && !/id="btn-importar"/.test(topbar));
-    check('la cabecera conserva Guardar y el selector de importacion',
+    check('la cabecera conserva la acción de copia y el selector de importacion',
       /id="btn-guardar"/.test(topbar) && /id="input-importar"/.test(topbar));
+    // M-02: el botón de la cabecera es una acción de copia, con su indicador
+    // de estado permanente delante (anunciado a lectores de pantalla).
+    check('el botón de la cabecera se llama «Copia de seguridad» y explica su funcion',
+      topbar.includes('Copia de seguridad') &&
+      /id="btn-guardar"[^>]*title="Guarda una copia del estado actual en tu disco"/.test(topbar),
+      topbar.match(/<button id="btn-guardar"[\s\S]*?<\/button>/));
+    check('la cabecera lleva el indicador de copia como estado, no como boton',
+      /<span id="estado-copia" class="estado-copia" role="status" aria-live="polite"><\/span>/.test(topbar) &&
+      topbar.indexOf('id="estado-copia"') < topbar.indexOf('id="btn-guardar"'),
+      topbar.match(/id="estado-copia"[\s\S]{0,80}/));
     // El engranaje está fuera de #app: no se destruye al cambiar de vista.
     check('el engranaje vive fuera del contenido de la vista',
       html.indexOf('id="btn-ajustes"') < html.indexOf('<main id="app"'));
+
+    // M-02: el indicador refleja el estado de la copia. La cabecera real no
+    // existe en el arnés, así que el `span` se inyecta en el `body` simulado y
+    // se repinta con la misma función que la app usa en la cabecera.
+    let indicador = doc.getElementById('estado-copia');
+    if (!indicador) {
+      indicador = doc.createElement('span');
+      indicador.id = 'estado-copia';
+      doc.body.appendChild(indicador);
+    }
+    app.App.pintaEstadoCopia();
+    check('tras importar con datos y sin copia previa, el indicador avisa «Sin copia de seguridad»',
+      indicador.className === 'estado-copia nunca' && indicador.textContent === 'Sin copia de seguridad',
+      indicador.className + ' · ' + JSON.stringify(indicador.textContent));
+    // Un cambio nuevo (save() lo marca) debe pasar el punto a «pendiente».
+    app.Storage.db.meta.ultimaExportacion = new Date().toISOString();
+    app.Storage.save();
+    app.App.pintaEstadoCopia();
+    check('con cambios sin copia el indicador entra en «pendiente»',
+      indicador.className === 'estado-copia pendiente' && indicador.textContent === 'Cambios sin copia',
+      indicador.className + ' · ' + JSON.stringify(indicador.textContent));
+    // Exportar (o guardar) sella la copia: el indicador vuelve a verde.
+    app.Storage.marcarCopia();
+    app.App.pintaEstadoCopia();
+    check('tras exportar la copia, el indicador vuelve a «Copia al día»',
+      indicador.className === 'estado-copia ok' && indicador.textContent === 'Copia al día' &&
+      indicador.getAttribute('title') === 'Copia al día' &&
+      indicador.getAttribute('aria-label') === 'Copia al día',
+      indicador.className + ' · ' + JSON.stringify(indicador.textContent));
+    // La copia antigua (≥ DIAS_COPIA) se distingue con su propio nivel.
+    app.Storage.db.meta.ultimaExportacion = new Date(Date.now() - 8 * 86400000).toISOString();
+    app.App.pintaEstadoCopia();
+    check('una copia de hace 8 días se anuncia como «Copia antigua · 8 días»',
+      indicador.className === 'estado-copia antigua' && indicador.textContent === 'Copia antigua · 8 días',
+      indicador.className + ' · ' + JSON.stringify(indicador.textContent));
+    // Con la app vacía no hay nada que copiar: el indicador se oculta.
+    const appVaciaIndicador = cargarApp({ dom: true });
+    appVaciaIndicador.Storage.load();
+    const indicadorVacio = appVaciaIndicador.document.createElement('span');
+    indicadorVacio.id = 'estado-copia';
+    appVaciaIndicador.document.body.appendChild(indicadorVacio);
+    appVaciaIndicador.App.pintaEstadoCopia();
+    check('con la app vacía el indicador no muestra nada',
+      indicadorVacio.hidden === true && indicadorVacio.textContent === '',
+      'hidden=' + indicadorVacio.hidden + ' texto=' + JSON.stringify(indicadorVacio.textContent));
 
     app.App.ir('inicio');
     check('Inicio ya no duplica los botones de copia',
