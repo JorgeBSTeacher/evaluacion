@@ -4615,6 +4615,18 @@ async function main() {
     check('pulsar «Corregir» en la cola entra en la corrección',
       vistaHtml().includes('id="tabla-corrige"') && vistaHtml().includes('id="btn-siguiente"'),
       vistaHtml().slice(0, 160));
+    // Al terminar el último alumno se limpia el resaltado y se vuelve al
+    // listado: el «estás aquí» no queda pegado para siempre.
+    if (filaComun) {
+      const nAlu = app.Calc.alumnosDeInstrumento(app.Calc.instrumento(filaComun.getAttribute('data-inst'))).length;
+      for (let k = 0; k < nAlu; k++) {
+        const bs = doc.querySelectorAll('#app #btn-siguiente');
+        if (bs.length) bs[bs.length - 1].click();
+      }
+      check('la corrección limpia el resaltado al terminar el último alumno',
+        !doc.querySelector('#app .fila-actual') && vistaHtml().includes('id="sel-clase"'),
+        'fila-actual=' + !!doc.querySelector('#app .fila-actual') + ' · ' + vistaHtml().slice(0, 100));
+    }
     check('pulsar Evaluación abre la cuadrícula en la pestaña Cuadrícula',
       pulsar('evaluacion') && app.App.seccionActual() === 'evaluacion' && app.CuadriculaView.tabActivo() === 'notas',
       estado());

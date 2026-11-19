@@ -5156,7 +5156,14 @@ function columnasNivel(filas) {
         if (typeof slot.remove === 'function') slot.remove();
       }
     }
-    el.querySelector('#volver').onclick = () => (volverA ? volverA() : render(el));
+    // Al salir de la corrección se limpia el resaltado del alumno en curso: si
+    // el docente vuelve a este instrumento en la misma vista (p. ej. desde la
+    // cola con Volver), no debe reaparecer el sombreado viejo.
+    const salir = () => {
+      filas.forEach(tr => tr.classList.remove('fila-actual'));
+      return volverA ? volverA() : render(el);
+    };
+    el.querySelector('#volver').onclick = () => salir();
 
     const tabla = el.querySelector('#tabla-corrige');
 
@@ -5319,7 +5326,12 @@ function columnasNivel(filas) {
       el.querySelector('#btn-anterior').onclick = () => { Storage.save(); irA(idx - 1); };
       el.querySelector('#btn-siguiente').onclick = () => {
         Storage.save();
-        if (idx >= filas.length - 1) UI.toast('Era el último alumno; notas guardadas');
+        if (idx >= filas.length - 1) {
+          // Era el último: fin de la corrección. Se limpia el resaltado y se
+          // vuelve al listado (ya no hay «siguiente» que marcar).
+          UI.toast('Era el último alumno; notas guardadas');
+          return volverA ? volverA() : render(el);
+        }
         irA(idx + 1);
       };
       filas.forEach((tr, k) => tr.addEventListener('click', () => irA(k, { scroll: false, foco: false })));
