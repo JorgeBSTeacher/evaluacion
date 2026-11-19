@@ -100,16 +100,21 @@ const CuadriculaView = (() => {
         })()
       : g.insts.map(i => {
         const ud = `data-ud="${Utils.esc(i.unidad || '')}"`;
+        // No aplica (M-09): texto plano atenuado y sin aspecto de botón, para
+        // que no se confunda ni con «sin corregir» ni con una acción posible.
         if (modoTodas && !Calc.instrumentoParaAlumno(i, claseSel, a.id)) {
-          return `<td class="celda-nota num" ${ud} style="color:var(--tinta-suave);opacity:.35" title="No aplica a este alumno">—</td>`;
+          return `<td class="celda-nota num celda-na" ${ud} title="No aplica a este alumno (su currículo no lo incluye)">N/A</td>`;
         }
         // Excluido de la evaluación: insignia propia, distinta de «sin corregir».
+        // La celda NO abre la corrección (el alumno está fuera): el clic
+        // izquierdo y el derecho abren el mismo menú contextual (data-excluida).
         if (noRealizaEn(i, a.id)) {
-          return `<td class="celda-nota num" ${ud} data-inst="${i.id}" data-alumno="${Utils.esc(a.id)}" title="No realiza esta evaluación"><span class="badge no-realiza">No realiza</span></td>`;
+          return `<td class="celda-nota num" ${ud} data-inst="${i.id}" data-alumno="${Utils.esc(a.id)}" data-excluida="1" title="No realiza esta evaluación"><span class="badge no-realiza">No realiza</span></td>`;
         }
-        // Sin corregir no hay nota: se enseña «—» y no un 0.
+        // Sin corregir: chip «Pend.» con borde discontinuo (M-09), distinto del
+        // «—» de la media de una UD plegada. La celda ya abre la corrección.
         const n = instrumentoEvaluado(i, a.id) ? Calc.notaInstrumento(i, a.id) : null;
-        return `<td class="celda-nota num" ${ud} data-inst="${i.id}" data-alumno="${Utils.esc(a.id)}">${n == null ? '<span class="badge na">—</span>' : Calc.badgeHtml(n)}</td>`;
+        return `<td class="celda-nota num" ${ud} data-inst="${i.id}" data-alumno="${Utils.esc(a.id)}"${n == null ? ' title="Pendiente de corregir · toca para corregir"' : ''}>${n == null ? '<span class="celda-pendiente">Pend.</span>' : Calc.badgeHtml(n)}</td>`;
       }).join('');
     const thead = conBarra
       ? `<tr class="fila-ud"><th rowspan="2">Alumno</th>${grupos.map(barraUd).join('')}<th class="col-eval" rowspan="2">Evaluación</th></tr>
@@ -128,8 +133,8 @@ const CuadriculaView = (() => {
         </tbody>
       </table>
       <p class="no-print" style="color:var(--tinta-suave);font-size:13px">${modoTodas
-        ? 'Vista de todo el grupo: cada alumno se evalúa con los criterios de su nivel y la columna «Evaluación» armoniza su nota. «—» en gris = el examen no aplica a ese alumno.'
-        : 'La columna «Evaluación» aplica las ponderaciones de los criterios del nivel mostrado' + (periodo === 'Final' ? ' sobre todo el curso' : ' en ' + periodo) + '. Toca una nota para corregir y una cabecera para editar.'}</p>`;
+        ? 'Vista de todo el grupo: cada alumno se evalúa con los criterios de su nivel y la columna «Evaluación» armoniza su nota. «N/A» en gris = el examen no aplica a ese alumno. Clic derecho en una celda: corregir o marcar "no realiza".'
+        : 'La columna «Evaluación» aplica las ponderaciones de los criterios del nivel mostrado' + (periodo === 'Final' ? ' sobre todo el curso' : ' en ' + periodo) + '. Toca una nota para corregir y una cabecera para editar. Clic derecho en una celda: corregir o marcar "no realiza".'}</p>`;
   }
 
   // Menú contextual de color de una UD (clic derecho sobre su barra, o
@@ -143,6 +148,7 @@ const CuadriculaView = (() => {
   }
   function abrirMenuColorUd(el, ud, x, y) {
     cerrarMenuColorUd();
+    cerrarMenuCelda();
     const m = document.createElement('div');
     m.id = 'menu-color-ud';
     m.className = 'menu-color-ud';
@@ -166,6 +172,65 @@ const CuadriculaView = (() => {
     menuColorUd = m;
     document.onclick = ev => { if (menuColorUd && !menuColorUd.contains(ev.target)) cerrarMenuColorUd(); };
     document.onkeydown = ev => { if (ev.key === 'Escape') cerrarMenuColorUd(); };
+  }
+
+  // Menú contextual de una celda alumno × instrumento (M-09, clic derecho):
+  // corregir, marcar/quitar «No realiza esta evaluación» o cancelar. Mismo
+  // patrón que abrirMenuColorUd: flotante posicionado, cierre con clic fuera
+  // y Escape. Los gestos se comparten entre sí: abrir uno cierra el otro.
+  let menuCelda = null;
+  function cerrarMenuCelda() {
+    if (menuCelda && menuCelda.parentNode) menuCelda.parentNode.removeChild(menuCelda);
+    menuCelda = null;
+    document.onclick = null;
+    document.onkeydown = null;
+  }
+  function abrirMenuCelda(el, instId, alumnoId, x, y, desdeClic) {
+    cerrarMenuCelda();
+    cerrarMenuColorUd();
+    const inst = Calc.instrumento(instId);
+    if (!inst || !Calc.alumno(alumnoId)) return;
+    const fila = ((Storage.db.registros && Storage.db.registros[instId]) || {})[alumnoId] || {};
+    const excluido = fila.noRealiza === true;
+    const m = document.createElement('div');
+    m.id = 'menu-celda';
+    m.className = 'menu-celda';
+    m.setAttribute('role', 'menu');
+    m.innerHTML = `
+      <button type="button" class="btn btn-mini accion-corregir">Corregir</button>
+      <button type="button" class="btn btn-mini accion-no-realiza">${excluido ? 'Quitar la marca de "No realiza"' : 'Marcar como "No realiza esta evaluación"'}</button>
+      <button type="button" class="btn btn-mini accion-cancelar">Cancelar</button>`;
+    document.body.appendChild(m);
+    // Sin `getBoundingClientRect` no hay layout (arnés sin navegador): se cae
+    // al un tamaño estimado y el posicionamiento queda igual de acotado.
+    const r = typeof m.getBoundingClientRect === 'function' ? m.getBoundingClientRect() : { width: 220, height: 110 };
+    const anchoPantalla = window.innerWidth || 1024;
+    const altoPantalla = window.innerHeight || 768;
+    m.style.left = Math.max(4, Math.min(x || 0, anchoPantalla - r.width - 4)) + 'px';
+    m.style.top = Math.max(4, Math.min(y || 0, altoPantalla - r.height - 4)) + 'px';
+    m.onclick = ev => {
+      const b = ev.target.closest('button');
+      if (!b) return;
+      cerrarMenuCelda();
+      if (b.classList.contains('accion-corregir')) {
+        InstrumentosView.renderCorreccion(el, instId, () => render(el), alumnoId);
+      } else if (b.classList.contains('accion-no-realiza')) {
+        InstrumentosView.toggleNoRealiza(inst, alumnoId, !excluido);
+        render(el);
+      }
+      // Cancelar: solo cierra el menú, no toca nada.
+    };
+    menuCelda = m;
+    // Si el menú se abrió con clic IZQUIERDO, ese clic sigue burbujeando hasta
+    // document: sin esta guarda, el propio gestor de «clic fuera» lo cerraría
+    // al instante. El clic derecho no dispara `document.onclick`, así que ahí
+    // la guarda sobra (y se consume en el primer clic de verdad).
+    let abriendo = desdeClic === true;
+    document.onclick = ev => {
+      if (abriendo) { abriendo = false; return; }
+      if (menuCelda && !menuCelda.contains(ev.target)) cerrarMenuCelda();
+    };
+    document.onkeydown = ev => { if (ev.key === 'Escape') cerrarMenuCelda(); };
   }
 
   function tablaCriterios(alumnos, modoTodas, claseSel, periodo) {
@@ -655,7 +720,20 @@ const CuadriculaView = (() => {
     });
 
     el.querySelectorAll('.celda-nota[data-inst]').forEach(td => {
-      td.onclick = () => InstrumentosView.renderCorreccion(el, td.dataset.inst, () => render(el), td.dataset.alumno);
+      // Clic derecho (M-09): menú contextual de la celda, en cualquier celda
+      // con alumno e instrumento (pendiente, corregida o «No realiza»).
+      td.oncontextmenu = e => {
+        e.preventDefault();
+        abrirMenuCelda(el, td.dataset.inst, td.dataset.alumno, e.clientX, e.clientY);
+      };
+      if (td.dataset.excluida) {
+        // «No realiza»: el alumno está excluido, así que la corrección no es
+        // un camino válido ni con el clic izquierdo; ambos gestos abren el
+        // mismo menú (desdeClic evita que ese clic lo cierre al abrirse).
+        td.onclick = e => abrirMenuCelda(el, td.dataset.inst, td.dataset.alumno, e.clientX, e.clientY, true);
+      } else {
+        td.onclick = () => InstrumentosView.renderCorreccion(el, td.dataset.inst, () => render(el), td.dataset.alumno);
+      }
     });
     el.querySelectorAll('th[data-edit]').forEach(th => {
       th.onclick = () => {

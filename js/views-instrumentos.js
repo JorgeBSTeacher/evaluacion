@@ -1400,5 +1400,7 @@ ${codigos}`;
   }
 
   // API pública de la vista: las demás vistas solo deben usar esto (D-29).
-  return { render, renderCorregir, renderCorreccion, modalInstrumento, modalCalificar, filasCorregirHtml, filaApartado, cabeceraRubrica, plantillaColumnas, columnasNivel, promptIa, datalistUnidades, modalBanco };
+  // `toggleNoRealiza` es la única puerta de la exclusión: la Cuadrícula la usa
+  // desde su menú contextual de celda (M-09).
+  return { render, renderCorregir, renderCorreccion, toggleNoRealiza, modalInstrumento, modalCalificar, filasCorregirHtml, filaApartado, cabeceraRubrica, plantillaColumnas, columnasNivel, promptIa, datalistUnidades, modalBanco };
 })();

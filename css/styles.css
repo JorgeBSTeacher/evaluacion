@@ -736,6 +736,30 @@ details.guia-inicio > summary .guia-titulo { display: inline; font-size: 16px; f
 .menu-color-ud .muestra:hover { transform: scale(1.1); }
 .menu-color-ud .sin-color { width: 100%; }
 
+/* M-09: menú contextual de una celda alumno × instrumento (clic derecho).
+   Mismo patrón flotante que el menú de color de UD, con acciones apiladas. */
+.menu-celda {
+  position: fixed; z-index: 1000; display: flex; flex-direction: column; gap: 6px;
+  background: #fff; border: 1px solid var(--linea); border-radius: 10px;
+  box-shadow: var(--sombra); padding: 8px; min-width: 220px;
+}
+.menu-celda .btn { width: 100%; text-align: left; }
+
+/* M-09: chip «Pend.» de la celda sin corregir (pestaña Instrumentos): borde
+   discontinuo y color suave con aire de clicable — la celda ya abre la
+   corrección. Distinto del «—» gris de la media de una UD plegada (badge na). */
+.celda-pendiente {
+  display: inline-block; padding: 0 8px; border-radius: 8px;
+  border: 1px dashed var(--tinta-suave); color: var(--tinta-suave);
+  font-size: 12px; line-height: 20px;
+}
+.celda-nota:hover .celda-pendiente { border-color: var(--acento); color: var(--acento); }
+
+/* M-09: «N/A» (no aplica, «Todos los niveles»): texto plano atenuado, sin
+   fondo ni hover: no es un botón y no abre nada. */
+.celda-na { color: var(--tinta-suave); opacity: .55; font-weight: 400; }
+.celda-nota.celda-na, .celda-nota.celda-na:hover { outline: none; cursor: default; }
+
 .barra-tab { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
 
 /* Cabecera de informe: solo existe al imprimir, para que el PDF se lea solo. */

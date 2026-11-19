@@ -506,7 +506,8 @@ async function main() {
       /<th[^>]*class="celda-plegada"[^>]*colspan="2"[^>]*>/.test(h6) && colspan2Plegada.test(h6));
     check('la nota final sigue cuadrando con columnas plegadas de varias posiciones', cuadra(h6));
 
-    // Sin corregir no hay nota: la celda muestra «—» y no un 0.
+    // Sin corregir no hay nota: la celda muestra el chip «Pend.» (M-09) y no
+    // un 0 ni el «—» de badge (que queda para la media de la UD plegada).
     const estSinCorregir = estadoAci();
     estSinCorregir.registros = {};
     const app7 = cargarApp();
@@ -515,14 +516,22 @@ async function main() {
     const elSin = makeEl();
     app7.CuadriculaView.render(elSin, { unidadesAbiertas: ['UD1', 'UD2'] });
     const hSin = elSin.innerHTML;
-    check('sin corregir, las celdas de nota muestran «—»', hSin.includes('badge na">—</span>'));
+    check('sin corregir, las celdas de nota muestran el chip «Pend.»',
+      hSin.includes('class="celda-pendiente"') && hSin.includes('>Pend.</span>'), hSin.slice(0, 200));
+    check('sin corregir, las celdas de instrumento ya no usan el «—» de badge',
+      (hSin.match(/<td class="celda-nota[^>]*>[\s\S]*?<\/td>/g) || []).length > 0
+        && (hSin.match(/<td class="celda-nota[^>]*>[\s\S]*?<\/td>/g) || []).every(c => !c.includes('badge na')));
+    check('sin corregir, la celda pendiente explica que toca para corregir',
+      hSin.includes('title="Pendiente de corregir · toca para corregir"'));
     check('sin corregir, ninguna celda muestra un 0',
       (hSin.match(/badge (?:ko|ok|na)">0<\/span>/g) || []).length === 0);
     const elSinPleg = makeEl();
     app7.CuadriculaView.render(elSinPleg, { unidadesAbiertas: [] });
     const hSinPleg = elSinPleg.innerHTML;
-    check('sin corregir, la media de la UD plegada muestra «—»',
+    check('sin corregir, la media de la UD plegada sigue mostrando «—»',
       hSinPleg.includes('celda-plegada num" style="background:') && hSinPleg.includes('badge na">—</span>'));
+    check('la leyenda de la pestaña menciona el clic derecho (M-09)',
+      hSin.includes('Clic derecho en una celda: corregir o marcar "no realiza".'));
     // Con todo corregido (estadoLegacy: el único instrumento está completo)
     // el botón sale deshabilitado, como el de Inicio.
     const app8 = cargarApp();
@@ -895,6 +904,116 @@ async function main() {
     check('G-max · Escape sale de la celda (le quita el foco) sin borrar la nota',
       canceladoEsc && teniaFoco && appMax.document.activeElement !== inpEsc && regDe() === 1,
       'cancelado=' + canceladoEsc + ' · foco=' + (appMax.document.activeElement && appMax.document.activeElement.tagName) + ' · modelo=' + JSON.stringify(regDe()));
+  }
+
+  console.log('\n== M-09: estados de celda (Pend./N/A/No realiza) y menú contextual ==');
+  {
+    // Los tres estados de la celda alumno × instrumento y el menú flotante
+    // necesitan el DOM real: classList, `oncontextmenu` y botones del menú.
+    const app = cargarApp({ dom: true });
+    app.Storage.load();
+    await importarJson(app, estadoAci());
+    const el = app.document.createElement('div');
+    app.document.getElementById('app').appendChild(el);
+    app.CuadriculaView.render(el, { claseId: 'c1', tab: 'notas', unidadesAbiertas: ['UD1', 'UD2'] });
+
+    // La cola de «Corregir» sigue funcionando: el botón abre el modal.
+    el.querySelector('#btn-corregir').click();
+    check('M-09 · el botón «Corregir» de la Cuadrícula sigue abriendo su cola',
+      (app.document.getElementById('modal-root').textContent || '').includes('¿Qué quieres corregir?'));
+    app.UI.closeModal();
+
+    // Celda sin corregir (a2 en iComun): chip «Pend.» y entra en corrección.
+    let celdaPend = Array.from(el.querySelectorAll('td.celda-nota[data-inst="iComun"]'))
+      .find(td => td.dataset.alumno === 'a2');
+    check('M-09 · la celda sin corregir muestra «Pend.» y no el «—» de badge',
+      !!celdaPend && celdaPend.textContent.trim() === 'Pend.'
+        && !!celdaPend.querySelector('.celda-pendiente') && !celdaPend.querySelector('.badge.na'),
+      celdaPend ? celdaPend.className : '(sin celda)');
+    check('M-09 · el chip pendiente lleva su title',
+      celdaPend.getAttribute('title') === 'Pendiente de corregir · toca para corregir');
+    celdaPend.click();
+    check('M-09 · el clic izquierdo en una celda pendiente abre la corrección',
+      !!el.querySelector('#tabla-corrige'), el.innerHTML.slice(0, 120));
+
+    // N/A: «Todos los niveles», iBase es BASE y c1al es ACI → no aplica.
+    app.CuadriculaView.render(el, { claseId: 'c1', tab: 'notas', unidadesAbiertas: ['UD1', 'UD2'] });
+    const selNivel = el.querySelector('#sel-nivel');
+    selNivel.value = '__todas__';
+    selNivel.onchange({ target: selNivel });
+    const celdaNA = el.querySelector('td.celda-na[data-ud="UD1"]');
+    check('M-09 · «No aplica» se pinta como N/A atenuado y sin aspecto de botón',
+      !!celdaNA && celdaNA.textContent.trim() === 'N/A' && celdaNA.classList.contains('celda-na')
+        && !celdaNA.querySelector('.badge'),
+      celdaNA ? celdaNA.className + ' · ' + celdaNA.textContent.trim() : '(sin celda N/A)');
+    check('M-09 · la celda N/A explica por qué no aplica',
+      celdaNA.getAttribute('title') === 'No aplica a este alumno (su currículo no lo incluye)');
+    check('M-09 · la celda N/A no es interactiva (sin data-inst)',
+      !celdaNA.hasAttribute('data-inst'));
+
+    // Menú contextual por clic derecho en la misma celda pendiente.
+    app.CuadriculaView.render(el, { claseId: 'c1', tab: 'notas', unidadesAbiertas: ['UD1', 'UD2'] });
+    const celdaMenu = Array.from(el.querySelectorAll('td.celda-nota[data-inst="iComun"]'))
+      .find(td => td.dataset.alumno === 'a2');
+    const canceladoCtx = celdaMenu._dispara('contextmenu', { clientX: 12, clientY: 12 });
+    const menu = app.document.getElementById('menu-celda');
+    check('M-09 · el clic derecho de la celda abre el menú flotante',
+      canceladoCtx && !!menu && menu.parentNode === app.document.body,
+      menu ? 'menú abierto' : '(sin menú)');
+    const textos = Array.from(menu.querySelectorAll('button')).map(b => b.textContent.trim());
+    check('M-09 · el menú ofrece corregir, «No realiza» y cancelar',
+      textos.some(t => t === 'Corregir') && textos.some(t => /No realiza/.test(t)) && textos.some(t => t === 'Cancelar'),
+      textos.join(' | '));
+    check('M-09 · sin exclusión el menú ofrece marcar «No realiza»',
+      textos.some(t => t.includes('Marcar como "No realiza esta evaluación"')), textos.join(' | '));
+
+    // «Corregir» del menú: entra en la corrección de ese alumno.
+    menu.querySelector('button.accion-corregir').click();
+    check('M-09 · «Corregir» del menú abre la corrección del alumno',
+      !!el.querySelector('#tabla-corrige'), el.innerHTML.slice(0, 120));
+
+    // Marcar «No realiza» desde el menú y ver el nuevo estado de la celda.
+    app.CuadriculaView.render(el, { claseId: 'c1', tab: 'notas', unidadesAbiertas: ['UD1', 'UD2'] });
+    const celdaMarcar = Array.from(el.querySelectorAll('td.celda-nota[data-inst="iComun"]'))
+      .find(td => td.dataset.alumno === 'a2');
+    celdaMarcar._dispara('contextmenu', { clientX: 12, clientY: 12 });
+    app.document.getElementById('menu-celda').querySelector('button.accion-no-realiza').click();
+    const regA2 = (app.Storage.db.registros.iComun || {}).a2 || {};
+    check('M-09 · «Marcar como no realiza» escribe la exclusión',
+      regA2.noRealiza === true && !('r1' in regA2), JSON.stringify(regA2));
+    const celdaExcl = Array.from(el.querySelectorAll('td.celda-nota[data-inst="iComun"]'))
+      .find(td => td.dataset.alumno === 'a2');
+    check('M-09 · tras marcar, la celda muestra la insignia «No realiza»',
+      !!celdaExcl && !!celdaExcl.querySelector('.badge.no-realiza'), celdaExcl ? celdaExcl.innerHTML : '(sin celda)');
+    check('M-09 · la celda excluida se distingue con data-excluida',
+      celdaExcl && celdaExcl.dataset.excluida === '1');
+
+    // La celda «No realiza» no abre la corrección: ambos clics abren el menú.
+    celdaExcl.click();
+    check('M-09 · el clic izquierdo en «No realiza» no entra en corrección',
+      !el.querySelector('#tabla-corrige'), el.innerHTML.slice(0, 120));
+    const menuQuitar = app.document.getElementById('menu-celda');
+    check('M-09 · el clic izquierdo en «No realiza» abre el menú con la acción de quitar',
+      !!menuQuitar && menuQuitar.textContent.includes('Quitar la marca de "No realiza"'),
+      menuQuitar ? menuQuitar.textContent.trim() : '(sin menú)');
+
+    // Quitar la marca devuelve la celda a «Pend.» y limpia el registro.
+    menuQuitar.querySelector('button.accion-no-realiza').click();
+    const regTrasQuitar = (app.Storage.db.registros.iComun || {}).a2;
+    const celdaTarde = Array.from(el.querySelectorAll('td.celda-nota[data-inst="iComun"]'))
+      .find(td => td.dataset.alumno === 'a2');
+    check('M-09 · quitar la marca borra la exclusión y vuelve a «Pend.»',
+      regTrasQuitar === undefined && !!celdaTarde && celdaTarde.textContent.trim() === 'Pend.',
+      'registro=' + JSON.stringify(regTrasQuitar));
+
+    // El clic derecho sigue abriendo el menú en la celda «No realiza»…
+    celdaTarde._dispara('contextmenu', { clientX: 12, clientY: 12 });
+    const abiertoCtx = !!app.document.getElementById('menu-celda');
+    // …y Escape lo cierra sin dejar restos.
+    app.document.onkeydown({ key: 'Escape', preventDefault() {} });
+    check('M-09 · el clic derecho abre el menú y Escape lo cierra',
+      abiertoCtx && !app.document.getElementById('menu-celda'),
+      abiertoCtx ? 'se cerró con Escape' : 'el clic derecho no abrió el menú');
   }
 
   console.log('\n== Importador de currículo ==');
