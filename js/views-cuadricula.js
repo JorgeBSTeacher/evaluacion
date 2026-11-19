@@ -558,7 +558,7 @@ const CuadriculaView = (() => {
               ${['T1', 'T2', 'T3', 'Final'].map(p => `<option ${p === periodo ? 'selected' : ''}>${p}</option>`).join('')}
             </select>
             <button class="btn no-print" id="btn-imprimir">Imprimir / PDF</button>
-            <button class="btn no-print" id="btn-anonimo" title="Modo privacidad: muestra iniciales en pantalla y en el PDF">${App.esAnonimo() ? 'Mostrar nombres' : 'Ocultar nombres'}</button>
+            <span id="slot-privacidad"></span>
           </div>
         </div>
         <div class="chips no-print" id="tabs" style="margin-bottom:14px">
@@ -616,9 +616,14 @@ const CuadriculaView = (() => {
 
     el.querySelector('#btn-imprimir').onclick = () => modalImprimir(el, insts);
 
-    // M-12: modo privacidad — alterna iniciales/nombres y repinta la vista.
-    const btnAnon = el.querySelector('#btn-anonimo');
-    if (btnAnon) btnAnon.onclick = () => { App.toggleAnonimo(); render(el); };
+    // M-12: modo privacidad — botón de ojo (componente compartido con el
+    // Informe). Un clic oculta los nombres; mantener pulsado 1 s los vuelve a
+    // mostrar. El hueco del HTML encaja el botón que crea el componente.
+    const slotPriv = el.querySelector('#slot-privacidad');
+    if (slotPriv && typeof slotPriv.insertBefore === 'function') {
+      slotPriv.parentNode.insertBefore(App.crearBotonPrivacidad(() => render(el)), slotPriv);
+      slotPriv.remove();
+    }
 
     el.querySelectorAll('#tabs .chip').forEach(ch => {
       ch.onclick = () => {

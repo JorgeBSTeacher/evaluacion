@@ -71,6 +71,107 @@ const App = (() => {
     return [iniAp, iniNom].filter(Boolean).join(' ');
   }
 
+  // M-12: botón de privacidad con icono de ojo (sustituye a los botones de
+  // texto «Ocultar/Mostrar nombres»). Un clic oculta los nombres; para volver
+  // a mostrarlos hay que MANTENER PULSADO ≥1 s: se proyecta en clase y un
+  // toque accidental no debe revelar el listado. Las vistas repintan vía
+  // `onCambio` tras cada cambio (el botón se recrea con el nuevo estado).
+  const MS_REVELAR = 1000;
+  const ICONO_OJO =
+    '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" ' +
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const ICONO_OJO_TACHADO =
+    '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" ' +
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>' +
+    '<line x1="1" y1="1" x2="23" y2="23"/></svg>';
+
+  function crearBotonPrivacidad(onCambio) {
+    const btn = document.createElement('button');
+    btn.className = 'icon-btn btn-privacidad';
+
+    // Ojo abierto = nombres visibles; tachado = ocultos. Los atributos (aria,
+    // title) se ajustan con el estado para que el botón hable solo.
+    const pintaEstado = () => {
+      const oculto = anonimo;
+      btn.innerHTML = oculto ? ICONO_OJO_TACHADO : ICONO_OJO;
+      const texto = oculto
+        ? 'Mantén pulsado para mostrar los nombres'
+        : 'Ocultar los nombres al proyectar';
+      if (typeof btn.setAttribute === 'function') {
+        btn.setAttribute('type', 'button');
+        btn.setAttribute('aria-pressed', String(oculto));
+        btn.setAttribute('aria-label', texto);
+        btn.setAttribute('title', texto);
+      } else {
+        btn.type = 'button';
+        btn.title = texto;
+      }
+    };
+    pintaEstado();
+
+    let tempRevelar = null;
+
+    // Pulso de aviso: anillo breve que acompaña al toast cuando se intenta
+    // revelar con un clic simple (solo se consigue manteniendo pulsado).
+    function pulso() {
+      btn.classList.add('pulso-privacidad');
+      setTimeout(() => btn.classList.remove('pulso-privacidad'), 600);
+    }
+
+    function avisoMantener() {
+      UI.toast('Mantén pulsado el ojo para mostrar los nombres.');
+      pulso();
+    }
+
+    function cambiar(ocultar) {
+      anonimo = ocultar;
+      if (typeof onCambio === 'function') onCambio();
+    }
+
+    // Clic simple: oculta si los nombres están visibles; si están ocultos NO
+    // revela (eso exige mantener pulsado ≥1 s) y lo hace saber.
+    btn.addEventListener('click', () => {
+      // Si la pulsación larga ya reveló, la vista se repintó y este botón
+      // quedó huérfano: ignora el clic sintético que le llega al soltar.
+      if (!btn.isConnected) return;
+      if (!anonimo) { cambiar(true); return; }
+      avisoMantener();
+    });
+
+    // Mantener pulsado (ratón/táctil) ≥1 s revela. Si los nombres ya son
+    // visibles no hay nada que armar: el clic nativo los oculta.
+    btn.addEventListener('pointerdown', () => {
+      if (!anonimo) return;
+      clearTimeout(tempRevelar);
+      tempRevelar = setTimeout(() => { tempRevelar = null; cambiar(false); }, MS_REVELAR);
+    });
+    const suelta = () => { clearTimeout(tempRevelar); tempRevelar = null; };
+    btn.addEventListener('pointerup', suelta);
+    btn.addEventListener('pointerleave', suelta);
+    btn.addEventListener('pointercancel', suelta);
+
+    // Teclado: Enter/Espacio mantenidos ≥1 s también revelan. Con los nombres
+    // visibles no se intercepta nada: el clic nativo del botón ya los oculta.
+    btn.addEventListener('keydown', e => {
+      if (!anonimo) return;
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      if (e.repeat) return; // al mantener, el teclado repite keydown: no rearmar
+      if (typeof e.preventDefault === 'function') e.preventDefault(); // sin clic nativo: lo gestionamos aquí
+      clearTimeout(tempRevelar);
+      tempRevelar = setTimeout(() => { tempRevelar = null; cambiar(false); }, MS_REVELAR);
+    });
+    btn.addEventListener('keyup', e => {
+      if (!anonimo) return;
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      // Pulsación corta: no revela; mismo aviso que el clic simple.
+      if (tempRevelar) { suelta(); avisoMantener(); }
+    });
+
+    return btn;
+  }
+
   function opcionesCurso(valorActual) {
     const m = /^(\d{4})\//.exec(String(valorActual || ''));
     const base = m ? parseInt(m[1], 10) : new Date().getMonth() >= 6 ? new Date().getFullYear() : new Date().getFullYear() - 1;
@@ -948,6 +1049,9 @@ const App = (() => {
     esAnonimo() { return anonimo; },
     nombreVisible,
     toggleAnonimo() { anonimo = !anonimo; return anonimo; },
+    // M-12: componente del conmutador de privacidad (botón de ojo); lo usan
+    // la Cuadrícula y el Informe para que ambos se comporten igual.
+    crearBotonPrivacidad,
     // Paneles de Inicio expuestos para poder comprobarlos sin navegador.
     panelesInicio: { estado: panelesEstadoHtml, cobertura: panelesCoberturaHtml, aci: panelesAciHtml, pendientes: panelPendientesHtml },
     // Configuración expuesta por el mismo motivo (la cabecera no existe en el arnés).

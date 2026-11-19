@@ -5130,7 +5130,7 @@ async function main() {
       elR.innerHTML.slice(0, 300));
   }
 
-  console.log('\n== M-12 · Modo privacidad (nombres → iniciales) ==');
+  console.log('\n== M-12 · Modo privacidad (nombres → iniciales, botón de ojo) ==');
   {
     const app = cargarApp({ dom: true });
     app.Storage.load();
@@ -5142,56 +5142,112 @@ async function main() {
     const doc = app.document;
     const App = app.App;
     const vista = () => doc.getElementById('app').innerHTML;
+    const aviso = () => doc.getElementById('toast-root').innerHTML;
+    const btnPriv = () => doc.querySelector('#app .btn-privacidad');
+    // Oculta los nombres con un clic y apaga pulso/aviso pendientes.
+    const oculta = () => { btnPriv().click(); app.timers.runAll(); };
 
     check('M12-1 · por defecto el modo privacidad está desactivado', App.esAnonimo() === false);
     App.ir('cuadricula');
-    check('M12-2 · la Cuadrícula muestra «Apellidos, Nombre» y ofrece ocultarlos',
+    let b = btnPriv();
+    check('M12-2 · la Cuadrícula muestra «Apellidos, Nombre» y ofrece ocultarlos con un icono de ojo',
       vista().includes('Base, Ana') && vista().includes('Base, Beto')
-      && vista().includes('id="btn-anonimo"') && vista().includes('Ocultar nombres'),
-      'sin nombres o sin conmutador');
-    doc.querySelector('#app #btn-anonimo').click();
-    check('M12-3 · el conmutador de la Cuadrícula alterna el estado', App.esAnonimo() === true);
+      && !!b && b.tagName === 'BUTTON' && b.textContent.trim() === ''
+      && b.innerHTML.includes('<svg') && b.getAttribute('type') === 'button'
+      && b.getAttribute('aria-pressed') === 'false'
+      && b.getAttribute('title') === 'Ocultar los nombres al proyectar',
+      'sin nombres o sin botón de ojo');
+    b.click();
+    check('M12-3 · un clic sobre el ojo oculta los nombres', App.esAnonimo() === true);
     check('M12-4 · con el modo activo la Cuadrícula muestra iniciales',
       vista().includes('B. A.') && vista().includes('B. B.')
       && !vista().includes('Base, Ana') && !vista().includes('Base, Beto'),
       'quedan nombres completos o no salen iniciales');
-    check('M12-5 · el conmutador pasa a ofrecer «Mostrar nombres»',
-      vista().includes('Mostrar nombres') && !vista().includes('Ocultar nombres'));
+    b = btnPriv();
+    check('M12-5 · oculto, el ojo va tachado y pide mantener pulsado',
+      b.getAttribute('aria-pressed') === 'true'
+      && b.getAttribute('title') === 'Mantén pulsado para mostrar los nombres');
+    b.click();
+    check('M12-6 · un clic simple con nombres ocultos NO revela: aviso y pulso',
+      App.esAnonimo() === true
+      && aviso().includes('Mantén pulsado el ojo para mostrar los nombres.')
+      && b.className.includes('pulso-privacidad'));
+    app.timers.runAll(); // se apagan el pulso y el aviso
+
+    // Mantener pulsado ≥1 s (pointer): el temporizador lo simula app.timers.run().
+    b._dispara('pointerdown');
+    check('M12-7 · manteniendo pulsado, aún no se ven los nombres', App.esAnonimo() === true);
+    app.timers.run();
+    check('M12-8 · mantener pulsado ≥1 s revela los nombres', App.esAnonimo() === false);
+    check('M12-9 · al revelar vuelven los nombres completos y el ojo se abre',
+      vista().includes('Base, Ana') && btnPriv().getAttribute('aria-pressed') === 'false');
+
+    // Teclado: Enter/Espacio mantenidos ≥1 s también revelan.
+    oculta();
+    b = btnPriv();
+    b._dispara('keydown', { key: 'Enter' });
+    check('M12-10 · Enter mantenido aún no revela', App.esAnonimo() === true);
+    app.timers.run();
+    check('M12-11 · Enter mantenido ≥1 s revela los nombres', App.esAnonimo() === false);
+
+    oculta();
+    b = btnPriv();
+    b._dispara('keydown', { key: ' ' });
+    b._dispara('keyup', { key: ' ' });
+    check('M12-12 · Espacio corto no revela y avisa',
+      App.esAnonimo() === true
+      && aviso().includes('Mantén pulsado el ojo para mostrar los nombres.'));
+    app.timers.runAll();
+    b._dispara('keydown', { key: 'Enter', repeat: true });
+    check('M12-13 · la repetición del keydown no rearma el temporizador',
+      app.timers.run() === 0 && App.esAnonimo() === true);
+    b._dispara('pointerdown');
+    b._dispara('pointerup');
+    check('M12-14 · soltar (o salir del botón) antes de 1 s no revela',
+      app.timers.run() === 0 && App.esAnonimo() === true);
+    app.timers.runAll();
+
+    // El modo cubre todas las vistas e informes imprimibles.
+    oculta();
     const elCrit = makeEl();
     app.CuadriculaView.render(elCrit, { tab: 'criterios' });
-    check('M12-6 · la pestaña Criterios también muestra iniciales', elCrit.innerHTML.includes('B. A.'));
+    check('M12-15 · la pestaña Criterios también muestra iniciales', elCrit.innerHTML.includes('B. A.'));
 
     App.ir('informes');
-    check('M12-7 · el Informe muestra iniciales en pantalla',
+    check('M12-16 · el Informe muestra iniciales en pantalla',
       vista().includes('B. A.') && !vista().includes('Base, Ana'),
       'sin iniciales o con nombres completos');
+    check('M12-17 · el Informe usa el mismo componente de ojo en su panel de contexto',
+      !!btnPriv() && btnPriv().getAttribute('aria-pressed') === 'true'
+      && !!doc.querySelector('#app .informe-alcance .btn-privacidad'));
     doc.querySelector('#app [data-subvista="alumnos"]').click();
-    check('M12-8 · la subvista Alumnos también muestra iniciales',
+    check('M12-18 · la subvista Alumnos también muestra iniciales',
       vista().includes('B. A.') && !vista().includes('Base, Ana'));
-    check('M12-9 · el Informe ofrece el mismo conmutador en su panel de contexto',
-      vista().includes('id="btn-anonimo"') && vista().includes('Mostrar nombres'));
 
     const infAnon = app.InformeView.informeHtml({ claseSel: 'c1', nivelSel: '__todas__' });
-    check('M12-10 · el informe imprimible del Informe también anonimiza',
+    check('M12-19 · el informe imprimible del Informe también anonimiza',
       infAnon.includes('B. A.') && infAnon.includes('A. C.')
       && !infAnon.includes('Base, Ana') && !infAnon.includes('Aci, Carla'));
     const cuadAnon = app.CuadriculaView.informeHtml('c1', 'T1');
-    check('M12-11 · el informe imprimible de la Cuadrícula también anonimiza',
+    check('M12-20 · el informe imprimible de la Cuadrícula también anonimiza',
       cuadAnon.includes('B. A.') && !cuadAnon.includes('Base, Ana'));
     const indiAnon = app.CuadriculaView.informeHtml('c1', 'T1', { alumnoId: 'a1' });
-    check('M12-12 · el informe individual imprime las iniciales del alumno', indiAnon.includes('B. A.'));
+    check('M12-21 · el informe individual imprime las iniciales del alumno', indiAnon.includes('B. A.'));
 
-    doc.querySelector('#app #btn-anonimo').click();
-    check('M12-13 · al desactivar vuelven los nombres completos',
+    // Ambos conmutadores revelan igual: mantener pulsado en el Informe.
+    const bInf = btnPriv();
+    bInf._dispara('pointerdown');
+    app.timers.run();
+    check('M12-22 · mantener pulsado el ojo del Informe también revela',
       App.esAnonimo() === false && vista().includes('Base, Ana'));
 
     // La corrección es la excepción: ahí el docente necesita el nombre.
     App.toggleAnonimo();
     app.InstrumentosView.renderCorreccion(doc.getElementById('app'), 'iBase');
-    check('M12-14 · la corrección mantiene el nombre completo con el modo activo',
+    check('M12-23 · la corrección mantiene el nombre completo con el modo activo',
       App.esAnonimo() === true && vista().includes('Base, Ana') && vista().includes('Base, Beto'));
 
-    check('M12-15 · el modo es estado de sesión: no se guarda en db ni viaja en el backup',
+    check('M12-24 · el modo es estado de sesión: no se guarda en db ni viaja en el backup',
       !('anonimo' in app.Storage.db) && JSON.stringify(app.Storage.db).indexOf('anonimo') === -1);
   }
 

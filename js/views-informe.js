@@ -108,7 +108,7 @@ const InformeView = (function () {
           ${instsUd.map(i =>
             `<option value="${i.id}" ${alcance.instrumentoId === i.id ? 'selected' : ''}>${Utils.esc(i.titulo)}</option>`).join('')}
         </select>` : ''}
-        <button class="btn" id="btn-anonimo" title="Modo privacidad: muestra iniciales en pantalla y en el PDF">${App.esAnonimo() ? 'Mostrar nombres' : 'Ocultar nombres'}</button>
+        <span id="slot-privacidad"></span>
         <button class="btn btn-primario" id="btn-informe-imprimir"
                 title="Genera el PDF del informe de análisis con este alcance">Imprimir / PDF</button>
       </div>${htmlAvisoAlumnos(claseId)}`;
@@ -914,10 +914,14 @@ const InformeView = (function () {
       alcance.instrumentoId = e.target.value;
       render(el, op);
     };
-    // M-12: modo privacidad — el mismo conmutador que la Cuadrícula, aquí en
-    // el panel de contexto: alterna iniciales/nombres y repinta la subvista.
-    const btnAnon = el.querySelector('#btn-anonimo');
-    if (btnAnon) btnAnon.onclick = () => { App.toggleAnonimo(); render(el, op); };
+    // M-12: modo privacidad — el mismo botón de ojo que la Cuadrícula, aquí al
+    // final del panel de contexto: un clic oculta los nombres; mantener
+    // pulsado 1 s los vuelve a mostrar. Repinta la subvista al cambiar.
+    const slotPriv = el.querySelector('#slot-privacidad');
+    if (slotPriv && typeof slotPriv.insertBefore === 'function') {
+      slotPriv.parentNode.insertBefore(App.crearBotonPrivacidad(() => render(el, op)), slotPriv);
+      slotPriv.remove();
+    }
     el.querySelectorAll('[data-subvista]').forEach(ch => {
       ch.onclick = () => { subVista = ch.dataset.subvista; render(el, op); };
     });

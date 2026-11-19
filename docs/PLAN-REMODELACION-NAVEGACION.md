@@ -26,7 +26,7 @@ recordar dónde está cada cosa y consulte informes según una pregunta concreta
 | M-09 | Diferenciar estados en la cuadrícula (`Pend.` / `N/A` / `No realiza`) y menú contextual | Media | Pendiente |
 | M-10 | Tooltips en chips de nivel y códigos de criterio | Media | **Hecha** |
 | M-11 | Contraste y tamaño mínimo (≥12 px); no depender solo del color | Alta | **Hecha** |
-| M-12 | Modo privacidad (nombres → iniciales) para proyectar/imprimir | Media | **Hecha** — estado solo de sesión (`App.esAnonimo/nombreVisible/toggleAnonimo`); iniciales «G. J.» en la Cuadrícula (3 pestañas), el Informe y los informes imprimibles, con el mismo conmutador «Ocultar/Mostrar nombres» en Cuadrícula e Informe; la corrección mantiene el nombre |
+| M-12 | Modo privacidad (nombres → iniciales) para proyectar/imprimir | Media | **Hecha** — estado solo de sesión (`App.esAnonimo/nombreVisible/toggleAnonimo`); iniciales «G. J.» en la Cuadrícula (3 pestañas), el Informe y los informes imprimibles; conmutador único de icono de ojo (`App.crearBotonPrivacidad`) en Cuadrícula e Informe: un clic oculta, mantener pulsado ≥1 s vuelve a mostrar; la corrección mantiene el nombre |
 | M-13 | Inicio adaptativo (plegar montaje/flujo, KPI de pendientes y copia) | Media | **Hecha (Fase 3)** |
 | M-14 | Accesos duplicados: unificar o documentar | Baja | Pendiente |
 | M-15 | Revisar estado activo/hover del menú | Baja | Pendiente |

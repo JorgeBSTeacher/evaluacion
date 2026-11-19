@@ -326,6 +326,16 @@ main { max-width: 1440px; margin: 0 auto; padding: 20px 18px 60px; }
 /* Los iconos dentro de un botón heredan su color y no se deforman. */
 .btn svg { flex: 0 0 auto; fill: currentColor; }
 
+/* M-12: botón de ojo del modo privacidad. Alineado con los icon-btn; el ojo
+   se dibuja a trazo (stroke), no a relleno, y hereda el color del botón. */
+.btn-privacidad svg { flex: 0 0 auto; fill: none; stroke: currentColor; }
+/* Pulso de aviso: anillo breve (clic simple con nombres ocultos: no revela). */
+.btn-privacidad.pulso-privacidad { animation: pulso-privacidad .6s ease-out; }
+@keyframes pulso-privacidad {
+  from { box-shadow: 0 0 0 0 var(--acento); }
+  to { box-shadow: 0 0 0 9px transparent; }
+}
+
 .lista { list-style: none; margin: 0; padding: 0; }
 .lista li {
   display: flex; align-items: center; gap: 8px;
