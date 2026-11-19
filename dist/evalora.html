@@ -110,19 +110,7 @@ body.modo-fab main, body.modo-dock main { padding-bottom: 84px; }
 .nav-drawer button.activo { background: var(--acento); color: #fff; }
 body.modo-drawer .topbar, body.modo-drawer main { margin-left: 200px; }
 
-/* Modo básico: la nav baja a una fila propia, bajo la cabecera. */
-body.modo-basic .topbar { flex-wrap: wrap; }
-body.modo-basic #nav {
-  order: 3; flex: 1 1 100%;
-  margin: 0 calc(-1 * var(--pad-x)); padding: 6px 12px;
-  background: #fff; border-top: 1px solid rgba(255,255,255,.22);
-  overflow-x: auto;
-}
-body.modo-basic #nav button { color: var(--marca); }
-body.modo-basic #nav button:hover { background: var(--acento-suave); color: var(--marca); }
-body.modo-basic #nav button.activo { background: var(--marca); color: #fff; box-shadow: none; }
 @media (max-width: 520px) {
-  body.modo-basic .brand-txt small { display: none; }
   .nav-dock { left: 10px; right: 10px; transform: none; max-width: none; }
   /* M-11: la fuente no baja de 12 px; el dock se deja desplazar en horizontal. */
   .nav-dock button { min-width: 58px; }
@@ -133,17 +121,6 @@ body.modo-basic #nav button.activo { background: var(--marca); color: #fff; box-
   .nav-drawer { width: 220px; box-shadow: 0 0 30px rgba(0, 0, 0, .3); }
 }
 
-/* Vista «Montaje» (modo básico). */
-.lista-montaje { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
-.btn-montaje {
-  display: flex; flex-direction: column; gap: 4px; text-align: left;
-  padding: 14px; border: 1px solid var(--linea); border-radius: 12px;
-  background: var(--papel); cursor: pointer; font-family: inherit; font-size: 14px;
-}
-.btn-montaje:hover { border-color: var(--acento); background: var(--acento-suave); }
-.btn-montaje b { color: var(--acento); font-size: 15px; }
-.btn-montaje span { color: var(--tinta-suave); font-size: 13px; }
-
 .brand { display: flex; align-items: center; gap: 10px; }
 .logo {
   display: inline-flex; align-items: center; justify-content: center;
@@ -151,11 +128,16 @@ body.modo-basic #nav button.activo { background: var(--marca); color: #fff; box-
   background: var(--acento); color: #fff; font-weight: 800; font-size: 15px;
   flex: none;
 }
-/* Isotipo en la cabecera: pastilla blanca con el color del tema. */
+/* Isotipo en la cabecera: pastilla blanca con el color del tema. Clicable a
+   Inicio (petición del docente): mismo tamaño e isotipo, cursor de mano y
+   hover sutil. */
 .logo.isotipo {
   background: #fff; color: var(--marca);
   border: 1px solid rgba(255, 255, 255, .55);
+  cursor: pointer;
 }
+.logo.isotipo:hover { filter: brightness(1.06); }
+.logo.isotipo:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 .logo.isotipo svg { width: 26px; height: 26px; display: block; }
 .brand-txt { line-height: 1.1; }
 .brand-txt small { display: block; color: var(--tinta-suave); font-size: 12px; }
@@ -178,7 +160,7 @@ body.modo-basic #nav button.activo { background: var(--marca); color: #fff; box-
    en Evaluación: fuera de ella #subnav se elimina del DOM. */
 .subnav {
   display: flex; flex-wrap: wrap; gap: 4px;
-  flex: 1 1 100%; order: 4; /* bajo la fila de secciones, también en modo básico */
+  flex: 1 1 100%; order: 4; /* bajo la fila de secciones */
   background: #fff;
   border-top: 1px solid var(--linea);
   margin: 0 calc(-1 * var(--pad-x)); padding: 0 12px;
@@ -803,6 +785,8 @@ details.guia-inicio > summary .guia-titulo { display: inline; font-size: 16px; f
   /* El informe de «Imprimir todo» sustituye a la vista mientras se imprime. */
   body.imprimiendo-informe main { display: none !important; }
   body.imprimiendo-informe #informe-impresion { display: block !important; }
+  /* La cabecera de perfil de la vista actual solo se ve al imprimir. */
+  .perfil-impresion { display: block; margin: 0 0 10px; }
   .cabecera-impresion { display: flex; flex-direction: column; gap: 2px; margin: 0 0 10px; }
   .cabecera-impresion strong { font-size: 15px; }
   .cabecera-impresion span { color: #555; font-size: 12px; }
@@ -854,19 +838,29 @@ details.guia-inicio > summary .guia-titulo { display: inline; font-size: 16px; f
 .informe-cab { margin: 0 0 12px; }
 .informe-cab strong { font-size: 16px; }
 .informe-cab span { display: block; color: var(--tinta-suave); font-size: 12px; }
+/* Cabecera de perfil de la impresión de la vista actual (Cuadrícula): los
+   demás imprimibles la llevan en .informe-cab; aquí el bloque solo existe al
+   imprimir (en pantalla está oculto) y el siguiente render lo retira. */
+.perfil-impresion { display: none; }
 /* Perfil docente en la cabecera impresa (D-74): solo aparece si el docente ha
    definido algo. La clase .logo ya está ocupada por la marca de la cabecera,
    y el bloque entero no debe partirse entre páginas. Van con `.informe-cab`
    por delante para ganarle a `.informe-cab span` (que haría block y suave
-   todos los span de la cabecera). */
-.informe-cab .informe-perfil {
+   todos los span de la cabecera). Las mismas reglas sirven para la cabecera
+   inyectada de la vista actual (.perfil-impresion). */
+.informe-cab .informe-perfil,
+.perfil-impresion .informe-perfil {
   display: flex; align-items: center; gap: 10px; margin: 0 0 8px;
   break-inside: avoid; page-break-inside: avoid;
 }
-.informe-cab .informe-logo { max-height: 44px; max-width: 150px; object-fit: contain; }
-.informe-cab .informe-perfil-txt { display: flex; flex-direction: column; min-width: 0; }
-.informe-cab .informe-nombre { font-size: 13px; font-weight: 700; color: var(--tinta); }
-.informe-cab .informe-centro { font-size: 12px; color: var(--tinta-suave); }
+.informe-cab .informe-logo,
+.perfil-impresion .informe-logo { max-height: 44px; max-width: 150px; object-fit: contain; }
+.informe-cab .informe-perfil-txt,
+.perfil-impresion .informe-perfil-txt { display: flex; flex-direction: column; min-width: 0; }
+.informe-cab .informe-nombre,
+.perfil-impresion .informe-nombre { font-size: 13px; font-weight: 700; color: var(--tinta); }
+.informe-cab .informe-centro,
+.perfil-impresion .informe-centro { font-size: 12px; color: var(--tinta-suave); }
 .informe-seccion { margin-bottom: 16px; }
 /* El título viaja siempre con lo que le sigue: nunca solo al pie de una página. */
 .informe-titulo { font-size: 15px; margin: 0 0 6px; break-after: avoid; page-break-after: avoid; }
@@ -884,7 +878,7 @@ details.guia-inicio > summary .guia-titulo { display: inline; font-size: 16px; f
 <body>
 <header class="topbar">
   <div class="brand">
-    <span class="logo isotipo" title="Evalora"><svg viewBox="425 110 558 552" aria-hidden="true"><g transform="translate(0,768) scale(0.1,-0.1)" fill="currentColor" stroke="none"><path d="M7037 6268 c-4 -166 -7 -449 -7 -630 l0 -328 -72 0 c-173 0 -374 -52
+    <span class="logo isotipo" id="logo-inicio" role="link" tabindex="0" title="Ir al inicio" aria-label="Evalora · Ir al inicio"><svg viewBox="425 110 558 552" aria-hidden="true"><g transform="translate(0,768) scale(0.1,-0.1)" fill="currentColor" stroke="none"><path d="M7037 6268 c-4 -166 -7 -449 -7 -630 l0 -328 -72 0 c-173 0 -374 -52
 -563 -144 -167 -82 -283 -165 -415 -296 -155 -153 -278 -349 -344 -546 l-23
 -68 -172 -57 c-94 -31 -171 -54 -171 -50 0 18 44 187 67 256 145 445 503 843
 946 1050 109 51 269 106 379 130 l78 17 20 66 c10 37 33 112 50 167 16 55 30
@@ -6985,6 +6979,19 @@ const CuadriculaView = (() => {
     };
   }
 
+  // Cabecera de perfil para la impresión de la vista actual (petición del
+  // docente: TODOS los imprimibles llevan nombre del maestro, centro y logo
+  // del cole). Devuelve el bloque a inyectar, o null si no hay perfil: igual
+  // que en los otros imprimibles, sin perfil no se pinta nada (ni restos).
+  function perfilImpresion() {
+    const cab = Storage.perfilHtml();
+    if (!cab) return null;
+    const bloque = document.createElement('div');
+    bloque.className = 'perfil-impresion';
+    bloque.innerHTML = cab;
+    return bloque;
+  }
+
   // Imprime lo que hay en pantalla. Si la pestaña es «Instrumentos», todas las
   // unidades quedan desplegadas: una unidad plegada deja su celda de relleno y
   // CSS no puede recuperarla, así que se abren en JS.
@@ -6995,6 +7002,10 @@ const CuadriculaView = (() => {
       Calc.unidadesDe(insts).forEach(u => udsAbiertas.add(u));
       render(el);
     }
+    // La cabecera de perfil se inyecta al principio de la vista: solo se ve al
+    // imprimir (CSS) y el siguiente render la retira con el resto del HTML.
+    const bloque = perfilImpresion();
+    if (bloque) el.insertBefore(bloque, el.firstElementChild || null);
     window.print();
   }
 
@@ -7212,6 +7223,12 @@ const CuadriculaView = (() => {
     // Camino de impresión compartido con la vista de Informes (Fase 4a): su
     // botón «Imprimir / PDF» vuelca el HTML en #informe-impresion e imprime.
     imprimirInforme,
+    // Impresión de la vista actual (comprobable en el arnés sin impresora:
+    // la llamada termina justo antes de window.print()).
+    imprimirVistaActual,
+    // Cabecera de perfil de la impresión de la vista actual (comprobable sin
+    // imprimir: devuelve el bloque DOM o null).
+    perfilImpresion,
     // Pestaña activa: la usa el menú principal para marcar Evaluación.
     tabActivo() { return tab; }
   };
@@ -7552,16 +7569,12 @@ const App = (() => {
     { id: 'cuadricula', label: 'Calificaciones', render: (el, opciones) => CuadriculaView.render(el, opciones) },
     // Informes (Fase 4a): vista propia y autónoma, ya no la pestaña «Informe»
     // de la cuadrícula. Sin opciones: la vista guarda su propio contexto.
-    { id: 'informes', label: 'Informes', render: el => InformeView.render(el, {}) },
-    // «Montaje» agrupa las vistas de preparación (grupos, asignaturas y
-    // currículo) para que no atesten la nav: sigue accesible por su hash y
-    // desde Inicio/Montaje, ya no como botón del modo básico.
-    { id: 'montaje', label: 'Montaje', render: renderMontaje }
+    { id: 'informes', label: 'Informes', render: el => InformeView.render(el, {}) }
   ];
   // Secciones del menú principal (Fase 2 de la remodelación de la navegación):
   // Inicio · Corregir · Evaluación · Informes · Ajustes. Corregir tiene su
   // propia vista (cola de pendientes) y Evaluación agrupa las vistas de
-  // preparación y revisión como subpestañas. El modo básico omite Ajustes.
+  // preparación y revisión como subpestañas.
   const SECCIONES = [
     { id: 'inicio', label: 'Inicio', vista: 'inicio' },
     { id: 'corregir', label: 'Corregir', vista: 'corregir' },
@@ -7573,7 +7586,6 @@ const App = (() => {
     { id: 'informes', label: 'Informes', vista: 'informes' },
     { id: 'ajustes', label: 'Ajustes', modal: true }
   ];
-  const SECCIONES_BASICAS = ['inicio', 'corregir', 'evaluacion', 'informes'];
   // Subpestañas de Evaluación: preparar y revisar la evaluación sin recordar
   // dónde está cada cosa. El orden es el de trabajo: cuadrícula, instrumentos,
   // alumnado, clases y currículo.
@@ -7592,8 +7604,7 @@ const App = (() => {
     informes: 'informes',
     alumnos: 'evaluacion',
     clases: 'evaluacion',
-    curriculo: 'evaluacion',
-    montaje: 'evaluacion'
+    curriculo: 'evaluacion'
   };
   let actual = 'inicio';
 
@@ -7800,8 +7811,7 @@ const App = (() => {
     { id: 'topbar', nombre: 'Barra superior (la actual)' },
     { id: 'fab', nombre: 'Menú de vistas flotante' },
     { id: 'dock', nombre: 'Dock inferior' },
-    { id: 'drawer', nombre: 'Barra lateral plegable' },
-    { id: 'basic', nombre: 'Modo básico (Inicio · Corregir · Evaluación · Informes)' }
+    { id: 'drawer', nombre: 'Barra lateral plegable' }
   ];
 
   // Isotipo inscrito en un círculo blanco: el círculo cubre el viewBox y el
@@ -7933,7 +7943,7 @@ const App = (() => {
               <select id="nav-modo">
                 ${NAV_MODOS.map(m => `<option value="${m.id}"${(tema.nav || 'topbar') === m.id ? ' selected' : ''}>${m.nombre}</option>`).join('')}
               </select>
-              <p class="hint">Cómo se reparten las vistas. El modo básico deja el circuito diario y guarda el montaje en «Montaje».</p>
+              <p class="hint">Cómo se reparten las vistas de la cabecera.</p>
             </div>
           </div>
         </div>
@@ -8101,9 +8111,10 @@ const App = (() => {
     // El aviso de copia destaca solo si hay datos que perder: cambios sin copiar
     // o ninguna exportación hecha. Con la app vacía no asusta al estrenarla.
     const copiaPendiente = !Storage.vacio() && (!meta.ultimaExportacion || meta.cambiosSinCopia);
-    const montajeCompleto = !!(db.grupos.length && db.alumnos.length && db.clases.length
-      && db.criterios.length && db.instrumentos.length);
-    const guiaAbierta = Storage.vacio() || !montajeCompleto;
+    // El bloque «Montaje» de Inicio se retiró (Evaluación ya agrupa esas
+    // vistas): la guía plegable es solo el «Flujo recomendado», abierta con la
+    // app vacía y plegada en cuanto hay datos.
+    const guiaAbierta = Storage.vacio();
     el.innerHTML = `
       <section class="card">
         <div class="card-head">
@@ -8139,17 +8150,6 @@ const App = (() => {
       ${panelesEstadoHtml()}
       ${panelesCoberturaHtml()}
       ${panelesAciHtml()}
-      <details class="guia-inicio" ${guiaAbierta ? 'open' : ''}>
-        <summary><span class="guia-titulo">Montaje</span></summary>
-        <section class="card no-print">
-          <p style="color:var(--tinta-suave);margin:0 0 10px">Grupos, asignaturas y currículo. Se preparan una vez y luego se dejan atrás.</p>
-          <div class="acciones">
-            <button class="btn btn-mini" data-ir="alumnos">Alumnos y grupos</button>
-            <button class="btn btn-mini" data-ir="clases">Asignaturas y clases</button>
-            <button class="btn btn-mini" data-ir="curriculo">Currículo</button>
-          </div>
-        </section>
-      </details>
       <details class="guia-inicio" ${guiaAbierta ? 'open' : ''}>
         <summary><span class="guia-titulo">Flujo recomendado</span></summary>
         <section class="card">
@@ -8232,8 +8232,8 @@ const App = (() => {
     if (btnCur) btnCur.onclick = () => ir('curriculo');
     const btnCl = el.querySelector('#btn-ir-clases');
     if (btnCl) btnCl.onclick = () => ir('clases');
-    // Accesos rápidos y de montaje (grupos, asignaturas y currículo).
-    // «Ver informes» abre la vista propia de Informes (Fase 4a).
+    // Accesos rápidos de Inicio. «Ver informes» abre la vista propia de
+    // Informes (Fase 4a).
     el.querySelectorAll('[data-ir]').forEach(b => {
       b.onclick = () => ir(b.dataset.ir);
     });
@@ -8278,21 +8278,21 @@ const App = (() => {
     // El indicador de copia (M-02) vive en la cabecera y no depende del modo
     // de navegación: se repinta al entrar en cada vista.
     pintaEstadoCopia();
-    const modo = (Storage.db && Storage.db.tema && Storage.db.tema.nav) || 'topbar';
+    // El modo básico se retiró (Evaluación ya agrupa las vistas de
+    // preparación): una preferencia antigua con `nav === 'basic'` cae en la
+    // barra superior, sin migrar el estado.
+    const modoBruto = (Storage.db && Storage.db.tema && Storage.db.tema.nav) || 'topbar';
+    const modo = modoBruto === 'basic' ? 'topbar' : modoBruto;
     document.querySelectorAll('.nav-fab,.nav-menu,.nav-dock,.nav-drawer,.nav-drawer-toggle')
       .forEach(e => e.remove());
     const nav = document.getElementById('nav');
     nav.style.display = '';
     nav.innerHTML = '';
-    document.body.classList.toggle('modo-basic', modo === 'basic');
     document.body.classList.toggle('modo-fab', modo === 'fab');
     document.body.classList.toggle('modo-dock', modo === 'dock');
     document.body.classList.toggle('modo-drawer', modo === 'drawer');
 
-    const esBasica = modo === 'basic';
-    const secciones = esBasica
-      ? SECCIONES_BASICAS.map(id => SECCIONES.find(s => s.id === id)).filter(Boolean)
-      : SECCIONES;
+    const secciones = SECCIONES;
     const pinta = contenedor => {
       secciones.forEach(s => {
         const b = document.createElement('button');
@@ -8305,7 +8305,7 @@ const App = (() => {
       });
     };
 
-    if (modo === 'topbar' || esBasica) { pinta(nav); pintaSubnav(); return; }
+    if (modo === 'topbar') { pinta(nav); pintaSubnav(); return; }
     nav.style.display = 'none';
 
     if (modo === 'fab') {
@@ -8369,21 +8369,6 @@ const App = (() => {
     });
   }
 
-  // Vista «Montaje»: el atajo a las vistas de preparación.
-  function renderMontaje(el) {
-    el.innerHTML = `
-      <section class="card">
-        <div class="card-head"><h1>Montaje</h1></div>
-        <p style="color:var(--tinta-suave)">Grupos, asignaturas y currículo. Se preparan una vez y se ajustan cuando haga falta.</p>
-        <div class="lista-montaje">
-          <button class="btn-montaje" type="button" data-ir="alumnos"><b>Alumnos y grupos</b><span>Crea los grupos e inscribe a los alumnos.</span></button>
-          <button class="btn-montaje" type="button" data-ir="clases"><b>Asignaturas y clases</b><span>Crea las asignaturas y sus clases (asignatura · grupo).</span></button>
-          <button class="btn-montaje" type="button" data-ir="curriculo"><b>Currículo</b><span>Competencias específicas, criterios y ponderaciones.</span></button>
-        </div>
-      </section>`;
-    el.querySelectorAll('[data-ir]').forEach(b => { b.onclick = () => ir(b.dataset.ir); });
-  }
-
   // Sección activa según la vista (Fase 4a: Informes es una vista propia, así
   // que el mapeo completo vive en SECCION_DE_VISTA).
   function seccionActual() {
@@ -8404,6 +8389,11 @@ const App = (() => {
     // Cuadrícula desapareció (Fase 4a); su ruta lleva a la vista propia.
     if (id === 'cuadricula' && opciones && opciones.tab === 'informe') {
       return ir('informes');
+    }
+    // Alias de la vista retirada «Montaje»: Evaluación agrupa esas vistas y su
+    // entrada principal es la Cuadrícula.
+    if (id === 'montaje') {
+      return ir('cuadricula');
     }
     actual = id;
     const vista = VISTAS.find(v => v.id === id);
@@ -8440,6 +8430,19 @@ const App = (() => {
       })
       .catch(e => alert('Error al guardar: ' + e.message));
     document.getElementById('btn-ajustes').onclick = () => modalAjustes();
+
+    // El isotipo de la cabecera lleva a Inicio (petición del docente): es un
+    // <span> con role="link" (index.html), así que también responde a teclado.
+    const logo = document.getElementById('logo-inicio');
+    if (logo) {
+      logo.onclick = () => ir('inicio');
+      logo.onkeydown = ev => {
+        if (ev.key === 'Enter' || ev.key === ' ') {
+          ev.preventDefault();
+          ir('inicio');
+        }
+      };
+    }
 
     // La importación se lanza desde «Configuración → Importar backup», pero el
     // selector de archivos sigue en la cabecera para que viva en todo momento.
@@ -8485,7 +8488,8 @@ const App = (() => {
     });
 
     const hash = location.hash.slice(1);
-    ir(VISTAS.some(v => v.id === hash) ? hash : 'inicio');
+    // El hash antiguo «#montaje» (vista retirada) cae en la Cuadrícula.
+    ir(hash === 'montaje' ? 'cuadricula' : (VISTAS.some(v => v.id === hash) ? hash : 'inicio'));
   }
 
   return {

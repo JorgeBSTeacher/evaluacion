@@ -13,16 +13,12 @@ const App = (() => {
     { id: 'cuadricula', label: 'Calificaciones', render: (el, opciones) => CuadriculaView.render(el, opciones) },
     // Informes (Fase 4a): vista propia y autónoma, ya no la pestaña «Informe»
     // de la cuadrícula. Sin opciones: la vista guarda su propio contexto.
-    { id: 'informes', label: 'Informes', render: el => InformeView.render(el, {}) },
-    // «Montaje» agrupa las vistas de preparación (grupos, asignaturas y
-    // currículo) para que no atesten la nav: sigue accesible por su hash y
-    // desde Inicio/Montaje, ya no como botón del modo básico.
-    { id: 'montaje', label: 'Montaje', render: renderMontaje }
+    { id: 'informes', label: 'Informes', render: el => InformeView.render(el, {}) }
   ];
   // Secciones del menú principal (Fase 2 de la remodelación de la navegación):
   // Inicio · Corregir · Evaluación · Informes · Ajustes. Corregir tiene su
   // propia vista (cola de pendientes) y Evaluación agrupa las vistas de
-  // preparación y revisión como subpestañas. El modo básico omite Ajustes.
+  // preparación y revisión como subpestañas.
   const SECCIONES = [
     { id: 'inicio', label: 'Inicio', vista: 'inicio' },
     { id: 'corregir', label: 'Corregir', vista: 'corregir' },
@@ -34,7 +30,6 @@ const App = (() => {
     { id: 'informes', label: 'Informes', vista: 'informes' },
     { id: 'ajustes', label: 'Ajustes', modal: true }
   ];
-  const SECCIONES_BASICAS = ['inicio', 'corregir', 'evaluacion', 'informes'];
   // Subpestañas de Evaluación: preparar y revisar la evaluación sin recordar
   // dónde está cada cosa. El orden es el de trabajo: cuadrícula, instrumentos,
   // alumnado, clases y currículo.
@@ -53,8 +48,7 @@ const App = (() => {
     informes: 'informes',
     alumnos: 'evaluacion',
     clases: 'evaluacion',
-    curriculo: 'evaluacion',
-    montaje: 'evaluacion'
+    curriculo: 'evaluacion'
   };
   let actual = 'inicio';
 
@@ -261,8 +255,7 @@ const App = (() => {
     { id: 'topbar', nombre: 'Barra superior (la actual)' },
     { id: 'fab', nombre: 'Menú de vistas flotante' },
     { id: 'dock', nombre: 'Dock inferior' },
-    { id: 'drawer', nombre: 'Barra lateral plegable' },
-    { id: 'basic', nombre: 'Modo básico (Inicio · Corregir · Evaluación · Informes)' }
+    { id: 'drawer', nombre: 'Barra lateral plegable' }
   ];
 
   // Isotipo inscrito en un círculo blanco: el círculo cubre el viewBox y el
@@ -394,7 +387,7 @@ const App = (() => {
               <select id="nav-modo">
                 ${NAV_MODOS.map(m => `<option value="${m.id}"${(tema.nav || 'topbar') === m.id ? ' selected' : ''}>${m.nombre}</option>`).join('')}
               </select>
-              <p class="hint">Cómo se reparten las vistas. El modo básico deja el circuito diario y guarda el montaje en «Montaje».</p>
+              <p class="hint">Cómo se reparten las vistas de la cabecera.</p>
             </div>
           </div>
         </div>
@@ -562,9 +555,10 @@ const App = (() => {
     // El aviso de copia destaca solo si hay datos que perder: cambios sin copiar
     // o ninguna exportación hecha. Con la app vacía no asusta al estrenarla.
     const copiaPendiente = !Storage.vacio() && (!meta.ultimaExportacion || meta.cambiosSinCopia);
-    const montajeCompleto = !!(db.grupos.length && db.alumnos.length && db.clases.length
-      && db.criterios.length && db.instrumentos.length);
-    const guiaAbierta = Storage.vacio() || !montajeCompleto;
+    // El bloque «Montaje» de Inicio se retiró (Evaluación ya agrupa esas
+    // vistas): la guía plegable es solo el «Flujo recomendado», abierta con la
+    // app vacía y plegada en cuanto hay datos.
+    const guiaAbierta = Storage.vacio();
     el.innerHTML = `
       <section class="card">
         <div class="card-head">
@@ -600,17 +594,6 @@ const App = (() => {
       ${panelesEstadoHtml()}
       ${panelesCoberturaHtml()}
       ${panelesAciHtml()}
-      <details class="guia-inicio" ${guiaAbierta ? 'open' : ''}>
-        <summary><span class="guia-titulo">Montaje</span></summary>
-        <section class="card no-print">
-          <p style="color:var(--tinta-suave);margin:0 0 10px">Grupos, asignaturas y currículo. Se preparan una vez y luego se dejan atrás.</p>
-          <div class="acciones">
-            <button class="btn btn-mini" data-ir="alumnos">Alumnos y grupos</button>
-            <button class="btn btn-mini" data-ir="clases">Asignaturas y clases</button>
-            <button class="btn btn-mini" data-ir="curriculo">Currículo</button>
-          </div>
-        </section>
-      </details>
       <details class="guia-inicio" ${guiaAbierta ? 'open' : ''}>
         <summary><span class="guia-titulo">Flujo recomendado</span></summary>
         <section class="card">
@@ -693,8 +676,8 @@ const App = (() => {
     if (btnCur) btnCur.onclick = () => ir('curriculo');
     const btnCl = el.querySelector('#btn-ir-clases');
     if (btnCl) btnCl.onclick = () => ir('clases');
-    // Accesos rápidos y de montaje (grupos, asignaturas y currículo).
-    // «Ver informes» abre la vista propia de Informes (Fase 4a).
+    // Accesos rápidos de Inicio. «Ver informes» abre la vista propia de
+    // Informes (Fase 4a).
     el.querySelectorAll('[data-ir]').forEach(b => {
       b.onclick = () => ir(b.dataset.ir);
     });
@@ -739,21 +722,21 @@ const App = (() => {
     // El indicador de copia (M-02) vive en la cabecera y no depende del modo
     // de navegación: se repinta al entrar en cada vista.
     pintaEstadoCopia();
-    const modo = (Storage.db && Storage.db.tema && Storage.db.tema.nav) || 'topbar';
+    // El modo básico se retiró (Evaluación ya agrupa las vistas de
+    // preparación): una preferencia antigua con `nav === 'basic'` cae en la
+    // barra superior, sin migrar el estado.
+    const modoBruto = (Storage.db && Storage.db.tema && Storage.db.tema.nav) || 'topbar';
+    const modo = modoBruto === 'basic' ? 'topbar' : modoBruto;
     document.querySelectorAll('.nav-fab,.nav-menu,.nav-dock,.nav-drawer,.nav-drawer-toggle')
       .forEach(e => e.remove());
     const nav = document.getElementById('nav');
     nav.style.display = '';
     nav.innerHTML = '';
-    document.body.classList.toggle('modo-basic', modo === 'basic');
     document.body.classList.toggle('modo-fab', modo === 'fab');
     document.body.classList.toggle('modo-dock', modo === 'dock');
     document.body.classList.toggle('modo-drawer', modo === 'drawer');
 
-    const esBasica = modo === 'basic';
-    const secciones = esBasica
-      ? SECCIONES_BASICAS.map(id => SECCIONES.find(s => s.id === id)).filter(Boolean)
-      : SECCIONES;
+    const secciones = SECCIONES;
     const pinta = contenedor => {
       secciones.forEach(s => {
         const b = document.createElement('button');
@@ -766,7 +749,7 @@ const App = (() => {
       });
     };
 
-    if (modo === 'topbar' || esBasica) { pinta(nav); pintaSubnav(); return; }
+    if (modo === 'topbar') { pinta(nav); pintaSubnav(); return; }
     nav.style.display = 'none';
 
     if (modo === 'fab') {
@@ -830,21 +813,6 @@ const App = (() => {
     });
   }
 
-  // Vista «Montaje»: el atajo a las vistas de preparación.
-  function renderMontaje(el) {
-    el.innerHTML = `
-      <section class="card">
-        <div class="card-head"><h1>Montaje</h1></div>
-        <p style="color:var(--tinta-suave)">Grupos, asignaturas y currículo. Se preparan una vez y se ajustan cuando haga falta.</p>
-        <div class="lista-montaje">
-          <button class="btn-montaje" type="button" data-ir="alumnos"><b>Alumnos y grupos</b><span>Crea los grupos e inscribe a los alumnos.</span></button>
-          <button class="btn-montaje" type="button" data-ir="clases"><b>Asignaturas y clases</b><span>Crea las asignaturas y sus clases (asignatura · grupo).</span></button>
-          <button class="btn-montaje" type="button" data-ir="curriculo"><b>Currículo</b><span>Competencias específicas, criterios y ponderaciones.</span></button>
-        </div>
-      </section>`;
-    el.querySelectorAll('[data-ir]').forEach(b => { b.onclick = () => ir(b.dataset.ir); });
-  }
-
   // Sección activa según la vista (Fase 4a: Informes es una vista propia, así
   // que el mapeo completo vive en SECCION_DE_VISTA).
   function seccionActual() {
@@ -865,6 +833,11 @@ const App = (() => {
     // Cuadrícula desapareció (Fase 4a); su ruta lleva a la vista propia.
     if (id === 'cuadricula' && opciones && opciones.tab === 'informe') {
       return ir('informes');
+    }
+    // Alias de la vista retirada «Montaje»: Evaluación agrupa esas vistas y su
+    // entrada principal es la Cuadrícula.
+    if (id === 'montaje') {
+      return ir('cuadricula');
     }
     actual = id;
     const vista = VISTAS.find(v => v.id === id);
@@ -901,6 +874,19 @@ const App = (() => {
       })
       .catch(e => alert('Error al guardar: ' + e.message));
     document.getElementById('btn-ajustes').onclick = () => modalAjustes();
+
+    // El isotipo de la cabecera lleva a Inicio (petición del docente): es un
+    // <span> con role="link" (index.html), así que también responde a teclado.
+    const logo = document.getElementById('logo-inicio');
+    if (logo) {
+      logo.onclick = () => ir('inicio');
+      logo.onkeydown = ev => {
+        if (ev.key === 'Enter' || ev.key === ' ') {
+          ev.preventDefault();
+          ir('inicio');
+        }
+      };
+    }
 
     // La importación se lanza desde «Configuración → Importar backup», pero el
     // selector de archivos sigue en la cabecera para que viva en todo momento.
@@ -946,7 +932,8 @@ const App = (() => {
     });
 
     const hash = location.hash.slice(1);
-    ir(VISTAS.some(v => v.id === hash) ? hash : 'inicio');
+    // El hash antiguo «#montaje» (vista retirada) cae en la Cuadrícula.
+    ir(hash === 'montaje' ? 'cuadricula' : (VISTAS.some(v => v.id === hash) ? hash : 'inicio'));
   }
 
   return {

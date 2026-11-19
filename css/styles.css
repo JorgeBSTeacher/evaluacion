@@ -92,19 +92,7 @@ body.modo-fab main, body.modo-dock main { padding-bottom: 84px; }
 .nav-drawer button.activo { background: var(--acento); color: #fff; }
 body.modo-drawer .topbar, body.modo-drawer main { margin-left: 200px; }
 
-/* Modo básico: la nav baja a una fila propia, bajo la cabecera. */
-body.modo-basic .topbar { flex-wrap: wrap; }
-body.modo-basic #nav {
-  order: 3; flex: 1 1 100%;
-  margin: 0 calc(-1 * var(--pad-x)); padding: 6px 12px;
-  background: #fff; border-top: 1px solid rgba(255,255,255,.22);
-  overflow-x: auto;
-}
-body.modo-basic #nav button { color: var(--marca); }
-body.modo-basic #nav button:hover { background: var(--acento-suave); color: var(--marca); }
-body.modo-basic #nav button.activo { background: var(--marca); color: #fff; box-shadow: none; }
 @media (max-width: 520px) {
-  body.modo-basic .brand-txt small { display: none; }
   .nav-dock { left: 10px; right: 10px; transform: none; max-width: none; }
   /* M-11: la fuente no baja de 12 px; el dock se deja desplazar en horizontal. */
   .nav-dock button { min-width: 58px; }
@@ -115,17 +103,6 @@ body.modo-basic #nav button.activo { background: var(--marca); color: #fff; box-
   .nav-drawer { width: 220px; box-shadow: 0 0 30px rgba(0, 0, 0, .3); }
 }
 
-/* Vista «Montaje» (modo básico). */
-.lista-montaje { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
-.btn-montaje {
-  display: flex; flex-direction: column; gap: 4px; text-align: left;
-  padding: 14px; border: 1px solid var(--linea); border-radius: 12px;
-  background: var(--papel); cursor: pointer; font-family: inherit; font-size: 14px;
-}
-.btn-montaje:hover { border-color: var(--acento); background: var(--acento-suave); }
-.btn-montaje b { color: var(--acento); font-size: 15px; }
-.btn-montaje span { color: var(--tinta-suave); font-size: 13px; }
-
 .brand { display: flex; align-items: center; gap: 10px; }
 .logo {
   display: inline-flex; align-items: center; justify-content: center;
@@ -133,11 +110,16 @@ body.modo-basic #nav button.activo { background: var(--marca); color: #fff; box-
   background: var(--acento); color: #fff; font-weight: 800; font-size: 15px;
   flex: none;
 }
-/* Isotipo en la cabecera: pastilla blanca con el color del tema. */
+/* Isotipo en la cabecera: pastilla blanca con el color del tema. Clicable a
+   Inicio (petición del docente): mismo tamaño e isotipo, cursor de mano y
+   hover sutil. */
 .logo.isotipo {
   background: #fff; color: var(--marca);
   border: 1px solid rgba(255, 255, 255, .55);
+  cursor: pointer;
 }
+.logo.isotipo:hover { filter: brightness(1.06); }
+.logo.isotipo:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 .logo.isotipo svg { width: 26px; height: 26px; display: block; }
 .brand-txt { line-height: 1.1; }
 .brand-txt small { display: block; color: var(--tinta-suave); font-size: 12px; }
@@ -160,7 +142,7 @@ body.modo-basic #nav button.activo { background: var(--marca); color: #fff; box-
    en Evaluación: fuera de ella #subnav se elimina del DOM. */
 .subnav {
   display: flex; flex-wrap: wrap; gap: 4px;
-  flex: 1 1 100%; order: 4; /* bajo la fila de secciones, también en modo básico */
+  flex: 1 1 100%; order: 4; /* bajo la fila de secciones */
   background: #fff;
   border-top: 1px solid var(--linea);
   margin: 0 calc(-1 * var(--pad-x)); padding: 0 12px;
@@ -785,6 +767,8 @@ details.guia-inicio > summary .guia-titulo { display: inline; font-size: 16px; f
   /* El informe de «Imprimir todo» sustituye a la vista mientras se imprime. */
   body.imprimiendo-informe main { display: none !important; }
   body.imprimiendo-informe #informe-impresion { display: block !important; }
+  /* La cabecera de perfil de la vista actual solo se ve al imprimir. */
+  .perfil-impresion { display: block; margin: 0 0 10px; }
   .cabecera-impresion { display: flex; flex-direction: column; gap: 2px; margin: 0 0 10px; }
   .cabecera-impresion strong { font-size: 15px; }
   .cabecera-impresion span { color: #555; font-size: 12px; }
@@ -836,19 +820,29 @@ details.guia-inicio > summary .guia-titulo { display: inline; font-size: 16px; f
 .informe-cab { margin: 0 0 12px; }
 .informe-cab strong { font-size: 16px; }
 .informe-cab span { display: block; color: var(--tinta-suave); font-size: 12px; }
+/* Cabecera de perfil de la impresión de la vista actual (Cuadrícula): los
+   demás imprimibles la llevan en .informe-cab; aquí el bloque solo existe al
+   imprimir (en pantalla está oculto) y el siguiente render lo retira. */
+.perfil-impresion { display: none; }
 /* Perfil docente en la cabecera impresa (D-74): solo aparece si el docente ha
    definido algo. La clase .logo ya está ocupada por la marca de la cabecera,
    y el bloque entero no debe partirse entre páginas. Van con `.informe-cab`
    por delante para ganarle a `.informe-cab span` (que haría block y suave
-   todos los span de la cabecera). */
-.informe-cab .informe-perfil {
+   todos los span de la cabecera). Las mismas reglas sirven para la cabecera
+   inyectada de la vista actual (.perfil-impresion). */
+.informe-cab .informe-perfil,
+.perfil-impresion .informe-perfil {
   display: flex; align-items: center; gap: 10px; margin: 0 0 8px;
   break-inside: avoid; page-break-inside: avoid;
 }
-.informe-cab .informe-logo { max-height: 44px; max-width: 150px; object-fit: contain; }
-.informe-cab .informe-perfil-txt { display: flex; flex-direction: column; min-width: 0; }
-.informe-cab .informe-nombre { font-size: 13px; font-weight: 700; color: var(--tinta); }
-.informe-cab .informe-centro { font-size: 12px; color: var(--tinta-suave); }
+.informe-cab .informe-logo,
+.perfil-impresion .informe-logo { max-height: 44px; max-width: 150px; object-fit: contain; }
+.informe-cab .informe-perfil-txt,
+.perfil-impresion .informe-perfil-txt { display: flex; flex-direction: column; min-width: 0; }
+.informe-cab .informe-nombre,
+.perfil-impresion .informe-nombre { font-size: 13px; font-weight: 700; color: var(--tinta); }
+.informe-cab .informe-centro,
+.perfil-impresion .informe-centro { font-size: 12px; color: var(--tinta-suave); }
 .informe-seccion { margin-bottom: 16px; }
 /* El título viaja siempre con lo que le sigue: nunca solo al pie de una página. */
 .informe-titulo { font-size: 15px; margin: 0 0 6px; break-after: avoid; page-break-after: avoid; }

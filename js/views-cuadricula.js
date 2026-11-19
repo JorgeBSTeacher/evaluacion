@@ -426,6 +426,19 @@ const CuadriculaView = (() => {
     };
   }
 
+  // Cabecera de perfil para la impresión de la vista actual (petición del
+  // docente: TODOS los imprimibles llevan nombre del maestro, centro y logo
+  // del cole). Devuelve el bloque a inyectar, o null si no hay perfil: igual
+  // que en los otros imprimibles, sin perfil no se pinta nada (ni restos).
+  function perfilImpresion() {
+    const cab = Storage.perfilHtml();
+    if (!cab) return null;
+    const bloque = document.createElement('div');
+    bloque.className = 'perfil-impresion';
+    bloque.innerHTML = cab;
+    return bloque;
+  }
+
   // Imprime lo que hay en pantalla. Si la pestaña es «Instrumentos», todas las
   // unidades quedan desplegadas: una unidad plegada deja su celda de relleno y
   // CSS no puede recuperarla, así que se abren en JS.
@@ -436,6 +449,10 @@ const CuadriculaView = (() => {
       Calc.unidadesDe(insts).forEach(u => udsAbiertas.add(u));
       render(el);
     }
+    // La cabecera de perfil se inyecta al principio de la vista: solo se ve al
+    // imprimir (CSS) y el siguiente render la retira con el resto del HTML.
+    const bloque = perfilImpresion();
+    if (bloque) el.insertBefore(bloque, el.firstElementChild || null);
     window.print();
   }
 
@@ -653,6 +670,12 @@ const CuadriculaView = (() => {
     // Camino de impresión compartido con la vista de Informes (Fase 4a): su
     // botón «Imprimir / PDF» vuelca el HTML en #informe-impresion e imprime.
     imprimirInforme,
+    // Impresión de la vista actual (comprobable en el arnés sin impresora:
+    // la llamada termina justo antes de window.print()).
+    imprimirVistaActual,
+    // Cabecera de perfil de la impresión de la vista actual (comprobable sin
+    // imprimir: devuelve el bloque DOM o null).
+    perfilImpresion,
     // Pestaña activa: la usa el menú principal para marcar Evaluación.
     tabActivo() { return tab; }
   };

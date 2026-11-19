@@ -56,6 +56,14 @@ Navegación por `ir(id)` + hash `#id` (`js/app.js:628-636`, `695-696`).
 `topbar` (por defecto), `fab`, `dock`, `drawer`, `basic`. Se elige en
 Configuración → Tema y menús (`#nav-modo`, `js/app.js:286-291`).
 
+> **Nota (2026-11-19)**: el modo `basic` **se retira** a petición del docente:
+> con Evaluación agrupando las vistas de preparación como subpestañas, el
+> circuito diario ya ES el menú completo, así que la versión «reducida» no
+> aporta nada. Una preferencia antigua con `tema.nav === 'basic'` cae en
+> `topbar` al leerla en `pintaNav()` (retrocompatibilidad, sin migrar
+> `Storage`), y el selector ya no ofrece la opción. La vista `montaje`
+> desaparece con él: `ir('montaje')` redirige a la Cuadrícula.
+
 ### 1.3 Pestañas y subvistas
 
 - **Cuadrícula** (`views-cuadricula.js:534-537`): `notas · criterios ·
@@ -244,3 +252,30 @@ Inicio · Corregir · Evaluación · Informes · Ajustes
   valor numérico ya distingue, el símbolo refuerza). Las barras de severidad
   de Atención estrenan `▼`/`●` con `title`, y la tabla de saberes pasa de
   `✓`/`✗` a «Domina»/«Mejorar» en texto.
+
+## 11. Ajustes de la petición del docente (2026-11-19)
+
+- `node --check js/app.js && node --check js/views-cuadricula.js &&
+  node --check js/views-informe.js` → sin errores de sintaxis.
+- `node tools/checks.js` → `TODO OK: 881 comprobaciones`.
+- `node tools/build-singlefile.js` → `dist/evalora.html` (570 KB);
+  `node tools/build-singlefile.js --check` → sincronizado.
+- **«Montaje» retirado y modo básico eliminado**: la vista `montaje` sale de
+  `VISTAS` (con alias `ir('montaje')` → Cuadrícula, y el hash `#montaje`
+  también), la tarjeta y la guía de Inicio ya no la mencionan (la guía única
+  «Flujo recomendado» se pliega cuando la app tiene datos) y el modo `basic`
+  desaparece de `NAV_MODOS`: `pintaNav()` reinterpreta una preferencia antigua
+  `nav === 'basic'` como `topbar` (Evaluación ya agrupa las vistas de
+  preparación, así que el circuito diario es el menú completo). En CSS se
+  retiran las reglas `body.modo-basic …`, `.lista-montaje` y `.btn-montaje`.
+- **Todos los imprimibles llevan el perfil docente**: el Informe de análisis y
+  el imprimible de Criterios/Competencias ya lo tenían (D-74); la impresión de
+  la **vista actual** (pestañas de la Cuadrícula, incluida Instrumentos) lo
+  estrena: `CuadriculaView.imprimirVistaActual` inyecta al principio un bloque
+  `.perfil-impresion` con `Storage.perfilHtml()` (nombre, centro y logo como
+  blob:), oculto en pantalla y visible solo al imprimir; sin perfil no se
+  pinta nada.
+- **El isotipo de la cabecera es clicable**: `<span role="link"
+  id="logo-inicio">` con `title="Ir al inicio"`, `aria-label="Evalora · Ir al
+  inicio"` y `tabindex="0"`; clic y Enter/Espacio llevan a `ir('inicio')`, con
+  `cursor: pointer` y hover sutil (brillo) sin cambiar el tamaño ni el isotipo.

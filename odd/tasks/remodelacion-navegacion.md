@@ -45,8 +45,10 @@ modelo de datos**. El móvil va aparte (M-16).
 | Informes | `cuadricula` con pestaña `informe` |
 | Ajustes | Configuración (modal) |
 
-Las vistas de preparación (`alumnos`, `clases`, `curriculo`, `montaje`) siguen
-accesibles desde Inicio/Montaje y por su hash.
+Las vistas de preparación (`alumnos`, `clases`, `curriculo`) siguen accesibles
+por su hash. La vista auxiliar `montaje` se retiró más tarde (petición del
+docente de 2026-11-19): Evaluación ya agrupa esas vistas como subpestañas y su
+ruta antigua redirige a la Cuadrícula.
 
 ## Mapeo de la Fase 2 (2a + 2b)
 
@@ -65,9 +67,11 @@ accesibles desde Inicio/Montaje y por su hash.
   «Corregir · N pendientes» por instrumento; al corregir, «Volver» regresa a la
   cola. `Instrumentos` sigue siendo la gestión (editar, duplicar, banco).
 - El **subnav** (`#subnav`) es la segunda fila de la cabecera y se ve en todos
-  los modos (topbar, fab, dock, drawer, basic); fuera de Evaluación no existe.
+  los modos (topbar, fab, dock, drawer; el modo básico se retiró en
+  2026-11-19); fuera de Evaluación no existe.
 - Alias conservados: `ir('cuadricula')`, `ir('instrumentos')`, `ir('alumnos')`,
-  `ir('clases')`, `ir('curriculo')` y `ir('montaje')`.
+  `ir('clases')`, `ir('curriculo')` y `ir('montaje')` (este último redirige a
+  la Cuadrícula desde que la vista se retiró).
 
 ## Mapeo de la Fase 4a
 
@@ -190,3 +194,27 @@ accesibles desde Inicio/Montaje y por su hash.
 - El aviso de exclusión vive en `htmlAlcance` (bajo los selectores): N cuenta
   el alumnado con el nivel efectivo de cada alumno (`Calc.nivelDeAlumno`,
   adaptaciones de la clase), como la Cuadrícula para «Todos los niveles».
+
+## Ajustes de la petición del docente (2026-11-19)
+
+- `node --check js/app.js && node --check js/views-cuadricula.js &&
+  node --check js/views-informe.js` → sin errores de sintaxis.
+- `node tools/checks.js` → `TODO OK: 881 comprobaciones`.
+- `node tools/build-singlefile.js` → `dist/evalora.html` (570 KB);
+  `node tools/build-singlefile.js --check` → sincronizado.
+- La vista `montaje` sale de `VISTAS` y `SECCION_DE_VISTA`; `ir('montaje')` y
+  el hash `#montaje` redirigen a la Cuadrícula (la vista principal de
+  Evaluación). Inicio pierde la tarjeta y la guía «Montaje»: queda la única
+  guía «Flujo recomendado», plegada en cuanto la app tiene datos.
+- El modo básico se elimina de `NAV_MODOS` y de `pintaNav()`
+  (`SECCIONES_BASICAS`, la rama `basic` y `body.modo-basic` incluidos): una
+  preferencia antigua `nav === 'basic'` cae en `topbar` al leerla, sin tocar
+  `Storage`. Motivo: Evaluación ya agrupa las vistas de preparación como
+  subpestañas, así que el menú completo ES el circuito diario.
+- La impresión de la vista actual de la Cuadrícula (`imprimirVistaActual`)
+  estrena la cabecera de perfil (`Storage.perfilHtml()`) en un bloque
+  `.perfil-impresion` print-only, como el resto de imprimibles (D-74); sin
+  perfil no se pinta nada.
+- El isotipo de la cabecera es clicable a Inicio (`role="link"`,
+  `title="Ir al inicio"`, `aria-label="Evalora · Ir al inicio"`,
+  `tabindex="0"`, Enter/Espacio) con hover sutil, sin cambiar su tamaño.

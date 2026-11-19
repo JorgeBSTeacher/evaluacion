@@ -3036,9 +3036,8 @@ async function main() {
     const h = appEl.innerHTML;
     check('Inicio muestra el panel de pendientes con el conteo unificado',
       /id="panel-pendientes"/.test(h) && /corrección pendiente en 1 instrumento/.test(h), h.slice(0, 260));
-    check('el panel de pendientes va antes que el estado y el montaje',
-      h.indexOf('id="panel-pendientes"') < h.indexOf('Estado por clase')
-      && h.indexOf('id="panel-pendientes"') < h.indexOf('Montaje'),
+    check('el panel de pendientes va antes del estado por clase',
+      h.indexOf('id="panel-pendientes"') < h.indexOf('Estado por clase'),
       'panel=' + h.indexOf('id="panel-pendientes"') + ' estado=' + h.indexOf('Estado por clase'));
     const btnCorregir = appEl.querySelector('#btn-corregir-pendientes');
     check('el botón «Corregir pendientes» está habilitado con pendientes',
@@ -3069,6 +3068,12 @@ async function main() {
     check('«Ver informes» abre la sección Informes',
       app.App.seccionActual() === 'informes' && !!appEl.querySelector('#alc-clase'),
       app.App.seccionActual());
+    // El bloque «Montaje» de Inicio se retiró: sin tarjetas, sin accesos y sin
+    // mención (los accesos a preparación viven en Evaluación).
+    check('los accesos de Inicio ya no referencian Montaje (vista retirada)',
+      !h.includes('Montaje') && !appEl.querySelector('[data-ir="montaje"]')
+      && Array.from(appEl.querySelectorAll('[data-ir]')).every(b => b.dataset.ir !== 'montaje'),
+      Array.from(appEl.querySelectorAll('[data-ir]')).map(b => b.dataset.ir).join(','));
 
     // Copia al día: el aviso destacado desaparece y queda el discreto.
     app.Storage.marcarCopia();
@@ -3076,10 +3081,11 @@ async function main() {
     check('con la copia al día el aviso de backup no destaca',
       !appEl.querySelector('#aviso-backup') && !!appEl.querySelector('#aviso-copia'));
 
-    // Guía plegada con el montaje completo; abierta en una app vacía.
+    // Guía plegada con la app con datos; abierta en una app vacía. Ya solo hay
+    // UNA guía («Flujo recomendado»): la de «Montaje» se retiró.
     const guias = appEl.querySelectorAll('details.guia-inicio');
-    check('con el montaje completo la guía llega plegada',
-      guias.length === 2 && Array.from(guias).every(g => !g.hasAttribute('open')), String(guias.length));
+    check('con la app con datos la guía (Flujo recomendado) llega plegada',
+      guias.length === 1 && Array.from(guias).every(g => !g.hasAttribute('open')), String(guias.length));
     // HTML válido: summary solo admite phrasing content (los títulos van en <span>).
     check('los títulos de la guía son <span> válidos dentro de <summary>',
       Array.from(guias).every(g => !g.querySelector('summary h2') && !!g.querySelector('summary .guia-titulo')),
@@ -3094,7 +3100,7 @@ async function main() {
     appVacia.App.ir('inicio');
     const guiasVacias = appVacia.document.getElementById('app').querySelectorAll('details.guia-inicio');
     check('con la app vacía la guía queda abierta',
-      guiasVacias.length === 2 && Array.from(guiasVacias).every(g => g.hasAttribute('open')), String(guiasVacias.length));
+      guiasVacias.length === 1 && Array.from(guiasVacias).every(g => g.hasAttribute('open')), String(guiasVacias.length));
 
     // Sin pendientes: texto unificado y botón deshabilitado.
     app.Storage.db.registros.i1 = { a1: { p1: 8, p2: 6 }, a2: { p1: 5, p2: 5 }, a3: { p1: 7, p2: 7 } };
@@ -3136,6 +3142,22 @@ async function main() {
     // El engranaje está fuera de #app: no se destruye al cambiar de vista.
     check('el engranaje vive fuera del contenido de la vista',
       html.indexOf('id="btn-ajustes"') < html.indexOf('<main id="app"'));
+    // El isotipo de la cabecera es clicable y lleva a Inicio (petición del
+    // docente): <span> con role="link" y manejo de teclado en js/app.js.
+    check('el isotipo de la cabecera es clicable a Inicio (role, title, aria-label y tabindex)',
+      /id="logo-inicio"[^>]*role="link"/.test(topbar)
+      && /id="logo-inicio"[^>]*title="Ir al inicio"/.test(topbar)
+      && /id="logo-inicio"[^>]*aria-label="Evalora · Ir al inicio"/.test(topbar)
+      && /id="logo-inicio"[^>]*tabindex="0"/.test(topbar),
+      topbar.slice(0, 160));
+    const fuenteApp = fs.readFileSync(path.join(raiz, 'js', 'app.js'), 'utf8');
+    check('el isotipo cablea el clic y Enter/Espacio a ir("inicio")',
+      /logo-inicio[\s\S]{0,500}ir\('inicio'\)/.test(fuenteApp)
+      && /logo\.onkeydown[\s\S]{0,200}Enter/.test(fuenteApp));
+    const cssLogo = fs.readFileSync(path.join(raiz, 'css', 'styles.css'), 'utf8');
+    check('el isotipo clicable tiene cursor de mano y hover sutil',
+      /\.logo\.isotipo \{[^}]*cursor: pointer/.test(cssLogo)
+      && /\.logo\.isotipo:hover \{ filter: brightness/.test(cssLogo));
 
     // M-02: el indicador refleja el estado de la copia. La cabecera real no
     // existe en el arnés, así que el `span` se inyecta en el `body` simulado y
@@ -3922,6 +3944,63 @@ async function main() {
       typeof infCu === 'string' && !infCu.includes('<script>') && infCu.includes('&lt;script&gt;'));
   }
 
+  // La impresión de la vista actual (Cuadrícula) también lleva la cabecera de
+  // perfil: el bloque se inyecta al principio de la vista y solo se ve al
+  // imprimir (petición del docente: todos los PDF/imprimibles con perfil).
+  {
+    const app = cargarApp({ dom: true });
+    app.Storage.load();
+    await importarJson(app, estadoInforme());
+    const doc = app.document;
+    app.App.ir('cuadricula');
+
+    // Sin perfil (clave ausente): no se pinta nada.
+    delete app.Storage.db.perfil;
+    check('D74-30 · la impresión de la vista actual sin perfil no inyecta cabecera',
+      app.CuadriculaView.perfilImpresion() === null);
+
+    // Con perfil: nombre, centro y logo (el logo viaja como blob:, igual que
+    // en los otros imprimibles).
+    app.Storage.db.perfil = {
+      nombre: 'María López', centro: 'CEIP Gerardo Diego', logo: 'data:image/png;base64,QUJD'
+    };
+    const bloque = app.CuadriculaView.perfilImpresion();
+    check('D74-31 · la cabecera de la vista actual lleva nombre, centro y logo',
+      !!bloque && bloque.classList.contains('perfil-impresion')
+      && bloque.innerHTML.includes('informe-nombre') && bloque.innerHTML.includes('María López')
+      && bloque.innerHTML.includes('CEIP Gerardo Diego')
+      && /<img class="informe-logo" src="blob:/.test(bloque.innerHTML),
+      bloque ? bloque.innerHTML.slice(0, 200) : '(sin bloque)');
+
+    // Perfil presente pero vacío: tampoco nada (sin separadores sueltos).
+    app.Storage.db.perfil = { nombre: '', centro: '', logo: '' };
+    check('D74-32 · con el perfil vacío la vista actual no inyecta cabecera',
+      app.CuadriculaView.perfilImpresion() === null);
+
+    // Cableado: imprimir la vista actual inserta el bloque al principio. El
+    // arnés no tiene impresora (window.print no existe): la llamada termina
+    // justo antes, con el bloque ya en el DOM — el catch comprueba que el
+    // fallo fue exactamente ese, y no algo anterior a la inyección.
+    app.Storage.db.perfil = { nombre: 'Jorge Bourgon', centro: '', logo: '' };
+    const appEl = doc.getElementById('app');
+    let llegoAPrint = false;
+    try {
+      app.CuadriculaView.imprimirVistaActual(appEl, app.Storage.db.instrumentos);
+    } catch (e) {
+      llegoAPrint = /print/.test(e.message);
+    }
+    const inyectada = appEl.querySelector('.perfil-impresion');
+    check('D74-33 · imprimir la vista actual inserta la cabecera de perfil',
+      llegoAPrint && !!inyectada && inyectada.innerHTML.includes('Jorge Bourgon'),
+      llegoAPrint ? (inyectada ? inyectada.innerHTML.slice(0, 120) : '(sin bloque)') : '(no llegó a imprimir)');
+
+    // Print-only: en pantalla oculta, visible al imprimir (CSS).
+    const cssImp = fs.readFileSync(path.join(raiz, 'css', 'styles.css'), 'utf8');
+    check('D74-34 · la cabecera de la vista actual es print-only (CSS)',
+      /\.perfil-impresion \{ display: none; \}/.test(cssImp)
+      && /@media print \{[\s\S]*?\.perfil-impresion \{ display: block/.test(cssImp));
+  }
+
   // Sin perfil (clave ausente o vacía): nada pintado, sin separadores sueltos
   // ni «undefined», y ninguna de las dos funciones se cae.
   {
@@ -4513,25 +4592,25 @@ async function main() {
     app.App.ir('alumnos');
     check('alias ir("alumnos") → Evaluación', app.App.seccionActual() === 'evaluacion', app.App.seccionActual());
     app.App.ir('montaje');
-    check('la vista Montaje sigue accesible y pertenece a Evaluación',
-      app.App.seccionActual() === 'evaluacion' &&
-      ['alumnos', 'clases', 'curriculo'].every(id => !!doc.querySelector(`[data-ir="${id}"]`)),
-      app.App.seccionActual() + ' · ' + Array.from(doc.querySelectorAll('[data-ir]')).map(b => b.dataset.ir).join(','));
+    check('el alias ir("montaje") redirige a la Cuadrícula (Evaluación)',
+      app.App.seccionActual() === 'evaluacion' && app.CuadriculaView.tabActivo() === 'notas'
+      && !!doc.querySelector('#app #tabs'),
+      app.App.seccionActual() + ' · pestaña ' + app.CuadriculaView.tabActivo());
 
+    // El modo básico se retiró: la preferencia antigua cae en la barra superior
+    // (retrocompatibilidad, sin migrar el estado) y el selector ya no la ofrece.
     app.Storage.db.tema.nav = 'basic';
     app.App.ir('inicio');
-    check('el modo básico deja 4 secciones y no muestra Ajustes',
-      botonesNav().length === 4 && botonesNav().indexOf('Ajustes') === -1, botonesNav().join(', '));
-    check('el modo básico muestra Inicio · Corregir · Evaluación · Informes',
-      botonesNav().join(' · ') === 'Inicio · Corregir · Evaluación · Informes', botonesNav().join(' · '));
-    app.App.irSeccion('evaluacion');
-    check('el modo básico muestra el subnav en Evaluación',
-      !!subnav() && subnav().querySelectorAll('button').length === 5,
-      subnav() ? String(subnav().querySelectorAll('button').length) : '(sin subnav)');
-    app.App.ir('alumnos');
-    check('en modo básico una vista de preparación marca Evaluación',
-      !!(nav.querySelector('button.activo') && nav.querySelector('button.activo').textContent === 'Evaluación'),
-      nav.querySelector('button.activo') ? nav.querySelector('button.activo').textContent : '(ninguno)');
+    check('nav "basic" (preferencia antigua) cae en la barra superior con 5 secciones',
+      nav.style.display !== 'none' && botonesNav().length === 5
+      && botonesNav().join(' · ') === 'Inicio · Corregir · Evaluación · Informes · Ajustes',
+      botonesNav().join(' · '));
+    app.Storage.db.tema.nav = 'topbar';
+    app.App.abrirAjustes('tema');
+    const modos = Array.from(doc.querySelectorAll('#nav-modo option')).map(o => o.value);
+    check('el selector de organización de menús ofrece 4 modos y ya no "basic"',
+      modos.join(',') === 'topbar,fab,dock,drawer', modos.join(','));
+    app.App.ir('inicio'); // cierra el modal y deja la app lista para los demás modos
 
     app.Storage.db.tema.nav = 'fab';
     app.App.irSeccion('evaluacion');
