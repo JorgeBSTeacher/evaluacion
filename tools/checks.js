@@ -2650,20 +2650,21 @@ async function main() {
   }
 
   console.log('\n== Informe: vista renderizada (D-59) ==');
-  // Hallazgos: resumen de severidad, dos tablas y barra de porcentaje.
+  // Atención (antes Hallazgos): resumen de severidad, dos tablas y barra de
+  // porcentaje. Con el alias, un chip con el id viejo «hallazgos» también
+  // aterriza aquí (Fase 4b).
   {
     const app = cargarApp();
     app.Storage.load();
     await importarJson(app, estadoInforme());
     const chips = [
-      { dataset: { subvista: 'hallazgos' } },
+      { dataset: { subvista: 'atencion' } },
       { dataset: { subvista: 'criterios' } },
-      { dataset: { subvista: 'distribucion' } },
       { dataset: { subvista: 'alumnos' } }
     ];
     const el = makeEl({ querySelectorAll: sel => (sel === '[data-subvista]' ? chips : []) });
     app.InformeView.render(el, { claseSel: 'c1', nivelSel: '__todas__' });
-    chips[0].onclick(); // la vista por defecto ahora es Resumen; se elige Hallazgos
+    chips[0].onclick(); // la vista por defecto es Resumen; se elige Atención
     const h = el.innerHTML;
     check('el informe muestra el resumen de severidad',
       /\d+ críticos?/.test(h) && h.includes('de atención'), h.slice(0, 160));
@@ -2672,8 +2673,19 @@ async function main() {
     check('cada hallazgo lleva barra de porcentaje y chip de filtro',
       h.includes('min-width:70px') && h.includes('data-filtrosev'));
 
+    // Alias de subvista (Fase 4b): un residuo con el id antiguo «hallazgos»
+    // sigue enseñando el análisis, porque se reasigna a «atencion».
+    const chipViejo = { dataset: { subvista: 'hallazgos' } };
+    const el2 = makeEl({ querySelectorAll: sel => (sel === '[data-subvista]' ? [chipViejo] : []) });
+    app.InformeView.render(el2, { claseSel: 'c1', nivelSel: '__todas__' });
+    chipViejo.onclick();
+    check('el alias de subvista hallazgos→atencion sigue enseñando el análisis',
+      el2.innerHTML.includes('Criterios con dificultades')
+      && !el2.innerHTML.includes('Alumnos a los que atender'),
+      el2.innerHTML.slice(0, 160));
+
     // Subvista Alumnos: quién va por debajo del 50%, ordenado por riesgo.
-    chips[3].onclick();
+    chips[2].onclick();
     const ha = el.innerHTML;
     check('la vista Alumnos resume cuántos alumnos hay en riesgo',
       ha.includes('<strong>3 de 4</strong>'), ha.slice(0, 160));
@@ -2690,8 +2702,8 @@ async function main() {
     check('el informe de análisis lleva cabecera de clase y alcance',
       infAn.includes('Informe de análisis') && infAn.includes('Matemáticas 6º') && infAn.includes('6ºA'),
       infAn.slice(0, 160));
-    check('el informe de análisis imprime las cuatro subvistas',
-      infAn.includes('>Hallazgos</h2>') && infAn.includes('>Criterios</h2>')
+    check('el informe de análisis imprime las cuatro secciones',
+      infAn.includes('>Atención</h2>') && infAn.includes('>Criterios</h2>')
       && infAn.includes('>Distribución</h2>') && infAn.includes('>Alumnos en riesgo</h2>'));
   }
 
@@ -2702,7 +2714,7 @@ async function main() {
     await importarJson(app, estadoInforme());
     const chips = [
       { dataset: { subvista: 'resumen' } },
-      { dataset: { subvista: 'hallazgos' } },
+      { dataset: { subvista: 'atencion' } },
       { dataset: { subvista: 'alumnos' } }
     ];
     const el = makeEl({ querySelectorAll: sel => (sel === '[data-subvista]' ? chips : []) });
@@ -2713,6 +2725,12 @@ async function main() {
     check('el resumen lleva las tarjetas de media, aprobados, riesgo y criterios',
       h.includes('Media') && h.includes('Aprueban') && h.includes('Alumnos en riesgo')
       && h.includes('Criterios con dificultad'));
+    check('F4b · Resumen integra la Distribución como bloque secundario',
+      h.includes('Distribución de notas') && h.includes('aprueban (')
+      && h.indexOf('Distribución de notas') > h.indexOf('Alumnos a los que atender'),
+      h.slice(h.indexOf('Distribución de notas'), h.indexOf('Distribución de notas') + 160));
+    check('F4b · el enlace del resumen lleva a la subvista Atención',
+      h.includes('data-subvista="atencion"') && h.includes('Ver los puntos de atención'));
     chips[2].onclick();
     check('el enlace del resumen lleva a la subvista Alumnos',
       el.innerHTML.includes('alumnos con criterios por debajo del 50%'));
@@ -2724,8 +2742,10 @@ async function main() {
     app.Storage.load();
     await importarJson(app, estadoAci());
     const chips = [
-      { dataset: { subvista: 'hallazgos' } },
+      { dataset: { subvista: 'atencion' } },
       { dataset: { subvista: 'criterios' } },
+      // El chip con el id antiguo «distribucion» aterriza en Resumen (Fase 4b):
+      // la Distribución vive ahora como bloque secundario del Resumen.
       { dataset: { subvista: 'distribucion' } }
     ];
     const el = makeEl({ querySelectorAll: sel => (sel === '[data-subvista]' ? chips : []) });
@@ -2747,8 +2767,9 @@ async function main() {
     check('los alumnos ACI salen con datos en su tabla',
       hc.includes('Aci, Carla') && hc.includes('75%'));
 
-    // Distribución: el nivel del selector decide qué alumnado cuenta (agregado,
-    // una nota por alumno en el alcance).
+    // Distribución (bloque del Resumen, vía el alias del id antiguo): el nivel
+    // del selector decide qué alumnado cuenta (agregado, una nota por alumno
+    // en el alcance).
     chips[2].onclick();
     const hd = el.innerHTML;
     check('distribución con «Todos los niveles» cuenta a los 4 alumnos',
@@ -2791,9 +2812,9 @@ async function main() {
     const viDb = vi.Storage.db;
     viDb.registros.iAci = { c1al: { q1: 0 }, c2al: { q1: 0 } };
     const vel = vi.document.createElement('div');
-    // La vista por defecto es Resumen; estos controles miran Hallazgos.
+    // La vista por defecto es Resumen; estos controles miran Atención.
     const irAHallazgos = () => {
-      const chip = vel.querySelector('[data-subvista="hallazgos"]');
+      const chip = vel.querySelector('[data-subvista="atencion"]');
       if (chip) chip.click();
     };
 
@@ -2924,7 +2945,7 @@ async function main() {
     // se cuela hasta Calc, esa regla descarta todos los instrumentos y la tabla
     // desaparece aunque el resto del informe siga pintándose.
     app.InformeView.render(el, { claseSel: claseId, nivelSel: '__todas__' });
-    const chipH = el.querySelector('[data-subvista="hallazgos"]');
+    const chipH = el.querySelector('[data-subvista="atencion"]');
     if (chipH) chipH.click();
     const cuerpo = (el.querySelector('#informe-cuerpo') || {}).textContent || '';
     check('D-71 · con «Todos los niveles» la tabla de preguntas sale',
@@ -4484,6 +4505,70 @@ async function main() {
     check('F4a · el informe de análisis sale con la clase del contexto propio',
       app.InformeView.informeHtml().includes('Informe de análisis'),
       String(app.InformeView.informeHtml()).slice(0, 120));
+  }
+
+  console.log('\n== Informes: 5 subvistas y aviso de exclusión (Fase 4b) ==');
+  // Fase 4b: las subvistas se reagrupan a 5 (Resumen integra la Distribución y
+  // Atención sustituye a Hallazgos) y el alcance avisa de cuánto alumnado deja
+  // ver el filtro de nivel, con desglose cuando excluye.
+  {
+    // Cuerpo de Atención y Resumen: se usa un escenario con hallazgos reales.
+    const app = cargarApp({ dom: true });
+    app.Storage.load();
+    await importarJson(app, estadoInforme());
+    const appEl = app.document.getElementById('app');
+
+    app.App.ir('informes');
+    // Solo la fila de chips de subvista: los enlaces del cuerpo del Resumen
+    // también llevan data-subvista («Ver el detalle», etc.).
+    const chips = Array.from(appEl.querySelectorAll('.chips [data-subvista]'));
+    check('F4b · Informes agrupa sus subvistas en 5 con los nombres nuevos',
+      chips.length === 5
+      && chips.map(c => c.dataset.subvista).join('·') === 'resumen·atencion·criterios·alumnos·instrumentos'
+      && chips.map(c => c.textContent.trim()).join('·') === 'Resumen·Atención·Criterios·Alumnos·Instrumentos',
+      chips.map(c => c.dataset.subvista + '=' + c.textContent.trim()).join(', '));
+
+    const chipAt = appEl.querySelector('[data-subvista="atencion"]');
+    check('F4b · el chip de Atención existe', !!chipAt, String(!!chipAt));
+    if (chipAt) chipAt.click();
+    const cuerpoAt = (appEl.querySelector('#informe-cuerpo') || {}).textContent || '';
+    check('F4b · la subvista Atención muestra los hallazgos',
+      cuerpoAt.includes('Criterios con dificultades') && cuerpoAt.includes('Preguntas con fallos'),
+      cuerpoAt.replace(/\s+/g, ' ').slice(0, 160));
+
+    const chipRe = appEl.querySelector('[data-subvista="resumen"]');
+    if (chipRe) chipRe.click();
+    const cuerpoRe = (appEl.querySelector('#informe-cuerpo') || {}).textContent || '';
+    check('F4b · Resumen incluye el bloque de Distribución de notas',
+      cuerpoRe.includes('Distribución de notas') && cuerpoRe.includes('aprueban ('),
+      cuerpoRe.replace(/\s+/g, ' ').slice(0, 160));
+
+    // Aviso de exclusión: con un escenario ACI, el nivel base deja fuera al
+    // alumnado adaptado y el aviso lo desglosa.
+    const appAci = cargarApp({ dom: true });
+    appAci.Storage.load();
+    await importarJson(appAci, estadoAci());
+    const aciEl = appAci.document.getElementById('app');
+    appAci.App.ir('informes');
+    let hAci = aciEl.innerHTML;
+    check('F4b · el aviso de alumnado aparece y refleja el filtro (base excluye al ACI)',
+      hAci.includes('Estás viendo 2 de 4 alumnos.')
+      && hAci.includes('2 alumnos no incluidos: 2 en 4º.'),
+      hAci.slice(hAci.indexOf('Estás viendo'), hAci.indexOf('Estás viendo') + 120));
+    const selNivel = aciEl.querySelector('#alc-nivel');
+    selNivel.value = '__todas__';
+    selNivel.onchange({ target: { value: '__todas__' } });
+    hAci = aciEl.innerHTML;
+    check('F4b · con «Todos los niveles» el aviso no excluye a nadie',
+      hAci.includes('Estás viendo 4 de 4 alumnos.') && !hAci.includes('no incluidos'),
+      hAci.slice(hAci.indexOf('Estás viendo'), hAci.indexOf('Estás viendo') + 120));
+    selNivel.value = '';
+    selNivel.onchange({ target: { value: '' } });
+    hAci = aciEl.innerHTML;
+    check('F4b · al volver a Base el aviso vuelve a desglosar la exclusión',
+      hAci.includes('Estás viendo 2 de 4 alumnos.')
+      && hAci.includes('2 alumnos no incluidos: 2 en 4º.'),
+      hAci.slice(hAci.indexOf('Estás viendo'), hAci.indexOf('Estás viendo') + 120));
   }
 
   console.log('\n== Modal de criterios del instrumento (capa 2) ==');

@@ -15,13 +15,13 @@ recordar dónde está cada cosa y consulte informes según una pregunta concreta
 
 | ID | Mejora | Prioridad | Estado |
 |---|---|---|---|
-| **M-01** | **Remodelación de navegación por tareas** (`Inicio · Corregir · Evaluación · Informes · Ajustes`) | Alta | **En curso (Fase 4a hecha; pendiente 4b y 5)** |
+| **M-01** | **Remodelación de navegación por tareas** (`Inicio · Corregir · Evaluación · Informes · Ajustes`) | Alta | **En curso (Fases 4a y 4b hechas; pendiente 5)** |
 | M-02 | Indicador de backup y «Guardar» como acción de copia (con estado) | Alta | **Parcial (Fase 3)**: aviso destacado y «Hacer backup» en Inicio; falta «Guardar» como acción de copia |
 | M-03 | Unificar «pendientes» (misma unidad y fuente en Inicio y Calificaciones) | Alta | **Hecha (Fase 3)** |
 | M-04 | Chip del ajuste `sinNotaEsCero` visible en Calificaciones | Media | Pendiente |
 | M-05 | Diferenciar visualmente los 3 niveles de navegación (barra / pestañas / chips) | Media | Pendiente |
 | M-06 | Filtro único y contexto visible en Informes (sin selector de periodo duplicado) | Alta | **Hecha (Fase 4a)**: Informes es una vista propia con su contexto completo (clase, nivel, periodo, unidad, instrumento); ya no hay selector duplicado con la Cuadrícula |
-| M-07 | Renombrar y reagrupar las subvistas de Informe | Media | Pendiente (Fase 4b) |
+| M-07 | Renombrar y reagrupar las subvistas de Informe | Media | **Hecha (Fase 4b)**: 5 subvistas `Resumen · Atención · Criterios · Alumnos · Instrumentos`; la Distribución vive dentro del Resumen y los ids antiguos quedan como alias |
 | M-08 | Menú ⋯ por instrumento (dejar 2 acciones visibles) | Media | Pendiente |
 | M-09 | Diferenciar estados en la cuadrícula (`Pend.` / `N/A` / `No realiza`) y menú contextual | Media | Pendiente |
 | M-10 | Tooltips en chips de nivel y códigos de criterio | Media | Pendiente |
@@ -147,10 +147,14 @@ Inicio · Corregir · Evaluación · Informes · Ajustes
   subnav de Evaluación (`#subnav`) se muestra en todos los modos.
 - **Fase 3 — Inicio**: panel de pendientes, estado de backup y accesos rápidos. **Hecha**.
 - **Fase 4 — Informes**: contexto único, renombrado de subvistas y avisos de
-  exclusión. **4a hecha**: Informes es una vista propia y autónoma (selectores
-  propios de clase y nivel, botón «Imprimir / PDF»); la Cuadrícula pierde la
-  pestaña «Informe» y queda con Instrumentos · Criterios · Competencias. El
-  renombrado y reagrupado de subvistas (4b) queda pendiente.
+  exclusión. **Hecha (4a y 4b)**: 4a — Informes es una vista propia y autónoma
+  (selectores propios de clase y nivel, botón «Imprimir / PDF»); la Cuadrícula
+  pierde la pestaña «Informe» y queda con Instrumentos · Criterios ·
+  Competencias. 4b — las subvistas se reagrupan a 5 (`Resumen · Atención ·
+  Criterios · Alumnos · Instrumentos`): la Distribución vive como bloque
+  secundario del Resumen, Atención sustituye a Hallazgos (con alias de los ids
+  antiguos) y el alcance avisa «Estás viendo N de M alumnos», con desglose
+  cuando el filtro de nivel excluye alumnado.
 - **Fase 5 — Pulido**: 360 px, teclado, estados vacío/carga/error.
 - **Aparte**: mejora de móvil (M-16).
 
@@ -190,3 +194,23 @@ Inicio · Corregir · Evaluación · Informes · Ajustes
   «Informe de análisis» pide `InformeView.informeHtml({ claseSel, nivelSel,
   periodo })` — alcance puntual que `informeHtml()` acepta y restaura.
 - Alias: `ir('cuadricula', { tab: 'informe' })` redirige a `ir('informes')`.
+
+## 9. Evidencia Fase 4b (2026-11-19)
+
+- `node tools/checks.js` → `TODO OK: 805 comprobaciones` (10 más que en Fase
+  4a).
+- `node tools/build-singlefile.js` → `dist/evalora.html` (551 KB);
+  `node tools/build-singlefile.js --check` → sincronizado.
+- Subvistas reagrupadas a 5: `Resumen · Atención · Criterios · Alumnos ·
+  Instrumentos`. La Distribución ya no es subvista: vive como bloque
+  secundario del Resumen («Distribución de notas», reutilizando
+  `htmlDistribucion` con el nivel activo). Atención llama a la misma función
+  de hallazgos y el PDF renombra su sección a «Atención».
+- Alias de subvista al renderizar: `hallazgos`→`atencion` y
+  `distribucion`→`resumen` (un estado interno viejo o un residuo con el
+  `data-subvista` antiguo no rompen la vista).
+- Aviso de exclusión bajo los selectores del alcance: «Estás viendo N de M
+  alumnos» (M = alumnado de la clase; N = el incluido por el filtro de nivel,
+  con el nivel efectivo de cada alumno vía `Calc.nivelDeAlumno`); si excluye
+  alumnado, desglose por nivel (p. ej. «2 alumnos no incluidos: 2 en 4º»);
+  con «Todos los niveles» no excluye a nadie.

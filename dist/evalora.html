@@ -5376,15 +5376,20 @@ ${codigos}`;
 // Vista «Informes» (Fase 4a de la remodelación de la navegación; antes era la
 // pestaña «Informe» de la Cuadrícula, D-59): análisis de criterios, hallazgos
 // accionables y distribución de notas, como vista propia y AUTÓNOMA — trae su
-// propio selector de clase y de nivel. Módulo autocontenido: solo lee datos a
-// través de Calc, no escribe en Storage. Para eliminar la funcionalidad basta
-// con quitar esta entrada de index.html.
+// propio selector de clase y de nivel. Fase 4b: las subvistas se reagrupan a
+// 5 (Resumen integra la Distribución y Atención sustituye a Hallazgos, con
+// alias de los ids antiguos) y el alcance avisa de cuánto alumnado ve el
+// filtro de nivel. Módulo autocontenido: solo lee datos a través de Calc, no
+// escribe en Storage. Para eliminar la funcionalidad basta con quitar esta
+// entrada de index.html.
 const InformeView = (function () {
   // Estado del módulo. Se restablece al cambiar de clase.
   let claseSel = null;
   let nivelSel = '';
   let alcance = { periodo: '', unidad: '', instrumentoId: '' };
-  let subVista = 'resumen'; // 'resumen' | 'hallazgos' | 'criterios' | 'distribucion' | 'alumnos' | 'instrumentos'
+  // Subvistas (Fase 4b: 5 grupos). Los ids antiguos «hallazgos» y
+  // «distribucion» se aceptan como alias y se reasignan al renderizar.
+  let subVista = 'resumen'; // 'resumen' | 'atencion' | 'criterios' | 'alumnos' | 'instrumentos'
   let contenedor = null;
   // Instrumento elegido en la subvista «Instrumentos» (D-74c). Se resetea al
   // cambiar de clase (el render restablece el alcance).
@@ -5465,16 +5470,49 @@ const InformeView = (function () {
         </select>` : ''}
         <button class="btn btn-primario" id="btn-informe-imprimir"
                 title="Genera el PDF del informe de análisis con este alcance">Imprimir / PDF</button>
-      </div>`;
+      </div>${htmlAvisoAlumnos(claseId)}`;
+  }
+
+  // Aviso de exclusión del filtro de nivel (Fase 4b): dice cuánto alumnado ve
+  // el informe con el nivel activo (M = alumnado de la clase; N = el incluido
+  // por el filtro, con su nivel efectivo —Calc.nivelDeAlumno—, como hace la
+  // Cuadrícula para «Todos los niveles»). Si el filtro deja alumnado fuera,
+  // añade el desglose por nivel (p. ej. «2 alumnos no incluidos: 2 en 4º»).
+  function htmlAvisoAlumnos(claseId) {
+    const todos = Calc.alumnosDeClase(claseId);
+    const dentro = todos.filter(a =>
+      esTodas(nivelSel) || Calc.nivelDeAlumno(claseId, a.id) === Calc.nivelNorm(nivelSel));
+    const fuera = todos.filter(a =>
+      !esTodas(nivelSel) && Calc.nivelDeAlumno(claseId, a.id) !== Calc.nivelNorm(nivelSel));
+    let txt = `Estás viendo ${dentro.length} de ${todos.length} alumnos.`;
+    if (fuera.length) {
+      // Desglose por nivel del alumnado excluido, ordenado por cantidad.
+      const grupos = {};
+      fuera.forEach(a => {
+        const nv = Calc.nivelDeAlumno(claseId, a.id);
+        const et = nv ? (Calc.etiquetaNivel(claseId, nv) || nv) : 'Base';
+        grupos[et] = (grupos[et] || 0) + 1;
+      });
+      const partes = Object.entries(grupos)
+        .sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0]))
+        .map(([et, n]) => `${n} en ${et}`);
+      const ultimo = partes.pop();
+      const desglose = partes.length ? partes.join(', ') + ' y ' + ultimo : ultimo;
+      txt += ` ${fuera.length} alumno${fuera.length === 1 ? '' : 's'} no incluido` +
+        `${fuera.length === 1 ? '' : 's'}: ${desglose}.`;
+    }
+    return `
+        <p class="no-print" style="margin:8px 0 0;font-size:13px;color:var(--tinta-suave)">${txt}</p>`;
   }
 
   // ------------------------------------------------------------- subvistas
+  // Fase 4b: 5 subvistas. «Resumen» integra la Distribución como bloque
+  // secundario y «Atención» sustituye a «Hallazgos» (con alias del id viejo).
   function htmlSubVista() {
     const vistas = [
       { id: 'resumen', nombre: 'Resumen' },
-      { id: 'hallazgos', nombre: 'Hallazgos' },
+      { id: 'atencion', nombre: 'Atención' },
       { id: 'criterios', nombre: 'Criterios' },
-      { id: 'distribucion', nombre: 'Distribución' },
       { id: 'alumnos', nombre: 'Alumnos' },
       { id: 'instrumentos', nombre: 'Instrumentos' }
     ];
@@ -5551,7 +5589,7 @@ const InformeView = (function () {
       .sort((x, y) => y.bajo.length - x.bajo.length
         || (x.nota == null ? 99 : x.nota) - (y.nota == null ? 99 : y.nota));
 
-    // Criterios con dificultad: misma regla que la subvista «Hallazgos».
+    // Criterios con dificultad: misma regla que la subvista «Atención».
     const nivelesAci = Calc.nivelesAciDeClase(claseId);
     const niveles = [{ codigo: '', etiqueta: 'Base', criterios: Calc.criteriosDeClase(claseId) }]
       .concat(nivelesAci.map(nv => ({
@@ -5615,9 +5653,13 @@ const InformeView = (function () {
         <section class="card">
           <div class="card-head"><h2>Criterios con dificultad</h2></div>
           ${listaDificiles}
-          <p class="resumen-enlace no-print"><label class="chip" data-subvista="hallazgos">Ver los hallazgos</label></p>
+          <p class="resumen-enlace no-print"><label class="chip" data-subvista="atencion">Ver los puntos de atención</label></p>
         </section>
-      </div>`;
+      </div>
+      <section class="card" style="margin-top:16px">
+        <div class="card-head"><h2>Distribución de notas</h2></div>
+        ${htmlDistribucion(claseId, insts, nivelFiltro)}
+      </section>`;
   }
 
   // ------------------------------------------------------------ hallazgos
@@ -6055,11 +6097,11 @@ const InformeView = (function () {
       </label>`;
   }
 
-  // Informe de análisis para PDF: todas las subvistas compuestas —hallazgos,
-  // criterios, distribución y alumnos— con cabecera de clase y alcance. Devuelve
-  // un string puro (comprobable sin navegador); el botón «Imprimir / PDF» —el de
-  // esta vista y el «Informe de análisis» de la Cuadrícula— lo vuelca en
-  // #informe-impresion e imprime.
+  // Informe de análisis para PDF: las secciones compuestas —atención (antes
+  // hallazgos), criterios, distribución y alumnos— con cabecera de clase y
+  // alcance. Devuelve un string puro (comprobable sin navegador); el botón
+  // «Imprimir / PDF» —el de esta vista y el «Informe de análisis» de la
+  // Cuadrícula— lo vuelca en #informe-impresion e imprime.
   // `opciones` (todas opcionales): claseSel, nivelSel y periodo, para que la
   // Cuadrícula pueda pedir el informe de SU clase y trimestre sin depender del
   // último contexto que la vista de Informes tenga en pantalla.
@@ -6099,7 +6141,7 @@ const InformeView = (function () {
         <strong>Informe de análisis · ${Utils.esc(asig ? asig.nombre : '¿?')}</strong>
         <span>${Utils.esc(gru ? gru.nombre : '¿?')} · nivel: ${Utils.esc(nivelTxt)} · ${alcanceTxt.join(' · ')} · impreso el ${Utils.hoy().split('-').reverse().join('/')}</span>
       </div>
-      ${bloque('Hallazgos', htmlHallazgos(claseSel, insts))}
+      ${bloque('Atención', htmlHallazgos(claseSel, insts))}
       ${bloque('Criterios', htmlCriterios(claseSel, insts))}
       ${bloque('Distribución', htmlDistribucion(claseSel, insts, esTodas(nivelSel) ? undefined : nivelSel))}
       ${bloque('Alumnos en riesgo', htmlAlumnos(claseSel, insts, esTodas(nivelSel) ? undefined : nivelSel))}`;
@@ -6116,6 +6158,11 @@ const InformeView = (function () {
   // estado interno; la primera vez se abre con la primera clase y el nivel base.
   function render(el, opciones) {
     const op = opciones || {};
+    // Alias de subvistas (Fase 4b): los ids de antes siguen funcionando. Se
+    // reasignan al renderizar, así que un estado interno viejo (o un residuo
+    // con data-subvista="hallazgos"/"distribucion") aterriza en su vista nueva.
+    if (subVista === 'hallazgos') subVista = 'atencion';
+    if (subVista === 'distribucion') subVista = 'resumen';
     // Al cambiar de clase se restablecen el alcance, el instrumento del informe
     // y el nivel (la clase nueva no tiene por qué tener el nivel anterior).
     const pedida = Object.prototype.hasOwnProperty.call(op, 'claseSel')
@@ -6153,20 +6200,19 @@ const InformeView = (function () {
     const insts = instsAlcance();
     const todas = esTodas(nivelSel);
 
-    // Criterios decide sus tablas según el nivel; Distribución filtra el
-    // alumnado por el mismo nivel; Hallazgos analiza cada nivel seleccionado
-    // y lo etiqueta (las preguntas globales no tienen nivel); Alumnos ordena
-    // por riesgo. La vista va en su propia tarjeta: ya no vive dentro de la
-    // Cuadrícula.
+    // Criterios decide sus tablas según el nivel; la Distribución (dentro del
+    // Resumen) filtra el alumnado por el mismo nivel; Atención analiza cada
+    // nivel seleccionado y lo etiqueta (las preguntas globales no tienen
+    // nivel); Alumnos ordena por riesgo. La vista va en su propia tarjeta:
+    // ya no vive dentro de la Cuadrícula.
     el.innerHTML = `
       <section class="card">
         ${htmlAlcance(claseSel)}
         ${htmlSubVista()}
         <div id="informe-cuerpo">
           ${subVista === 'resumen' ? htmlResumen(claseSel, insts, todas ? undefined : nivelSel)
-            : subVista === 'hallazgos' ? htmlHallazgos(claseSel, insts)
+            : subVista === 'atencion' ? htmlHallazgos(claseSel, insts)
             : subVista === 'criterios' ? htmlCriterios(claseSel, insts)
-            : subVista === 'distribucion' ? htmlDistribucion(claseSel, insts, todas ? undefined : nivelSel)
             : subVista === 'instrumentos' ? htmlInstrumentos(claseSel, insts)
             : htmlAlumnos(claseSel, insts, todas ? undefined : nivelSel)}
         </div>

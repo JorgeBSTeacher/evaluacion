@@ -23,11 +23,16 @@ modelo de datos**. El móvil va aparte (M-16).
     Alumnos · Clases · Currículo`.
   - [x] Fase 2b: Corregir es su vista (cola de pendientes por clase).
 - [x] Fase 3: Inicio (pendientes, backup, accesos rápidos).
-- [ ] Fase 4: Informes (contexto único, subvistas).
+- [x] Fase 4: Informes (contexto único, subvistas).
   - [x] Fase 4a: Informes es una **vista propia y autónoma** (`informes`), con
     selector de clase y de nivel propios y botón «Imprimir / PDF»; la Cuadrícula
     pierde la pestaña «Informe» (queda Instrumentos · Criterios · Competencias
     específicas y clave). El reagrupado y renombrado de subvistas va en 4b.
+  - [x] Fase 4b: las subvistas se reagrupan a **5** (`Resumen · Atención ·
+    Criterios · Alumnos · Instrumentos`): la Distribución vive como bloque
+    secundario del Resumen y Atención sustituye a Hallazgos (con alias de los
+    ids antiguos `hallazgos`/`distribucion`); el alcance avisa de cuánto
+    alumnado ve el filtro de nivel («Estás viendo N de M alumnos»).
 - [ ] Fase 5: pulido (360 px, teclado, estados).
 
 ## Mapeo de la Fase 1
@@ -71,7 +76,7 @@ accesibles desde Inicio/Montaje y por su hash.
 | Inicio | `inicio` | — |
 | Corregir | `corregir` (`InstrumentosView.renderCorregir`) | — |
 | Evaluación | `cuadricula` (pestaña `notas`) | `cuadricula` · `instrumentos` · `alumnos` · `clases` · `curriculo` |
-| Informes | `informes` (`InformeView.render`, autónoma) | `resumen · hallazgos · criterios · distribucion · alumnos · instrumentos` (sin renombrar hasta 4b) |
+| Informes | `informes` (`InformeView.render`, autónoma) | `resumen · atencion · criterios · alumnos · instrumentos` (Fase 4b) |
 | Ajustes | Configuración (modal) | — |
 
 - **4a**: el Informe deja de incrustarse en la Cuadrícula y trae su contexto
@@ -79,6 +84,16 @@ accesibles desde Inicio/Montaje y por su hash.
   niveles» vía el centinela `__todas__`) junto a `#alc-periodo`, `#alc-unidad` e
   `#alc-instrumento`. Sin opciones externas usa su estado interno (la última
   clase, o la primera; nivel base).
+- **4b**: las subvistas se reagrupan a 5 con nombres de Perplexity: `Resumen`
+  (integra la Distribución como bloque secundario «Distribución de notas»),
+  `Atención` (sustituye a Hallazgos; la función `htmlHallazgos` sigue siendo la
+  misma), `Criterios`, `Alumnos` e `Instrumentos`. Los ids antiguos
+  `hallazgos` y `distribucion` se aceptan como alias y se reasignan al
+  renderizar. El PDF renombra su cabecera «Hallazgos» a «Atención» (mismas
+  secciones). Bajo los selectores del alcance, el aviso «Estás viendo N de M
+  alumnos» refleja el filtro de nivel (con el nivel efectivo de cada alumno,
+  `Calc.nivelDeAlumno`), y si excluye alumnado añade el desglose por nivel
+  (p. ej. «2 alumnos no incluidos: 2 en 4º»).
 - La Cuadrícula queda con tres pestañas (Instrumentos · Criterios ·
   Competencias específicas y clave) y conserva su botón «Imprimir / PDF» con la
   opción «Informe de análisis», que pide el informe con SU clase, nivel y
@@ -155,3 +170,23 @@ accesibles desde Inicio/Montaje y por su hash.
   acepta ese alcance puntual y restaura después su estado: además arregla el
   caso de imprimir el análisis sin haber visitado nunca la vista de Informes
   (antes salía vacío si `informeHtml()` no tenía clase interna).
+
+## Evidencia Fase 4b (2026-11-19)
+
+- `node --check js/views-informe.js` → sin errores de sintaxis.
+- `node tools/checks.js` → `TODO OK: 805 comprobaciones` (10 más que en
+  Fase 4a: 5 subvistas con las etiquetas nuevas; la subvista `atencion`
+  muestra los hallazgos; Resumen integra el bloque «Distribución de notas» y
+  su enlace lleva a Atención; el PDF imprime la sección «Atención»; el alias
+  de subvista `hallazgos`→`atencion` sigue enseñando el análisis y
+  `distribucion` aterriza en Resumen; el aviso «Estás viendo N de M alumnos»
+  refleja el filtro de nivel y desglosa la exclusión por nivel, sin
+  exclusión con «Todos los niveles»).
+- `node tools/build-singlefile.js` → `dist/evalora.html` (551 KB);
+  `node tools/build-singlefile.js --check` → sincronizado.
+- El alias se aplica al renderizar (`render()` reasigna `hallazgos`→
+  `atencion` y `distribucion`→`resumen`), así que ni un estado interno viejo
+  ni un residuo con `data-subvista` antiguo rompen la vista.
+- El aviso de exclusión vive en `htmlAlcance` (bajo los selectores): N cuenta
+  el alumnado con el nivel efectivo de cada alumno (`Calc.nivelDeAlumno`,
+  adaptaciones de la clase), como la Cuadrícula para «Todos los niveles».
