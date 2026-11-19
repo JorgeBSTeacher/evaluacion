@@ -3002,15 +3002,15 @@ async function main() {
 
     check('los accesos rápidos cubren corregir, informes, instrumento y backup',
       !!appEl.querySelector('[data-ir="corregir"]')
-      && !!appEl.querySelector('[data-ir="cuadricula"][data-tab="informe"]')
+      && !!appEl.querySelector('[data-ir="informes"]')
       && !!appEl.querySelector('[data-ir="instrumentos"]')
       && !!appEl.querySelector('#btn-backup-rapido'),
       Array.from(appEl.querySelectorAll('[data-ir]')).map(b => b.dataset.ir).join(','));
-    const btnInf = appEl.querySelector('[data-ir="cuadricula"][data-tab="informe"]');
+    const btnInf = appEl.querySelector('[data-ir="informes"]');
     if (btnInf) btnInf.click();
     check('«Ver informes» abre la sección Informes',
-      app.App.seccionActual() === 'informes' && app.CuadriculaView.tabActivo() === 'informe',
-      app.App.seccionActual() + ' · ' + app.CuadriculaView.tabActivo());
+      app.App.seccionActual() === 'informes' && !!appEl.querySelector('#alc-clase'),
+      app.App.seccionActual());
 
     // Copia al día: el aviso destacado desaparece y queda el discreto.
     app.Storage.marcarCopia();
@@ -4342,14 +4342,27 @@ async function main() {
     // comprueba aquí, con la pestaña de la cuadrícula en «Cuadrícula».
     app.App.ir('cuadricula');
     check('alias ir("cuadricula") → Evaluación', app.App.seccionActual() === 'evaluacion', app.App.seccionActual());
-    check('pulsar Informes lleva a la cuadrícula con la pestaña Informe',
-      pulsar('informes') && app.App.seccionActual() === 'informes' && app.CuadriculaView.tabActivo() === 'informe',
+    check('pulsar Informes abre la vista propia de Informes',
+      pulsar('informes') && app.App.seccionActual() === 'informes'
+      && !!doc.querySelector('#app #alc-clase') && !!doc.querySelector('#app #alc-nivel')
+      && !doc.querySelector('#app #tabs'),
       estado());
+    check('la vista de Informes lleva selector de clase y de nivel',
+      doc.querySelector('#app #alc-clase').value === 'c1'
+      && (doc.querySelector('#app #alc-nivel').textContent || '').includes('Todos los niveles'),
+      'clase=' + doc.querySelector('#app #alc-clase').value);
     check('el botón activo del menú es Informes',
       (nav.querySelector('button.activo') || {}).textContent === 'Informes',
       (nav.querySelector('button.activo') || {}).textContent || '(ninguno)');
     check('el subnav se oculta en Informes', !subnav(),
       subnav() ? 'sigue visible' : '');
+    check('el alias ir("cuadricula", {tab:"informe"}) redirige a Informes',
+      (() => {
+        app.App.ir('cuadricula', { tab: 'informe' });
+        return app.App.seccionActual() === 'informes'
+          && !!doc.querySelector('#app #alc-clase');
+      })(),
+      app.App.seccionActual());
     check('pulsar Ajustes abre Configuración',
       pulsar('ajustes') && !!doc.getElementById('tabs-ajustes'),
       doc.getElementById('tabs-ajustes') ? 'modal abierto' : '(sin modal)');
@@ -4405,6 +4418,72 @@ async function main() {
     check('el subnav se ve también en el modo barra lateral',
       !!subnav() && subnav().querySelectorAll('button').length === 5,
       subnav() ? String(subnav().querySelectorAll('button').length) : '(sin subnav)');
+  }
+
+  console.log('\n== Informes: vista propia y autónoma (Fase 4a) ==');
+  // El Informe ya no es una pestaña de la Cuadrícula: es una vista con su
+  // propio selector de clase y de nivel, estado interno y botón de impresión.
+  {
+    const app = cargarApp({ dom: true });
+    app.Storage.load();
+    await importarJson(app, estadoPaneles());
+    const doc = app.document;
+    const appEl = doc.getElementById('app');
+
+    app.App.ir('informes');
+    check('F4a · la sección Informes abre la vista propia (sin pestañas de la cuadrícula)',
+      app.App.seccionActual() === 'informes'
+      && !!appEl.querySelector('#alc-clase') && !!appEl.querySelector('#alc-nivel')
+      && !!appEl.querySelector('#alc-periodo') && !appEl.querySelector('#tabs'),
+      app.App.seccionActual());
+    check('F4a · sin opciones la vista abre con la primera clase y el nivel base',
+      appEl.querySelector('#alc-clase').value === 'c1'
+      && appEl.querySelector('#alc-nivel').value === '',
+      appEl.querySelector('#alc-clase').value + ' · nivel=' + appEl.querySelector('#alc-nivel').value);
+
+    // El selector de clase propio re-renderiza: al entrar en otra clase, el
+    // nivel vuelve a base y el selector ofrece los niveles ACI de ESA clase.
+    const selClase = appEl.querySelector('#alc-clase');
+    selClase.value = 'c3';
+    selClase.onchange({ target: { value: 'c3' } });
+    const selNivel = appEl.querySelector('#alc-nivel');
+    check('F4a · cambiar de clase con su selector re-renderiza y ofrece sus niveles',
+      appEl.querySelector('#alc-clase').value === 'c3'
+      && Array.from(selNivel.querySelectorAll('option')).some(o => o.value === 'N1'),
+      'clase=' + appEl.querySelector('#alc-clase').value);
+    check('F4a · al cambiar de clase el nivel vuelve a base', selNivel.value === '');
+
+    selNivel.value = 'N1';
+    selNivel.onchange({ target: { value: 'N1' } });
+    check('F4a · el selector de nivel filtra el informe',
+      appEl.querySelector('#alc-nivel').value === 'N1');
+
+    // El estado interno sobrevive a un re-render sin opciones.
+    app.App.refrescar();
+    check('F4a · la vista recuerda su contexto al re-renderizar sin opciones',
+      appEl.querySelector('#alc-clase').value === 'c3'
+      && appEl.querySelector('#alc-nivel').value === 'N1',
+      'clase=' + appEl.querySelector('#alc-clase').value
+      + ' · nivel=' + appEl.querySelector('#alc-nivel').value);
+
+    // Alias de la ruta antigua (pestaña «Informe» de la cuadrícula).
+    app.App.ir('cuadricula', { tab: 'informe' });
+    check('F4a · el alias ir("cuadricula", {tab:"informe"}) redirige a Informes',
+      app.App.seccionActual() === 'informes' && !!appEl.querySelector('#alc-clase'),
+      app.App.seccionActual());
+
+    // Botón de impresión: mismo camino que el «Informe de análisis» de la
+    // cuadrícula (CuadriculaView.imprimirInforme → #informe-impresion). No se
+    // pulsa aquí para no lanzar window.print() real en el arnés; se comprueba
+    // que queda cableado y que el HTML del informe sale con cabecera.
+    app.App.ir('informes');
+    const btnImp = appEl.querySelector('#btn-informe-imprimir');
+    check('F4a · la vista lleva su botón «Imprimir / PDF» cableado',
+      !!btnImp && typeof btnImp.onclick === 'function'
+      && typeof app.CuadriculaView.imprimirInforme === 'function');
+    check('F4a · el informe de análisis sale con la clase del contexto propio',
+      app.InformeView.informeHtml().includes('Informe de análisis'),
+      String(app.InformeView.informeHtml()).slice(0, 120));
   }
 
   console.log('\n== Modal de criterios del instrumento (capa 2) ==');

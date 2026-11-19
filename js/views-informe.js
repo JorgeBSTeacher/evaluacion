@@ -1,7 +1,9 @@
 'use strict';
 
-// Pestaña «Informe» de la Cuadrícula (D-59): análisis de criterios, hallazgos
-// accionables y distribución de notas. Módulo autocontenido: solo lee datos a
+// Vista «Informes» (Fase 4a de la remodelación de la navegación; antes era la
+// pestaña «Informe» de la Cuadrícula, D-59): análisis de criterios, hallazgos
+// accionables y distribución de notas, como vista propia y AUTÓNOMA — trae su
+// propio selector de clase y de nivel. Módulo autocontenido: solo lee datos a
 // través de Calc, no escribe en Storage. Para eliminar la funcionalidad basta
 // con quitar esta entrada de index.html.
 const InformeView = (function () {
@@ -22,9 +24,11 @@ const InformeView = (function () {
   }
 
   // ---------------------------------------------------------------- alcance
-  // Selector en cascada: trimestre → unidad didáctica → instrumento. Encima
-  // va la clase analizada, para que el selector de clase de la cabecera de
-  // la cuadrícula tenga una respuesta visible en el propio informe.
+  // Contexto completo del informe (Fase 4a: la vista es autónoma): selector de
+  // clase y de nivel/ACI propios, la cascada trimestre → unidad didáctica →
+  // instrumento, y el botón que pasa el informe de análisis a PDF por el mismo
+  // camino que la Cuadrícula (CuadriculaView.imprimirInforme →
+  // #informe-impresion).
   function htmlAlcance(claseId) {
     const instsBase = instsNivel();
     const uds = Calc.unidadesDe(instsBase);
@@ -39,12 +43,36 @@ const InformeView = (function () {
       ? 'todos los niveles'
       : (Calc.etiquetaNivel(claseId, nivelSel) || 'Base');
 
+    // Selector propio de clase: la vista ya no hereda el de la cabecera de la
+    // cuadrícula. Mismo rótulo que allí (asignatura · grupo).
+    const selClase = `
+        <select id="alc-clase" title="Clase que se analiza" style="max-width:260px">
+          ${((Storage.db && Storage.db.clases) || []).map(c => {
+            const a = Calc.asignaturaDeClase(c.id);
+            const g = Calc.byId(Storage.db.grupos, c.grupoId);
+            return `<option value="${c.id}" ${c.id === claseId ? 'selected' : ''}>${Utils.esc(`${a ? a.nombre : '?'} · ${g ? g.nombre : '?'}`)}</option>`;
+          }).join('')}
+        </select>`;
+
+    // Selector propio de nivel/ACI, con el mismo centinela «__todas__» de la
+    // Cuadrícula para «Todos los niveles» (esTodas lo interpreta). El nivel
+    // vacío es la base, como en toda la app.
+    const selNivel = `
+        <select id="alc-nivel" title="Analizar todo el grupo o un nivel ACI" style="max-width:220px">
+          <option value="__todas__" ${esTodas(nivelSel) ? 'selected' : ''}>Todos los niveles (grupo completo)</option>
+          <option value="" ${!esTodas(nivelSel) && !nivelSel ? 'selected' : ''}>Base (sin adaptación)</option>
+          ${Calc.nivelesAciDeClase(claseId).map(n =>
+            `<option value="${Utils.esc(n.codigo)}" ${!esTodas(nivelSel) && nivelSel === n.codigo ? 'selected' : ''}>${Utils.esc(n.etiqueta || n.codigo)}</option>`).join('')}
+        </select>`;
+
     return `
       <div class="no-print" style="color:var(--tinta-suave);font-size:13px;margin-bottom:8px">
         <b style="color:var(--tinta)">${Utils.esc(asig ? asig.nombre : '¿?')}</b>
         · ${Utils.esc(gru ? gru.nombre : '¿?')} · ${Utils.esc(nivelTxt)}
       </div>
-      <div class="no-print" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+      <div class="no-print informe-alcance">
+        ${selClase}
+        ${selNivel}
         <select id="alc-periodo" title="Analizar todo el curso o un trimestre" style="max-width:160px">
           <option value="">Todo el curso</option>
           ${['T1', 'T2', 'T3'].map(p =>
@@ -62,6 +90,8 @@ const InformeView = (function () {
           ${instsUd.map(i =>
             `<option value="${i.id}" ${alcance.instrumentoId === i.id ? 'selected' : ''}>${Utils.esc(i.titulo)}</option>`).join('')}
         </select>` : ''}
+        <button class="btn btn-primario" id="btn-informe-imprimir"
+                title="Genera el PDF del informe de análisis con este alcance">Imprimir / PDF</button>
       </div>`;
   }
 
@@ -654,25 +684,44 @@ const InformeView = (function () {
 
   // Informe de análisis para PDF: todas las subvistas compuestas —hallazgos,
   // criterios, distribución y alumnos— con cabecera de clase y alcance. Devuelve
-  // un string puro (comprobable sin navegador); el botón «Imprimir / PDF» se lo
-  // pasa al contenedor de impresión de la Cuadrícula (opciones.imprimir).
-  function informeHtml() {
-    if (!claseSel) return '';
-    const insts = instsAlcance();
-    const gru = Calc.byId(Storage.db.grupos, (Calc.clase(claseSel) || {}).grupoId);
-    const asig = Calc.asignaturaDeClase(claseSel);
-    const alcanceTxt = [
-      alcance.periodo ? 'Trimestre ' + alcance.periodo : 'Todo el curso',
-      alcance.unidad,
-      alcance.instrumentoId ? (Calc.instrumento(alcance.instrumentoId) || {}).titulo : ''
-    ].filter(Boolean).map(t => Utils.esc(t));
-    const nivelTxt = esTodas(nivelSel) ? 'Todos los niveles' : (Calc.etiquetaNivel(claseSel, nivelSel) || 'Base');
-    const bloque = (titulo, cuerpo) => `
+  // un string puro (comprobable sin navegador); el botón «Imprimir / PDF» —el de
+  // esta vista y el «Informe de análisis» de la Cuadrícula— lo vuelca en
+  // #informe-impresion e imprime.
+  // `opciones` (todas opcionales): claseSel, nivelSel y periodo, para que la
+  // Cuadrícula pueda pedir el informe de SU clase y trimestre sin depender del
+  // último contexto que la vista de Informes tenga en pantalla.
+  function informeHtml(opciones) {
+    const op = opciones || {};
+    if (!claseSel && !op.claseSel) return '';
+    // El alcance puntual no debe mover el estado de la vista en pantalla: se
+    // fija aquí y se restaura al final.
+    const antes = { claseSel, nivelSel, alcance };
+    if (op.claseSel && op.claseSel !== claseSel) {
+      claseSel = op.claseSel;
+      alcance = { periodo: '', unidad: '', instrumentoId: '' };
+    }
+    if (Object.prototype.hasOwnProperty.call(op, 'nivelSel')) nivelSel = op.nivelSel || '';
+    if (typeof op.periodo === 'string') {
+      alcance = Object.assign({}, alcance, {
+        periodo: ['T1', 'T2', 'T3'].indexOf(op.periodo) !== -1 ? op.periodo : ''
+      });
+    }
+    try {
+      const insts = instsAlcance();
+      const gru = Calc.byId(Storage.db.grupos, (Calc.clase(claseSel) || {}).grupoId);
+      const asig = Calc.asignaturaDeClase(claseSel);
+      const alcanceTxt = [
+        alcance.periodo ? 'Trimestre ' + alcance.periodo : 'Todo el curso',
+        alcance.unidad,
+        alcance.instrumentoId ? (Calc.instrumento(alcance.instrumentoId) || {}).titulo : ''
+      ].filter(Boolean).map(t => Utils.esc(t));
+      const nivelTxt = esTodas(nivelSel) ? 'Todos los niveles' : (Calc.etiquetaNivel(claseSel, nivelSel) || 'Base');
+      const bloque = (titulo, cuerpo) => `
       <section class="informe-seccion">
         <h2 class="informe-titulo">${titulo}</h2>
         ${cuerpo}
       </section>`;
-    return `<div class="informe-cab">
+      return `<div class="informe-cab">
         ${Storage.perfilHtml()}
         <strong>Informe de análisis · ${Utils.esc(asig ? asig.nombre : '¿?')}</strong>
         <span>${Utils.esc(gru ? gru.nombre : '¿?')} · nivel: ${Utils.esc(nivelTxt)} · ${alcanceTxt.join(' · ')} · impreso el ${Utils.hoy().split('-').reverse().join('/')}</span>
@@ -681,25 +730,45 @@ const InformeView = (function () {
       ${bloque('Criterios', htmlCriterios(claseSel, insts))}
       ${bloque('Distribución', htmlDistribucion(claseSel, insts, esTodas(nivelSel) ? undefined : nivelSel))}
       ${bloque('Alumnos en riesgo', htmlAlumnos(claseSel, insts, esTodas(nivelSel) ? undefined : nivelSel))}`;
+    } finally {
+      claseSel = antes.claseSel;
+      nivelSel = antes.nivelSel;
+      alcance = antes.alcance;
+    }
   }
 
   // ---------------------------------------------------------------- render
+  // Fase 4a: la vista es autónoma. `opciones` sigue aceptando claseSel,
+  // nivelSel y periodo (alias y Cuadrícula), pero si no llegan se conserva el
+  // estado interno; la primera vez se abre con la primera clase y el nivel base.
   function render(el, opciones) {
-    // Al cambiar de clase se restablece el alcance y el instrumento del informe.
-    if (opciones.claseSel !== claseSel) {
-      claseSel = opciones.claseSel;
+    const op = opciones || {};
+    // Al cambiar de clase se restablecen el alcance, el instrumento del informe
+    // y el nivel (la clase nueva no tiene por qué tener el nivel anterior).
+    const pedida = Object.prototype.hasOwnProperty.call(op, 'claseSel')
+      ? op.claseSel
+      : (claseSel || ((Storage.db.clases && Storage.db.clases[0]) || {}).id || null);
+    if (pedida !== claseSel) {
+      claseSel = pedida;
       alcance = { periodo: '', unidad: '', instrumentoId: '' };
       instrumentoInfoSel = '';
+      nivelSel = '';
     }
-    // Si la cuadrícula nos pasa un periodo (T1/T2/T3/Final), sincronízalo con
-    // el alcance del informe. «Final» no es un periodo propio del informe: se
+    // Si alguien nos pasa un periodo (T1/T2/T3/Final), sincronízalo con el
+    // alcance del informe. «Final» no es un periodo propio del informe: se
     // trata como «todo el curso» (sin filtro por trimestre).
-    if (typeof opciones.periodo === 'string') {
-      alcance.periodo = ['T1', 'T2', 'T3'].indexOf(opciones.periodo) !== -1
-        ? opciones.periodo
+    if (typeof op.periodo === 'string') {
+      alcance.periodo = ['T1', 'T2', 'T3'].indexOf(op.periodo) !== -1
+        ? op.periodo
         : '';
     }
-    nivelSel = opciones.nivelSel || '';
+    // El nivel explícito manda; si no llega, se conserva el interno. Un nivel
+    // que la clase activa no tiene vuelve a base (misma guarda que la Cuadrícula).
+    if (Object.prototype.hasOwnProperty.call(op, 'nivelSel')) nivelSel = op.nivelSel || '';
+    if (claseSel && nivelSel && !esTodas(nivelSel)
+        && !Calc.nivelesAciDeClase(claseSel).some(n => n.codigo === nivelSel)) {
+      nivelSel = '';
+    }
     contenedor = el;
 
     if (!claseSel || !Calc.clase(claseSel)) {
@@ -714,62 +783,84 @@ const InformeView = (function () {
     // Criterios decide sus tablas según el nivel; Distribución filtra el
     // alumnado por el mismo nivel; Hallazgos analiza cada nivel seleccionado
     // y lo etiqueta (las preguntas globales no tienen nivel); Alumnos ordena
-    // por riesgo.
+    // por riesgo. La vista va en su propia tarjeta: ya no vive dentro de la
+    // Cuadrícula.
     el.innerHTML = `
-      ${htmlAlcance(claseSel)}
-      ${htmlSubVista()}
-      <div id="informe-cuerpo">
-        ${subVista === 'resumen' ? htmlResumen(claseSel, insts, todas ? undefined : nivelSel)
-          : subVista === 'hallazgos' ? htmlHallazgos(claseSel, insts)
-          : subVista === 'criterios' ? htmlCriterios(claseSel, insts)
-          : subVista === 'distribucion' ? htmlDistribucion(claseSel, insts, todas ? undefined : nivelSel)
-          : subVista === 'instrumentos' ? htmlInstrumentos(claseSel, insts)
-          : htmlAlumnos(claseSel, insts, todas ? undefined : nivelSel)}
-      </div>`;
+      <section class="card">
+        ${htmlAlcance(claseSel)}
+        ${htmlSubVista()}
+        <div id="informe-cuerpo">
+          ${subVista === 'resumen' ? htmlResumen(claseSel, insts, todas ? undefined : nivelSel)
+            : subVista === 'hallazgos' ? htmlHallazgos(claseSel, insts)
+            : subVista === 'criterios' ? htmlCriterios(claseSel, insts)
+            : subVista === 'distribucion' ? htmlDistribucion(claseSel, insts, todas ? undefined : nivelSel)
+            : subVista === 'instrumentos' ? htmlInstrumentos(claseSel, insts)
+            : htmlAlumnos(claseSel, insts, todas ? undefined : nivelSel)}
+        </div>
+      </section>`;
 
     // --- eventos ---
+    const scl = el.querySelector('#alc-clase');
+    if (scl) scl.onchange = e => {
+      render(el, Object.assign({}, op, { claseSel: e.target.value }));
+    };
+    const snv = el.querySelector('#alc-nivel');
+    if (snv) snv.onchange = e => {
+      render(el, Object.assign({}, op, { nivelSel: e.target.value }));
+    };
     const sp = el.querySelector('#alc-periodo');
     if (sp) sp.onchange = e => {
       alcance.periodo = e.target.value;
       alcance.unidad = '';
       alcance.instrumentoId = '';
       // Mantener sincronizado el periodo de la cuadrícula con el del informe.
-      if (opciones && typeof opciones.onPeriodo === 'function') {
-        opciones.onPeriodo(e.target.value || '');
+      if (op && typeof op.onPeriodo === 'function') {
+        op.onPeriodo(e.target.value || '');
       }
-      render(el, opciones);
+      render(el, op);
     };
     const su = el.querySelector('#alc-unidad');
     if (su) su.onchange = e => {
       alcance.unidad = e.target.value;
       alcance.instrumentoId = '';
-      render(el, opciones);
+      render(el, op);
     };
     const si = el.querySelector('#alc-instrumento');
     if (si) si.onchange = e => {
       alcance.instrumentoId = e.target.value;
-      render(el, opciones);
+      render(el, op);
     };
     el.querySelectorAll('[data-subvista]').forEach(ch => {
-      ch.onclick = () => { subVista = ch.dataset.subvista; render(el, opciones); };
+      ch.onclick = () => { subVista = ch.dataset.subvista; render(el, op); };
     });
     el.querySelectorAll('[data-modocrit]').forEach(ch => {
-      ch.onclick = () => { modoCriterios = ch.dataset.modocrit; render(el, opciones); };
+      ch.onclick = () => { modoCriterios = ch.dataset.modocrit; render(el, op); };
     });
     el.querySelectorAll('[data-filtrosev]').forEach(ch => {
-      ch.onclick = () => { filtroSev = ch.dataset.filtrosev; render(el, opciones); };
+      ch.onclick = () => { filtroSev = ch.dataset.filtrosev; render(el, op); };
     });
     const selInstInfo = el.querySelector('#sel-inst-info');
-    if (selInstInfo) selInstInfo.onchange = e => { instrumentoInfoSel = e.target.value; render(el, opciones); };
+    if (selInstInfo) selInstInfo.onchange = e => { instrumentoInfoSel = e.target.value; render(el, op); };
     const obsInst = el.querySelector('#obs-inst');
     if (obsInst && selInstInfo) {
       obsInst.oninput = e => {
         if (selInstInfo.value) { Storage.db.observaciones[selInstInfo.value] = e.target.value; Storage.save(); }
       };
     }
-    // La impresión del informe se hace desde el botón global de la pestaña
-    // («Imprimir / PDF» → «Informe de análisis»); no hay botón propio aquí para
-    // evitar dos entradas duplicadas.
+    // Impresión (Fase 4a): el botón propio usa el MISMO camino que el
+    // «Informe de análisis» de la Cuadrícula — CuadriculaView.imprimirInforme
+    // vuelca el HTML en #informe-impresion y llama a window.print(). La
+    // Cuadrícula reenvía su función por opciones.imprimir; sin ella (vista
+    // autónoma), se usa la exportada directamente.
+    const btnImp = el.querySelector('#btn-informe-imprimir');
+    if (btnImp) btnImp.onclick = () => {
+      const imprimir = typeof op.imprimir === 'function'
+        ? op.imprimir
+        : (typeof CuadriculaView !== 'undefined' && CuadriculaView.imprimirInforme)
+          ? CuadriculaView.imprimirInforme
+          : (html => window.print());
+      imprimir(informeHtml());
+    };
   }
 
   return { render, informeHtml };

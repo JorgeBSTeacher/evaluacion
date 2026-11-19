@@ -404,7 +404,14 @@ const CuadriculaView = (() => {
       }
       if (donde === 'analisis') {
         UI.closeModal();
-        imprimirInforme(InformeView.informeHtml());
+        // Fase 4a: la vista de Informes es autónoma y guarda su propio contexto,
+        // así que el informe de análisis de la cuadrícula se pide con SU clase,
+        // nivel y trimestre como alcance puntual (informeHtml lo restaura).
+        imprimirInforme(InformeView.informeHtml({
+          claseSel,
+          nivelSel,
+          periodo
+        }));
         return;
       }
       const criterios = mbody.querySelector('#imp-criterios').checked;
@@ -496,15 +503,14 @@ const CuadriculaView = (() => {
     const asigImp = (Calc.asignaturaDeClase(claseSel) || {}).nombre || '';
     const grupoImp = gru ? gru.nombre : '';
     const nivelImp = modoTodas ? 'todos los niveles' : nivelSel ? 'nivel ' + Calc.etiquetaNivel(claseSel, nivelSel) : 'base';
-    const tituloImp = tab === 'notas' ? 'Instrumentos' : tab === 'criterios' ? 'Criterios' : tab === 'informe' ? 'Informe de análisis' : 'Competencias específicas y clave';
+    const tituloImp = tab === 'notas' ? 'Instrumentos' : tab === 'criterios' ? 'Criterios' : 'Competencias específicas y clave';
     const cabeceraImp = `<div class="solo-impresion cabecera-impresion">
       <strong>Cuadrícula de calificaciones · ${tituloImp}</strong>
       <span>${Utils.esc(asigImp)} · ${Utils.esc(grupoImp)} · ${periodo} · ${nivelImp} · impreso el ${Utils.hoy().split('-').reverse().join('/')}</span>
     </div>`;
 
-    // En la pestaña Informe el buscador de la cabecera queda oculto (el informe
-    // tiene su subvista «Alumnos»), pero el selector de periodo debe seguir
-    // presente y gobernando el alcance del informe.
+    // El buscador de la cabecera filtra la tabla de notas; el selector de
+    // periodo gobierna el alcance de la cuadrícula.
     el.innerHTML = `
       <section class="card">
         ${cabeceraImp}
@@ -523,7 +529,7 @@ const CuadriculaView = (() => {
               nombre: `${Calc.asignaturaDeClase(c.id)?.nombre || '?'} · ${(Calc.byId(db.grupos, c.grupoId) || {}).nombre || '?'}`
             })), claseSel, 'id', 'nombre')}</select>
             ${selNivel}
-            ${tab === 'informe' ? '' : buscaAlumno}
+            ${buscaAlumno}
             <select id="sel-periodo" style="max-width:130px">
               ${['T1', 'T2', 'T3', 'Final'].map(p => `<option ${p === periodo ? 'selected' : ''}>${p}</option>`).join('')}
             </select>
@@ -534,7 +540,6 @@ const CuadriculaView = (() => {
           <label class="chip ${tab === 'notas' ? 'on' : ''}" data-tab="notas" ${tab === 'notas' ? 'aria-current="true"' : ''}>Instrumentos</label>
           <label class="chip ${tab === 'criterios' ? 'on' : ''}" data-tab="criterios" ${tab === 'criterios' ? 'aria-current="true"' : ''}>Criterios</label>
           <label class="chip ${tab === 'competencias' ? 'on' : ''}" data-tab="competencias" ${tab === 'competencias' ? 'aria-current="true"' : ''}>Competencias específicas y clave</label>
-          <label class="chip ${tab === 'informe' ? 'on' : ''}" data-tab="informe" ${tab === 'informe' ? 'aria-current="true"' : ''}>Informe</label>
         </div>
         ${tab === 'notas' ? `<div class="barra-tab no-print" style="justify-content:flex-end">
           <button class="btn" id="btn-nuevo-instrumento">+ Crear instrumento</button>
@@ -542,28 +547,12 @@ const CuadriculaView = (() => {
         </div>` : ''}
         <div class="scroll-x" id="contenido">
           ${tab === 'notas' ? tablaNotas(alumnos, insts, modoTodas)
-            : tab === 'informe' ? '<div id="informe-contenido"></div>'
             : modoTodas && (tab === 'criterios' || tab === 'competencias')
               ? '<div class="aviso">En la vista «Todos los niveles» solo se muestran los instrumentos y la nota armonizada de cada alumno. Elige un nivel concreto para ver criterios y competencias.</div>'
             : tab === 'criterios' ? tablaCriterios(alumnos, modoTodas, claseSel, periodo)
             : tablaCompetencias(alumnos, modoTodas)}
         </div>
       </section>`;
-
-    // La pestaña Informe renderiza su propio contenido (D-59) y hereda clase,
-    // nivel y periodo de la cabecera. El informe tiene su propio #alc-periodo;
-    // cuando se cambia allí, se refleja en el selector de arriba vía onPeriodo.
-    if (tab === 'informe') {
-      const infEl = el.querySelector('#informe-contenido');
-      if (infEl) InformeView.render(infEl, {
-        claseSel, nivelSel, periodo,
-        imprimir: imprimirInforme,
-        onPeriodo: (p) => {
-          periodo = (p === 'T1' || p === 'T2' || p === 'T3') ? p : 'Final';
-          render(el);
-        }
-      });
-    }
 
     el.querySelector('#sel-clase').onchange = e => { claseSel = e.target.value; nivelSel = ''; render(el); };
     const selPeriodo = el.querySelector('#sel-periodo');
@@ -649,7 +638,10 @@ const CuadriculaView = (() => {
   return {
     render,
     informeHtml,
-    // Pestaña activa: la usa el menú principal para marcar Evaluación o Informes.
+    // Camino de impresión compartido con la vista de Informes (Fase 4a): su
+    // botón «Imprimir / PDF» vuelca el HTML en #informe-impresion e imprime.
+    imprimirInforme,
+    // Pestaña activa: la usa el menú principal para marcar Evaluación.
     tabActivo() { return tab; }
   };
 })();

@@ -449,6 +449,18 @@ input:focus, select:focus, textarea:focus { border-color: var(--acento); }
   transform: translateY(-1px);
 }
 
+/* Contexto del informe (Fase 4a: vista autónoma): fila propia con los
+   selectores de clase, nivel, trimestre, unidad e instrumento, y el botón de
+   imprimir empujado al extremo derecho. */
+.informe-alcance {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.informe-alcance .btn { margin-left: auto; }
+
 /* Resumen del informe: dos tarjetas con listas compactas. */
 .resumen-grid {
   display: grid;

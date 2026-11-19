@@ -15,13 +15,13 @@ recordar dónde está cada cosa y consulte informes según una pregunta concreta
 
 | ID | Mejora | Prioridad | Estado |
 |---|---|---|---|
-| **M-01** | **Remodelación de navegación por tareas** (`Inicio · Corregir · Evaluación · Informes · Ajustes`) | Alta | **En curso (Fase 3 hecha; pendiente Fase 4)** |
+| **M-01** | **Remodelación de navegación por tareas** (`Inicio · Corregir · Evaluación · Informes · Ajustes`) | Alta | **En curso (Fase 4a hecha; pendiente 4b y 5)** |
 | M-02 | Indicador de backup y «Guardar» como acción de copia (con estado) | Alta | **Parcial (Fase 3)**: aviso destacado y «Hacer backup» en Inicio; falta «Guardar» como acción de copia |
 | M-03 | Unificar «pendientes» (misma unidad y fuente en Inicio y Calificaciones) | Alta | **Hecha (Fase 3)** |
 | M-04 | Chip del ajuste `sinNotaEsCero` visible en Calificaciones | Media | Pendiente |
 | M-05 | Diferenciar visualmente los 3 niveles de navegación (barra / pestañas / chips) | Media | Pendiente |
-| M-06 | Filtro único y contexto visible en Informes (sin selector de periodo duplicado) | Alta | Pendiente |
-| M-07 | Renombrar y reagrupar las subvistas de Informe | Media | Pendiente |
+| M-06 | Filtro único y contexto visible en Informes (sin selector de periodo duplicado) | Alta | **Hecha (Fase 4a)**: Informes es una vista propia con su contexto completo (clase, nivel, periodo, unidad, instrumento); ya no hay selector duplicado con la Cuadrícula |
+| M-07 | Renombrar y reagrupar las subvistas de Informe | Media | Pendiente (Fase 4b) |
 | M-08 | Menú ⋯ por instrumento (dejar 2 acciones visibles) | Media | Pendiente |
 | M-09 | Diferenciar estados en la cuadrícula (`Pend.` / `N/A` / `No realiza`) y menú contextual | Media | Pendiente |
 | M-10 | Tooltips en chips de nivel y códigos de criterio | Media | Pendiente |
@@ -147,7 +147,10 @@ Inicio · Corregir · Evaluación · Informes · Ajustes
   subnav de Evaluación (`#subnav`) se muestra en todos los modos.
 - **Fase 3 — Inicio**: panel de pendientes, estado de backup y accesos rápidos. **Hecha**.
 - **Fase 4 — Informes**: contexto único, renombrado de subvistas y avisos de
-  exclusión.
+  exclusión. **4a hecha**: Informes es una vista propia y autónoma (selectores
+  propios de clase y nivel, botón «Imprimir / PDF»); la Cuadrícula pierde la
+  pestaña «Informe» y queda con Instrumentos · Criterios · Competencias. El
+  renombrado y reagrupado de subvistas (4b) queda pendiente.
 - **Fase 5 — Pulido**: 360 px, teclado, estados vacío/carga/error.
 - **Aparte**: mejora de móvil (M-16).
 
@@ -171,3 +174,19 @@ Inicio · Corregir · Evaluación · Informes · Ajustes
   botón deshabilitado cuando N=0; accesos rápidos (Corregir, Informes, Crear
   instrumento, backup); «Montaje» y «Flujo recomendado» en `<details>` cerrados
   con el montaje completo y abiertos con la app vacía.
+
+## 8. Evidencia Fase 4a (2026-11-19)
+
+- `node tools/checks.js` → `TODO OK: 795 comprobaciones`.
+- `node tools/build-singlefile.js` → `dist/evalora.html` (548 KB);
+  `node tools/build-singlefile.js --check` → sincronizado.
+- `Informes` abre la vista propia (`informes`): `InformeView.render(el, {})` es
+  autónomo — `#alc-clase` y `#alc-nivel` (base + ACI, «Todos los niveles») junto
+  a los selectores de periodo/unidad/instrumento, y botón «Imprimir / PDF» que
+  imprime por el mismo camino que la Cuadrícula
+  (`CuadriculaView.imprimirInforme` → `#informe-impresion`).
+- `CuadriculaView` pierde la pestaña «Informe» (queda Instrumentos · Criterios ·
+  Competencias específicas y clave) y exporta `imprimirInforme`; su opción
+  «Informe de análisis» pide `InformeView.informeHtml({ claseSel, nivelSel,
+  periodo })` — alcance puntual que `informeHtml()` acepta y restaura.
+- Alias: `ir('cuadricula', { tab: 'informe' })` redirige a `ir('informes')`.

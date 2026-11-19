@@ -9,8 +9,11 @@ const App = (() => {
     // instrumentos (que pasa a ser subpestaña de Evaluación).
     { id: 'corregir', label: 'Corregir', render: el => InstrumentosView.renderCorregir(el) },
     // La cuadrícula acepta opciones (pestaña, clase, periodo): hay que
-    // reenviárselas o se perderían (p. ej. el tab de la sección Informes).
+    // reenviárselas o se perderían (p. ej. el tab de la sección Evaluación).
     { id: 'cuadricula', label: 'Calificaciones', render: (el, opciones) => CuadriculaView.render(el, opciones) },
+    // Informes (Fase 4a): vista propia y autónoma, ya no la pestaña «Informe»
+    // de la cuadrícula. Sin opciones: la vista guarda su propio contexto.
+    { id: 'informes', label: 'Informes', render: el => InformeView.render(el, {}) },
     // «Montaje» agrupa las vistas de preparación (grupos, asignaturas y
     // currículo) para que no atesten la nav: sigue accesible por su hash y
     // desde Inicio/Montaje, ya no como botón del modo básico.
@@ -26,7 +29,9 @@ const App = (() => {
     // Evaluación abre la pestaña principal de la cuadrícula: si se está en
     // Informes, pulsar Evaluación debe volver a las notas.
     { id: 'evaluacion', label: 'Evaluación', vista: 'cuadricula', tab: 'notas' },
-    { id: 'informes', label: 'Informes', vista: 'cuadricula', tab: 'informe' },
+    // Informes abre su vista propia (Fase 4a), ya no la pestaña Informe de la
+    // cuadrícula.
+    { id: 'informes', label: 'Informes', vista: 'informes' },
     { id: 'ajustes', label: 'Ajustes', modal: true }
   ];
   const SECCIONES_BASICAS = ['inicio', 'corregir', 'evaluacion', 'informes'];
@@ -45,12 +50,12 @@ const App = (() => {
     corregir: 'corregir',
     instrumentos: 'evaluacion',
     cuadricula: 'evaluacion',
+    informes: 'informes',
     alumnos: 'evaluacion',
     clases: 'evaluacion',
     curriculo: 'evaluacion',
     montaje: 'evaluacion'
   };
-  let tabCuadricula = 'notas';
   let actual = 'inicio';
 
   function opcionesCurso(valorActual) {
@@ -543,7 +548,7 @@ const App = (() => {
         <h2 class="subtitulo" style="margin:0 0 8px">Accesos rápidos</h2>
         <div class="acciones">
           <button class="btn btn-primario" data-ir="corregir">Corregir pendientes</button>
-          <button class="btn" data-ir="cuadricula" data-tab="informe">Ver informes</button>
+          <button class="btn" data-ir="informes">Ver informes</button>
           <button class="btn" data-ir="instrumentos">Crear instrumento</button>
           <button class="btn" id="btn-backup-rapido">Hacer backup</button>
         </div>
@@ -644,8 +649,8 @@ const App = (() => {
     if (btnCur) btnCur.onclick = () => ir('curriculo');
     const btnCl = el.querySelector('#btn-ir-clases');
     if (btnCl) btnCl.onclick = () => ir('clases');
-    // Accesos rápidos y de montaje (grupos, asignaturas y currículo). El
-    // botón «Ver informes» reenvía la pestaña que necesita la cuadrícula.
+    // Accesos rápidos y de montaje (grupos, asignaturas y currículo).
+    // «Ver informes» abre la vista propia de Informes (Fase 4a).
     el.querySelectorAll('[data-ir]').forEach(b => {
       b.onclick = () => ir(b.dataset.ir, b.dataset.tab ? { tab: b.dataset.tab } : undefined);
     });
@@ -759,13 +764,9 @@ const App = (() => {
     el.querySelectorAll('[data-ir]').forEach(b => { b.onclick = () => ir(b.dataset.ir); });
   }
 
-  // Sección activa según la vista y, en su caso, la pestaña de la cuadrícula.
+  // Sección activa según la vista (Fase 4a: Informes es una vista propia, así
+  // que el mapeo completo vive en SECCION_DE_VISTA).
   function seccionActual() {
-    if (actual === 'cuadricula') {
-      const t = (typeof CuadriculaView !== 'undefined' && CuadriculaView.tabActivo)
-        ? CuadriculaView.tabActivo() : tabCuadricula;
-      return t === 'informe' ? 'informes' : 'evaluacion';
-    }
     return SECCION_DE_VISTA[actual] || 'inicio';
   }
 
@@ -779,13 +780,17 @@ const App = (() => {
   }
 
   function ir(id, opciones) {
+    // Alias de la ruta antigua de Informes: la pestaña «Informe» de la
+    // Cuadrícula desapareció (Fase 4a); su ruta lleva a la vista propia.
+    if (id === 'cuadricula' && opciones && opciones.tab === 'informe') {
+      return ir('informes');
+    }
     actual = id;
-    if (opciones && opciones.tab) tabCuadricula = opciones.tab;
     const vista = VISTAS.find(v => v.id === id);
     UI.closeModal();
     vista.render(document.getElementById('app'), opciones);
-    // La nav se pinta DESPUÉS de renderizar: así la sección activa (p. ej.
-    // Informes) ya conoce la pestaña que ha fijado la vista.
+    // La nav se pinta DESPUÉS de renderizar: así la sección activa conoce ya el
+    // estado que la vista ha fijado (p. ej. el contexto de la vista de Informes).
     pintaNav();
     window.scrollTo(0, 0);
     history.replaceState(null, '', '#' + id);
