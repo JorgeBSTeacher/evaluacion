@@ -15,7 +15,7 @@ recordar dónde está cada cosa y consulte informes según una pregunta concreta
 
 | ID | Mejora | Prioridad | Estado |
 |---|---|---|---|
-| **M-01** | **Remodelación de navegación por tareas** (`Inicio · Corregir · Evaluación · Informes · Ajustes`) | Alta | **En curso (Fase 0)** |
+| **M-01** | **Remodelación de navegación por tareas** (`Inicio · Corregir · Evaluación · Informes · Ajustes`) | Alta | **En curso (Fase 2: 2a y 2b hechas)** |
 | M-02 | Indicador de backup y «Guardar» como acción de copia (con estado) | Alta | Pendiente |
 | M-03 | Unificar «pendientes» (misma unidad y fuente en Inicio y Calificaciones) | Alta | Pendiente |
 | M-04 | Chip del ajuste `sinNotaEsCero` visible en Calificaciones | Media | Pendiente |
@@ -111,18 +111,18 @@ Inicio · Corregir · Evaluación · Informes · Ajustes
 
 ## 3. Correspondencia
 
-| Actual | Propuesta | Acción | Frecuencia | Riesgo |
-|---|---|---|---|---|
-| `inicio` | Inicio | mantener (rediseñar paneles, M-13) | diaria | medio |
-| `cuadricula` (pestañas Notas/Criterios/Competencias) | **Evaluación** (vista principal) | mover | diaria | medio |
-| `instrumentos` (gestión) | Evaluación | mover | semanal | bajo |
-| `alumnos`, `clases`, `curriculo` | Evaluación | mover | occasional | bajo |
-| `montaje` | — | **disolver**: su guía pasa a Evaluación | — | bajo |
-| subvistas de `informe` | Informes | mover + renombrar (M-07) | diaria | medio |
-| Configuración | Ajustes | renombrar | rara | bajo |
-| modos `fab`/`dock`/`drawer` | variaciones de presentación | mantener | — | bajo |
-| Corrección (`renderCorreccion`) | Corregir | mover | diaria | medio |
-| Botón Guardar | acción de copia con estado (M-02) | rediseñar | — | medio |
+| Actual | Propuesta | Acción | Frecuencia | Riesgo | Fase 2 |
+|---|---|---|---|---|---|
+| `inicio` | Inicio | mantener (rediseñar paneles, M-13) | diaria | medio | — |
+| `cuadricula` (pestañas Notas/Criterios/Competencias) | **Evaluación** (subpestaña Cuadrícula) | mover | diaria | medio | Hecha (2a) |
+| `instrumentos` (gestión) | Evaluación (subpestaña Instrumentos) | mover | semanal | bajo | Hecha (2a) |
+| `alumnos`, `clases`, `curriculo` | Evaluación (subpestañas) | mover | occasional | bajo | Hecha (2a) |
+| `montaje` | Evaluación (vista auxiliar) | **disolver**: su guía pasa a Evaluación | — | bajo | Hecha (2a) |
+| subvistas de `informe` | Informes | mover + renombrar (M-07) | diaria | medio | Pendiente (Fase 4) |
+| Configuración | Ajustes | renombrar | rara | bajo | Hecha (Fase 1) |
+| modos `fab`/`dock`/`drawer` | variaciones de presentación | mantener (con subnav) | — | bajo | Hecha (2a) |
+| Corrección (`renderCorreccion`) | **Corregir** (vista propia: cola de pendientes) | mover | diaria | medio | Hecha (2b) |
+| Botón Guardar | acción de copia con estado (M-02) | rediseñar | — | medio | Pendiente |
 
 ---
 
@@ -142,8 +142,9 @@ Inicio · Corregir · Evaluación · Informes · Ajustes
 - **Fase 0 — Auditoría** (este documento).
 - **Fase 1 — Menú principal**: `Inicio · Corregir · Evaluación · Informes ·
   Ajustes`, con alias y sin pérdida de funciones.
-- **Fase 2 — Reubicación**: corrección a Corregir; montaje a Evaluación;
-  Configuración a Ajustes.
+- **Fase 2 — Reubicación**: corrección a Corregir (2b); vistas de preparación
+  como subpestañas de Evaluación (2a); Configuración a Ajustes (Fase 1). El
+  subnav de Evaluación (`#subnav`) se muestra en todos los modos.
 - **Fase 3 — Inicio**: panel de pendientes, estado de backup y accesos rápidos.
 - **Fase 4 — Informes**: contexto único, renombrado de subvistas y avisos de
   exclusión.

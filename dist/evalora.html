@@ -171,6 +171,30 @@ body.modo-basic #nav button.activo { background: var(--marca); color: #fff; box-
 .nav button.activo { background: var(--acento); color: #fff; }
 .nav button.peligro-activo { background: var(--ko-suave); color: var(--ko); }
 
+/* Subpestañas de Evaluación: segunda fila de la cabecera (Fase 2a). Botones
+   tipo chip; el activo lleva el color de marca. Solo existe estando en
+   Evaluación: fuera de ella #subnav se elimina del DOM. */
+.subnav {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  flex: 1 1 100%; order: 4; /* bajo la fila de secciones, también en modo básico */
+}
+.subnav:empty { display: none; }
+.subnav button {
+  border: 1px solid rgba(255, 255, 255, .42); background: rgba(255, 255, 255, .12);
+  color: #fff; border-radius: 999px; padding: 5px 12px; min-height: 32px;
+  font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.subnav button:hover { background: rgba(255, 255, 255, .24); }
+.subnav button.activo { background: #fff; border-color: #fff; color: var(--marca); font-weight: 700; }
+/* En modo básico la segunda fila es blanca, como la fila de secciones. */
+body.modo-basic .subnav {
+  background: #fff; border-top: 1px solid var(--linea);
+  margin: 0 -18px; padding: 6px 12px;
+}
+body.modo-basic .subnav button { color: var(--marca); border-color: var(--linea); background: #fff; }
+body.modo-basic .subnav button:hover { background: var(--acento-suave); }
+body.modo-basic .subnav button.activo { background: var(--marca); border-color: var(--marca); color: #fff; }
+
 .actions { display: flex; align-items: center; gap: 8px; }
 .save-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--ok); display: inline-block; transition: background .3s; }
 .save-dot.guardando { background: #f59e0b; }
@@ -4681,7 +4705,9 @@ function columnasNivel(filas) {
   // «¿Qué quieres corregir?»: listado de la clase ordenado por lo que falta.
   // `alElegir(instrumentoId)` decide a dónde lleva tocar cada fila.
   // Las filas se generan aparte para poder comprobarlas sin navegador.
-  function filasCorregirHtml(lista) {
+  // `conBoton` añade el botón «Corregir · N pendientes» que usa la vista
+  // «Corregir» (la cola); el modal de «¿Qué quieres corregir?» lo deja en false.
+  function filasCorregirHtml(lista, conBoton) {
     return lista.map(i => {
       const p = Calc.progresoInstrumento(i);
       let marca = 'Sin alumnado', clase = 'na';
@@ -4693,6 +4719,7 @@ function columnasNivel(filas) {
       return `<button type="button" class="fila-corrige" data-inst="${i.id}">
         <span class="fila-corrige-txt"><b>${Utils.esc(i.titulo)}</b><small>${Utils.esc(meta)}</small></span>
         <span class="badge ${clase}">${marca}</span>
+        ${conBoton ? `<span class="btn btn-mini btn-primario fila-corregir-btn">Corregir · ${p.pendientes} pendiente${p.pendientes === 1 ? '' : 's'}</span>` : ''}
       </button>`;
     }).join('');
   }
@@ -5202,6 +5229,43 @@ ${codigos}`;
     };
   }
 
+  // Vista «Corregir» (sección propia, Fase 2b): la cola de pendientes de la
+  // clase. Reutiliza el selector de clase de `render` y las filas de
+  // `filasCorregirHtml` (con el botón «Corregir · N pendientes»). Al corregir
+  // un instrumento, «Volver» regresa a esta cola.
+  function renderCorregir(el) {
+    const db = Storage.db;
+    if (!claseSel || !Calc.clase(claseSel)) claseSel = db.clases.length ? db.clases[0].id : null;
+
+    if (!db.clases.length) {
+      el.innerHTML = `<section class="card"><div class="vacio-grande">
+        <strong>No hay clases todavía</strong>
+        Crea una asignatura y una clase para empezar a evaluar.
+      </div></section>`;
+      return;
+    }
+
+    const lista = Calc.instrumentosPorCorregir(claseSel);
+    const pendientes = lista.reduce((s, i) => s + Calc.progresoInstrumento(i).pendientes, 0);
+    el.innerHTML = `
+      <section class="card">
+        <div class="card-head">
+          <h2>Corregir${pendientes ? ` <small class="sub">${pendientes} pendiente${pendientes === 1 ? '' : 's'}</small>` : ''}</h2>
+          <select id="sel-clase" style="max-width:280px">${UI.selectHtml(db.clases.map(c => ({
+            id: c.id,
+            nombre: `${Calc.asignaturaDeClase(c.id)?.nombre || '?'} · ${(Calc.byId(db.grupos, c.grupoId) || {}).nombre || '?'}`
+          })), claseSel, 'id', 'nombre')}</select>
+        </div>
+        <p class="hint">Instrumentos de esta clase, con lo que queda por corregir. Toca uno para corregirlo.</p>
+        ${lista.length ? filasCorregirHtml(lista, true) : '<div class="aviso">Esta clase todavía no tiene instrumentos. Créalos en «Instrumentos».</div>'}
+      </section>`;
+
+    el.querySelector('#sel-clase').onchange = e => { claseSel = e.target.value; renderCorregir(el); };
+    el.querySelectorAll('.fila-corrige').forEach(b => {
+      b.onclick = () => renderCorreccion(el, b.dataset.inst, () => renderCorregir(el));
+    });
+  }
+
   function render(el) {
     const db = Storage.db;
     if (!claseSel || !Calc.clase(claseSel)) claseSel = db.clases.length ? db.clases[0].id : null;
@@ -5282,7 +5346,7 @@ ${codigos}`;
   }
 
   // API pública de la vista: las demás vistas solo deben usar esto (D-29).
-  return { render, renderCorreccion, modalInstrumento, modalCalificar, filasCorregirHtml, filaApartado, cabeceraRubrica, plantillaColumnas, columnasNivel, promptIa, datalistUnidades, modalBanco };
+  return { render, renderCorregir, renderCorreccion, modalInstrumento, modalCalificar, filasCorregirHtml, filaApartado, cabeceraRubrica, plantillaColumnas, columnasNivel, promptIa, datalistUnidades, modalBanco };
 })();
 
 </script>
@@ -7049,6 +7113,9 @@ const App = (() => {
     { id: 'clases', label: 'Asignaturas y clases', render: el => ClasesView.render(el) },
     { id: 'curriculo', label: 'Currículo', render: el => CurriculoView.render(el), riesgo: true },
     { id: 'instrumentos', label: 'Instrumentos', render: el => InstrumentosView.render(el) },
+    // Sección «Corregir»: la cola de pendientes de la clase, no el listado de
+    // instrumentos (que pasa a ser subpestaña de Evaluación).
+    { id: 'corregir', label: 'Corregir', render: el => InstrumentosView.renderCorregir(el) },
     // La cuadrícula acepta opciones (pestaña, clase, periodo): hay que
     // reenviárselas o se perderían (p. ej. el tab de la sección Informes).
     { id: 'cuadricula', label: 'Calificaciones', render: (el, opciones) => CuadriculaView.render(el, opciones) },
@@ -7057,14 +7124,13 @@ const App = (() => {
     // desde Inicio/Montaje, ya no como botón del modo básico.
     { id: 'montaje', label: 'Montaje', render: renderMontaje, soloBasica: true }
   ];
-  // Secciones del menú principal (Fase 1 de la remodelación de la navegación):
-  // Inicio · Corregir · Evaluación · Informes · Ajustes. Es un mapeo temporal
-  // sobre las vistas actuales, no una reubicación: cada sección apunta a la vista
-  // que hoy cumple su tarea, con alias para no romper ningún acceso. El modo
-  // básico omite Ajustes.
+  // Secciones del menú principal (Fase 2 de la remodelación de la navegación):
+  // Inicio · Corregir · Evaluación · Informes · Ajustes. Corregir tiene su
+  // propia vista (cola de pendientes) y Evaluación agrupa las vistas de
+  // preparación y revisión como subpestañas. El modo básico omite Ajustes.
   const SECCIONES = [
     { id: 'inicio', label: 'Inicio', vista: 'inicio' },
-    { id: 'corregir', label: 'Corregir', vista: 'instrumentos' },
+    { id: 'corregir', label: 'Corregir', vista: 'corregir' },
     // Evaluación abre la pestaña principal de la cuadrícula: si se está en
     // Informes, pulsar Evaluación debe volver a las notas.
     { id: 'evaluacion', label: 'Evaluación', vista: 'cuadricula', tab: 'notas' },
@@ -7072,9 +7138,20 @@ const App = (() => {
     { id: 'ajustes', label: 'Ajustes', modal: true }
   ];
   const SECCIONES_BASICAS = ['inicio', 'corregir', 'evaluacion', 'informes'];
+  // Subpestañas de Evaluación: preparar y revisar la evaluación sin recordar
+  // dónde está cada cosa. El orden es el de trabajo: cuadrícula, instrumentos,
+  // alumnado, clases y currículo.
+  const SUBEVAL = [
+    { id: 'cuadricula', label: 'Cuadrícula' },
+    { id: 'instrumentos', label: 'Instrumentos' },
+    { id: 'alumnos', label: 'Alumnos' },
+    { id: 'clases', label: 'Clases' },
+    { id: 'curriculo', label: 'Currículo' }
+  ];
   const SECCION_DE_VISTA = {
     inicio: 'inicio',
-    instrumentos: 'corregir',
+    corregir: 'corregir',
+    instrumentos: 'evaluacion',
     cuadricula: 'evaluacion',
     alumnos: 'evaluacion',
     clases: 'evaluacion',
@@ -7640,7 +7717,7 @@ const App = (() => {
       });
     };
 
-    if (modo === 'topbar' || esBasica) { pinta(nav); return; }
+    if (modo === 'topbar' || esBasica) { pinta(nav); pintaSubnav(); return; }
     nav.style.display = 'none';
 
     if (modo === 'fab') {
@@ -7671,6 +7748,37 @@ const App = (() => {
       t.onclick = () => { d.hidden = !d.hidden; };
       document.querySelector('.actions').prepend(t);
     }
+    pintaSubnav();
+  }
+
+  // Subpestañas de Evaluación (Fase 2a): segunda fila de la cabecera. El
+  // elemento vive junto a #nav (dentro del header real) y solo existe estando
+  // en Evaluación; en los modos flotantes, donde #nav se oculta, sigue visible
+  // porque no depende de la nav de secciones.
+  function pintaSubnav() {
+    let subnav = document.getElementById('subnav');
+    if (seccionActual() !== 'evaluacion') {
+      if (subnav) subnav.remove();
+      return;
+    }
+    if (!subnav) {
+      subnav = document.createElement('div');
+      subnav.id = 'subnav';
+      subnav.className = 'subnav';
+      const nav = document.getElementById('nav');
+      if (nav && nav.parentNode) nav.parentNode.insertBefore(subnav, nav.nextSibling);
+      else document.body.appendChild(subnav);
+    }
+    subnav.innerHTML = '';
+    SUBEVAL.forEach(sub => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = sub.label;
+      b.setAttribute('data-subeval', sub.id);
+      if (actual === sub.id) { b.classList.add('activo'); b.setAttribute('aria-current', 'page'); }
+      b.onclick = () => ir(sub.id);
+      subnav.appendChild(b);
+    });
   }
 
   // Vista «Montaje»: el atajo a las vistas de preparación.

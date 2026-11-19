@@ -4199,17 +4199,68 @@ async function main() {
     check('pulsar Inicio lleva a la vista Inicio',
       pulsar('inicio') && app.App.seccionActual() === 'inicio' && vistaHtml().includes('Bienvenido a Evalora'),
       app.App.seccionActual());
-    check('pulsar Corregir lleva a Instrumentos',
-      pulsar('corregir') && app.App.seccionActual() === 'corregir' && vistaHtml().includes('Instrumentos de evaluación'),
-      app.App.seccionActual());
-    check('pulsar Evaluación lleva a la cuadrícula, pestaña Instrumentos',
+    check('pulsar Corregir abre la cola de pendientes',
+      pulsar('corregir') && app.App.seccionActual() === 'corregir'
+      && /data-inst=/.test(vistaHtml()) && /Corregir · \d+ pendiente/.test(vistaHtml()),
+      app.App.seccionActual() + ' · ' + vistaHtml().slice(0, 160));
+    check('la cola muestra el progreso de cada instrumento',
+      vistaHtml().includes('0/4 corregidos') && vistaHtml().includes('Control · T1 · UD1'),
+      vistaHtml().slice(0, 220));
+    check('fuera de Evaluación no hay subnav', !doc.getElementById('subnav'),
+      doc.getElementById('subnav') ? 'sigue visible' : '');
+    const filaComun = doc.querySelector('#app .fila-corrige[data-inst="iComun"]');
+    check('la cola tiene un botón por instrumento pendiente', !!filaComun,
+      filaComun ? filaComun.textContent.trim().slice(0, 80) : '(sin botón)');
+    if (filaComun) filaComun.click();
+    check('pulsar «Corregir» en la cola entra en la corrección',
+      vistaHtml().includes('id="tabla-corrige"') && vistaHtml().includes('id="btn-siguiente"'),
+      vistaHtml().slice(0, 160));
+    check('pulsar Evaluación abre la cuadrícula en la pestaña Cuadrícula',
       pulsar('evaluacion') && app.App.seccionActual() === 'evaluacion' && app.CuadriculaView.tabActivo() === 'notas',
       estado());
     check('el botón activo del menú es Evaluación',
       (nav.querySelector('button.activo') || {}).textContent === 'Evaluación',
       (nav.querySelector('button.activo') || {}).textContent || '(ninguno)');
+    const subnav = () => doc.getElementById('subnav');
+    const subIds = () => subnav() ? Array.from(subnav().querySelectorAll('button')).map(b => b.getAttribute('data-subeval')) : [];
+    const pulsarSub = id => {
+      const b = subnav() && subnav().querySelector(`[data-subeval="${id}"]`);
+      if (b) b.click();
+      return !!b;
+    };
+    check('el subnav aparece en Evaluación con las 5 subpestañas',
+      !!subnav() && subIds().join(',') === 'cuadricula,instrumentos,alumnos,clases,curriculo',
+      subIds().join(','));
+    check('el subnav marca Cuadrícula como activa',
+      (subnav() && (subnav().querySelector('button.activo') || {}).textContent) === 'Cuadrícula',
+      subnav() ? (subnav().querySelector('button.activo') || {}).textContent : '(sin subnav)');
+    check('el subnav lleva a Instrumentos',
+      pulsarSub('instrumentos') && app.App.seccionActual() === 'evaluacion'
+      && vistaHtml().includes('Instrumentos de evaluación'),
+      estado());
+    check('el subnav lleva a Alumnos',
+      pulsarSub('alumnos') && app.App.seccionActual() === 'evaluacion'
+      && vistaHtml().includes('>Grupos<'),
+      estado());
+    check('el subnav lleva a Clases',
+      pulsarSub('clases') && app.App.seccionActual() === 'evaluacion'
+      && vistaHtml().includes('Currículos y asignaturas'),
+      estado());
+    check('el subnav lleva a Currículo',
+      pulsarSub('curriculo') && app.App.seccionActual() === 'evaluacion'
+      && vistaHtml().includes('>Currículo<'),
+      estado());
+    check('el subnav lleva a Cuadrícula',
+      pulsarSub('cuadricula') && app.App.seccionActual() === 'evaluacion'
+      && app.CuadriculaView.tabActivo() === 'notas',
+      estado());
+    ['cuadricula', 'instrumentos', 'alumnos', 'clases', 'curriculo'].forEach(id => {
+      app.App.ir(id);
+      check('Evaluación queda activa estando en ' + id,
+        app.App.seccionActual() === 'evaluacion', app.App.seccionActual());
+    });
     // Alias: las rutas y vistas antiguas siguen llegando a su sección. Se
-    // comprueba aquí, con la pestaña de la cuadrícula en «Instrumentos».
+    // comprueba aquí, con la pestaña de la cuadrícula en «Cuadrícula».
     app.App.ir('cuadricula');
     check('alias ir("cuadricula") → Evaluación', app.App.seccionActual() === 'evaluacion', app.App.seccionActual());
     check('pulsar Informes lleva a la cuadrícula con la pestaña Informe',
@@ -4218,12 +4269,14 @@ async function main() {
     check('el botón activo del menú es Informes',
       (nav.querySelector('button.activo') || {}).textContent === 'Informes',
       (nav.querySelector('button.activo') || {}).textContent || '(ninguno)');
+    check('el subnav se oculta en Informes', !subnav(),
+      subnav() ? 'sigue visible' : '');
     check('pulsar Ajustes abre Configuración',
       pulsar('ajustes') && !!doc.getElementById('tabs-ajustes'),
       doc.getElementById('tabs-ajustes') ? 'modal abierto' : '(sin modal)');
 
     app.App.ir('instrumentos');
-    check('alias ir("instrumentos") → Corregir', app.App.seccionActual() === 'corregir', app.App.seccionActual());
+    check('alias ir("instrumentos") → Evaluación', app.App.seccionActual() === 'evaluacion', app.App.seccionActual());
     app.App.ir('alumnos');
     check('alias ir("alumnos") → Evaluación', app.App.seccionActual() === 'evaluacion', app.App.seccionActual());
     app.App.ir('montaje');
@@ -4238,28 +4291,41 @@ async function main() {
       botonesNav().length === 4 && botonesNav().indexOf('Ajustes') === -1, botonesNav().join(', '));
     check('el modo básico muestra Inicio · Corregir · Evaluación · Informes',
       botonesNav().join(' · ') === 'Inicio · Corregir · Evaluación · Informes', botonesNav().join(' · '));
+    app.App.irSeccion('evaluacion');
+    check('el modo básico muestra el subnav en Evaluación',
+      !!subnav() && subnav().querySelectorAll('button').length === 5,
+      subnav() ? String(subnav().querySelectorAll('button').length) : '(sin subnav)');
     app.App.ir('alumnos');
     check('en modo básico una vista de preparación marca Evaluación',
       !!(nav.querySelector('button.activo') && nav.querySelector('button.activo').textContent === 'Evaluación'),
       nav.querySelector('button.activo') ? nav.querySelector('button.activo').textContent : '(ninguno)');
 
     app.Storage.db.tema.nav = 'fab';
-    app.App.ir('inicio');
+    app.App.irSeccion('evaluacion');
     check('el modo flotante crea el botón de vistas y su menú',
       !!doc.querySelector('.nav-fab') && !!doc.querySelector('.nav-menu'), '');
     check('el menú flotante recoge las 5 secciones',
       doc.querySelectorAll('.nav-menu button').length === 5, String(doc.querySelectorAll('.nav-menu button').length));
+    check('el subnav se ve también en el modo flotante',
+      !!subnav() && subnav().querySelectorAll('button').length === 5,
+      subnav() ? String(subnav().querySelectorAll('button').length) : '(sin subnav)');
     app.Storage.db.tema.nav = 'dock';
-    app.App.ir('inicio');
+    app.App.irSeccion('evaluacion');
     check('el modo dock crea una barra inferior con 5 secciones',
       !!doc.querySelector('.nav-dock') && doc.querySelectorAll('.nav-dock button').length === 5,
       String(doc.querySelectorAll('.nav-dock button').length));
+    check('el subnav se ve también en el modo dock',
+      !!subnav() && subnav().querySelectorAll('button').length === 5,
+      subnav() ? String(subnav().querySelectorAll('button').length) : '(sin subnav)');
     app.Storage.db.tema.nav = 'drawer';
-    app.App.ir('inicio');
+    app.App.irSeccion('evaluacion');
     check('el modo barra lateral crea el panel y su conmutador',
       !!doc.querySelector('.nav-drawer') && !!doc.querySelector('.nav-drawer-toggle'), '');
     check('la barra lateral recoge las 5 secciones',
       doc.querySelectorAll('.nav-drawer button').length === 5, String(doc.querySelectorAll('.nav-drawer button').length));
+    check('el subnav se ve también en el modo barra lateral',
+      !!subnav() && subnav().querySelectorAll('button').length === 5,
+      subnav() ? String(subnav().querySelectorAll('button').length) : '(sin subnav)');
   }
 
   console.log('\n== Modal de criterios del instrumento (capa 2) ==');

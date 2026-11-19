@@ -5,6 +5,9 @@ const App = (() => {
     { id: 'clases', label: 'Asignaturas y clases', render: el => ClasesView.render(el) },
     { id: 'curriculo', label: 'Currículo', render: el => CurriculoView.render(el), riesgo: true },
     { id: 'instrumentos', label: 'Instrumentos', render: el => InstrumentosView.render(el) },
+    // Sección «Corregir»: la cola de pendientes de la clase, no el listado de
+    // instrumentos (que pasa a ser subpestaña de Evaluación).
+    { id: 'corregir', label: 'Corregir', render: el => InstrumentosView.renderCorregir(el) },
     // La cuadrícula acepta opciones (pestaña, clase, periodo): hay que
     // reenviárselas o se perderían (p. ej. el tab de la sección Informes).
     { id: 'cuadricula', label: 'Calificaciones', render: (el, opciones) => CuadriculaView.render(el, opciones) },
@@ -13,14 +16,13 @@ const App = (() => {
     // desde Inicio/Montaje, ya no como botón del modo básico.
     { id: 'montaje', label: 'Montaje', render: renderMontaje, soloBasica: true }
   ];
-  // Secciones del menú principal (Fase 1 de la remodelación de la navegación):
-  // Inicio · Corregir · Evaluación · Informes · Ajustes. Es un mapeo temporal
-  // sobre las vistas actuales, no una reubicación: cada sección apunta a la vista
-  // que hoy cumple su tarea, con alias para no romper ningún acceso. El modo
-  // básico omite Ajustes.
+  // Secciones del menú principal (Fase 2 de la remodelación de la navegación):
+  // Inicio · Corregir · Evaluación · Informes · Ajustes. Corregir tiene su
+  // propia vista (cola de pendientes) y Evaluación agrupa las vistas de
+  // preparación y revisión como subpestañas. El modo básico omite Ajustes.
   const SECCIONES = [
     { id: 'inicio', label: 'Inicio', vista: 'inicio' },
-    { id: 'corregir', label: 'Corregir', vista: 'instrumentos' },
+    { id: 'corregir', label: 'Corregir', vista: 'corregir' },
     // Evaluación abre la pestaña principal de la cuadrícula: si se está en
     // Informes, pulsar Evaluación debe volver a las notas.
     { id: 'evaluacion', label: 'Evaluación', vista: 'cuadricula', tab: 'notas' },
@@ -28,9 +30,20 @@ const App = (() => {
     { id: 'ajustes', label: 'Ajustes', modal: true }
   ];
   const SECCIONES_BASICAS = ['inicio', 'corregir', 'evaluacion', 'informes'];
+  // Subpestañas de Evaluación: preparar y revisar la evaluación sin recordar
+  // dónde está cada cosa. El orden es el de trabajo: cuadrícula, instrumentos,
+  // alumnado, clases y currículo.
+  const SUBEVAL = [
+    { id: 'cuadricula', label: 'Cuadrícula' },
+    { id: 'instrumentos', label: 'Instrumentos' },
+    { id: 'alumnos', label: 'Alumnos' },
+    { id: 'clases', label: 'Clases' },
+    { id: 'curriculo', label: 'Currículo' }
+  ];
   const SECCION_DE_VISTA = {
     inicio: 'inicio',
-    instrumentos: 'corregir',
+    corregir: 'corregir',
+    instrumentos: 'evaluacion',
     cuadricula: 'evaluacion',
     alumnos: 'evaluacion',
     clases: 'evaluacion',
@@ -596,7 +609,7 @@ const App = (() => {
       });
     };
 
-    if (modo === 'topbar' || esBasica) { pinta(nav); return; }
+    if (modo === 'topbar' || esBasica) { pinta(nav); pintaSubnav(); return; }
     nav.style.display = 'none';
 
     if (modo === 'fab') {
@@ -627,6 +640,37 @@ const App = (() => {
       t.onclick = () => { d.hidden = !d.hidden; };
       document.querySelector('.actions').prepend(t);
     }
+    pintaSubnav();
+  }
+
+  // Subpestañas de Evaluación (Fase 2a): segunda fila de la cabecera. El
+  // elemento vive junto a #nav (dentro del header real) y solo existe estando
+  // en Evaluación; en los modos flotantes, donde #nav se oculta, sigue visible
+  // porque no depende de la nav de secciones.
+  function pintaSubnav() {
+    let subnav = document.getElementById('subnav');
+    if (seccionActual() !== 'evaluacion') {
+      if (subnav) subnav.remove();
+      return;
+    }
+    if (!subnav) {
+      subnav = document.createElement('div');
+      subnav.id = 'subnav';
+      subnav.className = 'subnav';
+      const nav = document.getElementById('nav');
+      if (nav && nav.parentNode) nav.parentNode.insertBefore(subnav, nav.nextSibling);
+      else document.body.appendChild(subnav);
+    }
+    subnav.innerHTML = '';
+    SUBEVAL.forEach(sub => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = sub.label;
+      b.setAttribute('data-subeval', sub.id);
+      if (actual === sub.id) { b.classList.add('activo'); b.setAttribute('aria-current', 'page'); }
+      b.onclick = () => ir(sub.id);
+      subnav.appendChild(b);
+    });
   }
 
   // Vista «Montaje»: el atajo a las vistas de preparación.

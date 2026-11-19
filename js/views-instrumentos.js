@@ -575,7 +575,9 @@ function columnasNivel(filas) {
   // «¿Qué quieres corregir?»: listado de la clase ordenado por lo que falta.
   // `alElegir(instrumentoId)` decide a dónde lleva tocar cada fila.
   // Las filas se generan aparte para poder comprobarlas sin navegador.
-  function filasCorregirHtml(lista) {
+  // `conBoton` añade el botón «Corregir · N pendientes» que usa la vista
+  // «Corregir» (la cola); el modal de «¿Qué quieres corregir?» lo deja en false.
+  function filasCorregirHtml(lista, conBoton) {
     return lista.map(i => {
       const p = Calc.progresoInstrumento(i);
       let marca = 'Sin alumnado', clase = 'na';
@@ -587,6 +589,7 @@ function columnasNivel(filas) {
       return `<button type="button" class="fila-corrige" data-inst="${i.id}">
         <span class="fila-corrige-txt"><b>${Utils.esc(i.titulo)}</b><small>${Utils.esc(meta)}</small></span>
         <span class="badge ${clase}">${marca}</span>
+        ${conBoton ? `<span class="btn btn-mini btn-primario fila-corregir-btn">Corregir · ${p.pendientes} pendiente${p.pendientes === 1 ? '' : 's'}</span>` : ''}
       </button>`;
     }).join('');
   }
@@ -1096,6 +1099,43 @@ ${codigos}`;
     };
   }
 
+  // Vista «Corregir» (sección propia, Fase 2b): la cola de pendientes de la
+  // clase. Reutiliza el selector de clase de `render` y las filas de
+  // `filasCorregirHtml` (con el botón «Corregir · N pendientes»). Al corregir
+  // un instrumento, «Volver» regresa a esta cola.
+  function renderCorregir(el) {
+    const db = Storage.db;
+    if (!claseSel || !Calc.clase(claseSel)) claseSel = db.clases.length ? db.clases[0].id : null;
+
+    if (!db.clases.length) {
+      el.innerHTML = `<section class="card"><div class="vacio-grande">
+        <strong>No hay clases todavía</strong>
+        Crea una asignatura y una clase para empezar a evaluar.
+      </div></section>`;
+      return;
+    }
+
+    const lista = Calc.instrumentosPorCorregir(claseSel);
+    const pendientes = lista.reduce((s, i) => s + Calc.progresoInstrumento(i).pendientes, 0);
+    el.innerHTML = `
+      <section class="card">
+        <div class="card-head">
+          <h2>Corregir${pendientes ? ` <small class="sub">${pendientes} pendiente${pendientes === 1 ? '' : 's'}</small>` : ''}</h2>
+          <select id="sel-clase" style="max-width:280px">${UI.selectHtml(db.clases.map(c => ({
+            id: c.id,
+            nombre: `${Calc.asignaturaDeClase(c.id)?.nombre || '?'} · ${(Calc.byId(db.grupos, c.grupoId) || {}).nombre || '?'}`
+          })), claseSel, 'id', 'nombre')}</select>
+        </div>
+        <p class="hint">Instrumentos de esta clase, con lo que queda por corregir. Toca uno para corregirlo.</p>
+        ${lista.length ? filasCorregirHtml(lista, true) : '<div class="aviso">Esta clase todavía no tiene instrumentos. Créalos en «Instrumentos».</div>'}
+      </section>`;
+
+    el.querySelector('#sel-clase').onchange = e => { claseSel = e.target.value; renderCorregir(el); };
+    el.querySelectorAll('.fila-corrige').forEach(b => {
+      b.onclick = () => renderCorreccion(el, b.dataset.inst, () => renderCorregir(el));
+    });
+  }
+
   function render(el) {
     const db = Storage.db;
     if (!claseSel || !Calc.clase(claseSel)) claseSel = db.clases.length ? db.clases[0].id : null;
@@ -1176,5 +1216,5 @@ ${codigos}`;
   }
 
   // API pública de la vista: las demás vistas solo deben usar esto (D-29).
-  return { render, renderCorreccion, modalInstrumento, modalCalificar, filasCorregirHtml, filaApartado, cabeceraRubrica, plantillaColumnas, columnasNivel, promptIa, datalistUnidades, modalBanco };
+  return { render, renderCorregir, renderCorreccion, modalInstrumento, modalCalificar, filasCorregirHtml, filaApartado, cabeceraRubrica, plantillaColumnas, columnasNivel, promptIa, datalistUnidades, modalBanco };
 })();
