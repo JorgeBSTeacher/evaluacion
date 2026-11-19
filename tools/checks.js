@@ -2954,10 +2954,89 @@ async function main() {
     check('el panel ACI lista los niveles con su alumnado', aci.includes('Nivel 1 · 1 alumno'), aci);
     check('el panel ACI solo incluye clases con niveles', !aci.includes('Lengua 6º'));
 
+    const pend = P.pendientes();
+    check('el panel de pendientes cuenta las correcciones unificadas',
+      /corrección pendiente en 1 instrumento/.test(pend), pend);
+    check('el panel de pendientes usa el número grande',
+      /num-grande">1</.test(pend), pend);
+    check('el panel de pendientes ofrece el botón de corrección',
+      /id="btn-corregir-pendientes"/.test(pend) && /Corregir pendientes/.test(pend), pend);
+    check('el panel de pendientes no dice «Todo corregido» con pendientes',
+      !/Todo corregido/.test(pend), pend);
+
     // Sin clases no se muestran paneles (la portada no enseña tablas vacías).
     app.Storage.db.clases = [];
     check('sin clases no se muestra el panel de estado', P.estado() === '');
     check('sin clases no se muestra el panel ACI', P.aci() === '');
+  }
+
+  console.log('\n== Inicio: pendientes, backup y accesos rápidos (Fase 3) ==');
+  {
+    const app = cargarApp({ dom: true });
+    app.Storage.load();
+    await importarJson(app, estadoPaneles());
+    const doc = app.document;
+    const appEl = doc.getElementById('app');
+
+    app.App.ir('inicio');
+    const h = appEl.innerHTML;
+    check('Inicio muestra el panel de pendientes con el conteo unificado',
+      /id="panel-pendientes"/.test(h) && /corrección pendiente en 1 instrumento/.test(h), h.slice(0, 260));
+    check('el panel de pendientes va antes que el estado y el montaje',
+      h.indexOf('id="panel-pendientes"') < h.indexOf('Estado por clase')
+      && h.indexOf('id="panel-pendientes"') < h.indexOf('Montaje'),
+      'panel=' + h.indexOf('id="panel-pendientes"') + ' estado=' + h.indexOf('Estado por clase'));
+    const btnCorregir = appEl.querySelector('#btn-corregir-pendientes');
+    check('el botón «Corregir pendientes» está habilitado con pendientes',
+      !!btnCorregir && !btnCorregir.disabled, btnCorregir ? String(btnCorregir.disabled) : '(sin botón)');
+    if (btnCorregir) btnCorregir.click();
+    check('«Corregir pendientes» lleva a la vista Corregir',
+      app.App.seccionActual() === 'corregir', app.App.seccionActual());
+
+    app.App.ir('inicio');
+    const aviso = appEl.querySelector('#aviso-backup');
+    check('el aviso de copia destaca cuando hay cambios sin copia',
+      !!aviso && aviso.classList.contains('aviso-pendiente') && /Hacer backup/.test(aviso.textContent),
+      aviso ? aviso.textContent.replace(/\s+/g, ' ').slice(0, 120) : '(sin aviso)');
+    check('el aviso discreto de copia sigue en su sitio', !!appEl.querySelector('#aviso-copia'));
+
+    check('los accesos rápidos cubren corregir, informes, instrumento y backup',
+      !!appEl.querySelector('[data-ir="corregir"]')
+      && !!appEl.querySelector('[data-ir="cuadricula"][data-tab="informe"]')
+      && !!appEl.querySelector('[data-ir="instrumentos"]')
+      && !!appEl.querySelector('#btn-backup-rapido'),
+      Array.from(appEl.querySelectorAll('[data-ir]')).map(b => b.dataset.ir).join(','));
+    const btnInf = appEl.querySelector('[data-ir="cuadricula"][data-tab="informe"]');
+    if (btnInf) btnInf.click();
+    check('«Ver informes» abre la sección Informes',
+      app.App.seccionActual() === 'informes' && app.CuadriculaView.tabActivo() === 'informe',
+      app.App.seccionActual() + ' · ' + app.CuadriculaView.tabActivo());
+
+    // Copia al día: el aviso destacado desaparece y queda el discreto.
+    app.Storage.marcarCopia();
+    app.App.ir('inicio');
+    check('con la copia al día el aviso de backup no destaca',
+      !appEl.querySelector('#aviso-backup') && !!appEl.querySelector('#aviso-copia'));
+
+    // Guía plegada con el montaje completo; abierta en una app vacía.
+    const guias = appEl.querySelectorAll('details.guia-inicio');
+    check('con el montaje completo la guía llega plegada',
+      guias.length === 2 && Array.from(guias).every(g => !g.hasAttribute('open')), String(guias.length));
+    const appVacia = cargarApp({ dom: true });
+    appVacia.Storage.load();
+    appVacia.App.ir('inicio');
+    const guiasVacias = appVacia.document.getElementById('app').querySelectorAll('details.guia-inicio');
+    check('con la app vacía la guía queda abierta',
+      guiasVacias.length === 2 && Array.from(guiasVacias).every(g => g.hasAttribute('open')), String(guiasVacias.length));
+
+    // Sin pendientes: texto unificado y botón deshabilitado.
+    app.Storage.db.registros.i1 = { a1: { p1: 8, p2: 6 }, a2: { p1: 5, p2: 5 }, a3: { p1: 7, p2: 7 } };
+    app.App.ir('inicio');
+    check('sin pendientes el panel dice «Todo corregido»',
+      /Todo corregido/.test(appEl.innerHTML), appEl.textContent.replace(/\s+/g, ' ').slice(0, 160));
+    const btnTodo = appEl.querySelector('#btn-corregir-pendientes');
+    check('sin pendientes el botón queda deshabilitado',
+      !!btnTodo && btnTodo.disabled === true, btnTodo ? String(btnTodo.disabled) : '(sin botón)');
   }
 
   console.log('\n== Configuracion: engranaje global, copias y borrado ==');

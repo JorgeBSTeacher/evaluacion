@@ -513,6 +513,14 @@ input:focus, select:focus, textarea:focus { border-color: var(--acento); }
   background: #fffbeb; border: 1px solid #fde68a; color: #92400e;
   padding: 10px 14px; border-radius: 10px; font-size: 13px; margin-bottom: 12px;
 }
+/* Aviso de copia destacado: mismo ámbar, con el color semántico de aviso. */
+.aviso-pendiente { background: var(--aviso-suave); border-color: var(--aviso); color: var(--aviso); }
+/* Panel de pendientes de Inicio: número grande, sin protagonismo excesivo. */
+.inicio-pendientes .num-grande { font-size: 28px; font-weight: 800; line-height: 1; color: var(--acento); }
+.inicio-pendientes.todo-ok .num-grande { color: var(--ok); }
+details.guia-inicio { margin-bottom: 12px; }
+details.guia-inicio > summary { cursor: pointer; color: var(--tinta-suave); }
+details.guia-inicio > summary h2 { display: inline; }
 .vacio-grande { text-align: center; color: var(--tinta-suave); padding: 40px 20px; }
 .vacio-grande strong { display: block; font-size: 17px; color: var(--tinta); margin-bottom: 6px; }
 

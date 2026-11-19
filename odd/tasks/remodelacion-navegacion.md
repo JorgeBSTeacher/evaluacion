@@ -22,7 +22,7 @@ modelo de datos**. El móvil va aparte (M-16).
   - [x] Fase 2a: Evaluación agrupa las subpestañas `Cuadrícula · Instrumentos ·
     Alumnos · Clases · Currículo`.
   - [x] Fase 2b: Corregir es su vista (cola de pendientes por clase).
-- [ ] Fase 3: Inicio (pendientes, backup, accesos rápidos).
+- [x] Fase 3: Inicio (pendientes, backup, accesos rápidos).
 - [ ] Fase 4: Informes (contexto único, subvistas).
 - [ ] Fase 5: pulido (360 px, teclado, estados).
 
@@ -87,3 +87,22 @@ accesibles desde Inicio/Montaje y por su hash.
   estando en Informes no activa la sección (la pestaña seguiría en `informe`).
 - El subnav se inserta junto a `#nav`, dentro de la cabecera, para que se vea
   también en los modos fab/dock/drawer, donde `#nav` se oculta.
+
+## Evidencia Fase 3 (2026-11-19)
+
+- `node --check js/app.js` → sin errores de sintaxis.
+- `node tools/checks.js` → `TODO OK: 784 comprobaciones` (17 más que en Fase 2:
+  conteo unificado de pendientes, orden del panel, botón «Corregir pendientes»,
+  aviso de copia destacado, accesos rápidos, guía plegada/abierta y estado
+  «Todo corregido»).
+- `node tools/build-singlefile.js` → `dist/evalora.html` (543 KB);
+  `node tools/build-singlefile.js --check` → sincronizado.
+- El panel de pendientes usa `Calc.progresoInstrumento` sobre `db.instrumentos`:
+  `N correcciones pendientes en M instrumentos` (con singular correcto) o
+  «Todo corregido», con el botón de corrección deshabilitado cuando N=0.
+- El aviso de copia solo destaca si hay datos y (`meta.cambiosSinCopia` o no
+  `meta.ultimaExportacion`); si está al día sigue el aviso discreto actual.
+- Con el montaje completo (grupos, alumnos, clases, criterios e instrumentos),
+  «Montaje» y «Flujo recomendado» viajan en `<details>` cerrados; con la app
+  vacía quedan abiertos. Los paneles de pendientes/cobertura/ACI suben por
+  encima.

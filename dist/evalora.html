@@ -531,6 +531,14 @@ input:focus, select:focus, textarea:focus { border-color: var(--acento); }
   background: #fffbeb; border: 1px solid #fde68a; color: #92400e;
   padding: 10px 14px; border-radius: 10px; font-size: 13px; margin-bottom: 12px;
 }
+/* Aviso de copia destacado: mismo ámbar, con el color semántico de aviso. */
+.aviso-pendiente { background: var(--aviso-suave); border-color: var(--aviso); color: var(--aviso); }
+/* Panel de pendientes de Inicio: número grande, sin protagonismo excesivo. */
+.inicio-pendientes .num-grande { font-size: 28px; font-weight: 800; line-height: 1; color: var(--acento); }
+.inicio-pendientes.todo-ok .num-grande { color: var(--ok); }
+details.guia-inicio { margin-bottom: 12px; }
+details.guia-inicio > summary { cursor: pointer; color: var(--tinta-suave); }
+details.guia-inicio > summary h2 { display: inline; }
 .vacio-grande { text-align: center; color: var(--tinta-suave); padding: 40px 20px; }
 .vacio-grande strong { display: block; font-size: 17px; color: var(--tinta); margin-bottom: 6px; }
 
@@ -7186,7 +7194,42 @@ const App = (() => {
     return '';
   }
 
+  // Aviso de copia destacado (Fase 3): solo cuando hay algo que perder. El
+  // aviso discreto del bloque «Copias de seguridad» sigue pintándose siempre.
+  function avisoCopiaDestacadoHtml() {
+    const est = Storage.estadoCopia();
+    const texto = est.nivel === 'nunca'
+      ? '<b>Todavía no has hecho ninguna copia de seguridad.</b> Tus notas solo están en este navegador: expórtalas al USB.'
+      : '<b>Hay cambios desde tu última copia.</b> Exporta el backup al USB para no perderlos.';
+    return `<section id="aviso-backup" class="aviso aviso-pendiente no-print">
+      <div>⚠ ${texto}</div>
+      <div class="acciones" style="margin-top:8px">
+        <button class="btn btn-primario btn-mini" id="btn-backup-aviso">Hacer backup</button>
+      </div>
+    </section>`;
+  }
+
   // --- Paneles de Inicio (puros, sin DOM: comprobables en el arnés) ---------
+  // Pendientes: el conteo unificado de correcciones (alumno × instrumento) y
+  // el atajo a la cola de Corregir. Es el primer panel tras la cabecera.
+  function panelPendientesHtml() {
+    const insts = Storage.db.instrumentos || [];
+    let pendientes = 0;
+    let conPendientes = 0;
+    insts.forEach(i => {
+      const p = Calc.progresoInstrumento(i).pendientes;
+      if (p > 0) { pendientes += p; conPendientes++; }
+    });
+    const texto = pendientes
+      ? `<b class="num-grande">${pendientes}</b> ${pendientes === 1 ? 'corrección pendiente' : 'correcciones pendientes'} en ${conPendientes} ${conPendientes === 1 ? 'instrumento' : 'instrumentos'}`
+      : 'Todo corregido';
+    return `<section id="panel-pendientes" class="card inicio-pendientes no-print ${pendientes ? '' : 'todo-ok'}">
+      <div class="card-head"><h2>Pendientes</h2>
+        <button class="btn btn-primario" id="btn-corregir-pendientes" ${pendientes ? '' : 'disabled'}>Corregir pendientes</button></div>
+      <p style="margin:0;color:var(--tinta-suave)">${texto}</p>
+    </section>`;
+  }
+
   // Estado por clase: qué está montado y qué queda por corregir. Toca la fila
   // para abrir Calificaciones de esa clase.
   function panelesEstadoHtml() {
@@ -7581,6 +7624,13 @@ const App = (() => {
 
   function renderInicio(el) {
     const db = Storage.db;
+    const meta = db.meta || {};
+    // El aviso de copia destaca solo si hay datos que perder: cambios sin copiar
+    // o ninguna exportación hecha. Con la app vacía no asusta al estrenarla.
+    const copiaPendiente = !Storage.vacio() && (!meta.ultimaExportacion || meta.cambiosSinCopia);
+    const montajeCompleto = !!(db.grupos.length && db.alumnos.length && db.clases.length
+      && db.criterios.length && db.instrumentos.length);
+    const guiaAbierta = Storage.vacio() || !montajeCompleto;
     el.innerHTML = `
       <section class="card">
         <div class="card-head">
@@ -7603,30 +7653,45 @@ const App = (() => {
           <div class="aviso">Tu aplicación está vacía. Puedes cargar datos de ejemplo para probarla.</div>
           <button class="btn btn-primario" id="btn-demo">Cargar datos de ejemplo</button>` : ''}
       </section>
+      ${copiaPendiente ? avisoCopiaDestacadoHtml() : ''}
+      ${panelPendientesHtml()}
+      <section class="card no-print">
+        <h2 class="subtitulo" style="margin:0 0 8px">Accesos rápidos</h2>
+        <div class="acciones">
+          <button class="btn btn-primario" data-ir="corregir">Corregir pendientes</button>
+          <button class="btn" data-ir="cuadricula" data-tab="informe">Ver informes</button>
+          <button class="btn" data-ir="instrumentos">Crear instrumento</button>
+          <button class="btn" id="btn-backup-rapido">Hacer backup</button>
+        </div>
+      </section>
       ${panelesEstadoHtml()}
       ${panelesCoberturaHtml()}
       ${panelesAciHtml()}
-      <section class="card no-print">
-        <h2 class="subtitulo" style="margin:0 0 8px">Montaje</h2>
-        <p style="color:var(--tinta-suave);margin:0 0 10px">Grupos, asignaturas y currículo. Se preparan una vez y luego se dejan atrás.</p>
-        <div class="acciones">
-          <button class="btn btn-mini" data-ir="alumnos">Alumnos y grupos</button>
-          <button class="btn btn-mini" data-ir="clases">Asignaturas y clases</button>
-          <button class="btn btn-mini" data-ir="curriculo">Currículo</button>
-        </div>
-      </section>
-      <section class="card">
-        <h2 class="subtitulo" style="margin:0 0 8px">Flujo recomendado</h2>
-        <ol class="flujo" style="color:var(--tinta-suave);margin:0;padding-left:20px">
-          <li>Crea <b>grupos</b> e inscribe <b>alumnos</b>.</li>
-          <li>Crea <b>asignaturas</b> y sus <b>clases</b> (asignatura · grupo). Si vas a trabajar con adaptaciones, crea en la clase sus <b>niveles ACI</b>.</li>
-          <li>Define en <b>Currículo</b> las competencias específicas, los criterios y sus ponderaciones (suman 100%).</li>
-          <li>Crea <b>instrumentos</b>: control, rúbrica, proyecto u otro, mapeando cada apartado a criterios. Si ya tienes una rúbrica hecha (por ejemplo, con una IA), impórtala con «Importar rúbrica».</li>
-          <li><b>Corrige</b> desde «Calificaciones» (botón «Corregir») o desde el propio instrumento.</li>
-          <li>Revisa el <b>Informe</b>: hallazgos, criterios con dificultades, distribución de notas y alumnos en riesgo. Imprime o exporta a PDF el informe que necesites.</li>
-          <li>Exporta el <b>backup</b> al terminar cada sesión.</li>
-        </ol>
-      </section>`;
+      <details class="guia-inicio" ${guiaAbierta ? 'open' : ''}>
+        <summary><h2 class="subtitulo" style="margin:0">Montaje</h2></summary>
+        <section class="card no-print">
+          <p style="color:var(--tinta-suave);margin:0 0 10px">Grupos, asignaturas y currículo. Se preparan una vez y luego se dejan atrás.</p>
+          <div class="acciones">
+            <button class="btn btn-mini" data-ir="alumnos">Alumnos y grupos</button>
+            <button class="btn btn-mini" data-ir="clases">Asignaturas y clases</button>
+            <button class="btn btn-mini" data-ir="curriculo">Currículo</button>
+          </div>
+        </section>
+      </details>
+      <details class="guia-inicio" ${guiaAbierta ? 'open' : ''}>
+        <summary><h2 class="subtitulo" style="margin:0">Flujo recomendado</h2></summary>
+        <section class="card">
+          <ol class="flujo" style="color:var(--tinta-suave);margin:0;padding-left:20px">
+            <li>Crea <b>grupos</b> e inscribe <b>alumnos</b>.</li>
+            <li>Crea <b>asignaturas</b> y sus <b>clases</b> (asignatura · grupo). Si vas a trabajar con adaptaciones, crea en la clase sus <b>niveles ACI</b>.</li>
+            <li>Define en <b>Currículo</b> las competencias específicas, los criterios y sus ponderaciones (suman 100%).</li>
+            <li>Crea <b>instrumentos</b>: control, rúbrica, proyecto u otro, mapeando cada apartado a criterios. Si ya tienes una rúbrica hecha (por ejemplo, con una IA), impórtala con «Importar rúbrica».</li>
+            <li><b>Corrige</b> desde «Calificaciones» (botón «Corregir») o desde el propio instrumento.</li>
+            <li>Revisa el <b>Informe</b>: hallazgos, criterios con dificultades, distribución de notas y alumnos en riesgo. Imprime o exporta a PDF el informe que necesites.</li>
+            <li>Exporta el <b>backup</b> al terminar cada sesión.</li>
+          </ol>
+        </section>
+      </details>`;
 
     const curso = el.querySelector('#sel-curso');
     if (curso) {
@@ -7676,6 +7741,17 @@ const App = (() => {
       App.ir('inicio');
     };
 
+    // Pendientes y copia (Fase 3): acciones del panel y de los accesos rápidos.
+    const btnCorregirPend = el.querySelector('#btn-corregir-pendientes');
+    if (btnCorregirPend) btnCorregirPend.onclick = () => ir('corregir');
+    const hacerBackup = () => Storage.exportar()
+      .then(ok => { if (ok) { UI.toast('Backup exportado'); App.ir('inicio'); } })
+      .catch(e => alert('Error al exportar: ' + e.message));
+    const btnBackupAviso = el.querySelector('#btn-backup-aviso');
+    if (btnBackupAviso) btnBackupAviso.onclick = hacerBackup;
+    const btnBackupRapido = el.querySelector('#btn-backup-rapido');
+    if (btnBackupRapido) btnBackupRapido.onclick = hacerBackup;
+
     // Paneles de estado: cada fila de clase abre Calificaciones de esa clase.
     el.querySelectorAll('.fila-inicio').forEach(tr => {
       tr.onclick = () => ir('cuadricula', { claseId: tr.dataset.clase });
@@ -7684,8 +7760,11 @@ const App = (() => {
     if (btnCur) btnCur.onclick = () => ir('curriculo');
     const btnCl = el.querySelector('#btn-ir-clases');
     if (btnCl) btnCl.onclick = () => ir('clases');
-    // Accesos de montaje (grupos, asignaturas y currículo).
-    el.querySelectorAll('[data-ir]').forEach(b => { b.onclick = () => ir(b.dataset.ir); });
+    // Accesos rápidos y de montaje (grupos, asignaturas y currículo). El
+    // botón «Ver informes» reenvía la pestaña que necesita la cuadrícula.
+    el.querySelectorAll('[data-ir]').forEach(b => {
+      b.onclick = () => ir(b.dataset.ir, b.dataset.tab ? { tab: b.dataset.tab } : undefined);
+    });
   }
 
   // Navegación según la organización elegida en Configuración → Tema y menús.
@@ -7898,7 +7977,7 @@ const App = (() => {
     seccionActual,
     refrescarNav: pintaNav,
     // Paneles de Inicio expuestos para poder comprobarlos sin navegador.
-    panelesInicio: { estado: panelesEstadoHtml, cobertura: panelesCoberturaHtml, aci: panelesAciHtml },
+    panelesInicio: { estado: panelesEstadoHtml, cobertura: panelesCoberturaHtml, aci: panelesAciHtml, pendientes: panelPendientesHtml },
     // Configuración expuesta por el mismo motivo (la cabecera no existe en el arnés).
     abrirAjustes: modalAjustes
   };

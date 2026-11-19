@@ -15,9 +15,9 @@ recordar dónde está cada cosa y consulte informes según una pregunta concreta
 
 | ID | Mejora | Prioridad | Estado |
 |---|---|---|---|
-| **M-01** | **Remodelación de navegación por tareas** (`Inicio · Corregir · Evaluación · Informes · Ajustes`) | Alta | **En curso (Fase 2: 2a y 2b hechas)** |
-| M-02 | Indicador de backup y «Guardar» como acción de copia (con estado) | Alta | Pendiente |
-| M-03 | Unificar «pendientes» (misma unidad y fuente en Inicio y Calificaciones) | Alta | Pendiente |
+| **M-01** | **Remodelación de navegación por tareas** (`Inicio · Corregir · Evaluación · Informes · Ajustes`) | Alta | **En curso (Fase 3 hecha; pendiente Fase 4)** |
+| M-02 | Indicador de backup y «Guardar» como acción de copia (con estado) | Alta | **Parcial (Fase 3)**: aviso destacado y «Hacer backup» en Inicio; falta «Guardar» como acción de copia |
+| M-03 | Unificar «pendientes» (misma unidad y fuente en Inicio y Calificaciones) | Alta | **Hecha (Fase 3)** |
 | M-04 | Chip del ajuste `sinNotaEsCero` visible en Calificaciones | Media | Pendiente |
 | M-05 | Diferenciar visualmente los 3 niveles de navegación (barra / pestañas / chips) | Media | Pendiente |
 | M-06 | Filtro único y contexto visible en Informes (sin selector de periodo duplicado) | Alta | Pendiente |
@@ -27,7 +27,7 @@ recordar dónde está cada cosa y consulte informes según una pregunta concreta
 | M-10 | Tooltips en chips de nivel y códigos de criterio | Media | Pendiente |
 | M-11 | Contraste y tamaño mínimo (≥12 px); no depender solo del color | Alta | Pendiente |
 | M-12 | Modo privacidad (nombres → iniciales) para proyectar/imprimir | Media | Pendiente |
-| M-13 | Inicio adaptativo (plegar montaje/flujo, KPI de pendientes y copia) | Media | Pendiente |
+| M-13 | Inicio adaptativo (plegar montaje/flujo, KPI de pendientes y copia) | Media | **Hecha (Fase 3)** |
 | M-14 | Accesos duplicados: unificar o documentar | Baja | Pendiente |
 | M-15 | Revisar estado activo/hover del menú | Baja | Pendiente |
 | M-16 | Móvil: bottom tab bar y corrección a pantalla completa | Media | **Apartada** (mejora propia) |
@@ -145,7 +145,7 @@ Inicio · Corregir · Evaluación · Informes · Ajustes
 - **Fase 2 — Reubicación**: corrección a Corregir (2b); vistas de preparación
   como subpestañas de Evaluación (2a); Configuración a Ajustes (Fase 1). El
   subnav de Evaluación (`#subnav`) se muestra en todos los modos.
-- **Fase 3 — Inicio**: panel de pendientes, estado de backup y accesos rápidos.
+- **Fase 3 — Inicio**: panel de pendientes, estado de backup y accesos rápidos. **Hecha**.
 - **Fase 4 — Informes**: contexto único, renombrado de subvistas y avisos de
   exclusión.
 - **Fase 5 — Pulido**: 360 px, teclado, estados vacío/carga/error.
@@ -158,3 +158,16 @@ Inicio · Corregir · Evaluación · Informes · Ajustes
 - Ninguna función duplicada en más de dos lugares.
 - Máximo 5 secciones principales.
 - `node tools/checks.js` en verde y `node tools/build-singlefile.js --check`.
+
+---
+
+## 7. Evidencia Fase 3 (2026-11-19)
+
+- `node tools/checks.js` → `TODO OK: 784 comprobaciones`.
+- `node tools/build-singlefile.js` → `dist/evalora.html` (543 KB);
+  `node tools/build-singlefile.js --check` → sincronizado.
+- Inicio: aviso de copia destacado solo con cambios sin copia o sin exportación;
+  panel «Pendientes» con el conteo unificado de `Calc.progresoInstrumento` y
+  botón deshabilitado cuando N=0; accesos rápidos (Corregir, Informes, Crear
+  instrumento, backup); «Montaje» y «Flujo recomendado» en `<details>` cerrados
+  con el montaje completo y abiertos con la app vacía.
