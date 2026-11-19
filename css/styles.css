@@ -161,6 +161,14 @@ body.modo-drawer .topbar, body.modo-drawer main { margin-left: 200px; }
    engranaje) van pegados a la derecha. */
 .actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 
+/* Cola de Corregir: los instrumentos completos van en un desplegable cerrado
+   para no estorbar lo pendiente. */
+.completos-corrige { margin-top: 14px; }
+.completos-corrige > summary {
+  cursor: pointer; padding: 8px 2px; font-weight: 700; color: var(--tinta-suave);
+}
+.completos-corrige > summary:hover { color: var(--acento); }
+
 /* Indicador permanente de copia de seguridad (M-02): punto de color + texto,
    junto al botón «Copia de seguridad». Colores de estado con texto más oscuro
    que el punto (mismo criterio que .badge) para superar el contraste AA. */

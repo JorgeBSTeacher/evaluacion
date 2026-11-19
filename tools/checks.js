@@ -4483,6 +4483,15 @@ async function main() {
     const filaComun = doc.querySelector('#app .fila-corrige[data-inst="iComun"]');
     check('la cola tiene un botón por instrumento pendiente', !!filaComun,
       filaComun ? filaComun.textContent.trim().slice(0, 80) : '(sin botón)');
+    // Los completos (y los sin alumnado) van en un desplegable cerrado, al final,
+    // para que lo pendiente encabece la cola.
+    const desplegable = doc.querySelector('#app details.completos-corrige');
+    check('la cola separa los completos en un desplegable cerrado',
+      !!desplegable && !desplegable.hasAttribute('open'),
+      desplegable ? desplegable.querySelector('summary').textContent.trim() : '(sin desplegable)');
+    check('los pendientes están fuera del desplegable de completos',
+      !!filaComun && !filaComun.closest('details.completos-corrige'),
+      filaComun ? (filaComun.closest('details') ? 'dentro' : 'fuera') : '(sin fila)');
     if (filaComun) filaComun.click();
     check('pulsar «Corregir» en la cola entra en la corrección',
       vistaHtml().includes('id="tabla-corrige"') && vistaHtml().includes('id="btn-siguiente"'),

@@ -1270,6 +1270,27 @@ ${codigos}`;
 
     const lista = Calc.instrumentosPorCorregir(claseSel);
     const pendientes = lista.reduce((s, i) => s + Calc.progresoInstrumento(i).pendientes, 0);
+    // La cola separa lo que falta de lo terminado: los instrumentos completos
+    // (y los sin alumnado) van en un desplegable cerrado, al final.
+    const porHacer = [];
+    const hechos = [];
+    lista.forEach(i => {
+      (Calc.progresoInstrumento(i).pendientes > 0 ? porHacer : hechos).push(i);
+    });
+    let cuerpo = '';
+    if (!lista.length) {
+      cuerpo = '<div class="aviso">Esta clase todavía no tiene instrumentos. Créalos en «Instrumentos».</div>';
+    } else {
+      cuerpo = porHacer.length ? filasCorregirHtml(porHacer)
+        : '<div class="aviso">Nada pendiente: todo está corregido.</div>';
+      if (hechos.length) {
+        cuerpo += `
+        <details class="completos-corrige">
+          <summary>Instrumentos completos · ${hechos.length}</summary>
+          ${filasCorregirHtml(hechos)}
+        </details>`;
+      }
+    }
     el.innerHTML = `
       <section class="card">
         <div class="card-head">
@@ -1280,7 +1301,7 @@ ${codigos}`;
           })), claseSel, 'id', 'nombre')}</select>
         </div>
         <p class="hint">Instrumentos de esta clase, con lo que queda por corregir. Toca uno para corregirlo.</p>
-        ${lista.length ? filasCorregirHtml(lista) : '<div class="aviso">Esta clase todavía no tiene instrumentos. Créalos en «Instrumentos».</div>'}
+        ${cuerpo}
       </section>`;
 
     el.querySelector('#sel-clase').onchange = e => { claseSel = e.target.value; renderCorregir(el); };
