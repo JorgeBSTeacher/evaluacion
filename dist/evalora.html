@@ -2795,7 +2795,12 @@ const Calc = {
 
     // Regla 1: criterios con alto porcentaje de alumnos por debajo del 50%.
     for (const c of criterios || []) {
-      const logros = alumnos
+      // El criterio solo cuenta para el alumnado cuyo currículo lo incluye: un
+      // instrumento común con criterios de varios currículos no debe inflar el
+      // denominador con alumnado al que ese criterio no afecta (D-69).
+      const alumnosDelCriterio = alumnos
+        .filter(a => this.criteriosDeAlumno(claseId, a.id).some(x => x.id === c.id));
+      const logros = alumnosDelCriterio
         .map(a => this.logroCriterioEnInsts(c.id, claseId, a.id, insts))
         .filter(v => v != null);
       if (logros.length < 2) continue;
@@ -2805,13 +2810,13 @@ const Calc = {
         salida.push({
           nivel: 'critico', tipo: 'criterio', criterioId: c.id,
           codigo: c.codigo, pct,
-          texto: `${pct}% de la clase por debajo del 50% en ${ref}`
+          texto: `${pct}% del alumnado por debajo del 50% en ${ref}`
         });
       } else if (pct >= UMB.atencion) {
         salida.push({
           nivel: 'atencion', tipo: 'criterio', criterioId: c.id,
           codigo: c.codigo, pct,
-          texto: `${pct}% de la clase por debajo del 50% en ${ref}`
+          texto: `${pct}% del alumnado por debajo del 50% en ${ref}`
         });
       }
     }
