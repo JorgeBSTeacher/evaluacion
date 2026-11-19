@@ -490,10 +490,9 @@ const CuadriculaView = (() => {
 
     // Instrumentos que todavía tienen alumnado sin nota: es lo que ofrece
     // «Corregir», y también lo que da sentido a imprimir la cuadrícula entera.
+    // Sin pendientes el botón queda deshabilitado, como el de Inicio.
     const porCorregir = insts.filter(i => Calc.progresoInstrumento(i).pendientes > 0).length;
-    const btnCorregir = porCorregir
-      ? `<button class="btn btn-primario no-print" id="btn-corregir">Corregir · ${porCorregir} pendiente${porCorregir === 1 ? '' : 's'}</button>`
-      : '<button class="btn no-print" id="btn-corregir">Corregir</button>';
+    const btnCorregir = `<button class="btn no-print${porCorregir ? ' btn-primario' : ''}" id="btn-corregir"${porCorregir ? '' : ' disabled'}>Corregir${porCorregir ? ` · ${porCorregir} pendiente${porCorregir === 1 ? '' : 's'}` : ''}</button>`;
 
     // El mismo grupo/asignatura se usa en pantalla y en la cabecera impresa.
     const cl = Calc.clase(claseSel);

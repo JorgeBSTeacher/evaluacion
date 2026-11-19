@@ -17,6 +17,7 @@
   --aviso: #b45309;
   --aviso-suave: #fdf3e7;
   --radio: 14px;
+  --pad-x: 18px;
   --sombra: 0 1px 3px rgba(43, 42, 38, .08), 0 8px 24px rgba(43, 42, 38, .06);
 }
 
@@ -34,7 +35,7 @@ body {
 .topbar {
   position: sticky; top: 0; z-index: 50;
   display: flex; align-items: center; gap: 16px;
-  padding: 10px 18px;
+  padding: 10px var(--pad-x);
   background: var(--marca);
   backdrop-filter: blur(6px);
   border-bottom: 1px solid transparent;
@@ -49,7 +50,6 @@ body {
   background: #fff; color: var(--marca); font-weight: 700;
   box-shadow: 0 2px 6px rgba(0, 0, 0, .26);
 }
-.topbar .nav button.peligro-activo { background: rgba(255, 255, 255, .16); color: #fff; }
 .topbar .icon-btn { color: rgba(255, 255, 255, .88); }
 .topbar .icon-btn:hover { background: rgba(255, 255, 255, .2); color: #fff; }
 .topbar .btn { background: rgba(255, 255, 255, .16); border-color: rgba(255, 255, 255, .4); color: #fff; }
@@ -97,7 +97,7 @@ body.modo-drawer .topbar, body.modo-drawer main { margin-left: 200px; }
 body.modo-basic .topbar { flex-wrap: wrap; }
 body.modo-basic #nav {
   order: 3; flex: 1 1 100%;
-  margin: 0 -18px; padding: 6px 12px;
+  margin: 0 calc(-1 * var(--pad-x)); padding: 6px 12px;
   background: #fff; border-top: 1px solid rgba(255,255,255,.22);
   overflow-x: auto;
 }
@@ -151,7 +151,6 @@ body.modo-basic #nav button.activo { background: var(--marca); color: #fff; box-
 }
 .nav button:hover { background: var(--acento-suave); color: var(--acento); }
 .nav button.activo { background: var(--acento); color: #fff; }
-.nav button.peligro-activo { background: var(--ko-suave); color: var(--ko); }
 
 /* Subpestañas de Evaluación: segunda fila de la cabecera (Fase 2a). Botones
    tipo chip; el activo lleva el color de marca. Solo existe estando en
@@ -171,7 +170,7 @@ body.modo-basic #nav button.activo { background: var(--marca); color: #fff; box-
 /* En modo básico la segunda fila es blanca, como la fila de secciones. */
 body.modo-basic .subnav {
   background: #fff; border-top: 1px solid var(--linea);
-  margin: 0 -18px; padding: 6px 12px;
+  margin: 0 calc(-1 * var(--pad-x)); padding: 6px 12px;
 }
 body.modo-basic .subnav button { color: var(--marca); border-color: var(--linea); background: #fff; }
 body.modo-basic .subnav button:hover { background: var(--acento-suave); }
@@ -420,9 +419,8 @@ input:focus, select:focus, textarea:focus { border-color: var(--acento); }
 .badge.ko { background: var(--ko-suave); color: #991b1b; }
 .badge.na { background: var(--na-suave); color: #4b5563; }
 .badge.info { background: var(--acento-suave); color: #3730a3; }
-.badge.warn { background: var(--aviso-suave); color: #92400e; }
-/* Alumnado excluido de un instrumento: ni «sin corregir» ni un 0. */
-.badge.no-realiza { background: var(--aviso-suave); color: #92400e; }
+/* Aviso (pendientes) y alumnado excluido de un instrumento: mismo ámbar. */
+.badge.warn, .badge.no-realiza { background: var(--aviso-suave); color: #92400e; }
 
 /* Estadísticos de la pestaña Distribución (Informe): rejilla de tarjetas. */
 .stat-grid {
@@ -532,7 +530,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--acento); }
 .inicio-pendientes.todo-ok .num-grande { color: var(--ok); }
 details.guia-inicio { margin-bottom: 12px; }
 details.guia-inicio > summary { cursor: pointer; color: var(--tinta-suave); }
-details.guia-inicio > summary h2 { display: inline; }
+details.guia-inicio > summary .guia-titulo { display: inline; font-size: 16px; font-weight: 700; }
 .vacio-grande { text-align: center; color: var(--tinta-suave); padding: 40px 20px; }
 .vacio-grande strong { display: block; font-size: 17px; color: var(--tinta); margin-bottom: 6px; }
 
@@ -672,7 +670,9 @@ details.guia-inicio > summary h2 { display: inline; }
 /* Cabecera de informe: solo existe al imprimir, para que el PDF se lea solo. */
 .solo-impresion { display: none; }
 
-/* Filas del modal «¿ qué quieres corregir? » (de lista, no de acción). */
+/* Filas de «Corregir»: la cola de pendientes y el modal «¿ qué quieres
+   corregir? ». Botón único: título + meta a la izquierda, badge de estado a
+   la derecha. */
 .fila-corrige {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   width: 100%; text-align: left; font: inherit; color: var(--tinta);
@@ -683,6 +683,11 @@ details.guia-inicio > summary h2 { display: inline; }
 .fila-corrige-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .fila-corrige-txt b { font-size: 14px; }
 .fila-corrige-txt small { color: var(--tinta-suave); font-size: 12px; }
+/* Variante compacta en pantallas estrechas: menos aire y sin la meta. */
+@media (max-width: 520px) {
+  .fila-corrige { padding: 7px 10px; margin-bottom: 6px; }
+  .fila-corrige-txt small { display: none; }
+}
 
 /* Filas del banco de instrumentos (modal «Banco de instrumentos», D-48). */
 .fila-banco {

@@ -412,13 +412,14 @@ async function main() {
     // el plegado de las barras es el único filtro y crear se hace en «Instrumentos».
     check('la cuadrícula ya no ofrece desplegable de unidades ni crear instrumentos', !h.includes('id="sel-ud"') && !h.includes('id="add-inst"'), 'aparece sel-ud o add-inst');
     check('la cuadrícula ofrece «Corregir» lo que falta', h.includes('id="btn-corregir"'));
+    check('la cuadrícula ofrece «Corregir» habilitado con pendientes', !/id="btn-corregir"[^>]*disabled/.test(h));
     check('«Corregir» indica cuántos instrumentos están sin corregir', h.includes('Corregir · 1 pendiente</button>'));
     check('la cuadrícula lleva cabecera de informe solo para imprimir', h.includes('class="solo-impresion cabecera-impresion"'));
 
     // El modal «¿Qué quieres corregir?» se apoya en estas filas.
     const filas = app.InstrumentosView.filasCorregirHtml(app.Calc.instrumentosPorCorregir('c1'));
     check('el listado de corrección pone lo pendiente primero', filas.indexOf('data-inst="iComun"') < filas.indexOf('data-inst="iBase"'), filas.replace(/\s+/g, ' ').slice(0, 200));
-    check('el listado de corrección enseña cuánto falta', filas.includes('0/4 corregidos'));
+    check('el listado de corrección enseña cuánto falta', filas.includes('Corregir · 4 pendiente'));
     check('el listado de corrección marca lo que ya está completo', filas.includes('>Completo<'));
     check('cada fila lleva su progreso junto al título', filas.includes('Control A (base)') && filas.includes('Control · T1 · UD1'));
 
@@ -500,6 +501,16 @@ async function main() {
     const hSinPleg = elSinPleg.innerHTML;
     check('sin corregir, la media de la UD plegada muestra «—»',
       hSinPleg.includes('celda-plegada num" style="background:') && hSinPleg.includes('badge na">—</span>'));
+    // Con todo corregido (estadoLegacy: el único instrumento está completo)
+    // el botón sale deshabilitado, como el de Inicio.
+    const app8 = cargarApp();
+    app8.Storage.load();
+    await importarJson(app8, estadoLegacy());
+    const el8 = makeEl();
+    app8.CuadriculaView.render(el8);
+    check('sin pendientes el botón «Corregir» sale deshabilitado',
+      /id="btn-corregir" disabled>Corregir<\/button>/.test(el8.innerHTML),
+      (el8.innerHTML.match(/id="btn-corregir"[^>]*>[^<]*/) || ['(sin botón)'])[0]);
 
     // Con un grupo grande debe aparecer el buscador de alumnado, en todas las pestañas.
     const est = estadoAci();
@@ -3020,12 +3031,16 @@ async function main() {
       !!aviso && aviso.classList.contains('aviso-pendiente') && /Hacer backup/.test(aviso.textContent),
       aviso ? aviso.textContent.replace(/\s+/g, ' ').slice(0, 120) : '(sin aviso)');
     check('el aviso discreto de copia sigue en su sitio', !!appEl.querySelector('#aviso-copia'));
+    const discreto = appEl.querySelector('#aviso-copia') || {};
+    check('con aviso destacado, el discreto no repite el texto (solo botones)',
+      (discreto.innerHTML || '').trim() === '',
+      JSON.stringify((discreto.textContent || '').slice(0, 80)));
 
-    check('los accesos rápidos cubren corregir, informes, instrumento y backup',
-      !!appEl.querySelector('[data-ir="corregir"]')
-      && !!appEl.querySelector('[data-ir="informes"]')
+    check('los accesos rápidos cubren informes, instrumento y backup (sin duplicar «Corregir»)',
+      !!appEl.querySelector('[data-ir="informes"]')
       && !!appEl.querySelector('[data-ir="instrumentos"]')
-      && !!appEl.querySelector('#btn-backup-rapido'),
+      && !!appEl.querySelector('#btn-backup-rapido')
+      && !appEl.querySelector('[data-ir="corregir"]'),
       Array.from(appEl.querySelectorAll('[data-ir]')).map(b => b.dataset.ir).join(','));
     const btnInf = appEl.querySelector('[data-ir="informes"]');
     if (btnInf) btnInf.click();
@@ -3043,6 +3058,15 @@ async function main() {
     const guias = appEl.querySelectorAll('details.guia-inicio');
     check('con el montaje completo la guía llega plegada',
       guias.length === 2 && Array.from(guias).every(g => !g.hasAttribute('open')), String(guias.length));
+    // HTML válido: summary solo admite phrasing content (los títulos van en <span>).
+    check('los títulos de la guía son <span> válidos dentro de <summary>',
+      Array.from(guias).every(g => !g.querySelector('summary h2') && !!g.querySelector('summary .guia-titulo')),
+      Array.from(guias).map(g => g.querySelector('summary') ? g.querySelector('summary').innerHTML : '?').join(' | '));
+    check('la guía usa el vocabulario nuevo (Corregir e informes)',
+      /<b>Corrige<\/b> desde la sección «Corregir»/.test(appEl.innerHTML)
+      && /Revisa los <b>informes<\/b>/.test(appEl.innerHTML)
+      && !appEl.innerHTML.includes('Revisa el <b>Informe</b>'),
+      (appEl.innerHTML.match(/<li>(?:<b>Corrige|Revisa)[^<]*(?:<[^>]*>[^<]*)*<\/li>/) || [''])[0]);
     const appVacia = cargarApp({ dom: true });
     appVacia.Storage.load();
     appVacia.App.ir('inicio');
@@ -4304,7 +4328,7 @@ async function main() {
       && /data-inst=/.test(vistaHtml()) && /Corregir · \d+ pendiente/.test(vistaHtml()),
       app.App.seccionActual() + ' · ' + vistaHtml().slice(0, 160));
     check('la cola muestra el progreso de cada instrumento',
-      vistaHtml().includes('0/4 corregidos') && vistaHtml().includes('Control · T1 · UD1'),
+      /Corregir · \d+ pendiente/.test(vistaHtml()) && vistaHtml().includes('Control · T1 · UD1'),
       vistaHtml().slice(0, 220));
     check('fuera de Evaluación no hay subnav', !doc.getElementById('subnav'),
       doc.getElementById('subnav') ? 'sigue visible' : '');
@@ -4439,6 +4463,36 @@ async function main() {
     check('el subnav se ve también en el modo barra lateral',
       !!subnav() && subnav().querySelectorAll('button').length === 5,
       subnav() ? String(subnav().querySelectorAll('button').length) : '(sin subnav)');
+  }
+
+  console.log('\n== Estados vacios con salida (Corregir e Informes) ==');
+  {
+    const app = cargarApp({ dom: true });
+    app.Storage.load();
+    await importarJson(app, estadoAci());
+    // Se vacían las clases a mano: es el estado «todavía no hay nada montado».
+    app.Storage.db.clases = [];
+    const doc = app.document;
+    const vistaHtml = () => doc.getElementById('app').innerHTML;
+
+    app.App.ir('corregir');
+    check('Corregir sin clases muestra el aviso y «Ir a Evaluación»',
+      vistaHtml().includes('No hay clases todavía') && !!doc.querySelector('#app #btn-ir-evaluacion'),
+      vistaHtml().slice(0, 160));
+    const btnEval = doc.querySelector('#app #btn-ir-evaluacion');
+    if (btnEval) btnEval.click();
+    check('«Ir a Evaluación» sale del estado vacío',
+      app.App.seccionActual() === 'evaluacion', app.App.seccionActual());
+
+    app.App.ir('informes');
+    check('Informes sin clase muestra el aviso y «Abrir Ajustes»',
+      vistaHtml().includes('Selecciona una clase') && !!doc.querySelector('#app #btn-informe-ajustes'),
+      vistaHtml().slice(0, 160));
+    const btnAjustes = doc.querySelector('#app #btn-informe-ajustes');
+    if (btnAjustes) btnAjustes.click();
+    check('«Abrir Ajustes» abre Configuración',
+      !!doc.getElementById('tabs-ajustes'),
+      doc.getElementById('tabs-ajustes') ? 'modal abierto' : '(sin modal)');
   }
 
   console.log('\n== Informes: vista propia y autónoma (Fase 4a) ==');

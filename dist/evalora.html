@@ -35,6 +35,7 @@
   --aviso: #b45309;
   --aviso-suave: #fdf3e7;
   --radio: 14px;
+  --pad-x: 18px;
   --sombra: 0 1px 3px rgba(43, 42, 38, .08), 0 8px 24px rgba(43, 42, 38, .06);
 }
 
@@ -52,7 +53,7 @@ body {
 .topbar {
   position: sticky; top: 0; z-index: 50;
   display: flex; align-items: center; gap: 16px;
-  padding: 10px 18px;
+  padding: 10px var(--pad-x);
   background: var(--marca);
   backdrop-filter: blur(6px);
   border-bottom: 1px solid transparent;
@@ -67,7 +68,6 @@ body {
   background: #fff; color: var(--marca); font-weight: 700;
   box-shadow: 0 2px 6px rgba(0, 0, 0, .26);
 }
-.topbar .nav button.peligro-activo { background: rgba(255, 255, 255, .16); color: #fff; }
 .topbar .icon-btn { color: rgba(255, 255, 255, .88); }
 .topbar .icon-btn:hover { background: rgba(255, 255, 255, .2); color: #fff; }
 .topbar .btn { background: rgba(255, 255, 255, .16); border-color: rgba(255, 255, 255, .4); color: #fff; }
@@ -115,7 +115,7 @@ body.modo-drawer .topbar, body.modo-drawer main { margin-left: 200px; }
 body.modo-basic .topbar { flex-wrap: wrap; }
 body.modo-basic #nav {
   order: 3; flex: 1 1 100%;
-  margin: 0 -18px; padding: 6px 12px;
+  margin: 0 calc(-1 * var(--pad-x)); padding: 6px 12px;
   background: #fff; border-top: 1px solid rgba(255,255,255,.22);
   overflow-x: auto;
 }
@@ -169,7 +169,6 @@ body.modo-basic #nav button.activo { background: var(--marca); color: #fff; box-
 }
 .nav button:hover { background: var(--acento-suave); color: var(--acento); }
 .nav button.activo { background: var(--acento); color: #fff; }
-.nav button.peligro-activo { background: var(--ko-suave); color: var(--ko); }
 
 /* Subpestañas de Evaluación: segunda fila de la cabecera (Fase 2a). Botones
    tipo chip; el activo lleva el color de marca. Solo existe estando en
@@ -189,7 +188,7 @@ body.modo-basic #nav button.activo { background: var(--marca); color: #fff; box-
 /* En modo básico la segunda fila es blanca, como la fila de secciones. */
 body.modo-basic .subnav {
   background: #fff; border-top: 1px solid var(--linea);
-  margin: 0 -18px; padding: 6px 12px;
+  margin: 0 calc(-1 * var(--pad-x)); padding: 6px 12px;
 }
 body.modo-basic .subnav button { color: var(--marca); border-color: var(--linea); background: #fff; }
 body.modo-basic .subnav button:hover { background: var(--acento-suave); }
@@ -438,9 +437,8 @@ input:focus, select:focus, textarea:focus { border-color: var(--acento); }
 .badge.ko { background: var(--ko-suave); color: #991b1b; }
 .badge.na { background: var(--na-suave); color: #4b5563; }
 .badge.info { background: var(--acento-suave); color: #3730a3; }
-.badge.warn { background: var(--aviso-suave); color: #92400e; }
-/* Alumnado excluido de un instrumento: ni «sin corregir» ni un 0. */
-.badge.no-realiza { background: var(--aviso-suave); color: #92400e; }
+/* Aviso (pendientes) y alumnado excluido de un instrumento: mismo ámbar. */
+.badge.warn, .badge.no-realiza { background: var(--aviso-suave); color: #92400e; }
 
 /* Estadísticos de la pestaña Distribución (Informe): rejilla de tarjetas. */
 .stat-grid {
@@ -550,7 +548,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--acento); }
 .inicio-pendientes.todo-ok .num-grande { color: var(--ok); }
 details.guia-inicio { margin-bottom: 12px; }
 details.guia-inicio > summary { cursor: pointer; color: var(--tinta-suave); }
-details.guia-inicio > summary h2 { display: inline; }
+details.guia-inicio > summary .guia-titulo { display: inline; font-size: 16px; font-weight: 700; }
 .vacio-grande { text-align: center; color: var(--tinta-suave); padding: 40px 20px; }
 .vacio-grande strong { display: block; font-size: 17px; color: var(--tinta); margin-bottom: 6px; }
 
@@ -690,7 +688,9 @@ details.guia-inicio > summary h2 { display: inline; }
 /* Cabecera de informe: solo existe al imprimir, para que el PDF se lea solo. */
 .solo-impresion { display: none; }
 
-/* Filas del modal «¿ qué quieres corregir? » (de lista, no de acción). */
+/* Filas de «Corregir»: la cola de pendientes y el modal «¿ qué quieres
+   corregir? ». Botón único: título + meta a la izquierda, badge de estado a
+   la derecha. */
 .fila-corrige {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   width: 100%; text-align: left; font: inherit; color: var(--tinta);
@@ -701,6 +701,11 @@ details.guia-inicio > summary h2 { display: inline; }
 .fila-corrige-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .fila-corrige-txt b { font-size: 14px; }
 .fila-corrige-txt small { color: var(--tinta-suave); font-size: 12px; }
+/* Variante compacta en pantallas estrechas: menos aire y sin la meta. */
+@media (max-width: 520px) {
+  .fila-corrige { padding: 7px 10px; margin-bottom: 6px; }
+  .fila-corrige-txt small { display: none; }
+}
 
 /* Filas del banco de instrumentos (modal «Banco de instrumentos», D-48). */
 .fila-banco {
@@ -4723,23 +4728,22 @@ function columnasNivel(filas) {
   }
 
   // «¿Qué quieres corregir?»: listado de la clase ordenado por lo que falta.
-  // `alElegir(instrumentoId)` decide a dónde lleva tocar cada fila.
-  // Las filas se generan aparte para poder comprobarlas sin navegador.
-  // `conBoton` añade el botón «Corregir · N pendientes» que usa la vista
-  // «Corregir» (la cola); el modal de «¿Qué quieres corregir?» lo deja en false.
-  function filasCorregirHtml(lista, conBoton) {
+  // Cada fila es un botón único: título a la izquierda, tipo/periodo como
+  // <small> y badge de estado (Corregir/Completo) a la derecha; el click
+  // entra en la corrección. Las filas se generan aparte para poder
+  // comprobarlas sin navegador.
+  function filasCorregirHtml(lista) {
     return lista.map(i => {
       const p = Calc.progresoInstrumento(i);
       let marca = 'Sin alumnado', clase = 'na';
       if (p.total) {
         if (!p.pendientes) { marca = 'Completo'; clase = 'ok'; }
-        else { marca = `${p.hechos}/${p.total} corregidos`; clase = p.hechos ? 'info' : 'na'; }
+        else { marca = `Corregir · ${p.pendientes} pendiente${p.pendientes === 1 ? '' : 's'}`; clase = 'warn'; }
       }
       const meta = [i.tipo, i.periodo, i.unidad || 'sin unidad'].join(' · ');
       return `<button type="button" class="fila-corrige" data-inst="${i.id}">
         <span class="fila-corrige-txt"><b>${Utils.esc(i.titulo)}</b><small>${Utils.esc(meta)}</small></span>
         <span class="badge ${clase}">${marca}</span>
-        ${conBoton ? `<span class="btn btn-mini btn-primario fila-corregir-btn">Corregir · ${p.pendientes} pendiente${p.pendientes === 1 ? '' : 's'}</span>` : ''}
       </button>`;
     }).join('');
   }
@@ -5251,7 +5255,7 @@ ${codigos}`;
 
   // Vista «Corregir» (sección propia, Fase 2b): la cola de pendientes de la
   // clase. Reutiliza el selector de clase de `render` y las filas de
-  // `filasCorregirHtml` (con el botón «Corregir · N pendientes»). Al corregir
+  // `filasCorregirHtml` (con el badge de estado a la derecha). Al corregir
   // un instrumento, «Volver» regresa a esta cola.
   function renderCorregir(el) {
     const db = Storage.db;
@@ -5261,7 +5265,14 @@ ${codigos}`;
       el.innerHTML = `<section class="card"><div class="vacio-grande">
         <strong>No hay clases todavía</strong>
         Crea una asignatura y una clase para empezar a evaluar.
+        <div class="acciones" style="justify-content:center;margin-top:12px">
+          <button class="btn btn-primario" id="btn-ir-evaluacion">Ir a Evaluación</button>
+        </div>
       </div></section>`;
+      const btnEval = el.querySelector('#btn-ir-evaluacion');
+      // «Evaluación» es una sección del menú (agrupa la cuadrícula), no una
+      // vista: se abre por su sección, con la pestaña de la cuadrícula.
+      if (btnEval) btnEval.onclick = () => App.irSeccion('evaluacion');
       return;
     }
 
@@ -5277,7 +5288,7 @@ ${codigos}`;
           })), claseSel, 'id', 'nombre')}</select>
         </div>
         <p class="hint">Instrumentos de esta clase, con lo que queda por corregir. Toca uno para corregirlo.</p>
-        ${lista.length ? filasCorregirHtml(lista, true) : '<div class="aviso">Esta clase todavía no tiene instrumentos. Créalos en «Instrumentos».</div>'}
+        ${lista.length ? filasCorregirHtml(lista) : '<div class="aviso">Esta clase todavía no tiene instrumentos. Créalos en «Instrumentos».</div>'}
       </section>`;
 
     el.querySelector('#sel-clase').onchange = e => { claseSel = e.target.value; renderCorregir(el); };
@@ -6192,7 +6203,12 @@ const InformeView = (function () {
     contenedor = el;
 
     if (!claseSel || !Calc.clase(claseSel)) {
-      el.innerHTML = '<div class="aviso">Selecciona una clase para ver el informe.</div>';
+      el.innerHTML = `<div class="aviso">Selecciona una clase para ver el informe.
+        <div class="acciones" style="margin-top:8px">
+          <button class="btn btn-primario" id="btn-informe-ajustes">Abrir Ajustes</button>
+        </div></div>`;
+      const btnAjustes = el.querySelector('#btn-informe-ajustes');
+      if (btnAjustes) btnAjustes.onclick = () => App.abrirAjustes();
       return;
     }
 
@@ -6779,10 +6795,9 @@ const CuadriculaView = (() => {
 
     // Instrumentos que todavía tienen alumnado sin nota: es lo que ofrece
     // «Corregir», y también lo que da sentido a imprimir la cuadrícula entera.
+    // Sin pendientes el botón queda deshabilitado, como el de Inicio.
     const porCorregir = insts.filter(i => Calc.progresoInstrumento(i).pendientes > 0).length;
-    const btnCorregir = porCorregir
-      ? `<button class="btn btn-primario no-print" id="btn-corregir">Corregir · ${porCorregir} pendiente${porCorregir === 1 ? '' : 's'}</button>`
-      : '<button class="btn no-print" id="btn-corregir">Corregir</button>';
+    const btnCorregir = `<button class="btn no-print${porCorregir ? ' btn-primario' : ''}" id="btn-corregir"${porCorregir ? '' : ' disabled'}>Corregir${porCorregir ? ` · ${porCorregir} pendiente${porCorregir === 1 ? '' : 's'}` : ''}</button>`;
 
     // El mismo grupo/asignatura se usa en pantalla y en la cabecera impresa.
     const cl = Calc.clase(claseSel);
@@ -7260,7 +7275,7 @@ const App = (() => {
     { id: 'inicio', label: 'Inicio', render: renderInicio },
     { id: 'alumnos', label: 'Alumnos y grupos', render: el => AlumnosView.render(el) },
     { id: 'clases', label: 'Asignaturas y clases', render: el => ClasesView.render(el) },
-    { id: 'curriculo', label: 'Currículo', render: el => CurriculoView.render(el), riesgo: true },
+    { id: 'curriculo', label: 'Currículo', render: el => CurriculoView.render(el) },
     { id: 'instrumentos', label: 'Instrumentos', render: el => InstrumentosView.render(el) },
     // Sección «Corregir»: la cola de pendientes de la clase, no el listado de
     // instrumentos (que pasa a ser subpestaña de Evaluación).
@@ -7274,7 +7289,7 @@ const App = (() => {
     // «Montaje» agrupa las vistas de preparación (grupos, asignaturas y
     // currículo) para que no atesten la nav: sigue accesible por su hash y
     // desde Inicio/Montaje, ya no como botón del modo básico.
-    { id: 'montaje', label: 'Montaje', render: renderMontaje, soloBasica: true }
+    { id: 'montaje', label: 'Montaje', render: renderMontaje }
   ];
   // Secciones del menú principal (Fase 2 de la remodelación de la navegación):
   // Inicio · Corregir · Evaluación · Informes · Ajustes. Corregir tiene su
@@ -7326,8 +7341,12 @@ const App = (() => {
   }
 
   // Mensaje de aviso según el estado de la copia de seguridad (R-01).
-  function avisoCopiaHtml(est) {
+  // `conDestacado`: cuando el aviso destacado ya muestra el texto (nunca
+  // exportado o cambios sin copiar), el discreto no lo repite: solo aporta
+  // los botones (carpeta y copia previa).
+  function avisoCopiaHtml(est, conDestacado) {
     if (!est.hayDatos) return '';
+    if (conDestacado && (est.nivel === 'nunca' || est.nivel === 'pendiente')) return '';
     if (est.nivel === 'nunca') {
       return '<div class="aviso" style="margin:8px 0 0;background:#fef2f2;border-color:#fecaca;color:#991b1b"><b>Todavía no has hecho ninguna copia de seguridad.</b> Tus notas solo están en este navegador: expórtalas al USB.</div>';
     }
@@ -7804,7 +7823,6 @@ const App = (() => {
       <section class="card no-print">
         <h2 class="subtitulo" style="margin:0 0 8px">Accesos rápidos</h2>
         <div class="acciones">
-          <button class="btn btn-primario" data-ir="corregir">Corregir pendientes</button>
           <button class="btn" data-ir="informes">Ver informes</button>
           <button class="btn" data-ir="instrumentos">Crear instrumento</button>
           <button class="btn" id="btn-backup-rapido">Hacer backup</button>
@@ -7814,7 +7832,7 @@ const App = (() => {
       ${panelesCoberturaHtml()}
       ${panelesAciHtml()}
       <details class="guia-inicio" ${guiaAbierta ? 'open' : ''}>
-        <summary><h2 class="subtitulo" style="margin:0">Montaje</h2></summary>
+        <summary><span class="guia-titulo">Montaje</span></summary>
         <section class="card no-print">
           <p style="color:var(--tinta-suave);margin:0 0 10px">Grupos, asignaturas y currículo. Se preparan una vez y luego se dejan atrás.</p>
           <div class="acciones">
@@ -7825,15 +7843,15 @@ const App = (() => {
         </section>
       </details>
       <details class="guia-inicio" ${guiaAbierta ? 'open' : ''}>
-        <summary><h2 class="subtitulo" style="margin:0">Flujo recomendado</h2></summary>
+        <summary><span class="guia-titulo">Flujo recomendado</span></summary>
         <section class="card">
           <ol class="flujo" style="color:var(--tinta-suave);margin:0;padding-left:20px">
             <li>Crea <b>grupos</b> e inscribe <b>alumnos</b>.</li>
             <li>Crea <b>asignaturas</b> y sus <b>clases</b> (asignatura · grupo). Si vas a trabajar con adaptaciones, crea en la clase sus <b>niveles ACI</b>.</li>
             <li>Define en <b>Currículo</b> las competencias específicas, los criterios y sus ponderaciones (suman 100%).</li>
             <li>Crea <b>instrumentos</b>: control, rúbrica, proyecto u otro, mapeando cada apartado a criterios. Si ya tienes una rúbrica hecha (por ejemplo, con una IA), impórtala con «Importar rúbrica».</li>
-            <li><b>Corrige</b> desde «Calificaciones» (botón «Corregir») o desde el propio instrumento.</li>
-            <li>Revisa el <b>Informe</b>: hallazgos, criterios con dificultades, distribución de notas y alumnos en riesgo. Imprime o exporta a PDF el informe que necesites.</li>
+            <li><b>Corrige</b> desde la sección «Corregir» (o desde la Cuadrícula).</li>
+            <li>Revisa los <b>informes</b> (Atención, Criterios, Alumnos en riesgo). Imprime o exporta a PDF el informe que necesites.</li>
             <li>Exporta el <b>backup</b> al terminar cada sesión.</li>
           </ol>
         </section>
@@ -7855,7 +7873,7 @@ const App = (() => {
       if (dir) dirActual = dir;
       const ultima = db.meta && db.meta.ultimaExportacion ? Utils.fechaLegible(new Date(db.meta.ultimaExportacion)) + ' a las ' + new Date(db.meta.ultimaExportacion).toTimeString().slice(0, 5) : 'nunca';
       info.innerHTML = `última copia <b>${ultima}</b>${dirActual ? ` · destino: carpeta «${Utils.esc(dirActual.name)}»` : ''}`;
-      if (avisoCopia) avisoCopia.innerHTML = avisoCopiaHtml(Storage.estadoCopia());
+      if (avisoCopia) avisoCopia.innerHTML = avisoCopiaHtml(Storage.estadoCopia(), copiaPendiente);
     };
     pintaInfo(null);
     Storage.idbLeer('dir').then(pintaInfo).catch(() => {});
@@ -7909,7 +7927,7 @@ const App = (() => {
     // Accesos rápidos y de montaje (grupos, asignaturas y currículo).
     // «Ver informes» abre la vista propia de Informes (Fase 4a).
     el.querySelectorAll('[data-ir]').forEach(b => {
-      b.onclick = () => ir(b.dataset.ir, b.dataset.tab ? { tab: b.dataset.tab } : undefined);
+      b.onclick = () => ir(b.dataset.ir);
     });
   }
 

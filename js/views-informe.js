@@ -819,7 +819,12 @@ const InformeView = (function () {
     contenedor = el;
 
     if (!claseSel || !Calc.clase(claseSel)) {
-      el.innerHTML = '<div class="aviso">Selecciona una clase para ver el informe.</div>';
+      el.innerHTML = `<div class="aviso">Selecciona una clase para ver el informe.
+        <div class="acciones" style="margin-top:8px">
+          <button class="btn btn-primario" id="btn-informe-ajustes">Abrir Ajustes</button>
+        </div></div>`;
+      const btnAjustes = el.querySelector('#btn-informe-ajustes');
+      if (btnAjustes) btnAjustes.onclick = () => App.abrirAjustes();
       return;
     }
 

@@ -3,7 +3,7 @@ const App = (() => {
     { id: 'inicio', label: 'Inicio', render: renderInicio },
     { id: 'alumnos', label: 'Alumnos y grupos', render: el => AlumnosView.render(el) },
     { id: 'clases', label: 'Asignaturas y clases', render: el => ClasesView.render(el) },
-    { id: 'curriculo', label: 'Currículo', render: el => CurriculoView.render(el), riesgo: true },
+    { id: 'curriculo', label: 'Currículo', render: el => CurriculoView.render(el) },
     { id: 'instrumentos', label: 'Instrumentos', render: el => InstrumentosView.render(el) },
     // Sección «Corregir»: la cola de pendientes de la clase, no el listado de
     // instrumentos (que pasa a ser subpestaña de Evaluación).
@@ -17,7 +17,7 @@ const App = (() => {
     // «Montaje» agrupa las vistas de preparación (grupos, asignaturas y
     // currículo) para que no atesten la nav: sigue accesible por su hash y
     // desde Inicio/Montaje, ya no como botón del modo básico.
-    { id: 'montaje', label: 'Montaje', render: renderMontaje, soloBasica: true }
+    { id: 'montaje', label: 'Montaje', render: renderMontaje }
   ];
   // Secciones del menú principal (Fase 2 de la remodelación de la navegación):
   // Inicio · Corregir · Evaluación · Informes · Ajustes. Corregir tiene su
@@ -69,8 +69,12 @@ const App = (() => {
   }
 
   // Mensaje de aviso según el estado de la copia de seguridad (R-01).
-  function avisoCopiaHtml(est) {
+  // `conDestacado`: cuando el aviso destacado ya muestra el texto (nunca
+  // exportado o cambios sin copiar), el discreto no lo repite: solo aporta
+  // los botones (carpeta y copia previa).
+  function avisoCopiaHtml(est, conDestacado) {
     if (!est.hayDatos) return '';
+    if (conDestacado && (est.nivel === 'nunca' || est.nivel === 'pendiente')) return '';
     if (est.nivel === 'nunca') {
       return '<div class="aviso" style="margin:8px 0 0;background:#fef2f2;border-color:#fecaca;color:#991b1b"><b>Todavía no has hecho ninguna copia de seguridad.</b> Tus notas solo están en este navegador: expórtalas al USB.</div>';
     }
@@ -547,7 +551,6 @@ const App = (() => {
       <section class="card no-print">
         <h2 class="subtitulo" style="margin:0 0 8px">Accesos rápidos</h2>
         <div class="acciones">
-          <button class="btn btn-primario" data-ir="corregir">Corregir pendientes</button>
           <button class="btn" data-ir="informes">Ver informes</button>
           <button class="btn" data-ir="instrumentos">Crear instrumento</button>
           <button class="btn" id="btn-backup-rapido">Hacer backup</button>
@@ -557,7 +560,7 @@ const App = (() => {
       ${panelesCoberturaHtml()}
       ${panelesAciHtml()}
       <details class="guia-inicio" ${guiaAbierta ? 'open' : ''}>
-        <summary><h2 class="subtitulo" style="margin:0">Montaje</h2></summary>
+        <summary><span class="guia-titulo">Montaje</span></summary>
         <section class="card no-print">
           <p style="color:var(--tinta-suave);margin:0 0 10px">Grupos, asignaturas y currículo. Se preparan una vez y luego se dejan atrás.</p>
           <div class="acciones">
@@ -568,15 +571,15 @@ const App = (() => {
         </section>
       </details>
       <details class="guia-inicio" ${guiaAbierta ? 'open' : ''}>
-        <summary><h2 class="subtitulo" style="margin:0">Flujo recomendado</h2></summary>
+        <summary><span class="guia-titulo">Flujo recomendado</span></summary>
         <section class="card">
           <ol class="flujo" style="color:var(--tinta-suave);margin:0;padding-left:20px">
             <li>Crea <b>grupos</b> e inscribe <b>alumnos</b>.</li>
             <li>Crea <b>asignaturas</b> y sus <b>clases</b> (asignatura · grupo). Si vas a trabajar con adaptaciones, crea en la clase sus <b>niveles ACI</b>.</li>
             <li>Define en <b>Currículo</b> las competencias específicas, los criterios y sus ponderaciones (suman 100%).</li>
             <li>Crea <b>instrumentos</b>: control, rúbrica, proyecto u otro, mapeando cada apartado a criterios. Si ya tienes una rúbrica hecha (por ejemplo, con una IA), impórtala con «Importar rúbrica».</li>
-            <li><b>Corrige</b> desde «Calificaciones» (botón «Corregir») o desde el propio instrumento.</li>
-            <li>Revisa el <b>Informe</b>: hallazgos, criterios con dificultades, distribución de notas y alumnos en riesgo. Imprime o exporta a PDF el informe que necesites.</li>
+            <li><b>Corrige</b> desde la sección «Corregir» (o desde la Cuadrícula).</li>
+            <li>Revisa los <b>informes</b> (Atención, Criterios, Alumnos en riesgo). Imprime o exporta a PDF el informe que necesites.</li>
             <li>Exporta el <b>backup</b> al terminar cada sesión.</li>
           </ol>
         </section>
@@ -598,7 +601,7 @@ const App = (() => {
       if (dir) dirActual = dir;
       const ultima = db.meta && db.meta.ultimaExportacion ? Utils.fechaLegible(new Date(db.meta.ultimaExportacion)) + ' a las ' + new Date(db.meta.ultimaExportacion).toTimeString().slice(0, 5) : 'nunca';
       info.innerHTML = `última copia <b>${ultima}</b>${dirActual ? ` · destino: carpeta «${Utils.esc(dirActual.name)}»` : ''}`;
-      if (avisoCopia) avisoCopia.innerHTML = avisoCopiaHtml(Storage.estadoCopia());
+      if (avisoCopia) avisoCopia.innerHTML = avisoCopiaHtml(Storage.estadoCopia(), copiaPendiente);
     };
     pintaInfo(null);
     Storage.idbLeer('dir').then(pintaInfo).catch(() => {});
@@ -652,7 +655,7 @@ const App = (() => {
     // Accesos rápidos y de montaje (grupos, asignaturas y currículo).
     // «Ver informes» abre la vista propia de Informes (Fase 4a).
     el.querySelectorAll('[data-ir]').forEach(b => {
-      b.onclick = () => ir(b.dataset.ir, b.dataset.tab ? { tab: b.dataset.tab } : undefined);
+      b.onclick = () => ir(b.dataset.ir);
     });
   }
 
