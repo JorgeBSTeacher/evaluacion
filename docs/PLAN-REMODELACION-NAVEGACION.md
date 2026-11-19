@@ -19,7 +19,7 @@ recordar dónde está cada cosa y consulte informes según una pregunta concreta
 | M-02 | Indicador de backup y «Guardar» como acción de copia (con estado) | Alta | **Parcial (Fase 3)**: aviso destacado y «Hacer backup» en Inicio; falta «Guardar» como acción de copia |
 | M-03 | Unificar «pendientes» (misma unidad y fuente en Inicio y Calificaciones) | Alta | **Hecha (Fase 3)** |
 | M-04 | Chip del ajuste `sinNotaEsCero` visible en Calificaciones | Media | Pendiente |
-| M-05 | Diferenciar visualmente los 3 niveles de navegación (barra / pestañas / chips) | Media | Pendiente |
+| M-05 | Diferenciar visualmente los 3 niveles de navegación (barra / pestañas / chips) | Media | **Hecha** — nivel 2 como pestañas subrayadas (subnav en fila blanca y pestañas de la Cuadrícula) y nivel 3 como chips pequeños |
 | M-06 | Filtro único y contexto visible en Informes (sin selector de periodo duplicado) | Alta | **Hecha (Fase 4a)**: Informes es una vista propia con su contexto completo (clase, nivel, periodo, unidad, instrumento); ya no hay selector duplicado con la Cuadrícula |
 | M-07 | Renombrar y reagrupar las subvistas de Informe | Media | **Hecha (Fase 4b)**: 5 subvistas `Resumen · Atención · Criterios · Alumnos · Instrumentos`; la Distribución vive dentro del Resumen y los ids antiguos quedan como alias |
 | M-08 | Menú ⋯ por instrumento (dejar 2 acciones visibles) | Media | Pendiente |

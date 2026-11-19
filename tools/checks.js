@@ -4464,6 +4464,33 @@ async function main() {
     // comprueba aquí, con la pestaña de la cuadrícula en «Cuadrícula».
     app.App.ir('cuadricula');
     check('alias ir("cuadricula") → Evaluación', app.App.seccionActual() === 'evaluacion', app.App.seccionActual());
+    // M-05: jerarquía visual de la navegación (barra / pestañas / chips). Cada
+    // nivel lleva contenedor y estructura propios: el subnav son botones
+    // propios (sin chips), las pestañas de la Cuadrícula viven en #tabs con
+    // data-tab y las subvistas del Informe son chips con data-subvista.
+    check('M-05 · el subnav es una fila de botones propios, sin chips de pestaña',
+      !!subnav() && subnav().classList.contains('subnav')
+      && subnav().querySelectorAll('button').length === 5
+      && subnav().querySelectorAll('.chip').length === 0
+      && subnav().querySelectorAll('[data-tab]').length === 0
+      && subnav().querySelectorAll('[data-subvista]').length === 0,
+      subnav() ? 'botones=' + subnav().querySelectorAll('button').length : '(sin subnav)');
+    const tabsM05 = doc.getElementById('tabs');
+    check('M-05 · las pestañas de la Cuadrícula viven en #tabs con data-tab y sin data-subvista',
+      !!tabsM05 && tabsM05.querySelectorAll('.chip').length === 3
+      && tabsM05.querySelectorAll('[data-tab]').length === 3
+      && tabsM05.querySelectorAll('[data-subvista]').length === 0,
+      tabsM05 ? 'tabs=' + tabsM05.querySelectorAll('[data-tab]').length : '(sin #tabs)');
+    // Y en el CSS: nivel 2 subrayado sobre fila blanca (subnav) o sin píldora
+    // (#tabs), con el activo en color de marca.
+    const cssM05 = fs.readFileSync(path.join(raiz, 'css', 'styles.css'), 'utf8');
+    check('M-05 · el CSS vuelve el subnav fila blanca con pestañas subrayadas',
+      /\.subnav \{[^}]*background: #fff/.test(cssM05)
+      && /\.subnav button \{[^}]*border-bottom: 2px solid transparent/.test(cssM05)
+      && /\.subnav button\.activo \{[^}]*border-bottom-color: var\(--marca\)/.test(cssM05));
+    check('M-05 · las pestañas de Cuadrícula usan el mismo lenguaje subrayado sin píldora',
+      /#tabs \.chip \{[^}]*border-bottom: 2px solid transparent/.test(cssM05)
+      && /#tabs \.chip\.on \{[^}]*border-bottom-color: var\(--marca\)/.test(cssM05));
     check('pulsar Informes abre la vista propia de Informes',
       pulsar('informes') && app.App.seccionActual() === 'informes'
       && !!doc.querySelector('#app #alc-clase') && !!doc.querySelector('#app #alc-nivel')
@@ -4658,6 +4685,15 @@ async function main() {
       && chips.map(c => c.dataset.subvista).join('·') === 'resumen·atencion·criterios·alumnos·instrumentos'
       && chips.map(c => c.textContent.trim()).join('·') === 'Resumen·Atención·Criterios·Alumnos·Instrumentos',
       chips.map(c => c.dataset.subvista + '=' + c.textContent.trim()).join(', '));
+
+    // M-05: la fila de subvistas lleva su clase propia (nivel 3, chips pequeños
+    // con relleno suave) y no se mezcla con las pestañas de la Cuadrícula.
+    const filaSubvistas = appEl.querySelector('.subvistas-informe');
+    check('M-05 · la fila de subvistas del Informe lleva su clase propia (sin data-tab)',
+      !!filaSubvistas
+      && filaSubvistas.querySelectorAll('[data-subvista]').length === 5
+      && filaSubvistas.querySelectorAll('[data-tab]').length === 0,
+      filaSubvistas ? String(filaSubvistas.querySelectorAll('[data-subvista]').length) : '(sin .subvistas-informe)');
 
     const chipAt = appEl.querySelector('[data-subvista="atencion"]');
     check('F4b · el chip de Atención existe', !!chipAt, String(!!chipAt));

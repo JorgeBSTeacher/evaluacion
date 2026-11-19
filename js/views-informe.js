@@ -144,7 +144,7 @@ const InformeView = (function () {
       { id: 'instrumentos', nombre: 'Instrumentos' }
     ];
     return `
-      <div class="chips no-print" style="margin-bottom:14px">
+      <div class="chips subvistas-informe no-print" style="margin-bottom:14px">
         ${vistas.map(v =>
           `<label class="chip ${subVista === v.id ? 'on' : ''}" data-subvista="${v.id}" ${subVista === v.id ? 'aria-current="true"' : ''}>${v.nombre}</label>`).join('')}
       </div>`;

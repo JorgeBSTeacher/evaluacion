@@ -152,29 +152,28 @@ body.modo-basic #nav button.activo { background: var(--marca); color: #fff; box-
 .nav button:hover { background: var(--acento-suave); color: var(--acento); }
 .nav button.activo { background: var(--acento); color: #fff; }
 
-/* Subpestañas de Evaluación: segunda fila de la cabecera (Fase 2a). Botones
-   tipo chip; el activo lleva el color de marca. Solo existe estando en
-   Evaluación: fuera de ella #subnav se elimina del DOM. */
+/* Subpestañas de Evaluación: segunda fila de la cabecera (Fase 2a). Nivel 2 de
+   la jerarquía de navegación (M-05): pestañas subrayadas, no píldoras, sobre
+   una fila blanca propia bajo la fila de marca — el subrayado y el texto de
+   marca necesitan fondo claro para tener contraste en todos los modos. Pesos
+   tipográficos algo menores que los del nivel 1 (14 px). Solo existe estando
+   en Evaluación: fuera de ella #subnav se elimina del DOM. */
 .subnav {
-  display: flex; flex-wrap: wrap; gap: 6px;
+  display: flex; flex-wrap: wrap; gap: 4px;
   flex: 1 1 100%; order: 4; /* bajo la fila de secciones, también en modo básico */
+  background: #fff;
+  border-top: 1px solid var(--linea);
+  margin: 0 calc(-1 * var(--pad-x)); padding: 0 12px;
 }
 .subnav:empty { display: none; }
 .subnav button {
-  border: 1px solid rgba(255, 255, 255, .42); background: rgba(255, 255, 255, .12);
-  color: #fff; border-radius: 999px; padding: 5px 12px; min-height: 32px;
+  border: 0; border-bottom: 2px solid transparent; border-radius: 0;
+  background: transparent; color: var(--tinta-suave);
+  padding: 8px 10px; min-height: 36px;
   font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
 }
-.subnav button:hover { background: rgba(255, 255, 255, .24); }
-.subnav button.activo { background: #fff; border-color: #fff; color: var(--marca); font-weight: 700; }
-/* En modo básico la segunda fila es blanca, como la fila de secciones. */
-body.modo-basic .subnav {
-  background: #fff; border-top: 1px solid var(--linea);
-  margin: 0 calc(-1 * var(--pad-x)); padding: 6px 12px;
-}
-body.modo-basic .subnav button { color: var(--marca); border-color: var(--linea); background: #fff; }
-body.modo-basic .subnav button:hover { background: var(--acento-suave); }
-body.modo-basic .subnav button.activo { background: var(--marca); border-color: var(--marca); color: #fff; }
+.subnav button:hover { color: var(--marca); border-bottom-color: var(--linea); }
+.subnav button.activo { color: var(--marca); border-bottom-color: var(--marca); font-weight: 700; }
 
 .actions { display: flex; align-items: center; gap: 8px; }
 .save-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--ok); display: inline-block; transition: background .3s; }
@@ -542,6 +541,32 @@ input:focus, select:focus, textarea:focus { border-color: var(--acento); }
 }
 .chips-grupo { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; padding: 2px 0 6px; }
 .chip:has(input:focus-visible) { outline: 2px solid var(--acento); outline-offset: 2px; }
+
+/* Pestañas de la Cuadrícula (#tabs, M-05): segundo nivel de navegación, el
+   mismo lenguaje que el subnav — pestaña subrayada, sin píldora con fondo.
+   El activo lleva el color de marca; el hover subraya en gris suave. */
+#tabs .chip {
+  border: 0; border-bottom: 2px solid transparent; border-radius: 0;
+  background: transparent; color: var(--tinta-suave);
+  padding: 6px 10px; min-height: 32px;
+}
+#tabs .chip:hover { color: var(--marca); border-bottom-color: var(--linea); }
+#tabs .chip.on {
+  background: transparent; color: var(--marca);
+  border-bottom-color: var(--marca); font-weight: 700;
+}
+
+/* Subvistas del Informe (M-05, nivel 3): chips pequeños de navegación, más
+   discretos que los de selección (criterios, niveles…), que no cambian. El
+   activo usa relleno suave en lugar del pleno. */
+.subvistas-informe { gap: 4px; }
+.subvistas-informe .chip {
+  font-size: 12px; padding: 3px 10px; min-height: 26px;
+}
+.subvistas-informe .chip.on {
+  background: var(--acento-suave); border-color: var(--acento-suave);
+  color: var(--acento); font-weight: 600;
+}
 
 .aviso {
   background: #fffbeb; border: 1px solid #fde68a; color: #92400e;
