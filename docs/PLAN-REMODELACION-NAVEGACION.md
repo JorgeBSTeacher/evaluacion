@@ -24,8 +24,8 @@ recordar dónde está cada cosa y consulte informes según una pregunta concreta
 | M-07 | Renombrar y reagrupar las subvistas de Informe | Media | **Hecha (Fase 4b)**: 5 subvistas `Resumen · Atención · Criterios · Alumnos · Instrumentos`; la Distribución vive dentro del Resumen y los ids antiguos quedan como alias |
 | M-08 | Menú ⋯ por instrumento (dejar 2 acciones visibles) | Media | **Hecha** — fila con Corregir + ⋯ que abre el modal de acciones (Editar · Duplicar · Al banco · Eliminar) |
 | M-09 | Diferenciar estados en la cuadrícula (`Pend.` / `N/A` / `No realiza`) y menú contextual | Media | Pendiente |
-| M-10 | Tooltips en chips de nivel y códigos de criterio | Media | Pendiente |
-| M-11 | Contraste y tamaño mínimo (≥12 px); no depender solo del color | Alta | Pendiente |
+| M-10 | Tooltips en chips de nivel y códigos de criterio | Media | **Hecha** |
+| M-11 | Contraste y tamaño mínimo (≥12 px); no depender solo del color | Alta | **Hecha** |
 | M-12 | Modo privacidad (nombres → iniciales) para proyectar/imprimir | Media | Pendiente |
 | M-13 | Inicio adaptativo (plegar montaje/flujo, KPI de pendientes y copia) | Media | **Hecha (Fase 3)** |
 | M-14 | Accesos duplicados: unificar o documentar | Baja | Pendiente |
@@ -214,3 +214,33 @@ Inicio · Corregir · Evaluación · Informes · Ajustes
   con el nivel efectivo de cada alumno vía `Calc.nivelDeAlumno`); si excluye
   alumnado, desglose por nivel (p. ej. «2 alumnos no incluidos: 2 en 4º»);
   con «Todos los niveles» no excluye a nadie.
+
+## 10. Evidencia M-10 y M-11 (2026-11-19)
+
+- `node tools/checks.js` → `TODO OK: 848 comprobaciones` (11 más: M10-1…M10-5,
+  M11-1…M11-6).
+- `node tools/build-singlefile.js` → `dist/evalora.html` (562 KB);
+  `node tools/build-singlefile.js --check` → sincronizado.
+- **M-10 Tooltips**: helper `titleNivel` (duplicada en `views-instrumentos.js`
+  y `views-informe.js` porque las superficies de edición no permiten un módulo
+  común): base → «Currículo del curso de la asignatura»; ACI → «Nivel ACI
+  <etiqueta>: se evalúa con el currículo de <asignatura>». Llevan `title` los
+  badges de nivel de la fila de instrumentos, de la corrección y del Informe
+  (Atención —con `nivelCodigo` añadido a los hallazgos— y Alumnos). Los códigos
+  de las matrices ya llevaban `title` con la descripción (pestaña Criterios de
+  la Cuadrícula y cabeceras verticales del Informe); se comprueban ahora en
+  M10-3/M10-4, igual que el badge de código de «Criterios con dificultad» del
+  Resumen, que estrena `title` y `aria-label`.
+- **M-11 Contraste**: todas las `font-size` informativas suben a ≥ 12 px
+  (`stat-label`, `stat-value small`, `chips-nivel-cuenta`, `col-saberes/
+  col-peso small`, `rub-head`, `aci-ast`, `brand-txt small`, `nav-dock`,
+  licencia y las inline del Informe). Excepciones documentadas en el propio
+  CSS y en el check M11-2: `.ud-flecha` (11 px, flecha decorativa del plegado),
+  el bloque `@media print` de `#informe-impresion` (10–11 px, plan previo de
+  PDF) y `.estado-copia` en móvil (`font-size: 0`, oculta el rótulo entero).
+- **M-11 No solo color (WCAG 1.4.1)**: los badges de estado llevan símbolo
+  además del tono vía `::before` en CSS — `✓` en `ok`, `●` en `warn`,
+  `▼` en `ko` — que cubre también los badges de nota de `Calc.badgeHtml` (el
+  valor numérico ya distingue, el símbolo refuerza). Las barras de severidad
+  de Atención estrenan `▼`/`●` con `title`, y la tabla de saberes pasa de
+  `✓`/`✗` a «Domina»/«Mejorar» en texto.

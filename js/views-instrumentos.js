@@ -25,6 +25,19 @@ const InstrumentosView = (() => {
         || (a.fecha || '').localeCompare(b.fecha || ''));
   }
 
+  // M-10: explicación completa de un nivel de evaluación para el `title` de sus
+  // badges. Base: el currículo ordinario del curso; ACI: el currículo del curso
+  // al que apunta la adaptación (puede ser otro curso y otra asignatura).
+  // Duplicado a propósito en views-informe.js: las superficies de edición no
+  // permiten un módulo común y es una función pura de 5 líneas.
+  function titleNivel(claseId, codigo) {
+    const nv = Calc.nivelNorm(codigo);
+    if (!nv) return 'Currículo del curso de la asignatura';
+    const asig = (Calc.asignaturaDeNivel(claseId, nv) || {}).nombre || '';
+    if (!asig) return 'Nivel ACI ' + Calc.etiquetaNivel(claseId, nv);
+    return 'Nivel ACI ' + Calc.etiquetaNivel(claseId, nv) + ': se evalúa con el currículo de ' + asig;
+  }
+
   // Fila de la tabla de instrumentos (sin columna de periodo: el trimestre ya
   // es el encabezado de sección).
   function filaInstrumento(i) {
@@ -50,7 +63,7 @@ const InstrumentosView = (() => {
     return `<tr data-inst="${i.id}">
       <td>${url ? `<a href="${Utils.esc(url)}" target="_blank" rel="noopener" title="Enlace del instrumento: ${Utils.esc(url)}"><b>${Utils.esc(i.titulo)}</b></a>` : `<b>${Utils.esc(i.titulo)}</b>`}</td>
       <td><span class="badge info">${Utils.esc(i.tipo)}</span></td>
-      <td>${nivelTxt ? `<span class="badge info">${Utils.esc(nivelTxt)}</span> ` : ''}${i.unidad ? `<span class="badge na">${Utils.esc(i.unidad)}</span>` : ''}${!nivelTxt && !i.unidad ? '<span style="color:var(--tinta-suave)">—</span>' : ''}</td>
+      <td>${nivelTxt ? `<span class="badge info" title="${Utils.esc(titleNivel(i.claseId, i.nivel))}">${Utils.esc(nivelTxt)}</span> ` : ''}${i.unidad ? `<span class="badge na">${Utils.esc(i.unidad)}</span>` : ''}${!nivelTxt && !i.unidad ? '<span style="color:var(--tinta-suave)">—</span>' : ''}</td>
       <td>${Utils.esc(i.fecha)}</td>
       <td>${i.apartados.length} ${i.tipo === 'Proyecto' ? 'partes/fases' : 'apartados'}</td>
       <td>${Calc.badgeHtml(media)}</td>
@@ -703,7 +716,7 @@ function columnasNivel(filas) {
           <span class="badge info">${Utils.esc(inst.tipo)}</span>
           <span class="badge info">${Utils.esc(inst.periodo)}</span>
           ${inst.unidad ? `<span class="badge info">${Utils.esc(inst.unidad)}</span>` : ''}
-          ${inst.nivel ? `<span class="badge info">Nivel ${Utils.esc(Calc.etiquetaNivel(inst.claseId, inst.nivel))}</span>` : ''}
+          ${inst.nivel ? `<span class="badge info" title="${Utils.esc(titleNivel(inst.claseId, inst.nivel))}">Nivel ${Utils.esc(Calc.etiquetaNivel(inst.claseId, inst.nivel))}</span>` : ''}
           <span class="badge na">${inst.apartados.length} ${inst.tipo === 'Proyecto' ? 'partes/fases' : 'apartados'}</span>
           ${esRubrica ? '<small style="align-self:center;color:var(--tinta-suave)">Toca un nivel para puntuar; tócalo otra vez para vaciar.</small>' : ''}
         </div>

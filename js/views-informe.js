@@ -28,6 +28,19 @@ const InformeView = (function () {
     return v === '__todas__' || v === 'TODAS' || v === 'todos' || v === 'Todos' || v === 'TODO' || v === 'todo';
   }
 
+  // M-10: explicación completa de un nivel de evaluación para el `title` de sus
+  // badges. Base: el currículo ordinario del curso; ACI: el currículo del curso
+  // al que apunta la adaptación (puede ser otro curso y otra asignatura).
+  // Duplicado a propósito en views-instrumentos.js: las superficies de edición no
+  // permiten un módulo común y es una función pura de 5 líneas.
+  function titleNivel(claseId, codigo) {
+    const nv = Calc.nivelNorm(codigo);
+    if (!nv) return 'Currículo del curso de la asignatura';
+    const asig = (Calc.asignaturaDeNivel(claseId, nv) || {}).nombre || '';
+    if (!asig) return 'Nivel ACI ' + Calc.etiquetaNivel(claseId, nv);
+    return 'Nivel ACI ' + Calc.etiquetaNivel(claseId, nv) + ': se evalúa con el currículo de ' + asig;
+  }
+
   // ---------------------------------------------------------------- alcance
   // Contexto completo del informe (Fase 4a: la vista es autónoma): selector de
   // clase y de nivel/ACI propios, la cascada trimestre → unidad didáctica →
@@ -261,11 +274,19 @@ const InformeView = (function () {
 
     const listaDificiles = dificiles.length
       ? `<ul class="resumen-lista">
-          ${dificiles.map(h => `
+          ${dificiles.map(h => {
+            // M-10/M-11: el código lleva la descripción completa en el title y el
+            // estado (crítico/atención) en el aria-label, para que no dependa
+            // solo del color del badge.
+            const cInfo = Calc.criterio(h.criterioId);
+            return `
             <li>
-              <span class="badge ${h.nivel === 'critico' ? 'ko' : 'warn'}">${Utils.esc(h.codigo)}</span>
+              <span class="badge ${h.nivel === 'critico' ? 'ko' : 'warn'}"
+                    title="${Utils.esc(cInfo ? cInfo.descripcion : '')}"
+                    aria-label="${Utils.esc(h.codigo)}: ${h.nivel === 'critico' ? 'crítico' : 'atención'}">${Utils.esc(h.codigo)}</span>
               <span class="resumen-detalle">${h.pct}% del alumnado por debajo del 50%${h.nivelEtiqueta !== 'Base' ? ' · ' + Utils.esc(h.nivelEtiqueta) : ''}</span>
-            </li>`).join('')}
+            </li>`;
+          }).join('')}
         </ul>`
       : '<p class="aviso">Ningún criterio con dificultad significativa.</p>';
 
@@ -322,6 +343,9 @@ const InformeView = (function () {
       Calc.hallazgos(claseId, insts, nv.criterios, nv.codigo).forEach(h => {
         if (h.tipo === 'criterio') {
           h.nivelEtiqueta = nv.etiqueta;
+          // M-10: el código del nivel, para el title del badge (el de la etiqueta
+          // no vale: la base y «todos» comparten etiqueta pero no currículo).
+          h.nivelCodigo = nv.codigo;
           critsPorNivel.push(h);
         }
       });
@@ -335,6 +359,7 @@ const InformeView = (function () {
       const inst = Calc.instrumento(h.instrumentoId);
       const nivel = inst && inst.nivel ? Calc.nivelNorm(inst.nivel) : '';
       h.nivelEtiqueta = nivel ? (Calc.etiquetaNivel(claseId, nivel) || nivel) : 'Base';
+      h.nivelCodigo = nivel;
     });
     const todosH = critsPorNivel.concat(pregGlobal);
     if (!todosH.length) {
@@ -355,9 +380,12 @@ const InformeView = (function () {
         </span>
       </div>`;
 
-    // Barra horizontal: longitud = porcentaje, color = severidad.
+    // M-11: la barra lleva el símbolo de su severidad (▼ crítico / ● atención),
+    // de modo que el estado no dependa solo del color (WCAG 1.4.1).
     const barra = h => `
       <div style="display:flex;align-items:center;gap:8px">
+        <b title="${h.nivel === 'critico' ? 'Crítico' : 'Atención'}"
+           style="flex:none;color:${h.nivel === 'critico' ? 'var(--ko)' : 'var(--aviso)'}">${h.nivel === 'critico' ? '▼' : '●'}</b>
         <div style="flex:1;min-width:70px;height:12px;background:var(--na-suave);
                     border-radius:6px;overflow:hidden">
           <div style="width:${h.pct}%;height:100%;
@@ -367,7 +395,7 @@ const InformeView = (function () {
       </div>`;
 
     const badgeNivel = h =>
-      `<span class="badge info" style="font-size:11px;white-space:nowrap">${Utils.esc(h.nivelEtiqueta)}</span>`;
+      `<span class="badge info" title="${Utils.esc(titleNivel(claseId, h.nivelCodigo))}" style="font-size:12px;white-space:nowrap">${Utils.esc(h.nivelEtiqueta)}</span>`;
 
     const tabla = (cab, filas) => `
       <table class="tabla">
@@ -585,7 +613,7 @@ const InformeView = (function () {
           const color = i >= 5 ? 'var(--acento, #4a90d9)' : '#dc3545';
           return `
             <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">
-              ${b.cantidad > 0 ? `<span style="font-size:11px;font-weight:700;color:var(--tinta)">${b.cantidad}</span>` : ''}
+              ${b.cantidad > 0 ? `<span style="font-size:12px;font-weight:700;color:var(--tinta)">${b.cantidad}</span>` : ''}
               <div style="width:100%;max-width:36px;height:${h}px;background:${color};
                           border-radius:3px 3px 0 0;${b.cantidad === 0 ? 'opacity:.15' : ''}"
                    title="${b.rango}: ${b.cantidad} alumno${b.cantidad === 1 ? '' : 's'}"></div>
@@ -593,7 +621,7 @@ const InformeView = (function () {
         }).join('')}
         <div style="position:absolute;top:0;bottom:0;left:50%;border-left:2px dashed #888"></div>
       </div>
-      <div style="display:flex;gap:8px;font-size:11px;color:var(--tinta-suave)">
+      <div style="display:flex;gap:8px;font-size:12px;color:var(--tinta-suave)">
         ${buckets.map((b, i) => `<span style="flex:1;text-align:center">${i}</span>`).join('')}
       </div>
       <p style="margin-top:14px;font-size:13px;color:var(--tinta-suave)">
@@ -625,6 +653,8 @@ const InformeView = (function () {
       return {
         alumno: a,
         nivel: Calc.etiquetaNivel(claseId, Calc.nivelDeAlumno(claseId, a.id)),
+        // M-10: código del nivel para el title del badge de nivel.
+        nivelCodigo: Calc.nivelDeAlumno(claseId, a.id),
         nota: Calc.notaEnInsts(claseId, a.id, insts),
         bajo
       };
@@ -654,11 +684,11 @@ const InformeView = (function () {
             ${enRiesgo.map(f => `
               <tr>
                 <td>${Utils.esc(f.alumno.apellidos)}, ${Utils.esc(f.alumno.nombre)}</td>
-                <td><span class="badge info" style="font-size:11px;white-space:nowrap">${Utils.esc(f.nivel || 'Base')}</span></td>
+                <td><span class="badge info" title="${Utils.esc(titleNivel(claseId, f.nivelCodigo))}" style="font-size:12px;white-space:nowrap">${Utils.esc(f.nivel || 'Base')}</span></td>
                 <td class="num">${Calc.badgeHtml(f.nota)}</td>
                 <td class="num"><span class="badge ${f.bajo.length >= 2 ? 'ko' : 'warn'}">${f.bajo.length}</span></td>
                 <td>${f.bajo.map(x =>
-                  `<span class="badge ${x.logro < 0.3 ? 'ko' : 'warn'}" style="font-size:11px;margin-right:4px"
+                  `<span class="badge ${x.logro < 0.3 ? 'ko' : 'warn'}" style="font-size:12px;margin-right:4px"
                          title="${Utils.esc(x.criterio.descripcion)}">${Utils.esc(x.criterio.codigo)} ${Math.round(x.logro * 100)}%</span>`).join('')}</td>
               </tr>`).join('')}
           </tbody>
@@ -688,8 +718,10 @@ const InformeView = (function () {
       `<option value="${i.id}" ${i.id === instId ? 'selected' : ''}>${Utils.esc(i.titulo || i.tipo)}</option>`).join('');
 
     const badgeCelda = d => {
-      if (d.estado === 'domina') return '<span class="badge ok" title="' + Utils.esc(d.media != null ? d.media + '/10' : '') + '">✓</span>';
-      if (d.estado === 'mejorar') return '<span class="badge ko" title="' + Utils.esc(d.media != null ? d.media + '/10' : '') + '">✗</span>';
+      // M-11: estado en TEXTO, no solo color (WCAG 1.4.1) — el símbolo del
+      // semáforo (✓/▼) lo añade el CSS para todos los badges de estado.
+      if (d.estado === 'domina') return '<span class="badge ok" title="' + Utils.esc(d.media != null ? d.media + '/10' : '') + '">Domina</span>';
+      if (d.estado === 'mejorar') return '<span class="badge ko" title="' + Utils.esc(d.media != null ? d.media + '/10' : '') + '">Mejorar</span>';
       return '<span class="badge na" title="Sin datos">—</span>';
     };
 

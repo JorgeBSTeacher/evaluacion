@@ -4944,6 +4944,112 @@ async function main() {
       JSON.stringify((appUi.Storage.db.registros.iBase || {}).a1));
   }
 
+  console.log('\n== M-10 · Tooltips de nivel y de criterio ==');
+  {
+    const app = cargarApp();
+    app.Storage.load();
+    await importarJson(app, estadoAci());
+
+    const TITLE_ACI = 'title="Nivel ACI 4º: se evalúa con el currículo de Matemáticas 4º"';
+    const TITLE_BASE = 'title="Currículo del curso de la asignatura"';
+
+    // 1) Chips/badges de nivel de la vista Instrumentos (fila de la tabla).
+    const elI = makeEl();
+    app.InstrumentosView.render(elI);
+    check('M10-1 · el badge de nivel de la fila de instrumentos explica el currículo (ACI y base)',
+      elI.innerHTML.includes(TITLE_ACI) && elI.innerHTML.includes(TITLE_BASE),
+      elI.innerHTML.slice(0, 300));
+
+    // 2) Badge de nivel de la corrección.
+    const elC = makeEl();
+    app.InstrumentosView.renderCorreccion(elC, 'iAci');
+    check('M10-2 · el badge «Nivel 4º» de la corrección lleva el mismo title',
+      elC.innerHTML.includes(TITLE_ACI), elC.innerHTML.slice(0, 200));
+
+    // 3) Cabeceras de criterio de la matriz de la Cuadrícula (pestaña Criterios).
+    const elM = makeEl();
+    app.CuadriculaView.render(elM, { claseId: 'c1', nivelSel: '', tab: 'criterios', periodo: 'T1' });
+    check('M10-3 · las cabeceras de criterio de la Cuadrícula llevan title con la descripción',
+      elM.innerHTML.includes('title="c1"') && elM.innerHTML.includes('title="c2"'),
+      elM.innerHTML.slice(0, 300));
+
+    // 4) Datos con suspensos, para que el Informe muestre hallazgos y riesgo.
+    const reg = app.Storage.db.registros;
+    reg.iBase.a1.p1 = 2;   // base: k1 al 20% → hallazgo crítico
+    reg.iBase.a2.p1 = 2;
+    reg.iAci.c1al.q1 = 3;  // ACI: m1 bajo
+    reg.iComun.c1al.r2 = 2;
+    const inf = app.InformeView.informeHtml({ claseSel: 'c1', nivelSel: '__todas__' });
+    check('M10-4 · las cabeceras de la matriz de criterios del Informe llevan title con la descripción',
+      inf.includes('title="c1"') && inf.includes('title="a1"'),
+      inf.slice(0, 300));
+    check('M10-5 · los badges de nivel del Informe explican el currículo del nivel (Atención y Alumnos)',
+      inf.includes(TITLE_ACI) && inf.includes(TITLE_BASE),
+      inf.slice(0, 300));
+  }
+
+  console.log('\n== M-11 · Semáforo no cromático y tamaño mínimo de fuente (>= 12 px) ==');
+  {
+    const cssTxt = fs.readFileSync(path.join(raiz, 'css', 'styles.css'), 'utf8');
+    // Excepciones documentadas en el propio CSS: el bloque @media print (tablas
+    // del PDF, plan previo >= 10 px), la flecha decorativa del plegado de UD y
+    // el rótulo que se oculta entero en móvil (font-size: 0; queda el punto con
+    // su title). Todo lo demás debe ser >= 12 px.
+    const sinExcepciones = cssTxt
+      .replace(/@media print \{[\s\S]*?\n\}\n/, '')
+      .split('\n')
+      .filter(l => !/\.ud-flecha|\.estado-copia/.test(l))
+      .join('\n');
+    const nDeclaraciones = (sinExcepciones.match(/font-size:\s*\d+(?:\.\d+)?px/g) || []).length;
+    check('M11-1 · el escaneo de fuentes de styles.css revisa declaraciones de verdad',
+      nDeclaraciones > 40, String(nDeclaraciones) + ' declaraciones');
+    const pequenas = [];
+    sinExcepciones.split('\n').forEach((l, i) => {
+      const m = l.match(/font-size:\s*(\d+(?:\.\d+)?)px/);
+      if (m && parseFloat(m[1]) < 12) pequenas.push('línea ' + (i + 1) + ': ' + l.trim());
+    });
+    check('M11-2 · ninguna fuente informativa de styles.css baja de 12 px',
+      pequenas.length === 0, pequenas.join(' | '));
+
+    const jsPeq = [];
+    ['js/views-cuadricula.js', 'js/views-informe.js', 'js/views-instrumentos.js'].forEach(f => {
+      const t = fs.readFileSync(path.join(raiz, f), 'utf8');
+      t.split('\n').forEach((l, i) => {
+        const m = l.match(/font-size:\s*(\d+(?:\.\d+)?)px/);
+        if (m && parseFloat(m[1]) < 12) jsPeq.push(f + ':' + (i + 1));
+      });
+    });
+    check('M11-3 · ninguna fuente inline de las vistas baja de 12 px',
+      jsPeq.length === 0, jsPeq.join(' | '));
+
+    check('M11-4 · el semáforo lleva símbolo además del color (✓ / ● / ▼ en los badges de estado)',
+      cssTxt.includes('.badge.ok::before { content: "✓ "; }')
+      && cssTxt.includes('.badge.warn::before { content: "● "; }')
+      && cssTxt.includes('.badge.ko::before { content: "▼ "; }'));
+
+    // Render con datos en suspensos (el bloque anterior deja la app cargada solo
+    // dentro de su ámbito; aquí se recarga con el mismo estado).
+    const app = cargarApp();
+    app.Storage.load();
+    await importarJson(app, estadoAci());
+    const reg = app.Storage.db.registros;
+    reg.iBase.a1.p1 = 2;
+    reg.iBase.a2.p1 = 2;
+    reg.iAci.c1al.q1 = 3;
+    reg.iComun.c1al.r2 = 2;
+    const inf = app.InformeView.informeHtml({ claseSel: 'c1', nivelSel: '__todas__' });
+    check('M11-5 · las barras de severidad de Atención llevan ▼/● con el estado en el title',
+      inf.includes('title="Crítico"') && inf.includes('title="Atención"'),
+      inf.slice(0, 300));
+    const elR = makeEl();
+    app.InformeView.render(elR, { claseSel: 'c1', nivelSel: '__todas__' });
+    check('M11-6 · los badges de severidad del Resumen describen el estado (aria-label) y el criterio (title)',
+      elR.innerHTML.includes('aria-label="C1: crítico"')
+      && /aria-label="A1: (crítico|atención)"/.test(elR.innerHTML)
+      && elR.innerHTML.includes('title="c1"'),
+      elR.innerHTML.slice(0, 300));
+  }
+
   console.log('\n' + (fallos ? 'FALLOS: ' + fallos + '/' + total : 'TODO OK: ' + total + ' comprobaciones')
     + (avisos ? ' · ' + avisos + ' aviso(s)' : ''));
   process.exitCode = fallos ? 1 : 0;

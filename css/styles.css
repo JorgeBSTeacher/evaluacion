@@ -81,7 +81,7 @@ body.modo-fab main, body.modo-dock main { padding-bottom: 84px; }
   background: rgba(255,255,255,.96);
   border: 1px solid var(--linea); border-radius: 14px; box-shadow: 0 6px 20px rgba(0,0,0,.20); }
 .nav-dock button { min-width: 74px; padding: 8px 6px; border: 0; background: transparent;
-  border-radius: 10px; font-size: 11px; color: var(--tinta-suave); }
+  border-radius: 10px; font-size: 12px; color: var(--tinta-suave); }
 .nav-dock button:hover { background: var(--acento-suave); color: var(--acento); }
 .nav-dock button.activo { background: var(--acento); color: #fff; }
 .nav-drawer { position: fixed; left: 0; top: 0; bottom: 0; width: 200px; z-index: 40;
@@ -107,7 +107,8 @@ body.modo-basic #nav button.activo { background: var(--marca); color: #fff; box-
 @media (max-width: 520px) {
   body.modo-basic .brand-txt small { display: none; }
   .nav-dock { left: 10px; right: 10px; transform: none; max-width: none; }
-  .nav-dock button { min-width: 58px; font-size: 10px; }
+  /* M-11: la fuente no baja de 12 px; el dock se deja desplazar en horizontal. */
+  .nav-dock button { min-width: 58px; }
 }
 /* En pantallas estrechas la barra lateral superpuesta no desplaza el contenido. */
 @media (max-width: 720px) {
@@ -140,7 +141,7 @@ body.modo-basic #nav button.activo { background: var(--marca); color: #fff; box-
 }
 .logo.isotipo svg { width: 26px; height: 26px; display: block; }
 .brand-txt { line-height: 1.1; }
-.brand-txt small { display: block; color: var(--tinta-suave); font-size: 11px; }
+.brand-txt small { display: block; color: var(--tinta-suave); font-size: 12px; }
 
 .nav { display: flex; gap: 4px; flex-wrap: wrap; flex: 1; }
 .nav button {
@@ -311,7 +312,7 @@ main { max-width: 1440px; margin: 0 auto; padding: 20px 18px 60px; }
 .acerca-licencia pre {
   max-height: 260px; overflow: auto; margin: 0 0 8px; padding: 10px;
   background: #fff; border: 1px solid var(--linea); border-radius: 8px;
-  font-size: 11px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere;
+  font-size: 12px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere;
   color: var(--tinta);
 }
 .btn-ghost { border-color: transparent; background: transparent; color: var(--tinta-suave); }
@@ -449,6 +450,14 @@ input:focus, select:focus, textarea:focus { border-color: var(--acento); }
 .badge.info { background: var(--acento-suave); color: #3730a3; }
 /* Aviso (pendientes) y alumnado excluido de un instrumento: mismo ámbar. */
 .badge.warn, .badge.no-realiza { background: var(--aviso-suave); color: #92400e; }
+/* M-11: el estado del semáforo no depende solo del color (WCAG 1.4.1): cada
+   badge de estado lleva un símbolo propio además del tono — ✓ correcto,
+   ● atención, ▼ crítico —. El contenido generado llega también a los lectores
+   de pantalla y se imprime. El resto de badges (info, na, no-realiza) ya
+   distingue su estado con texto propio. */
+.badge.ok::before { content: "✓ "; }
+.badge.warn::before { content: "● "; }
+.badge.ko::before { content: "▼ "; }
 
 /* Estadísticos de la pestaña Distribución (Informe): rejilla de tarjetas. */
 .stat-grid {
@@ -504,7 +513,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--acento); }
 .resumen-mas { color: var(--tinta-suave); font-size: 12px; margin: 6px 0 0; }
 .resumen-enlace { margin: 10px 0 0; }
 .stat-label {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--tinta-suave);
   text-transform: uppercase;
@@ -516,7 +525,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--acento); }
   color: var(--tinta);
   font-variant-numeric: tabular-nums;
 }
-.stat-value small { font-size: 11px; font-weight: 600; color: var(--tinta-suave); }
+.stat-value small { font-size: 12px; font-weight: 600; color: var(--tinta-suave); }
 
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .hint { display: block; color: var(--tinta-suave); font-size: 12px; margin-bottom: 6px; }
@@ -542,7 +551,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--acento); }
 .chips-nivel-cuenta {
   display: inline-block; min-width: 16px; text-align: center; margin-left: 4px;
   background: var(--acento-suave); color: var(--acento); border-radius: 999px;
-  font-size: 11px; padding: 0 6px;
+  font-size: 12px; padding: 0 6px;
 }
 .chips-grupo { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; padding: 2px 0 6px; }
 .chip:has(input:focus-visible) { outline: 2px solid var(--acento); outline-offset: 2px; }
@@ -625,7 +634,7 @@ details.guia-inicio > summary .guia-titulo { display: inline; font-size: 16px; f
 }
 .apartado-fila > *:first-child { min-width: 0; }
 .col-saberes, .col-peso { display: flex; flex-direction: column; gap: 2px; }
-.col-saberes small, .col-peso small { color: var(--tinta-suave); font-size: 11px; font-weight: 600; text-transform: none; letter-spacing: 0; }
+.col-saberes small, .col-peso small { color: var(--tinta-suave); font-size: 12px; font-weight: 600; text-transform: none; letter-spacing: 0; }
 .col-peso input { width: 100%; }
 .zona-crit { grid-column: 1 / -1; padding: 8px 4px 2px; border-top: 1px dashed var(--linea); }
 .apartado-fila:last-child { border-bottom: none; }
@@ -642,8 +651,8 @@ details.guia-inicio > summary .guia-titulo { display: inline; font-size: 16px; f
 
 /* Rúbrica: cuadrícula «criterio · peso · nivel 1 … nivel N» (D-40) */
 .rub-head { display: grid; gap: 8px; align-items: end; padding: 2px 0 8px; border-bottom: 2px solid var(--linea); }
-.rub-head > span { font-size: 11px; font-weight: 700; color: var(--tinta-suave); text-transform: uppercase; letter-spacing: .04em; line-height: 1.3; }
-.rub-head > span small { text-transform: none; letter-spacing: 0; font-size: 11px; color: var(--acento); }
+.rub-head > span { font-size: 12px; font-weight: 700; color: var(--tinta-suave); text-transform: uppercase; letter-spacing: .04em; line-height: 1.3; }
+.rub-head > span small { text-transform: none; letter-spacing: 0; font-size: 12px; color: var(--acento); }
 .apartado-fila.rub { align-items: start; }
 .ap-saberes { font-size: 13px; }
 
@@ -697,6 +706,7 @@ details.guia-inicio > summary .guia-titulo { display: inline; font-size: 16px; f
    `suave` de la UD (ver js/colores-ud.js), para que combine con la barra. */
 .tabla-cuadricula .ud-grupo.plegable { cursor: pointer; user-select: none; }
 .tabla-cuadricula .ud-grupo.plegable:hover { filter: brightness(.95); }
+/* EXCEPCIÓN M-11 (11 px): flecha decorativa del plegado de UD, no es texto. */
 .tabla-cuadricula .ud-grupo .ud-flecha { margin-right: 5px; font-size: 11px; }
 /* Mismo aspecto que las barras de unidad de la vista Instrumentos. */
 .tabla-cuadricula .ud-grupo { text-transform: none; letter-spacing: normal; }
@@ -782,7 +792,9 @@ details.guia-inicio > summary .guia-titulo { display: inline; font-size: 16px; f
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   @page { margin: 10mm; size: A4 landscape; }
 
-  /* Reducir tablas muy anchas (criterios, etc.) —cuerpo a 10 px (plan: >=10 px)*/
+  /* Reducir tablas muy anchas (criterios, etc.) —cuerpo a 10 px. EXCEPCIÓN M-11:
+     es la salida a PDF impreso (plan previo: >= 10 px); en pantalla manda el
+     mínimo de 12 px. */
   #informe-impresion .tabla,
   #informe-impresion .tabla-cuadricula {
     width: 100%;
@@ -810,7 +822,7 @@ details.guia-inicio > summary .guia-titulo { display: inline; font-size: 16px; f
   .informe-seccion + .informe-seccion { padding-top: 12px; }
   #informe-impresion .informe-seccion h3 { margin-top: 14px !important; }
 }
-.aci-ast { font-size: 11px; vertical-align: text-top; margin-left: 1px; }
+.aci-ast { font-size: 12px; vertical-align: text-top; margin-left: 1px; }
 
 /* Informe de «Imprimir todo»: solo existe al imprimir, nunca en pantalla. */
 #informe-impresion { display: none; }
