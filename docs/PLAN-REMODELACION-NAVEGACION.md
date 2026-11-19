@@ -16,9 +16,9 @@ recordar dónde está cada cosa y consulte informes según una pregunta concreta
 | ID | Mejora | Prioridad | Estado |
 |---|---|---|---|
 | **M-01** | **Remodelación de navegación por tareas** (`Inicio · Corregir · Evaluación · Informes · Ajustes`) | Alta | **En curso (Fases 4a y 4b hechas; pendiente 5)** |
-| M-02 | Indicador de backup y «Guardar» como acción de copia (con estado) | Alta | **Parcial (Fase 3)**: aviso destacado y «Hacer backup» en Inicio; falta «Guardar» como acción de copia |
+| M-02 | Indicador de backup y «Guardar» como acción de copia (con estado) | Alta | **Hecha** — indicador permanente en la cabecera (Copia al día · Cambios sin copia · Copia antigua · N días · Sin copia) + «Guardar» que sobrescribe el JSON elegido; «Hacer backup» en Inicio. Etiqueta «Guardar» a petición del docente |
 | M-03 | Unificar «pendientes» (misma unidad y fuente en Inicio y Calificaciones) | Alta | **Hecha (Fase 3)** |
-| M-04 | Chip del ajuste `sinNotaEsCero` visible en Calificaciones | Media | Pendiente |
+| M-04 | Chip del ajuste `sinNotaEsCero` visible en Calificaciones | Media | **Hecha** — insignia en la cabecera de la Cuadrícula (las 3 pestañas): «Sin corregir cuenta como 0» / «Sin corregir no cuenta» |
 | M-05 | Diferenciar visualmente los 3 niveles de navegación (barra / pestañas / chips) | Media | **Hecha** — nivel 2 como pestañas subrayadas (subnav en fila blanca y pestañas de la Cuadrícula) y nivel 3 como chips pequeños |
 | M-06 | Filtro único y contexto visible en Informes (sin selector de periodo duplicado) | Alta | **Hecha (Fase 4a)**: Informes es una vista propia con su contexto completo (clase, nivel, periodo, unidad, instrumento); ya no hay selector duplicado con la Cuadrícula |
 | M-07 | Renombrar y reagrupar las subvistas de Informe | Media | **Hecha (Fase 4b)**: 5 subvistas `Resumen · Atención · Criterios · Alumnos · Instrumentos`; la Distribución vive dentro del Resumen y los ids antiguos quedan como alias |
@@ -118,7 +118,7 @@ Inicio · Corregir · Evaluación · Informes · Ajustes
 | `instrumentos` (gestión) | Evaluación (subpestaña Instrumentos) | mover | semanal | bajo | Hecha (2a) |
 | `alumnos`, `clases`, `curriculo` | Evaluación (subpestañas) | mover | occasional | bajo | Hecha (2a) |
 | `montaje` | Evaluación (vista auxiliar) | **disolver**: su guía pasa a Evaluación | — | bajo | Hecha (2a) |
-| subvistas de `informe` | Informes | mover + renombrar (M-07) | diaria | medio | Pendiente (Fase 4) |
+| subvistas de `informe` | Informes | mover + renombrar (M-07) | diaria | medio | Hecha (Fase 4a y 4b) |
 | Configuración | Ajustes | renombrar | rara | bajo | Hecha (Fase 1) |
 | modos `fab`/`dock`/`drawer` | variaciones de presentación | mantener (con subnav) | — | bajo | Hecha (2a) |
 | Corrección (`renderCorreccion`) | **Corregir** (vista propia: cola de pendientes) | mover | diaria | medio | Hecha (2b) |
