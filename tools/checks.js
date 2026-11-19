@@ -3774,23 +3774,10 @@ async function main() {
     check('A12-4 · el contenedor de avisos no declara rol (el rol va en cada aviso)',
       root.getAttribute('role') === null, 'role=' + root.getAttribute('role'));
 
-    // El puntito de guardado es decorativo: `save()` corre en cada tecla (vía el
-    // debounce de la corrección), así que no debe anunciar nada. Lo comprobamos
-    // donde importa: al guardar, el indicador solo cambia de CLASE (estilo), no
-    // de texto; sin cambio de contenido no hay nada que una región viva anuncie.
-    const dot = doc.getElementById('estado-guardado');
-    app.Storage.db.meta = app.Storage.db.meta || {};
-    app.Storage.save();
-    check('A12-5 · guardar solo anima el indicador; no le escribe texto que anunciar',
-      dot.textContent === '' && dot.classList.contains('guardando'),
-      'texto=' + JSON.stringify(dot.textContent) + ' · guardando=' + dot.classList.contains('guardando'));
-
-    // El indicador se apaga SOLO cuando pasa su tiempo: mientras tanto sigue
-    // encendido, como en el navegador. Con temporizadores fieles, sin avanzarlos
-    // no se apaga (antes se apagaba al instante y nada de esto se podía ver).
-    app.timers.run();
-    check('A12-6 · el indicador se apaga al vencer su tiempo, no antes',
-      !dot.classList.contains('guardando'));
+    // El puntito de guardado se retiró (M-02): era decorativo y confundía con
+    // el indicador real de copia. La cabecera de index.html ya no lo lleva.
+    check('A12-5 · la cabecera ya no lleva el puntito decorativo de guardado',
+      !fs.readFileSync(path.join(raiz, 'index.html'), 'utf8').includes('estado-guardado'));
 
     // Un aviso NORMAL se retira al vencer su tiempo; un ERROR dura más, para dar
     // margen a leer un fallo crítico antes de que desaparezca.

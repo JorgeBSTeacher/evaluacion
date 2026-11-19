@@ -56,7 +56,6 @@ body {
 .topbar .btn:hover:not(:disabled) {
   background: rgba(255, 255, 255, .26); border-color: rgba(255, 255, 255, .55); color: #fff;
 }
-.topbar .save-dot { box-shadow: 0 0 0 2px rgba(255, 255, 255, .35); }
 
 /* Navegación configurable (Configuración → Tema y menús). */
 .nav-fab { position: fixed; left: 16px; bottom: 16px; z-index: 9998; padding: 12px 16px;
@@ -176,9 +175,9 @@ body.modo-basic #nav button.activo { background: var(--marca); color: #fff; box-
 .subnav button:hover { color: var(--marca); border-bottom-color: var(--linea); }
 .subnav button.activo { color: var(--marca); border-bottom-color: var(--marca); font-weight: 700; }
 
-.actions { display: flex; align-items: center; gap: 8px; }
-.save-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--ok); display: inline-block; transition: background .3s; }
-.save-dot.guardando { background: #f59e0b; }
+/* Los controles de la cabecera (indicador de copia, Copia de seguridad y
+   engranaje) van pegados a la derecha. */
+.actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 
 /* Indicador permanente de copia de seguridad (M-02): punto de color + texto,
    junto al botón «Copia de seguridad». Colores de estado con texto más oscuro

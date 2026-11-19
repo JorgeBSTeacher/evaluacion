@@ -74,7 +74,6 @@ body {
 .topbar .btn:hover:not(:disabled) {
   background: rgba(255, 255, 255, .26); border-color: rgba(255, 255, 255, .55); color: #fff;
 }
-.topbar .save-dot { box-shadow: 0 0 0 2px rgba(255, 255, 255, .35); }
 
 /* Navegación configurable (Configuración → Tema y menús). */
 .nav-fab { position: fixed; left: 16px; bottom: 16px; z-index: 9998; padding: 12px 16px;
@@ -194,9 +193,9 @@ body.modo-basic #nav button.activo { background: var(--marca); color: #fff; box-
 .subnav button:hover { color: var(--marca); border-bottom-color: var(--linea); }
 .subnav button.activo { color: var(--marca); border-bottom-color: var(--marca); font-weight: 700; }
 
-.actions { display: flex; align-items: center; gap: 8px; }
-.save-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--ok); display: inline-block; transition: background .3s; }
-.save-dot.guardando { background: #f59e0b; }
+/* Los controles de la cabecera (indicador de copia, Copia de seguridad y
+   engranaje) van pegados a la derecha. */
+.actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 
 /* Indicador permanente de copia de seguridad (M-02): punto de color + texto,
    junto al botón «Copia de seguridad». Colores de estado con texto más oscuro
@@ -915,7 +914,6 @@ c28 -90 50 -167 47 -169 -7 -7 -144 29 -263 70 -498 170 -897 556 -1095 1058
   </div>
   <nav id="nav" class="nav"></nav>
   <div class="actions">
-    <span id="estado-guardado" class="save-dot" title="Guardado" aria-hidden="true"></span>
     <button id="btn-ajustes" class="icon-btn icon-btn-lg" title="Configuración" aria-label="Configuración">
       <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
         <path d="M12 8.4a3.6 3.6 0 1 0 0 7.2 3.6 3.6 0 0 0 0-7.2Zm0 5.6a2 2 0 1 1 0-4 2 2 0 0 1 0 4Z"/>
@@ -1169,11 +1167,6 @@ const Storage = {
   // propio guardado forma parte de una exportación: ahí no hay nada nuevo que
   // respaldar). `esCopia` lo usan exportar/guardar vía `marcarCopia`.
   save(esCopia) {
-    const dot = document.getElementById('estado-guardado');
-    if (dot) {
-      dot.classList.add('guardando');
-      setTimeout(() => dot.classList.remove('guardando'), 400);
-    }
     if (!esCopia) {
       this.db.meta = this.db.meta || {};
       this.db.meta.cambiosSinCopia = true;
@@ -1270,6 +1263,15 @@ const Storage = {
   async guardar() {
     const contenido = JSON.stringify(this.db, null, 2);
     const nombre = this.nombreFichero || 'evalcrit.json';
+    // En file:// el API de acceso al sistema de ficheros NO funciona (R-03): el
+    // selector ni siquiera se abre y la espera se cuelga, de modo que el botón
+    // «Copia de seguridad» parecería no hacer nada. Mismo guard que `exportar`:
+    // en ese origen la única vía fiable es la descarga por Blob.
+    const esFile = typeof location !== 'undefined' && location.protocol === 'file:';
+    if (esFile) {
+      UI.toast('Desde un fichero local el navegador no permite sobrescribir: la copia se descarga.');
+      return this.descargar(contenido, nombre);
+    }
     // 1. Manejador recordado (misma sesión o IndexedDB tras recargar).
     const fh = this.ficheroHandle || await this.idbLeer('fileHandle');
     if (fh && await this.escribeHandle(fh, contenido)) {

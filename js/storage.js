@@ -157,11 +157,6 @@ const Storage = {
   // propio guardado forma parte de una exportación: ahí no hay nada nuevo que
   // respaldar). `esCopia` lo usan exportar/guardar vía `marcarCopia`.
   save(esCopia) {
-    const dot = document.getElementById('estado-guardado');
-    if (dot) {
-      dot.classList.add('guardando');
-      setTimeout(() => dot.classList.remove('guardando'), 400);
-    }
     if (!esCopia) {
       this.db.meta = this.db.meta || {};
       this.db.meta.cambiosSinCopia = true;
@@ -258,6 +253,15 @@ const Storage = {
   async guardar() {
     const contenido = JSON.stringify(this.db, null, 2);
     const nombre = this.nombreFichero || 'evalcrit.json';
+    // En file:// el API de acceso al sistema de ficheros NO funciona (R-03): el
+    // selector ni siquiera se abre y la espera se cuelga, de modo que el botón
+    // «Copia de seguridad» parecería no hacer nada. Mismo guard que `exportar`:
+    // en ese origen la única vía fiable es la descarga por Blob.
+    const esFile = typeof location !== 'undefined' && location.protocol === 'file:';
+    if (esFile) {
+      UI.toast('Desde un fichero local el navegador no permite sobrescribir: la copia se descarga.');
+      return this.descargar(contenido, nombre);
+    }
     // 1. Manejador recordado (misma sesión o IndexedDB tras recargar).
     const fh = this.ficheroHandle || await this.idbLeer('fileHandle');
     if (fh && await this.escribeHandle(fh, contenido)) {
