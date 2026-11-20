@@ -833,6 +833,15 @@ const App = (() => {
     const cab = document.querySelector('.topbar');
     if (!cab || typeof cab.offsetHeight !== 'number' || !isFinite(cab.offsetHeight)) return;
     raiz.style.setProperty('--sticky-top', cab.offsetHeight + 'px');
+    // Cuadrícula: la cabecera tiene DOS filas (la barra de la unidad + los
+    // instrumentos). La segunda se ancla DEBAJO de la primera, cuya altura
+    // hay que medir para que no se pisen al hacer sticky.
+    const fila1 = document.querySelector('.tabla-cuadricula thead tr:first-child');
+    if (fila1 && typeof fila1.offsetHeight === 'number' && isFinite(fila1.offsetHeight) && fila1.offsetHeight > 0) {
+      raiz.style.setProperty('--fila1-h', fila1.offsetHeight + 'px');
+    } else {
+      raiz.style.removeProperty('--fila1-h');
+    }
     // M-18: las ventanas de scroll de tabla (Cuadrícula e Informe) ocupan el
     // espacio que queda bajo la cabecera, para que el thead se pega a su borde
     // superior y siempre se vea.
