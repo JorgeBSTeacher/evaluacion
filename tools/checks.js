@@ -5533,6 +5533,132 @@ async function main() {
     doc.querySelector('#modal-root .cerrar').click();
   }
 
+  console.log('\n== Fase 5 · Teclado y foco (celdas, menús, listados e Inicio) ==');
+  {
+    // El teclado sobre las celdas y el retorno de foco de los menús flotantes
+    // necesitan el DOM real (focus, keydown y menú flotante).
+    const app = cargarApp({ dom: true });
+    app.Storage.load();
+    await importarJson(app, estadoAci());
+    const doc = app.document;
+    const el = doc.createElement('div');
+    doc.getElementById('app').appendChild(el);
+    const renderCuad = () => app.CuadriculaView.render(el, { claseId: 'c1', tab: 'notas', unidadesAbiertas: ['UD1', 'UD2'] });
+    const celdaDe = (inst, alu) => Array.from(el.querySelectorAll('td.celda-nota[data-inst="' + inst + '"]'))
+      .find(td => td.dataset.alumno === alu);
+    renderCuad();
+
+    const celdas = Array.from(el.querySelectorAll('td.celda-nota[data-inst]'));
+    check('F5-1 · las celdas interactivas (pendiente, nota y No realiza) llevan tabindex="0"',
+      celdas.length > 0 && celdas.every(td => td.getAttribute('tabindex') === '0'),
+      String(celdas.length) + ' celdas');
+    // En «Todos los niveles» la celda N/A no es interactiva: sin tabindex.
+    const selNivel = el.querySelector('#sel-nivel');
+    selNivel.value = '__todas__';
+    selNivel.onchange({ target: selNivel });
+    const celdaNA = el.querySelector('td.celda-na');
+    check('F5-2 · la celda N/A no es alcanzable con Tab (sin tabindex)',
+      !!celdaNA && !celdaNA.hasAttribute('tabindex'),
+      celdaNA ? String(celdaNA.hasAttribute('tabindex')) : '(sin celda N/A)');
+    renderCuad();
+
+    let celdaPend = celdaDe('iComun', 'a2');
+    check('F5-3 · Enter sobre una celda pendiente abre la corrección (lo mismo que el clic)',
+      !!celdaPend && celdaPend._dispara('keydown', { key: 'Enter' }) && !!el.querySelector('#tabla-corrige'));
+    renderCuad();
+    celdaPend = celdaDe('iComun', 'a2');
+    check('F5-4 · Espacio sobre una celda pendiente también corrige',
+      celdaPend._dispara('keydown', { key: ' ' }) && !!el.querySelector('#tabla-corrige'));
+    renderCuad();
+
+    // La tecla de menú del navegador abre el mismo menú que el clic derecho.
+    let celdaMenu = celdaDe('iComun', 'a2');
+    check('F5-5 · la tecla de menú (ContextMenu) abre el menú de la celda',
+      celdaMenu._dispara('keydown', { key: 'ContextMenu' }) && !!doc.getElementById('menu-celda'));
+    doc.onkeydown({ key: 'Escape', preventDefault() {} });
+    check('F5-6 · Mayús+F10 también abre el menú de la celda',
+      celdaMenu._dispara('keydown', { key: 'F10', shiftKey: true }) && !!doc.getElementById('menu-celda'));
+    doc.onkeydown({ key: 'Escape', preventDefault() {} });
+
+    // Los menús flotantes devuelven el foco a quien los abrió.
+    celdaMenu.focus();
+    celdaMenu._dispara('keydown', { key: 'ContextMenu' });
+    doc.onkeydown({ key: 'Escape', preventDefault() {} });
+    check('F5-7 · al cerrar el menú de la celda con Escape, el foco vuelve a la celda',
+      !doc.getElementById('menu-celda') && doc.activeElement === celdaMenu,
+      'activo=' + (doc.activeElement === celdaMenu));
+    celdaMenu.focus();
+    celdaMenu._dispara('keydown', { key: 'ContextMenu' });
+    doc.getElementById('menu-celda').querySelector('button.accion-cancelar').click();
+    check('F5-8 · «Cancelar» del menú lo cierra y devuelve el foco a la celda',
+      !doc.getElementById('menu-celda') && doc.activeElement === celdaMenu);
+
+    // Menú de color de la UD: la barra lo abre con su tecla y lo recupera.
+    const thUd = el.querySelector('th[data-toggle-ud="UD1"]');
+    thUd.focus();
+    check('F5-9 · la barra de UD tiene el foco antes de abrir su menú', doc.activeElement === thUd);
+    thUd._dispara('keydown', { key: 'ContextMenu' });
+    check('F5-10 · la tecla de menú sobre la barra de UD abre el menú de color',
+      !!doc.getElementById('menu-color-ud'));
+    doc.onkeydown({ key: 'Escape', preventDefault() {} });
+    check('F5-11 · al cerrar el menú de color, el foco vuelve a la barra de UD',
+      !doc.getElementById('menu-color-ud') && doc.activeElement === thUd);
+
+    // Celda «No realiza»: Enter abre el menú (no la corrección), como el clic.
+    app.Storage.db.registros.iComun.a2 = { noRealiza: true };
+    renderCuad();
+    const celdaExcl = celdaDe('iComun', 'a2');
+    check('F5-12 · la celda «No realiza» también lleva tabindex (es alcanzable)',
+      !!celdaExcl && celdaExcl.getAttribute('tabindex') === '0');
+    celdaExcl._dispara('keydown', { key: 'Enter' });
+    check('F5-13 · Enter en la celda «No realiza» abre el menú, no la corrección',
+      !!doc.getElementById('menu-celda') && !el.querySelector('#tabla-corrige'));
+    doc.onkeydown({ key: 'Escape', preventDefault() {} });
+    delete app.Storage.db.registros.iComun.a2;
+
+    // Listados: los li de grupos (Alumnos) y de currículos (Clases).
+    app.App.ir('alumnos');
+    const liGrupo = doc.querySelector('#app #lista-grupos li[data-id]');
+    check('F5-14 · los li de grupos llevan tabindex="0"',
+      !!liGrupo && liGrupo.getAttribute('tabindex') === '0',
+      liGrupo ? liGrupo.getAttribute('tabindex') : '(sin li)');
+    const idGrupo = liGrupo.dataset.id;
+    liGrupo._dispara('keydown', { key: 'Enter' });
+    const liTras = doc.querySelector('#app #lista-grupos li[data-id="' + idGrupo + '"]');
+    check('F5-15 · Enter sobre un li de grupo lo selecciona (lo mismo que el clic)',
+      !!liTras && liTras.classList.contains('activo'),
+      liTras ? liTras.className : '(sin li)');
+    app.App.ir('clases');
+    const liAsig = doc.querySelector('#app #lista-asig li[data-id]');
+    check('F5-16 · los li de currículos y asignaturas llevan tabindex="0"',
+      !!liAsig && liAsig.getAttribute('tabindex') === '0',
+      liAsig ? liAsig.getAttribute('tabindex') : '(sin li)');
+    liAsig._dispara('keydown', { key: 'Enter' });
+    check('F5-17 · Enter sobre un li de asignatura abre su edición (el modal de «Editar»)',
+      !!doc.querySelector('.modal-body #f-nombre'),
+      doc.querySelector('.modal-body') ? 'modal abierto' : '(sin modal)');
+    doc.querySelector('#modal-root .cancelar').click();
+
+    // Filas de estado de Inicio: Enter abre Calificaciones de esa clase.
+    app.App.ir('inicio');
+    const fila = doc.querySelector('#app .fila-inicio');
+    check('F5-18 · las filas de estado de Inicio llevan tabindex="0"',
+      !!fila && fila.getAttribute('tabindex') === '0',
+      fila ? fila.getAttribute('tabindex') : '(sin fila)');
+    fila._dispara('keydown', { key: 'Enter' });
+    check('F5-19 · Enter sobre una fila de Inicio abre Calificaciones de esa clase',
+      app.App.seccionActual() === 'evaluacion'
+      && doc.querySelector('#app #sel-clase').value === fila.dataset.clase,
+      app.App.seccionActual());
+
+    // Anillo de foco visible en CSS para celdas, li y filas.
+    const cssF5 = fs.readFileSync(path.join(raiz, 'css', 'styles.css'), 'utf8');
+    check('F5-20 · el CSS da anillo de foco a celdas, li de listados y filas de Inicio',
+      cssF5.includes('.celda-nota:focus-visible')
+      && cssF5.includes('.lista li:focus-visible')
+      && cssF5.includes('.fila-inicio:focus-visible'));
+  }
+
   console.log('\n' + (fallos ? 'FALLOS: ' + fallos + '/' + total : 'TODO OK: ' + total + ' comprobaciones')
     + (avisos ? ' · ' + avisos + ' aviso(s)' : ''));
   process.exitCode = fallos ? 1 : 0;

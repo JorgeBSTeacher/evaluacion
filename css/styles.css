@@ -741,6 +741,14 @@ details.guia-inicio > summary .guia-titulo { display: inline; font-size: 16px; f
 .tabla-cuadricula .ud-grupo { text-transform: none; letter-spacing: normal; }
 .tabla-cuadricula .ud-grupo small { margin-left: 6px; color: var(--tinta-suave); font-weight: 400; }
 .tabla-cuadricula .ud-grupo:focus-visible { outline: 3px solid var(--acento); outline-offset: 2px; }
+/* Fase 5 (teclado): las celdas interactivas de la cuadrícula, los li de los
+   listados (grupos, currículos) y las filas de estado de Inicio son
+   alcanzables con Tab; el anillo de foco se extiende a ellos. En la celda el
+   anillo se pinta hacia dentro (offset negativo) para que no lo recorte el
+   borde de la tabla. */
+.tabla-cuadricula .celda-nota:focus-visible { outline: 3px solid var(--acento); outline-offset: -3px; }
+.lista li:focus-visible,
+.fila-inicio:focus-visible { outline: 3px solid var(--acento); outline-offset: 2px; }
 
 /* Menú contextual de color de una UD (clic derecho sobre su barra). */
 .menu-color-ud {

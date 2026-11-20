@@ -251,7 +251,7 @@ const App = (() => {
       const marca = !insts.length ? '<span class="badge na">sin instrumentos</span>'
         : pend ? `<span class="badge warn">${pend} por corregir</span>`
         : '<span class="badge ok">al día</span>';
-      return `<tr class="fila-inicio" data-clase="${Utils.esc(c.id)}" title="Abrir Calificaciones de esta clase">
+      return `<tr class="fila-inicio" data-clase="${Utils.esc(c.id)}" tabindex="0" title="Abrir Calificaciones de esta clase">
         <td><b>${Utils.esc(asig ? asig.nombre : '¿?')}</b> · ${Utils.esc(gru ? gru.nombre : '¿?')}</td>
         <td class="num">${Calc.alumnosDeClase(c.id).length}</td>
         <td class="num">${insts.length}</td>
@@ -773,6 +773,13 @@ const App = (() => {
     // Paneles de estado: cada fila de clase abre Calificaciones de esa clase.
     el.querySelectorAll('.fila-inicio').forEach(tr => {
       tr.onclick = () => ir('cuadricula', { claseId: tr.dataset.clase });
+      // Fase 5 (teclado): la fila es alcanzable con Tab (tabindex en el HTML)
+      // y Enter/Espacio hacen lo mismo que el clic.
+      tr.onkeydown = e => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+        ir('cuadricula', { claseId: tr.dataset.clase });
+      };
     });
     const btnCur = el.querySelector('#btn-ir-curriculo');
     if (btnCur) btnCur.onclick = () => ir('curriculo');

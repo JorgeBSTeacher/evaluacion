@@ -90,7 +90,7 @@ const AlumnosView = (() => {
           </div>
           <ul class="lista" id="lista-grupos">
             ${db.grupos.map(g => `
-              <li data-id="${g.id}" class="${g.id === grupoSel ? 'activo' : ''}">
+              <li data-id="${g.id}" tabindex="0" class="${g.id === grupoSel ? 'activo' : ''}">
                 <span>${Utils.esc(g.nombre)}</span><small>${Utils.esc(g.etapa)}</small>
                 <button class="btn btn-mini editar-grupo" data-id="${g.id}">Editar</button>
                 <button class="icon-btn borrar-grupo" data-id="${g.id}" title="Eliminar grupo">×</button>
@@ -133,6 +133,15 @@ const AlumnosView = (() => {
         grupoSel = li.dataset.id;
         render(el);
       });
+      // Fase 5 (teclado): el li es alcanzable con Tab y Enter/Espacio hacen lo
+      // mismo que el clic: elegir el grupo. Si el foco está en un botón interno
+      // (Editar, eliminar), ese botón gestiona su propio Enter.
+      li.onkeydown = e => {
+        if ((e.key !== 'Enter' && e.key !== ' ') || e.target !== li) return;
+        e.preventDefault();
+        grupoSel = li.dataset.id;
+        render(el);
+      };
     });
     el.querySelectorAll('.editar-grupo').forEach(b => {
       b.onclick = e => {

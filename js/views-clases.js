@@ -535,7 +535,7 @@ const ClasesView = (() => {
               const conCurriculo = db.criterios.some(c => c.asignaturaId === a.id);
               const det = [a.etapa, a.curso, conCurriculo ? '' : 'sin currículo'].filter(Boolean).join(' · ');
               return `
-              <li data-id="${a.id}">
+              <li data-id="${a.id}" tabindex="0">
                 <span>${Utils.esc(a.nombre)}</span><small>${Utils.esc(det)}</small>
                 <button class="btn btn-mini editar-asig" data-id="${a.id}">Editar</button>
                 ${conCurriculo || !hayOficiales ? '' : `<button class="btn btn-mini recuperar-asig" data-id="${a.id}" title="Cargar el currículo oficial de este curso">Recuperar</button>`}
@@ -576,6 +576,19 @@ const ClasesView = (() => {
       b.onclick = e => {
         e.stopPropagation();
         try { modalAsignaturaEditar(Calc.asignatura(b.dataset.id)); }
+        catch (err) { console.error(err); alert('Error al editar la asignatura: ' + err.message); }
+      };
+    });
+
+    // Fase 5 (teclado): los li del listado de currículos son alcanzables con
+    // Tab y Enter/Espacio abren su edición — su acción principal, el mismo
+    // modal que el botón «Editar». Con el foco en un botón interno (Editar,
+    // Recuperar, eliminar) no se intercepta: ese botón hace ya su trabajo.
+    el.querySelectorAll('#lista-asig li[data-id]').forEach(li => {
+      li.onkeydown = e => {
+        if ((e.key !== 'Enter' && e.key !== ' ') || e.target !== li) return;
+        e.preventDefault();
+        try { modalAsignaturaEditar(Calc.asignatura(li.dataset.id)); }
         catch (err) { console.error(err); alert('Error al editar la asignatura: ' + err.message); }
       };
     });

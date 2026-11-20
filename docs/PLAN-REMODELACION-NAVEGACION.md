@@ -316,3 +316,42 @@ Inicio · Corregir · Evaluación · Informes · Ajustes
   el propio ☰, Escape y un clic fuera del panel (manejadores conectados una
   sola vez sobre `<body>`, `conectaCierreDrawer`). Los destinos del panel no
   cambian; tras navegar el panel repinta cerrado.
+
+---
+
+## 13. Evidencia Fase 5 · teclado y foco (2026-11-20)
+
+- `node --check js/views-cuadricula.js && node --check js/views-alumnos.js
+  && node --check js/views-clases.js && node --check js/app.js` → sin errores
+  de sintaxis.
+- `node tools/checks.js` → `TODO OK: 949 comprobaciones` (20 nuevas, bloque
+  «Fase 5 · Teclado y foco»).
+- `node tools/build-singlefile.js` → `dist/evalora.html` (595 KB);
+  `node tools/build-singlefile.js --check` → sincronizado.
+- **Cuadrícula · celdas con teclado**: las celdas interactivas
+  (pendiente, nota y «No realiza») llevan `tabindex="0"` en su HTML; la celda
+  N/A no (no es interactiva). **Enter/Espacio** repiten el clic — corregir,
+  o el menú contextual si el alumno está excluido — y la **tecla de menú del
+  navegador** (`ContextMenu` o `Mayús+F10`) abre el mismo menú contextual de
+  la celda, igual que ya hacía la barra de la UD con su menú de color.
+- **Menús flotantes que devuelven el foco**: `abrirMenuCelda` y
+  `abrirMenuColorUd` guardan el elemento que los abrió y, al cerrarse por
+  cualquier vía (acción, Escape o clic fuera), le devuelven el foco con
+  guardia `isConnected` (si la vista repintó, el nodo está muerto y no se
+  enfoca).
+- **Listados e Inicio**: los `li` de grupos (`views-alumnos.js`) y de
+  currículos/asignaturas (`views-clases.js`) llevan `tabindex="0"`;
+  Enter/Espacio activan su acción principal (elegir el grupo / abrir el
+  modal de edición), sin interceptar el Enter de sus botones internos. Las
+  filas `.fila-inicio` de Inicio llevan `tabindex="0"` y Enter/Espacio →
+  `ir('cuadricula', { claseId })`.
+- **Anillo de foco**: el CSS extiende el anillo (`:focus-visible`, 3 px
+  `var(--acento)`) a `.tabla-cuadricula .celda-nota` (offset negativo, para
+  que no lo recorte el borde de la tabla), a `.lista li` y a `.fila-inicio`.
+- **Revisión de tabulación** (sin cambios): el ojo de privacidad
+  (`App.crearBotonPrivacidad`), el «⋯» de instrumentos
+  (`button.mas-acciones`), la cola de Corregir
+  (`button.fila-corrige`) y los accesos rápidos de Inicio (`button[data-ir]`)
+  ya son botones reales y el orden del DOM es razonable.
+- La trampa de foco de los modales (`focablesEn`) solo consulta dentro de
+  `modal-root`: los nuevos `[tabindex]` de la página no la afectan.

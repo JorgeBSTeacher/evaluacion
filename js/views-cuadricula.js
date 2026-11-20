@@ -108,13 +108,15 @@ const CuadriculaView = (() => {
         // Excluido de la evaluación: insignia propia, distinta de «sin corregir».
         // La celda NO abre la corrección (el alumno está fuera): el clic
         // izquierdo y el derecho abren el mismo menú contextual (data-excluida).
+        // Fase 5 (teclado): las celdas interactivas llevan tabindex="0", para que
+        // Tab las alcance y Enter/Espacio y la tecla de menú las activen.
         if (noRealizaEn(i, a.id)) {
-          return `<td class="celda-nota num" ${ud} data-inst="${i.id}" data-alumno="${Utils.esc(a.id)}" data-excluida="1" title="No realiza esta evaluación"><span class="badge no-realiza">No realiza</span></td>`;
+          return `<td class="celda-nota num" ${ud} data-inst="${i.id}" data-alumno="${Utils.esc(a.id)}" tabindex="0" data-excluida="1" title="No realiza esta evaluación"><span class="badge no-realiza">No realiza</span></td>`;
         }
         // Sin corregir: chip «Pend.» con borde discontinuo (M-09), distinto del
         // «—» de la media de una UD plegada. La celda ya abre la corrección.
         const n = instrumentoEvaluado(i, a.id) ? Calc.notaInstrumento(i, a.id) : null;
-        return `<td class="celda-nota num" ${ud} data-inst="${i.id}" data-alumno="${Utils.esc(a.id)}"${n == null ? ' title="Pendiente de corregir · toca para corregir"' : ''}>${n == null ? '<span class="celda-pendiente">Pend.</span>' : Calc.badgeHtml(n)}</td>`;
+        return `<td class="celda-nota num" ${ud} data-inst="${i.id}" data-alumno="${Utils.esc(a.id)}" tabindex="0"${n == null ? ' title="Pendiente de corregir · toca para corregir"' : ''}>${n == null ? '<span class="celda-pendiente">Pend.</span>' : Calc.badgeHtml(n)}</td>`;
       }).join('');
     const thead = conBarra
       ? `<tr class="fila-ud"><th rowspan="2">Alumno</th>${grupos.map(barraUd).join('')}<th class="col-eval" rowspan="2">Evaluación</th></tr>
@@ -140,15 +142,24 @@ const CuadriculaView = (() => {
   // Menú contextual de color de una UD (clic derecho sobre su barra, o
   // Mayús+F10 / tecla ContextMenu con la barra enfocada).
   let menuColorUd = null;
+  // Fase 5 (teclado): el menú guarda el elemento que lo abrió (la barra de la
+  // UD) y, al cerrarse, le devuelve el foco — como hace el modal con su
+  // disparador. La guardia de `isConnected` evita enfocar un nodo muerto (la
+  // vista pudo repintarse mientras el menú estaba abierto).
+  let menuColorUdOrigen = null;
   function cerrarMenuColorUd() {
     if (menuColorUd && menuColorUd.parentNode) menuColorUd.parentNode.removeChild(menuColorUd);
     menuColorUd = null;
     document.onclick = null;
     document.onkeydown = null;
+    const origen = menuColorUdOrigen;
+    menuColorUdOrigen = null;
+    if (origen && typeof origen.focus === 'function' && origen.isConnected) origen.focus();
   }
-  function abrirMenuColorUd(el, ud, x, y) {
+  function abrirMenuColorUd(el, ud, x, y, origen) {
     cerrarMenuColorUd();
     cerrarMenuCelda();
+    menuColorUdOrigen = origen || null;
     const m = document.createElement('div');
     m.id = 'menu-color-ud';
     m.className = 'menu-color-ud';
@@ -157,7 +168,9 @@ const CuadriculaView = (() => {
       `<button type="button" class="muestra" data-i="${i}" style="background:${p.intenso}" title="Color ${i + 1}" aria-label="Color ${i + 1}"></button>`
     ).join('')}</div><button type="button" class="btn btn-mini sin-color">Sin color</button>`;
     document.body.appendChild(m);
-    const r = m.getBoundingClientRect();
+    // Guardia para el arnés (sin `getBoundingClientRect` no hay layout): se
+    // cae a un tamaño estimado y el posicionamiento queda igual de acotado.
+    const r = typeof m.getBoundingClientRect === 'function' ? m.getBoundingClientRect() : { width: 170, height: 110 };
     m.style.left = Math.max(4, Math.min(x, window.innerWidth - r.width - 4)) + 'px';
     m.style.top = Math.max(4, Math.min(y, window.innerHeight - r.height - 4)) + 'px';
     m.onclick = ev => {
@@ -179,15 +192,23 @@ const CuadriculaView = (() => {
   // patrón que abrirMenuColorUd: flotante posicionado, cierre con clic fuera
   // y Escape. Los gestos se comparten entre sí: abrir uno cierra el otro.
   let menuCelda = null;
+  // Fase 5 (teclado): igual que el menú de color, guarda quién lo abrió (la
+  // celda) y le devuelve el foco al cerrarse, por la vía que sea (acción,
+  // Escape o clic fuera).
+  let menuCeldaOrigen = null;
   function cerrarMenuCelda() {
     if (menuCelda && menuCelda.parentNode) menuCelda.parentNode.removeChild(menuCelda);
     menuCelda = null;
     document.onclick = null;
     document.onkeydown = null;
+    const origen = menuCeldaOrigen;
+    menuCeldaOrigen = null;
+    if (origen && typeof origen.focus === 'function' && origen.isConnected) origen.focus();
   }
-  function abrirMenuCelda(el, instId, alumnoId, x, y, desdeClic) {
+  function abrirMenuCelda(el, instId, alumnoId, x, y, desdeClic, origen) {
     cerrarMenuCelda();
     cerrarMenuColorUd();
+    menuCeldaOrigen = origen || null;
     const inst = Calc.instrumento(instId);
     if (!inst || !Calc.alumno(alumnoId)) return;
     const fila = ((Storage.db.registros && Storage.db.registros[instId]) || {})[alumnoId] || {};
@@ -707,14 +728,16 @@ const CuadriculaView = (() => {
         if (udsAbiertas.has(clave)) udsAbiertas.delete(clave); else udsAbiertas.add(clave);
         render(el);
       };
-      th.oncontextmenu = e => { e.preventDefault(); abrirMenuColorUd(el, th.dataset.toggleUd, e.clientX, e.clientY); };
+      th.oncontextmenu = e => { e.preventDefault(); abrirMenuColorUd(el, th.dataset.toggleUd, e.clientX, e.clientY, th); };
       th.setAttribute('tabindex', '0');
       th.onkeydown = e => {
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); th.onclick(); }
         else if ((e.key === 'F10' && e.shiftKey) || e.key === 'ContextMenu') {
           e.preventDefault();
-          const r = th.getBoundingClientRect();
-          abrirMenuColorUd(el, th.dataset.toggleUd, r.left, r.bottom);
+          // Guardia para el arnés (sin layout que medir): se cae al origen de
+          // coordenadas y el menú queda igual de acotado a la pantalla.
+          const r = typeof th.getBoundingClientRect === 'function' ? th.getBoundingClientRect() : {};
+          abrirMenuColorUd(el, th.dataset.toggleUd, r.left, r.bottom, th);
         }
       };
     });
@@ -724,16 +747,36 @@ const CuadriculaView = (() => {
       // con alumno e instrumento (pendiente, corregida o «No realiza»).
       td.oncontextmenu = e => {
         e.preventDefault();
-        abrirMenuCelda(el, td.dataset.inst, td.dataset.alumno, e.clientX, e.clientY);
+        abrirMenuCelda(el, td.dataset.inst, td.dataset.alumno, e.clientX, e.clientY, false, td);
       };
       if (td.dataset.excluida) {
         // «No realiza»: el alumno está excluido, así que la corrección no es
         // un camino válido ni con el clic izquierdo; ambos gestos abren el
         // mismo menú (desdeClic evita que ese clic lo cierre al abrirse).
-        td.onclick = e => abrirMenuCelda(el, td.dataset.inst, td.dataset.alumno, e.clientX, e.clientY, true);
+        td.onclick = e => abrirMenuCelda(el, td.dataset.inst, td.dataset.alumno, e.clientX, e.clientY, true, td);
       } else {
         td.onclick = () => InstrumentosView.renderCorreccion(el, td.dataset.inst, () => render(el), td.dataset.alumno);
       }
+      // Fase 5 (teclado): la celda es alcanzable con Tab (tabindex en el HTML).
+      // Enter/Espacio repiten el clic — corregir, o el mismo menú si el alumno
+      // está excluido — y la tecla de menú del navegador (ContextMenu o
+      // Mayús+F10) abre el menú contextual de la celda.
+      td.onkeydown = e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          if (td.dataset.excluida) {
+            const r = typeof td.getBoundingClientRect === 'function' ? td.getBoundingClientRect() : {};
+            abrirMenuCelda(el, td.dataset.inst, td.dataset.alumno, r.left, r.bottom, false, td);
+          } else {
+            InstrumentosView.renderCorreccion(el, td.dataset.inst, () => render(el), td.dataset.alumno);
+          }
+        } else if ((e.key === 'F10' && e.shiftKey) || e.key === 'ContextMenu') {
+          e.preventDefault();
+          // Guardia para el arnés (sin layout): el menú se acota igualmente.
+          const r = typeof td.getBoundingClientRect === 'function' ? td.getBoundingClientRect() : {};
+          abrirMenuCelda(el, td.dataset.inst, td.dataset.alumno, r.left, r.bottom, false, td);
+        }
+      };
     });
     el.querySelectorAll('th[data-edit]').forEach(th => {
       th.onclick = () => {
