@@ -83,24 +83,28 @@ body.modo-fab main, body.modo-dock main { padding-bottom: 84px; }
   border-radius: 10px; font-size: 12px; color: var(--tinta-suave); }
 .nav-dock button:hover { background: var(--acento-suave); color: var(--acento); }
 .nav-dock button.activo { background: var(--acento); color: #fff; }
-.nav-drawer { position: fixed; left: 0; top: 0; bottom: 0; width: 200px; z-index: 40;
-  background: #fff; border-right: 1px solid var(--linea); padding: 76px 8px 14px; overflow: auto; }
+/* M-19: la barra lateral nace CERRADA y, al abrirse, es una capa superpuesta:
+   NUNCA desplaza el contenido (las reglas de margin-left de 200 px se
+   retiraron, también la variante móvil). El ☰ vive fijo en el margen
+   izquierdo, justo bajo la cabecera (--sticky-top la mide, M-18), y queda al
+   borde del panel cuando se abre: la vía de cierre siempre se ve. También
+   cierran Escape y un clic fuera del panel (conectaCierreDrawer, en app.js). */
+.nav-drawer-toggle { position: fixed; left: 10px; top: calc(var(--sticky-top, 60px) + 10px);
+  z-index: 9998; }
+.nav-drawer { position: fixed; left: 0; top: var(--sticky-top, 60px); bottom: 0; width: 220px; z-index: 40;
+  background: #fff; border-right: 1px solid var(--linea); box-shadow: 0 0 30px rgba(0, 0, 0, .3);
+  /* El primer botón arranca bajo el ☰, que flota sobre la esquina del panel. */
+  padding: 58px 8px 14px; overflow: auto; }
 .nav-drawer[hidden] { display: none; }
 .nav-drawer button { display: block; width: 100%; text-align: left; padding: 10px 12px;
   margin-bottom: 2px; border: 0; background: transparent; border-radius: 8px; }
 .nav-drawer button:hover { background: var(--acento-suave); color: var(--acento); }
 .nav-drawer button.activo { background: var(--acento); color: #fff; }
-body.modo-drawer .topbar, body.modo-drawer main { margin-left: 200px; }
 
 @media (max-width: 520px) {
   .nav-dock { left: 10px; right: 10px; transform: none; max-width: none; }
   /* M-11: la fuente no baja de 12 px; el dock se deja desplazar en horizontal. */
   .nav-dock button { min-width: 58px; }
-}
-/* En pantallas estrechas la barra lateral superpuesta no desplaza el contenido. */
-@media (max-width: 720px) {
-  body.modo-drawer .topbar, body.modo-drawer main { margin-left: 0; }
-  .nav-drawer { width: 220px; box-shadow: 0 0 30px rgba(0, 0, 0, .3); }
 }
 
 .brand { display: flex; align-items: center; gap: 10px; }
@@ -384,10 +388,23 @@ main { max-width: 1440px; margin: 0 auto; padding: 20px 18px 60px; }
 
 .scroll-x { overflow-x: auto; }
 
+/* M-18: en las tablas cuyo desplazamiento VERTICAL es la página (Cuadrícula e
+   Informe: están dentro de .scroll-x, que solo desplaza en horizontal) la fila
+   de cabecera sticky se ancla bajo la cabecera de color: app.js mide la altura
+   real de .topbar (incluido el subnav cuando se ve) y la publica en
+   --sticky-top. El thead sigue por debajo de la cabecera en z-index (4 y 6
+   frente a 50) pero, anclado a su altura exacta, deja de meterse debajo y se
+   ve. Las variantes de la Cuadrícula son sticky izquierda/derecha Y arriba. */
+.scroll-x .tabla thead th { top: var(--sticky-top, 0px); }
+.scroll-x .tabla-cuadricula thead th:first-child { top: var(--sticky-top, 0px); }
+.scroll-x .tabla-cuadricula thead th.col-eval { top: var(--sticky-top, 0px); }
+
 /* Corrección: la tabla tiene su propio scroll (vertical y horizontal) para que
    la cabecera quede fija mientras se puntúa a los últimos alumnos. Sin el
    contenedor con scroll, el thead sticky se anclaría a .scroll-x (que no
-   desplaza en vertical) y la cabecera se iría con el contenido. */
+   desplaza en vertical) y la cabecera se iría con el contenido.
+   M-18: al desplazarse DENTRO del contenedor, su thead sigue pegado a
+   top: 0 respecto a él: aquí no se aplica la variable de altura de cabecera. */
 .scroll-correccion { overflow: auto; max-height: 72vh; }
 
 /* Filas de los paneles de Inicio: al tocarlas se abre la vista correspondiente. */

@@ -819,6 +819,53 @@ const App = (() => {
     }
   }
 
+  // M-18: la primera fila de cabecera de las tablas que se desplazan con la
+  // página (Cuadrícula e Informe) es sticky, pero la cabecera de color (también
+  // sticky) la tapaba al desplazarse: la fila se metía debajo y desaparecía.
+  // Se mide la altura REAL de la cabecera (offsetHeight; incluye la fila del
+  // subnav cuando se ve) y se publica en --sticky-top para que el `top` de esas
+  // cabeceras la deje ver. La corrección (.scroll-correccion) tiene scroll
+  // propio y su thead sigue pegado a top: 0 dentro del contenedor.
+  // En el arnés sin DOM no hay layout que medir: se ignora sin fallo.
+  function mideStickyTop() {
+    const raiz = document.documentElement;
+    if (!raiz || !raiz.style || typeof raiz.style.setProperty !== 'function') return;
+    const cab = document.querySelector('.topbar');
+    if (!cab || typeof cab.offsetHeight !== 'number' || !isFinite(cab.offsetHeight)) return;
+    raiz.style.setProperty('--sticky-top', cab.offsetHeight + 'px');
+  }
+
+  // M-19: cierre de la barra lateral con Escape o con un clic fuera del panel.
+  // Los manejadores se conectan UNA sola vez sobre <body> (clics y teclado
+  // burbujean hasta él) para que repintar la nav no los acumule, y solo actúan
+  // en modo barra lateral con el panel abierto.
+  let cierreDrawerConectado = false;
+  function cierraDrawerPanel() {
+    const panel = document.querySelector('.nav-drawer');
+    if (!panel || panel.hidden) return;
+    panel.hidden = true;
+    const toggle = document.querySelector('.nav-drawer-toggle');
+    if (toggle) toggle.setAttribute('aria-expanded', 'false');
+  }
+  function conectaCierreDrawer() {
+    if (cierreDrawerConectado) return;
+    const cuerpo = document.body;
+    if (!cuerpo || typeof cuerpo.addEventListener !== 'function') return;
+    cierreDrawerConectado = true;
+    cuerpo.addEventListener('click', ev => {
+      if (!document.body.classList.contains('modo-drawer')) return;
+      const panel = document.querySelector('.nav-drawer');
+      if (!panel || panel.hidden) return;
+      const objetivo = ev && ev.target;
+      if (objetivo && objetivo.closest
+        && (objetivo.closest('.nav-drawer') || objetivo.closest('.nav-drawer-toggle'))) return;
+      cierraDrawerPanel();
+    });
+    cuerpo.addEventListener('keydown', ev => {
+      if (ev && ev.key === 'Escape') cierraDrawerPanel();
+    });
+  }
+
   // Navegación según la organización elegida en Configuración → Tema y menús.
   function pintaNav() {
     // El indicador de copia (M-02) vive en la cabecera y no depende del modo
@@ -872,15 +919,27 @@ const App = (() => {
       pinta(dock);
       document.body.appendChild(dock);
     } else if (modo === 'drawer') {
+      // M-19: el panel nace CERRADO (sin panel a la vista y sin desplazar el
+      // contenido: las reglas de margin-left de 200 px se retiraron) y al
+      // abrirse es una capa superpuesta. El ☰ ya no cuelga de .actions: es un
+      // botón fijo del margen izquierdo, bajo la cabecera, y queda al borde
+      // del panel cuando se abre, de modo que la vía de cierre se ve siempre.
       const d = document.createElement('aside');
       d.className = 'nav-drawer';
+      d.hidden = true;
       pinta(d);
       document.body.insertBefore(d, document.getElementById('app'));
       const t = document.createElement('button');
       t.type = 'button'; t.className = 'btn btn-mini nav-drawer-toggle'; t.textContent = '☰';
+      t.setAttribute('title', 'Mostrar u ocultar la barra lateral');
       t.setAttribute('aria-label', 'Mostrar u ocultar la barra lateral');
-      t.onclick = () => { d.hidden = !d.hidden; };
-      document.querySelector('.actions').prepend(t);
+      t.setAttribute('aria-expanded', 'false');
+      t.onclick = () => {
+        d.hidden = !d.hidden;
+        t.setAttribute('aria-expanded', String(!d.hidden));
+      };
+      document.body.appendChild(t);
+      conectaCierreDrawer();
     }
     pintaSubnav();
   }
@@ -913,6 +972,10 @@ const App = (() => {
       b.onclick = () => ir(sub.id);
       subnav.appendChild(b);
     });
+    // M-18: crear o quitar el subnav cambia la altura de la cabecera, así que
+    // la medición de --sticky-top se repinta aquí (todas las rutas de pintaNav
+    // acaban llamando a pintaSubnav).
+    mideStickyTop();
   }
 
   // Sección activa según la vista (Fase 4a: Informes es una vista propia, así
@@ -955,6 +1018,12 @@ const App = (() => {
   function arrancar() {
     Storage.load();
     aplicaTema();
+    // M-18: al redimensionar cambia el ajuste de la nav y del subnav y con
+    // ello la altura de la cabecera: se vuelve a medir. Guardia para el arnés,
+    // cuyo `window` simulado no tiene addEventListener.
+    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+      window.addEventListener('resize', mideStickyTop);
+    }
     // F2: abre Configuración en «Tema y menús» (atajo de desarrollo).
     document.addEventListener('keydown', ev => {
       if (ev.key !== 'F2') return;

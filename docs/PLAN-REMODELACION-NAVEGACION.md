@@ -32,6 +32,8 @@ recordar dónde está cada cosa y consulte informes según una pregunta concreta
 | M-15 | Revisar estado activo/hover del menú | Baja | Pendiente |
 | M-16 | Móvil: bottom tab bar y corrección a pantalla completa | Media | **Apartada** (mejora propia) |
 | M-17 | Agrupar instrumentos por nombre con variantes por nivel | Baja | **Hecha** — en cada bloque de unidad, los instrumentos con el mismo título (insensible a mayúsculas y espacios) forman un grupo: fila de grupo (título · N variantes · pendientes del grupo) + una fila por variante con el nivel como primera celda; un título único sigue como fila normal y sus acciones (Corregir + ⋯) funcionan por fila |
+| M-18 | Cabecera sticky de tabla visible bajo la cabecera de color | Media | **Hecha** — `app.js` mide la altura real de `.topbar` (`offsetHeight`, con el subnav cuando se ve) y la publica en `--sticky-top` (recalculada al repintar la nav/subnav y en `resize`, con guardia para el arnés sin DOM); en `styles.css`, las tablas cuyo desplazamiento vertical es la página (Cuadrícula e Informe, dentro de `.scroll-x`) anclan su `thead` a `top: var(--sticky-top, 0px)` (también las variantes sticky de la Cuadrícula `th:first-child` y `th.col-eval`); la corrección (`.scroll-correccion`, scroll propio) conserva su `thead` pegado a `top: 0` dentro del contenedor |
+| M-19 | Barra lateral: ☰ en el margen y panel en modo capa (sin desplazar contenido) | Media | **Hecha** — el panel nace cerrado y, al abrirse, es una capa superpuesta fija bajo la cabecera: fuera las reglas `body.modo-drawer … { margin-left: 200px }` (y su variante móvil), el contenido recupera todo su ancho al cerrar; el ☰ ya no cuelga de `.actions`: es un botón fijo del margen izquierdo (`left: 10px`, justo bajo la cabecera) con `title` y `aria-expanded`, y queda al borde del panel cuando se abre (la vía de cierre siempre visible); también cierran Escape y un clic fuera del panel; el cableado de destinos no cambia |
 
 ---
 
@@ -283,3 +285,34 @@ Inicio · Corregir · Evaluación · Informes · Ajustes
   id="logo-inicio">` con `title="Ir al inicio"`, `aria-label="Evalora · Ir al
   inicio"` y `tabindex="0"`; clic y Enter/Espacio llevan a `ir('inicio')`, con
   `cursor: pointer` y hover sutil (brillo) sin cambiar el tamaño ni el isotipo.
+
+---
+
+## 12. Evidencia M-18 y M-19 (2026-11-20)
+
+- `node --check js/app.js && node --check js/views-instrumentos.js` → sin
+  errores de sintaxis.
+- `node tools/checks.js` → `TODO OK: 929 comprobaciones` (12 nuevas: 5 de M-18
+  y 7 de M-19 en la batería de navegación).
+- `node tools/build-singlefile.js` → `dist/evalora.html` (589 KB);
+  `node tools/build-singlefile.js --check` → sincronizado.
+- **M-18 · sticky visible bajo la cabecera**: `pintaSubnav()` (a la que llega
+  toda ruta de `pintaNav()`) mide `topbar.offsetHeight` y fija
+  `--sticky-top` en `document.documentElement` (`mideStickyTop`, con guardia
+  para el arnés sin DOM y remedición en `resize` desde `arrancar`); el CSS
+  ancla `top: var(--sticky-top, 0px)` en `.scroll-x .tabla thead th` y en las
+  variantes de la Cuadrícula (`thead th:first-child` y `thead th.col-eval`,
+  sticky izquierda/derecha Y arriba), mientras la corrección conserva su
+  `thead` a `top: 0` dentro de `.scroll-correccion` (contenedor con scroll
+  vertical propio). En z-index el `thead` (4/6) sigue por debajo de la
+  cabecera (50): anclado a su altura exacta deja de meterse debajo y se ve.
+- **M-19 · barra lateral sin desplazar contenido**: el panel `.nav-drawer`
+  nace cerrado (`hidden = true`, `aria-expanded="false"`) y, al abrirse, es
+  una capa fija bajo la cabecera (`top: var(--sticky-top, 60px)`), con
+  sombra, sin reglas de `margin-left` (retiradas también de la variante
+  móvil). El ☰ ya no cuelga de `.actions`: es `.nav-drawer-toggle`, botón
+  fijo en el margen (`left: 10px`, bajo la cabecera) con `title` y
+  `aria-label`, siempre visible (queda al borde del panel abierto). Cierran:
+  el propio ☰, Escape y un clic fuera del panel (manejadores conectados una
+  sola vez sobre `<body>`, `conectaCierreDrawer`). Los destinos del panel no
+  cambian; tras navegar el panel repinta cerrado.
