@@ -408,14 +408,19 @@ main { max-width: 1440px; margin: 0 auto; padding: 20px 18px 60px; }
 
 /* M-18: en las tablas cuyo desplazamiento VERTICAL es la página (Cuadrícula e
    Informe: están dentro de .scroll-x, que solo desplaza en horizontal) la fila
-   de cabecera sticky se ancla bajo la cabecera de color: app.js mide la altura
-   real de .topbar (incluido el subnav cuando se ve) y la publica en
-   --sticky-top. El thead sigue por debajo de la cabecera en z-index (4 y 6
-   frente a 50) pero, anclado a su altura exacta, deja de meterse debajo y se
-   ve. Las variantes de la Cuadrícula son sticky izquierda/derecha Y arriba. */
-.scroll-x .tabla thead th { top: var(--sticky-top, 0px); }
-.scroll-x .tabla-cuadricula thead th:first-child { top: var(--sticky-top, 0px); }
-.scroll-x .tabla-cuadricula thead th.col-eval { top: var(--sticky-top, 0px); }
+   de cabecera sticky NO funciona ahí: al tener overflow-x: auto, el propio
+   .scroll-x se convierte en el contenedor de scroll (también en vertical) y
+   el thead se ancla a él, que no se mueve. La solución es el mismo patrón
+   que la corrección: el contenedor de la tabla hace de ventana de scroll
+   (vertical y horizontal) y el thead se pega a su borde superior; su tamaño
+   lo mide app.js (mideScrollTabla) para ocupe el espacio bajo la cabecera.
+   El thead (z-index 7/8) debe quedar POR ENCIMA de las celdas sticky de la
+   primera columna (z-index 5) y de «Evaluación» (4), o el contenido pasa
+   por encima de la cabecera al desplazar. */
+.scroll-tabla { overflow: auto; }
+.tabla thead th { z-index: 7; }
+.tabla-cuadricula thead th:first-child { z-index: 8; }
+.tabla-cuadricula thead th.col-eval { z-index: 7; }
 
 /* Corrección: la tabla tiene su propio scroll (vertical y horizontal) para que
    la cabecera quede fija mientras se puntúa a los últimos alumnos. Sin el
@@ -7309,7 +7314,7 @@ const CuadriculaView = (() => {
           <button class="btn" id="btn-nuevo-instrumento">+ Crear instrumento</button>
           ${btnCorregir}
         </div>` : ''}
-        <div class="scroll-x" id="contenido">
+        <div class="scroll-tabla" id="contenido">
           ${tab === 'notas' ? tablaNotas(alumnos, insts, modoTodas)
             : modoTodas && (tab === 'criterios' || tab === 'competencias')
               ? '<div class="aviso">En la vista «Todos los niveles» solo se muestran los instrumentos y la nota armonizada de cada alumno. Elige un nivel concreto para ver criterios y competencias.</div>'
@@ -8593,6 +8598,15 @@ const App = (() => {
     const cab = document.querySelector('.topbar');
     if (!cab || typeof cab.offsetHeight !== 'number' || !isFinite(cab.offsetHeight)) return;
     raiz.style.setProperty('--sticky-top', cab.offsetHeight + 'px');
+    // M-18: las ventanas de scroll de tabla (Cuadrícula e Informe) ocupan el
+    // espacio que queda bajo la cabecera, para que el thead se pega a su borde
+    // superior y siempre se vea.
+    document.querySelectorAll('.scroll-tabla').forEach(v => {
+      if (typeof v.getBoundingClientRect !== 'function') return;
+      const arriba = v.getBoundingClientRect().top;
+      if (typeof arriba !== 'number' || !isFinite(arriba) || arriba <= 0) return;
+      v.style.maxHeight = Math.max(240, window.innerHeight - arriba - 12) + 'px';
+    });
   }
 
   // M-19: cierre de la barra lateral con Escape o con un clic fuera del panel.

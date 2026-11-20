@@ -635,7 +635,7 @@ const CuadriculaView = (() => {
           <button class="btn" id="btn-nuevo-instrumento">+ Crear instrumento</button>
           ${btnCorregir}
         </div>` : ''}
-        <div class="scroll-x" id="contenido">
+        <div class="scroll-tabla" id="contenido">
           ${tab === 'notas' ? tablaNotas(alumnos, insts, modoTodas)
             : modoTodas && (tab === 'criterios' || tab === 'competencias')
               ? '<div class="aviso">En la vista «Todos los niveles» solo se muestran los instrumentos y la nota armonizada de cada alumno. Elige un nivel concreto para ver criterios y competencias.</div>'

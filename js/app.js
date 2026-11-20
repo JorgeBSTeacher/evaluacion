@@ -833,6 +833,15 @@ const App = (() => {
     const cab = document.querySelector('.topbar');
     if (!cab || typeof cab.offsetHeight !== 'number' || !isFinite(cab.offsetHeight)) return;
     raiz.style.setProperty('--sticky-top', cab.offsetHeight + 'px');
+    // M-18: las ventanas de scroll de tabla (Cuadrícula e Informe) ocupan el
+    // espacio que queda bajo la cabecera, para que el thead se pega a su borde
+    // superior y siempre se vea.
+    document.querySelectorAll('.scroll-tabla').forEach(v => {
+      if (typeof v.getBoundingClientRect !== 'function') return;
+      const arriba = v.getBoundingClientRect().top;
+      if (typeof arriba !== 'number' || !isFinite(arriba) || arriba <= 0) return;
+      v.style.maxHeight = Math.max(240, window.innerHeight - arriba - 12) + 'px';
+    });
   }
 
   // M-19: cierre de la barra lateral con Escape o con un clic fuera del panel.

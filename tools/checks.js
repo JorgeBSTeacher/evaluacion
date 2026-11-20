@@ -4826,10 +4826,11 @@ async function main() {
     // barra lateral dejar de desplazar el contenido.
     const cssNav = fs.readFileSync(path.join(raiz, 'css', 'styles.css'), 'utf8');
     const jsNav = fs.readFileSync(path.join(raiz, 'js', 'app.js'), 'utf8');
-    check('M-18 · el CSS ancla con --sticky-top las tablas cuyo desplazamiento vertical es la página',
-      /\.scroll-x \.tabla thead th \{[^}]*top: var\(--sticky-top, 0px\)/.test(cssNav)
-      && /\.scroll-x \.tabla-cuadricula thead th:first-child \{[^}]*top: var\(--sticky-top, 0px\)/.test(cssNav)
-      && /\.scroll-x \.tabla-cuadricula thead th\.col-eval \{[^}]*top: var\(--sticky-top, 0px\)/.test(cssNav));
+    check('M-18 · el contenedor de tabla hace de ventana de scroll y el thead se pega a su borde',
+      /\.scroll-tabla \{ overflow: auto; \}/.test(cssNav)
+      && /\.tabla thead th \{ z-index: 7; \}/.test(cssNav)
+      && /\.tabla-cuadricula thead th:first-child \{ z-index: 8; \}/.test(cssNav)
+      && /\.tabla-cuadricula thead th\.col-eval \{ z-index: 7; \}/.test(cssNav));
     check('M-18 · la corrección conserva su thead pegado a top: 0 dentro de su contenedor',
       /\.tabla thead th \{[^}]*top: 0;/.test(cssNav)
       && !/scroll-correccion[^}]*--sticky-top/.test(cssNav));
