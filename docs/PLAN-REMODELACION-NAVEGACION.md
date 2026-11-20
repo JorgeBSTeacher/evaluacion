@@ -30,7 +30,7 @@ recordar dónde está cada cosa y consulte informes según una pregunta concreta
 | M-13 | Inicio adaptativo (plegar montaje/flujo, KPI de pendientes y copia) | Media | **Hecha (Fase 3)** |
 | M-14 | Accesos duplicados: unificar o documentar | Baja | **Hecha** — auditoría documentada; los duplicados que quedan son intencionales (ver §14) |
 | M-15 | Revisar estado activo/hover del menú | Baja | **Hecha** — el activo es píldora blanca sobre la marca (verificado por los checks de sección activa en los 4 modos); el hover es sutil y no deja estado pegado |
-| M-16 | Móvil: bottom tab bar y corrección a pantalla completa | Media | **Apartada** (mejora propia) |
+| M-16 | Móvil: bottom tab bar y corrección a pantalla completa | Media | **Hecha (CSS)** — en ≤520 px y modo barra superior: `#nav` pasa a barra de pestañas fija abajo (fondo blanco, borde superior, scroll horizontal, hueco reservado en `main`) y la corrección ocupa la ventana completa (tarjeta a sangre, «← Anterior · Guardar y siguiente →» fija abajo con el alumno en curso encima, entradas ≥44 px y a 16 px). Todo con CSS (`:has(#tabla-corrige)`), sin tocar manejadores ni guardado; fab/dock/drawer no cambian. **Verificación en móvil real pendiente en §15** |
 | M-17 | Agrupar instrumentos por nombre con variantes por nivel | Baja | **Hecha** — en cada bloque de unidad, los instrumentos con el mismo título (insensible a mayúsculas y espacios) forman un grupo: fila de grupo (título · N variantes · pendientes del grupo) + una fila por variante con el nivel como primera celda; un título único sigue como fila normal y sus acciones (Corregir + ⋯) funcionan por fila |
 | M-18 | Cabecera sticky de tabla visible bajo la cabecera de color | Media | **Hecha** — `app.js` mide la altura real de `.topbar` (`offsetHeight`, con el subnav cuando se ve) y la publica en `--sticky-top` (recalculada al repintar la nav/subnav y en `resize`, con guardia para el arnés sin DOM); en `styles.css`, las tablas cuyo desplazamiento vertical es la página (Cuadrícula e Informe, dentro de `.scroll-x`) anclan su `thead` a `top: var(--sticky-top, 0px)` (también las variantes sticky de la Cuadrícula `th:first-child` y `th.col-eval`); la corrección (`.scroll-correccion`, scroll propio) conserva su `thead` pegado a `top: 0` dentro del contenedor |
 | M-19 | Barra lateral: franja del margen con ☰, panel pegado a ella, y cierre solo con la ☰ | Media | **Hecha** — una franja estrecha fija en el margen izquierdo (`.franja-drawer`, 48 px, bajo la cabecera con `--sticky-top`) lleva la hamburguesa «☰» en su parte superior (centrada) con `title` y `aria-expanded`; el panel de destinos (`.nav-drawer`) es una capa pegada a la franja (`left: 48px`), nace cerrado y SOLO abre y cierra la hamburguesa: fuera el cierre por Escape y por clic fuera del panel (`conectaCierreDrawer`/`cierraDrawerPanel` retiradas); el estado (`drawerAbierto`) se conserva al repintar la nav, así que al navegar el panel sigue abierto; el contenido aparta el hueco de la franja con `body.modo-drawer main { margin-left: 48px }` (la cabecera queda sin margen); el cableado de destinos no cambia |
@@ -409,6 +409,9 @@ Marca cada casilla al comprobarla y dime lo que falle.
   estable).
 
 ### Móvil — tras implementar M-16
+*(M-16 está implementado en CSS: barra de pestañas inferior en el modo barra
+superior y corrección a pantalla completa, ambas en ≤520 px. Las casillas se
+marcan al comprobarlo en navegador; aquí no hay render.)*
 - [ ] La barra de pestañas inferior con las secciones.
 - [ ] La corrección a pantalla completa con entrada numérica grande y el
   botón «No realiza».

@@ -5702,6 +5702,49 @@ async function main() {
       && cssF5.includes('.fila-inicio:focus-visible'));
   }
 
+  // M-16 a nivel de fuente: en móvil (≤520 px) la nav del modo barra superior
+  // se convierte en barra de pestañas fija abajo y la corrección pasa a ocupar
+  // la ventana completa. Verificación en móvil real queda en la lista de §15
+  // del plan: aquí solo se comprueba que el CSS declara las reglas.
+  console.log('\n== M-16 · móvil (≤520 px): barra de pestañas inferior y corrección a pantalla completa ==');
+  {
+    const cssM16 = fs.readFileSync(path.join(raiz, 'css', 'styles.css'), 'utf8');
+    // Cada regla debe vivir DENTRO de un bloque @media (max-width: 520px):
+    // se corta el CSS por cada @media y se busca el bloque que la contiene.
+    const bloques520 = cssM16.split('@media').filter(b => b.startsWith(' (max-width: 520px)'));
+    const bloqueTabs = bloques520.find(b => b.includes('#nav {'));
+    const bloqueCorr = bloques520.find(b => b.includes('#tabla-corrige'));
+    check('M-16 · existe el media query que fija #nav como barra de pestañas inferior (solo modo barra superior)',
+      !!bloqueTabs
+      && /body:not\(\.modo-fab\):not\(\.modo-dock\):not\(\.modo-drawer\) #nav \{/.test(bloqueTabs)
+      && /position: fixed/.test(bloqueTabs)
+      && /bottom: 0/.test(bloqueTabs)
+      && /overflow-x: auto/.test(bloqueTabs)
+      && /backdrop-filter: none/.test(bloqueTabs),
+      bloqueTabs ? 'bloque encontrado' : 'sin bloque @media 520px con #nav');
+    check('M-16 · la barra inferior reserva hueco en main y su altura va en una variable',
+      !!bloqueTabs
+      && /--altura-tabs: 53px/.test(bloqueTabs)
+      && /main \{[^}]*padding-bottom: calc\(var\(--altura-tabs\)/.test(bloqueTabs),
+      bloqueTabs ? 'bloque encontrado' : 'sin bloque @media 520px con #nav');
+    check('M-16 · existe el media query que lleva la corrección a pantalla completa (ocupa la ventana bajo la cabecera)',
+      !!bloqueCorr
+      && /main:has\(#tabla-corrige\) \{/.test(bloqueCorr)
+      && /height: calc\(100dvh - var\(--sticky-top, 60px\)\)/.test(bloqueCorr)
+      && /\.barra-correccion \{[^}]*position: fixed/.test(bloqueCorr),
+      bloqueCorr ? 'bloque encontrado' : 'sin bloque @media 520px con #tabla-corrige');
+    check('M-16 · «Anterior / Guardar y siguiente» quedan fijos encima de la barra de pestañas, con el alumno en su fila',
+      !!bloqueCorr
+      && /bottom: calc\(var\(--altura-tabs/.test(bloqueCorr)
+      && /grid-template-areas: 'info info' 'prev next'/.test(bloqueCorr),
+      bloqueCorr ? 'bloque encontrado' : 'sin bloque @media 520px con #tabla-corrige');
+    check('M-16 · las entradas numéricas de la corrección miden ≥44 px con letra de 16 px',
+      !!bloqueCorr
+      && /\.inp-nota \{[^}]*min-height: 44px/.test(bloqueCorr)
+      && /\.inp-nota \{[^}]*font-size: 16px/.test(bloqueCorr),
+      bloqueCorr ? 'bloque encontrado' : 'sin bloque @media 520px con #tabla-corrige');
+  }
+
   console.log('\n' + (fallos ? 'FALLOS: ' + fallos + '/' + total : 'TODO OK: ' + total + ' comprobaciones')
     + (avisos ? ' · ' + avisos + ' aviso(s)' : ''));
   process.exitCode = fallos ? 1 : 0;

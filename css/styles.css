@@ -142,6 +142,50 @@ body.modo-drawer.drawer-abierto main { margin-left: 268px; }
   .nav-dock button { min-width: 58px; }
 }
 
+/* M-16 (parte 1): en móvil (≤520 px) y en el modo barra superior (el
+   predeterminado), #nav deja la cabecera y se convierte en una barra de
+   pestañas fija al fondo: ancho completo, fondo blanco y borde superior, con
+   desplazamiento horizontal si las pestañas no caben. El resto de la cabecera
+   (marca, estado de copia, Guardar, engranaje) queda arriba y el subnav de
+   Evaluación conserva su fila propia bajo la marca. En fab, dock y drawer la
+   #nav está oculta (display: none) y cada modo pinta lo suyo: no cambian.
+   Detalle importante: backdrop-filter convierte a la cabecera en el bloque de
+   contención de los descendientes position: fixed, así que aquí se retira (su
+   fondo es opaco y el difuminado no aportaba nada) para que #nav pueda
+   anclarse al fondo real de la ventana. */
+@media (max-width: 520px) {
+  :root { --altura-tabs: 53px; }
+  body:not(.modo-fab):not(.modo-dock):not(.modo-drawer) .topbar { backdrop-filter: none; }
+  body:not(.modo-fab):not(.modo-dock):not(.modo-drawer) #nav {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 55;
+    flex: none; flex-wrap: nowrap; gap: 2px;
+    overflow-x: auto; scrollbar-width: none;
+    padding: 4px 6px;
+    padding-bottom: calc(4px + env(safe-area-inset-bottom, 0px));
+    background: #fff;
+    border-top: 1px solid var(--linea);
+    box-shadow: 0 -2px 10px rgba(43, 42, 38, .08);
+  }
+  body:not(.modo-fab):not(.modo-dock):not(.modo-drawer) #nav::-webkit-scrollbar { display: none; }
+  /* Colores propios sobre fondo blanco: las reglas de la cabecera a todo color
+     (texto blanco sobre la marca) dejarían las pestañas invisibles aquí. */
+  body:not(.modo-fab):not(.modo-dock):not(.modo-drawer) #nav button {
+    flex: 1 0 auto; min-width: 64px; min-height: 44px;
+    padding: 8px 10px; border-radius: 10px; font-size: 12px;
+    white-space: nowrap; color: var(--tinta-suave);
+  }
+  body:not(.modo-fab):not(.modo-dock):not(.modo-drawer) #nav button:hover {
+    background: var(--acento-suave); color: var(--acento);
+  }
+  body:not(.modo-fab):not(.modo-dock):not(.modo-drawer) #nav button.activo {
+    background: var(--acento); color: #fff; font-weight: 700; box-shadow: none;
+  }
+  /* El contenido aparta el hueco de la barra inferior. */
+  body:not(.modo-fab):not(.modo-dock):not(.modo-drawer) main {
+    padding-bottom: calc(var(--altura-tabs) + env(safe-area-inset-bottom, 0px) + 8px);
+  }
+}
+
 .brand { display: flex; align-items: center; gap: 10px; }
 .logo {
   display: inline-flex; align-items: center; justify-content: center;
@@ -742,6 +786,72 @@ details.guia-inicio > summary .guia-titulo { display: inline; font-size: 16px; f
 .barra-correccion { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 2px 0 12px; }
 .barra-correccion #nav-info { flex: 1; color: var(--tinta-suave); font-size: 13px; }
 .tabla tbody tr.fila-actual { background: var(--acento-suave); }
+
+/* M-16 (parte 2): en móvil (≤520 px) la vista de corrección ocupa la ventana
+   completa bajo la cabecera: la tarjeta va a sangre, el listado se desplaza
+   dentro de su hueco hasta la barra fija, y «← Anterior · Guardar y siguiente
+   →» queda fija abajo, con el alumno en curso (nombre bien visible) en su
+   propia fila encima de los botones. Es solo CSS: el selector
+   :has(#tabla-corrige) deja de aplicar en cuanto se sale de la corrección, sin
+   tocar los manejadores ni el guardado. Igual que la barra de pestañas, solo
+   en el modo barra superior: en fab, dock y drawer el pie ya está ocupado por
+   su propio menú (no se tocan). */
+@media (max-width: 520px) {
+  :root { --altura-barra-corr: 85px; }
+  body:not(.modo-fab):not(.modo-dock):not(.modo-drawer) main:has(#tabla-corrige) {
+    max-width: none;
+    display: flex; flex-direction: column;
+    height: calc(100vh - var(--sticky-top, 60px));
+    height: calc(100dvh - var(--sticky-top, 60px));
+    padding: 8px 0 0;
+    padding-bottom: calc(var(--altura-tabs, 53px) + var(--altura-barra-corr, 85px) + env(safe-area-inset-bottom, 0px) + 8px);
+  }
+  /* La tarjeta a sangre completa y en columna: el hueco que sobra es para la tabla. */
+  body:not(.modo-fab):not(.modo-dock):not(.modo-drawer) main:has(#tabla-corrige) .card {
+    flex: 1 1 auto; min-height: 0;
+    display: flex; flex-direction: column;
+    margin: 0 0 10px; padding: 10px 10px 12px;
+    border-radius: 0; border-left: 0; border-right: 0; box-shadow: none;
+  }
+  body:not(.modo-fab):not(.modo-dock):not(.modo-drawer) main:has(#tabla-corrige) > p { flex: none; }
+  /* El listado ocupa todo el resto y se desplaza dentro: la fila de cabecera
+     sigue pegada a su borde superior, igual que en escritorio. */
+  body:not(.modo-fab):not(.modo-dock):not(.modo-drawer) main:has(#tabla-corrige) .scroll-correccion {
+    flex: 1 1 auto; min-height: 0; max-height: none;
+  }
+  /* Barra fija abajo, justo encima de la barra de pestañas, en dos filas:
+     el alumno en curso arriba y los dos botones debajo, a cada lado. */
+  body:not(.modo-fab):not(.modo-dock):not(.modo-drawer) main:has(#tabla-corrige) .barra-correccion {
+    position: fixed; left: 0; right: 0; z-index: 55;
+    bottom: calc(var(--altura-tabs, 53px) + env(safe-area-inset-bottom, 0px));
+    display: grid; grid-template-columns: 1fr 1fr;
+    grid-template-areas: 'info info' 'prev next';
+    gap: 4px 8px; margin: 0;
+    padding: 8px 10px;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    background: #fff;
+    border-top: 1px solid var(--linea);
+    box-shadow: 0 -2px 10px rgba(43, 42, 38, .08);
+  }
+  body:not(.modo-fab):not(.modo-dock):not(.modo-drawer) main:has(#tabla-corrige) .barra-correccion #nav-info {
+    grid-area: info; min-width: 0;
+    font-size: 14px; text-align: center;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  body:not(.modo-fab):not(.modo-dock):not(.modo-drawer) main:has(#tabla-corrige) .barra-correccion #btn-anterior { grid-area: prev; }
+  body:not(.modo-fab):not(.modo-dock):not(.modo-drawer) main:has(#tabla-corrige) .barra-correccion #btn-siguiente { grid-area: next; }
+  body:not(.modo-fab):not(.modo-dock):not(.modo-drawer) main:has(#tabla-corrige) .barra-correccion .btn {
+    min-height: 44px; white-space: nowrap;
+  }
+  /* Entradas numéricas grandes (objetivo táctil ≥44 px) y a 16 px para que iOS
+     no haga zoom al enfocarlas; el nombre del alumno también sube de talla. */
+  body:not(.modo-fab):not(.modo-dock):not(.modo-drawer) main:has(#tabla-corrige) .inp-nota {
+    min-height: 44px; font-size: 16px; text-align: center;
+  }
+  body:not(.modo-fab):not(.modo-dock):not(.modo-drawer) main:has(#tabla-corrige) .segmentos button { min-height: 44px; }
+  body:not(.modo-fab):not(.modo-dock):not(.modo-drawer) main:has(#tabla-corrige) .nombre-alumno { font-size: 15px; font-weight: 600; }
+  body:not(.modo-fab):not(.modo-dock):not(.modo-drawer) main:has(#tabla-corrige) .tabla td { padding-top: 10px; padding-bottom: 10px; }
+}
 
 /* Instrumentos: secciones por trimestre y bloques plegables por unidad didáctica */
 .per-titulo { font-size: 15px; margin: 18px 0 8px; }
