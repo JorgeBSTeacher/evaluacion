@@ -130,7 +130,7 @@ Inicio · Corregir · Evaluación · Informes · Ajustes
 | `montaje` | Evaluación (vista auxiliar) | **disolver**: su guía pasa a Evaluación | — | bajo | Hecha (2a) |
 | subvistas de `informe` | Informes | mover + renombrar (M-07) | diaria | medio | Hecha (Fase 4a y 4b) |
 | Configuración | Ajustes | renombrar | rara | bajo | Hecha (Fase 1) |
-| modos `fab`/`dock`/`drawer` | variaciones de presentación | mantener (con subnav) | — | bajo | Hecha (2a) |
+| modos `fab`/`dock`/`drawer` | variaciones de presentación | mantener (subnav integrado en cada modo) | — | bajo | Hecha (2a; integración petición del docente) |
 | Corrección (`renderCorreccion`) | **Corregir** (vista propia: cola de pendientes) | mover | diaria | medio | Hecha (2b) |
 | Botón Guardar | acción de copia con estado (M-02) | rediseñar | — | medio | Hecha (Fase 3 + M-02) |
 
@@ -154,7 +154,10 @@ Inicio · Corregir · Evaluación · Informes · Ajustes
   Ajustes`, con alias y sin pérdida de funciones.
 - **Fase 2 — Reubicación**: corrección a Corregir (2b); vistas de preparación
   como subpestañas de Evaluación (2a); Configuración a Ajustes (Fase 1). El
-  subnav de Evaluación (`#subnav`) se muestra en todos los modos.
+  subnav de Evaluación se integra en cada modo: fila `#subnav` en la cabecera
+  solo en la barra superior; en `drawer` y `fab` van anidadas y sangradas bajo
+  la entrada Evaluación (nivel 3) y en `dock` en una segunda fila pegada al
+  dock (petición del docente).
 - **Fase 3 — Inicio**: panel de pendientes, estado de backup y accesos rápidos. **Hecha**.
 - **Fase 4 — Informes**: contexto único, renombrado de subvistas y avisos de
   exclusión. **Hecha (4a y 4b)**: 4a — Informes es una vista propia y autónoma

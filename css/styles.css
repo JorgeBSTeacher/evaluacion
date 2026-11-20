@@ -83,6 +83,19 @@ body.modo-fab main, body.modo-dock main { padding-bottom: 84px; }
   border-radius: 10px; font-size: 12px; color: var(--tinta-suave); }
 .nav-dock button:hover { background: var(--acento-suave); color: var(--acento); }
 .nav-dock button.activo { background: var(--acento); color: #fff; }
+/* Subpestañas de Evaluación en el modo dock: segunda fila pegada al dock,
+   con la misma estética (fondo blanco, borde y sombra). Solo existe dentro
+   de Evaluación. La activa usa el relleno suave, como las anidadas de los
+   menús: no llega a la píldora llena del nivel 1. */
+.nav-dock-sub { position: fixed; left: 50%; transform: translateX(-50%); bottom: 60px; z-index: 9998;
+  display: flex; gap: 2px; padding: 6px; max-width: calc(100% - 20px); overflow-x: auto;
+  background: rgba(255,255,255,.96);
+  border: 1px solid var(--linea); border-radius: 14px; box-shadow: 0 6px 20px rgba(0,0,0,.20); }
+.nav-dock-sub button { min-width: 58px; padding: 6px; border: 0; background: transparent;
+  border-radius: 10px; font-family: inherit; font-size: 12px; font-weight: 600;
+  line-height: 1.2; cursor: pointer; color: var(--tinta-suave); }
+.nav-dock-sub button:hover { background: var(--acento-suave); color: var(--acento); }
+.nav-dock-sub button.activo { background: var(--acento-suave); color: var(--acento); }
 /* M-19: la barra lateral es una FRANJA estrecha fija en el margen izquierdo
    con la hamburguesa; el menú se despliega SOLO al tocarla y solo se colapsa
    al volver a tocarla (ni Escape ni un clic fuera lo cierran, petición del
@@ -107,9 +120,24 @@ body.modo-drawer.drawer-abierto main { margin-left: 268px; }
   margin-bottom: 2px; border: 0; background: transparent; border-radius: 8px; }
 .nav-drawer button:hover { background: var(--acento-suave); color: var(--acento); }
 .nav-drawer button.activo { background: var(--acento); color: #fff; }
+/* Subpestañas de Evaluación anidadas (nivel 3): mismo patrón en el panel
+   lateral y en el menú del FAB — sangradas bajo la entrada Evaluación, texto
+   pequeño (12 px) y la activa con el relleno suave. Los selectores van tras
+   las reglas base para ganar en cascada con la misma especificidad. */
+.nav-drawer button.subeval, .nav-menu button.subeval {
+  margin: 0 0 2px 20px; padding: 6px 10px;
+  font-size: 12px; font-weight: 500; color: var(--tinta-suave);
+}
+.nav-drawer button.subeval:hover, .nav-menu button.subeval:hover {
+  background: var(--acento-suave); color: var(--acento);
+}
+.nav-drawer button.subeval.activo, .nav-menu button.subeval.activo {
+  background: var(--acento-suave); color: var(--acento);
+}
 
 @media (max-width: 520px) {
   .nav-dock { left: 10px; right: 10px; transform: none; max-width: none; }
+  .nav-dock-sub { left: 10px; right: 10px; transform: none; max-width: none; }
   /* M-11: la fuente no baja de 12 px; el dock se deja desplazar en horizontal. */
   .nav-dock button { min-width: 58px; }
 }

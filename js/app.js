@@ -876,16 +876,20 @@ const App = (() => {
   let drawerAbierto = false;
 
   // Navegación según la organización elegida en Configuración → Tema y menús.
+  // El modo básico se retiró (Evaluación ya agrupa las vistas de
+  // preparación): una preferencia antigua con `nav === 'basic'` cae en la
+  // barra superior, sin migrar el estado.
+  function modoNav() {
+    const modoBruto = (Storage.db && Storage.db.tema && Storage.db.tema.nav) || 'topbar';
+    return modoBruto === 'basic' ? 'topbar' : modoBruto;
+  }
+
   function pintaNav() {
     // El indicador de copia (M-02) vive en la cabecera y no depende del modo
     // de navegación: se repinta al entrar en cada vista.
     pintaEstadoCopia();
-    // El modo básico se retiró (Evaluación ya agrupa las vistas de
-    // preparación): una preferencia antigua con `nav === 'basic'` cae en la
-    // barra superior, sin migrar el estado.
-    const modoBruto = (Storage.db && Storage.db.tema && Storage.db.tema.nav) || 'topbar';
-    const modo = modoBruto === 'basic' ? 'topbar' : modoBruto;
-    document.querySelectorAll('.nav-fab,.nav-menu,.nav-dock,.nav-drawer,.nav-drawer-toggle,.franja-drawer')
+    const modo = modoNav();
+    document.querySelectorAll('.nav-fab,.nav-menu,.nav-dock,.nav-dock-sub,.nav-drawer,.nav-drawer-toggle,.franja-drawer')
       .forEach(e => e.remove());
     const nav = document.getElementById('nav');
     nav.style.display = '';
@@ -895,15 +899,26 @@ const App = (() => {
     document.body.classList.toggle('modo-drawer', modo === 'drawer');
 
     const secciones = SECCIONES;
+    const pintaBoton = (s, contenedor) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = s.label;
+      b.setAttribute('data-seccion', s.id);
+      if (seccionActual() === s.id) { b.classList.add('activo'); b.setAttribute('aria-current', 'page'); }
+      b.onclick = () => irSeccion(s.id);
+      contenedor.appendChild(b);
+      return b;
+    };
     const pinta = contenedor => {
+      secciones.forEach(s => pintaBoton(s, contenedor));
+    };
+    // Menús con jerarquía (panel lateral y menú del FAB): bajo la entrada
+    // Evaluación se listan sus subpestañas, sangradas (nivel 3), cuando se
+    // está dentro de Evaluación.
+    const pintaConSubeval = contenedor => {
       secciones.forEach(s => {
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.textContent = s.label;
-        b.setAttribute('data-seccion', s.id);
-        if (seccionActual() === s.id) { b.classList.add('activo'); b.setAttribute('aria-current', 'page'); }
-        b.onclick = () => irSeccion(s.id);
-        contenedor.appendChild(b);
+        pintaBoton(s, contenedor);
+        if (s.id === 'evaluacion' && seccionActual() === 'evaluacion') pintaSubevalAnidada(contenedor);
       });
     };
 
@@ -916,7 +931,7 @@ const App = (() => {
       fab.setAttribute('aria-expanded', 'false');
       const menu = document.createElement('div');
       menu.className = 'nav-menu'; menu.hidden = true;
-      pinta(menu);
+      pintaConSubeval(menu);
       document.body.appendChild(fab); document.body.appendChild(menu);
       fab.onclick = () => {
         menu.hidden = !menu.hidden;
@@ -927,6 +942,7 @@ const App = (() => {
       dock.className = 'nav-dock';
       pinta(dock);
       document.body.appendChild(dock);
+      pintaSubnavDock();
     } else if (modo === 'drawer') {
       // El estado (abierto/cerrado) refleja en una clase para que el CSS
       // aparte el hueco del contenido.
@@ -957,44 +973,81 @@ const App = (() => {
       const d = document.createElement('aside');
       d.className = 'nav-drawer';
       d.hidden = !drawerAbierto;
-      pinta(d);
+      pintaConSubeval(d);
       document.body.insertBefore(d, document.getElementById('app'));
     }
     pintaSubnav();
   }
 
-  // Subpestañas de Evaluación (Fase 2a): segunda fila de la cabecera. El
-  // elemento vive junto a #nav (dentro del header real) y solo existe estando
-  // en Evaluación; en los modos flotantes, donde #nav se oculta, sigue visible
-  // porque no depende de la nav de secciones.
+  // Subpestañas de Evaluación integradas en cada modo de navegación:
+  //  - topbar: la fila #subnav de la cabecera (segunda fila, junto a #nav).
+  //  - fab y drawer: anidadas y sangradas dentro de su menú, bajo la entrada
+  //    Evaluación (las pinta pintaConSubeval).
+  //  - dock: una segunda barra pegada al dock (pintaSubnavDock).
+  // En fab, dock y drawer la cabecera NO lleva fila: cada componente pinta lo
+  // suyo. Como toda ruta de pintaNav acaba aquí, siempre se remide
+  // --sticky-top (crear o quitar la fila cambia la altura de la cabecera, M-18).
   function pintaSubnav() {
     let subnav = document.getElementById('subnav');
-    if (seccionActual() !== 'evaluacion') {
-      if (subnav) subnav.remove();
-      return;
+    if (modoNav() === 'topbar' && seccionActual() === 'evaluacion') {
+      if (!subnav) {
+        subnav = document.createElement('div');
+        subnav.id = 'subnav';
+        subnav.className = 'subnav';
+        const nav = document.getElementById('nav');
+        if (nav && nav.parentNode) nav.parentNode.insertBefore(subnav, nav.nextSibling);
+        else document.body.appendChild(subnav);
+      }
+      subnav.innerHTML = '';
+      SUBEVAL.forEach(sub => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = sub.label;
+        b.setAttribute('data-subeval', sub.id);
+        if (actual === sub.id) { b.classList.add('activo'); b.setAttribute('aria-current', 'page'); }
+        b.onclick = () => ir(sub.id);
+        subnav.appendChild(b);
+      });
+    } else if (subnav) {
+      subnav.remove();
     }
-    if (!subnav) {
-      subnav = document.createElement('div');
-      subnav.id = 'subnav';
-      subnav.className = 'subnav';
-      const nav = document.getElementById('nav');
-      if (nav && nav.parentNode) nav.parentNode.insertBefore(subnav, nav.nextSibling);
-      else document.body.appendChild(subnav);
-    }
-    subnav.innerHTML = '';
+    mideStickyTop();
+  }
+
+  // Subpestañas de Evaluación anidadas en un menú (panel lateral o menú del
+  // FAB): van sangradas bajo la entrada Evaluación, con estilo de nivel 3, y
+  // solo se pintan estando dentro de Evaluación (la llamada lo comprueba).
+  function pintaSubevalAnidada(contenedor) {
     SUBEVAL.forEach(sub => {
       const b = document.createElement('button');
       b.type = 'button';
+      b.className = 'subeval';
       b.textContent = sub.label;
       b.setAttribute('data-subeval', sub.id);
       if (actual === sub.id) { b.classList.add('activo'); b.setAttribute('aria-current', 'page'); }
       b.onclick = () => ir(sub.id);
-      subnav.appendChild(b);
+      contenedor.appendChild(b);
     });
-    // M-18: crear o quitar el subnav cambia la altura de la cabecera, así que
-    // la medición de --sticky-top se repinta aquí (todas las rutas de pintaNav
-    // acaban llamando a pintaSubnav).
-    mideStickyTop();
+  }
+
+  // Subpestañas de Evaluación en el modo dock: una segunda barra pegada al
+  // dock, con la misma estética (fondo blanco, borde y sombra). Solo existe
+  // estando dentro de Evaluación y se elimina y recrea en cada repintado
+  // junto al propio dock.
+  function pintaSubnavDock() {
+    if (seccionActual() !== 'evaluacion') return;
+    const sub = document.createElement('div');
+    sub.className = 'nav-dock-sub';
+    SUBEVAL.forEach(subDef => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = subDef.label;
+      b.setAttribute('data-subeval', subDef.id);
+      if (actual === subDef.id) { b.classList.add('activo'); b.setAttribute('aria-current', 'page'); }
+      b.onclick = () => ir(subDef.id);
+      sub.appendChild(b);
+    });
+    document.body.appendChild(sub);
   }
 
   // Sección activa según la vista (Fase 4a: Informes es una vista propia, así

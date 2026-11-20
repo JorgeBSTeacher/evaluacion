@@ -4766,18 +4766,38 @@ async function main() {
     check('el modo flotante crea el botón de vistas y su menú',
       !!doc.querySelector('.nav-fab') && !!doc.querySelector('.nav-menu'), '');
     check('el menú flotante recoge las 5 secciones',
-      doc.querySelectorAll('.nav-menu button').length === 5, String(doc.querySelectorAll('.nav-menu button').length));
-    check('el subnav se ve también en el modo flotante',
-      !!subnav() && subnav().querySelectorAll('button').length === 5,
-      subnav() ? String(subnav().querySelectorAll('button').length) : '(sin subnav)');
+      doc.querySelectorAll('.nav-menu button[data-seccion]').length === 5,
+      String(doc.querySelectorAll('.nav-menu button[data-seccion]').length));
+    check('el menú flotante anida las 5 subpestañas sangradas bajo Evaluación',
+      doc.querySelectorAll('.nav-menu button.subeval[data-subeval]').length === 5
+      && doc.querySelectorAll('.nav-menu button.subeval[data-subeval]').length
+        === doc.querySelectorAll('.nav-menu button[data-subeval]').length,
+      String(doc.querySelectorAll('.nav-menu button[data-subeval]').length));
+    check('la subpestaña activa del menú flotante es Cuadrícula',
+      ((doc.querySelector('.nav-menu button.subeval.activo') || {}).textContent) === 'Cuadrícula'
+      && (doc.querySelector('.nav-menu button.subeval.activo') || {}).getAttribute('aria-current') === 'page',
+      ((doc.querySelector('.nav-menu button.subeval.activo') || {}).textContent) || '(ninguna)');
+    check('pulsar una subpestaña del menú flotante navega dentro de Evaluación',
+      (doc.querySelector('.nav-menu button[data-subeval="instrumentos"]').click(),
+        app.App.seccionActual() === 'evaluacion' && vistaHtml().includes('Instrumentos de evaluación')),
+      app.App.seccionActual());
+    check('M-05 · en el modo flotante la cabecera ya no pinta la fila de subpestañas',
+      !subnav(), subnav() ? 'sigue visible' : '');
     app.Storage.db.tema.nav = 'dock';
     app.App.irSeccion('evaluacion');
     check('el modo dock crea una barra inferior con 5 secciones',
-      !!doc.querySelector('.nav-dock') && doc.querySelectorAll('.nav-dock button').length === 5,
-      String(doc.querySelectorAll('.nav-dock button').length));
-    check('el subnav se ve también en el modo dock',
-      !!subnav() && subnav().querySelectorAll('button').length === 5,
-      subnav() ? String(subnav().querySelectorAll('button').length) : '(sin subnav)');
+      !!doc.querySelector('.nav-dock') && doc.querySelectorAll('.nav-dock button[data-seccion]').length === 5,
+      String(doc.querySelectorAll('.nav-dock button[data-seccion]').length));
+    check('el modo dock pega una segunda fila con las 5 subpestañas dentro de Evaluación',
+      !!doc.querySelector('.nav-dock-sub')
+      && doc.querySelectorAll('.nav-dock-sub button[data-subeval]').length === 5
+      && doc.querySelectorAll('.nav-dock button[data-subeval]').length === 0,
+      String(doc.querySelectorAll('.nav-dock-sub button[data-subeval]').length));
+    check('M-05 · en el modo dock la cabecera ya no pinta la fila de subpestañas',
+      !subnav(), subnav() ? 'sigue visible' : '');
+    check('la segunda fila del dock desaparece fuera de Evaluación',
+      (app.App.irSeccion('informes'), !doc.querySelector('.nav-dock-sub') && !subnav()), '');
+    app.App.irSeccion('evaluacion');
     app.Storage.db.tema.nav = 'drawer';
     app.App.irSeccion('evaluacion');
     const franja = () => doc.querySelector('.franja-drawer');
@@ -4797,10 +4817,21 @@ async function main() {
       (hamburguesa().click(), !!franja() && !!drawer() && drawer().hidden === false
       && hamburguesa().getAttribute('aria-expanded') === 'true'), '');
     check('la barra lateral recoge las 5 secciones',
-      drawer().querySelectorAll('button').length === 5, String(drawer().querySelectorAll('button').length));
-    check('el subnav se ve también en el modo barra lateral',
-      !!subnav() && subnav().querySelectorAll('button').length === 5,
-      subnav() ? String(subnav().querySelectorAll('button').length) : '(sin subnav)');
+      drawer().querySelectorAll('button[data-seccion]').length === 5,
+      String(drawer().querySelectorAll('button[data-seccion]').length));
+    check('el panel lateral anida las 5 subpestañas sangradas bajo Evaluación',
+      drawer().querySelectorAll('button.subeval[data-subeval]').length === 5
+      && drawer().querySelectorAll('button.subeval[data-subeval]').length
+        === drawer().querySelectorAll('button[data-subeval]').length
+      && ((drawer().querySelector('button.subeval.activo') || {}).textContent) === 'Cuadrícula',
+      String(drawer().querySelectorAll('button[data-subeval]').length));
+    check('M-05 · en el modo barra lateral la cabecera ya no pinta la fila de subpestañas',
+      !subnav(), subnav() ? 'sigue visible' : '');
+    check('M-05 · fuera de Evaluación el panel no anida subpestañas',
+      (app.App.irSeccion('informes'), drawer().querySelectorAll('button[data-subeval]').length === 0
+        && !subnav() && drawer().querySelectorAll('button[data-seccion]').length === 5),
+      String(drawer().querySelectorAll('button[data-subeval]').length));
+    app.App.irSeccion('evaluacion');
     check('M-19 · Escape NO cierra el panel abierto (solo la ☰ lo gobierna)',
       (doc.body._dispara('keydown', { key: 'Escape' }), drawer().hidden === false
       && hamburguesa().getAttribute('aria-expanded') === 'true'), '');
@@ -4844,6 +4875,15 @@ async function main() {
       && /body\.modo-drawer main \{ margin-left: 48px; transition/.test(cssNav)
       && /body\.modo-drawer\.drawer-abierto main \{ margin-left: 268px; \}/.test(cssNav)
       && !/margin-left: 200px/.test(cssNav));
+    check('M-05 · el CSS estila las subpestañas anidadas como nivel 3 (sangradas y a 12 px)',
+      /\.nav-drawer button\.subeval, \.nav-menu button\.subeval \{[^}]*margin: [^;]*20px[^}]*\}/.test(cssNav)
+      && /\.nav-drawer button\.subeval, \.nav-menu button\.subeval \{[^}]*font-size: 12px/.test(cssNav)
+      && /\.nav-drawer button\.subeval\.activo, \.nav-menu button\.subeval\.activo \{[^}]*background: var\(--acento-suave\)/.test(cssNav));
+    check('M-05 · el CSS da a la segunda fila del dock la misma estética (fondo blanco, borde y sombra)',
+      /\.nav-dock-sub \{ position: fixed[^}]*bottom: 60px/.test(cssNav)
+      && /\.nav-dock-sub \{[^}]*background: rgba\(255,255,255,\.96\)/.test(cssNav)
+      && /\.nav-dock-sub \{[^}]*border: 1px solid var\(--linea\)/.test(cssNav)
+      && /\.nav-dock-sub \{[^}]*box-shadow/.test(cssNav));
   }
 
   console.log('\n== M-08 · Fila de instrumentos: 2 acciones visibles y menú «⋯» ==');
