@@ -83,18 +83,23 @@ body.modo-fab main, body.modo-dock main { padding-bottom: 84px; }
   border-radius: 10px; font-size: 12px; color: var(--tinta-suave); }
 .nav-dock button:hover { background: var(--acento-suave); color: var(--acento); }
 .nav-dock button.activo { background: var(--acento); color: #fff; }
-/* M-19: la barra lateral nace CERRADA y, al abrirse, es una capa superpuesta:
-   NUNCA desplaza el contenido (las reglas de margin-left de 200 px se
-   retiraron, también la variante móvil). El ☰ vive fijo en el margen
-   izquierdo, justo bajo la cabecera (--sticky-top la mide, M-18), y queda al
-   borde del panel cuando se abre: la vía de cierre siempre se ve. También
-   cierran Escape y un clic fuera del panel (conectaCierreDrawer, en app.js). */
-.nav-drawer-toggle { position: fixed; left: 10px; top: calc(var(--sticky-top, 60px) + 10px);
-  z-index: 9998; }
-.nav-drawer { position: fixed; left: 0; top: var(--sticky-top, 60px); bottom: 0; width: 220px; z-index: 40;
+/* M-19: la barra lateral es una FRANJA estrecha fija en el margen izquierdo
+   con la hamburguesa; el menú se despliega SOLO al tocarla y solo se colapsa
+   al volver a tocarla (ni Escape ni un clic fuera lo cierran, petición del
+   docente). El panel es una capa pegada a la franja y NUNCA cubre el
+   contenido: main aparta el hueco de la franja con un margen (la cabecera
+   queda sin margen). El estado del panel vive en app.js (drawerAbierto) y se
+   conserva al repintar la nav. */
+body.modo-drawer main { margin-left: 48px; }
+.franja-drawer { position: fixed; left: 0; top: var(--sticky-top, 60px); bottom: 0; width: 48px; z-index: 40;
+  background: #fff; border-right: 1px solid var(--linea); box-shadow: 4px 0 14px rgba(0, 0, 0, .12); }
+.franja-drawer .nav-drawer-toggle { display: block; margin: 10px auto 0; padding: 6px 8px;
+  border: 0; background: transparent; border-radius: 8px; cursor: pointer;
+  font-family: inherit; font-size: 18px; line-height: 1.1; color: var(--tinta); }
+.franja-drawer .nav-drawer-toggle:hover { background: var(--acento-suave); color: var(--acento); }
+.nav-drawer { position: fixed; left: 48px; top: var(--sticky-top, 60px); bottom: 0; width: 220px; z-index: 40;
   background: #fff; border-right: 1px solid var(--linea); box-shadow: 0 0 30px rgba(0, 0, 0, .3);
-  /* El primer botón arranca bajo el ☰, que flota sobre la esquina del panel. */
-  padding: 58px 8px 14px; overflow: auto; }
+  padding: 14px 8px; overflow: auto; }
 .nav-drawer[hidden] { display: none; }
 .nav-drawer button { display: block; width: 100%; text-align: left; padding: 10px 12px;
   margin-bottom: 2px; border: 0; background: transparent; border-radius: 8px; }

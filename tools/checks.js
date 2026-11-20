@@ -4780,45 +4780,46 @@ async function main() {
       subnav() ? String(subnav().querySelectorAll('button').length) : '(sin subnav)');
     app.Storage.db.tema.nav = 'drawer';
     app.App.irSeccion('evaluacion');
+    const franja = () => doc.querySelector('.franja-drawer');
     const drawer = () => doc.querySelector('.nav-drawer');
     const hamburguesa = () => doc.querySelector('.nav-drawer-toggle');
-    check('M-19 · el modo barra lateral crea el panel y su ☰, y el panel NACE cerrado',
-      !!drawer() && !!hamburguesa() && drawer().hidden === true
+    check('M-19 · el modo barra lateral crea la franja, el panel y su ☰, y el panel NACE cerrado',
+      !!franja() && !!drawer() && !!hamburguesa() && drawer().hidden === true
       && hamburguesa().getAttribute('aria-expanded') === 'false',
       drawer() ? 'panel oculto=' + drawer().hidden : '(sin panel)');
-    check('M-19 · el ☰ es un botón propio del margen con title y aria-label, no cuelga de .actions',
-      hamburguesa().parentNode === doc.body
-      && !doc.querySelector('.actions .nav-drawer-toggle')
+    check('M-19 · la ☰ vive dentro de la franja del margen, con title y aria-label',
+      franja().parentNode === doc.body
+      && hamburguesa().closest('.franja-drawer') === franja()
       && !!hamburguesa().getAttribute('title')
       && hamburguesa().getAttribute('aria-label') === 'Mostrar u ocultar la barra lateral',
-      hamburguesa().parentNode === doc.body ? 'cuelga de body' : 'no cuelga de body');
-    check('M-19 · abrir con el ☰ muestra el panel sin desplazar el contenido (aria-expanded=true)',
-      (hamburguesa().click(), drawer().hidden === false
+      franja().parentNode === doc.body ? 'franja cuelga de body' : 'franja no cuelga de body');
+    check('M-19 · abrir con la ☰ muestra el panel (aria-expanded=true)',
+      (hamburguesa().click(), !!franja() && !!drawer() && drawer().hidden === false
       && hamburguesa().getAttribute('aria-expanded') === 'true'), '');
     check('la barra lateral recoge las 5 secciones',
       drawer().querySelectorAll('button').length === 5, String(drawer().querySelectorAll('button').length));
     check('el subnav se ve también en el modo barra lateral',
       !!subnav() && subnav().querySelectorAll('button').length === 5,
       subnav() ? String(subnav().querySelectorAll('button').length) : '(sin subnav)');
+    check('M-19 · Escape NO cierra el panel abierto (solo la ☰ lo gobierna)',
+      (doc.body._dispara('keydown', { key: 'Escape' }), drawer().hidden === false
+      && hamburguesa().getAttribute('aria-expanded') === 'true'), '');
+    check('M-19 · un clic fuera del panel NO lo cierra (solo la ☰ lo gobierna)',
+      (doc.getElementById('app').click(), drawer().hidden === false), '');
     check('M-19 · un clic dentro del panel no lo cierra',
       (drawer()._dispara('click'), drawer().hidden === false), '');
-    check('M-19 · pulsar el ☰ de nuevo cierra el panel',
+    check('M-19 · pulsar la ☰ de nuevo cierra el panel',
       (hamburguesa().click(), drawer().hidden === true
       && hamburguesa().getAttribute('aria-expanded') === 'false'), '');
-    check('M-19 · Escape cierra el panel abierto',
-      (hamburguesa().click(), doc.body._dispara('keydown', { key: 'Escape' }),
-        drawer().hidden === true && hamburguesa().getAttribute('aria-expanded') === 'false'), '');
-    check('M-19 · un clic fuera del panel lo cierra',
-      (hamburguesa().click(), doc.getElementById('app').click(), drawer().hidden === true), '');
-    hamburguesa().click();
-    const botonDestino = drawer().querySelector('[data-seccion="informes"]');
-    botonDestino.click();
     check('M-19 · los destinos del panel siguen funcionando (Informes abre su vista)',
-      app.App.seccionActual() === 'informes' && !!doc.querySelector('#app #alc-clase'),
+      (hamburguesa().click(), drawer().querySelector('[data-seccion="informes"]').click(),
+        app.App.seccionActual() === 'informes' && !!doc.querySelector('#app #alc-clase')),
       app.App.seccionActual());
-    check('M-19 · tras navegar, el panel repinta cerrado (nace cerrado otra vez)',
-      !!drawer() && drawer().hidden === true
-      && hamburguesa().getAttribute('aria-expanded') === 'false', '');
+    check('M-19 · al navegar el estado se conserva: el panel sigue abierto tras repintar la nav',
+      !!drawer() && drawer().hidden === false
+      && hamburguesa().getAttribute('aria-expanded') === 'true', '');
+    check('M-19 · a otra vista, el panel sigue abierto',
+      (app.App.irSeccion('alumnos'), !!drawer() && drawer().hidden === false), '');
     app.App.irSeccion('evaluacion');
 
     // M-18 y M-19 a nivel de fuente: el CSS debe anclar las cabeceras de tabla
@@ -4837,10 +4838,11 @@ async function main() {
     check('M-18 · app.js mide la altura real de la cabecera en --sticky-top y la remide al redimensionar',
       /--sticky-top/.test(jsNav) && /offsetHeight/.test(jsNav)
       && /addEventListener\('resize', mideStickyTop\)/.test(jsNav));
-    check('M-19 · el CSS ya no desplaza el contenido en modo barra lateral (panel en modo capa y ☰ fijo)',
-      !/body\.modo-drawer \.topbar, body\.modo-drawer main \{ margin-left/.test(cssNav)
-      && /\.nav-drawer-toggle \{ position: fixed/.test(cssNav)
-      && /\.nav-drawer \{[^}]*position: fixed/.test(cssNav));
+    check('M-19 · el CSS crea la franja del margen, pega el panel a ella y deja hueco al contenido',
+      /\.franja-drawer \{ position: fixed/.test(cssNav)
+      && /\.nav-drawer \{[^}]*left: 48px/.test(cssNav)
+      && /body\.modo-drawer main \{ margin-left: 48px; \}/.test(cssNav)
+      && !/margin-left: 200px/.test(cssNav));
   }
 
   console.log('\n== M-08 · Fila de instrumentos: 2 acciones visibles y menú «⋯» ==');

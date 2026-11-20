@@ -33,7 +33,7 @@ recordar dónde está cada cosa y consulte informes según una pregunta concreta
 | M-16 | Móvil: bottom tab bar y corrección a pantalla completa | Media | **Apartada** (mejora propia) |
 | M-17 | Agrupar instrumentos por nombre con variantes por nivel | Baja | **Hecha** — en cada bloque de unidad, los instrumentos con el mismo título (insensible a mayúsculas y espacios) forman un grupo: fila de grupo (título · N variantes · pendientes del grupo) + una fila por variante con el nivel como primera celda; un título único sigue como fila normal y sus acciones (Corregir + ⋯) funcionan por fila |
 | M-18 | Cabecera sticky de tabla visible bajo la cabecera de color | Media | **Hecha** — `app.js` mide la altura real de `.topbar` (`offsetHeight`, con el subnav cuando se ve) y la publica en `--sticky-top` (recalculada al repintar la nav/subnav y en `resize`, con guardia para el arnés sin DOM); en `styles.css`, las tablas cuyo desplazamiento vertical es la página (Cuadrícula e Informe, dentro de `.scroll-x`) anclan su `thead` a `top: var(--sticky-top, 0px)` (también las variantes sticky de la Cuadrícula `th:first-child` y `th.col-eval`); la corrección (`.scroll-correccion`, scroll propio) conserva su `thead` pegado a `top: 0` dentro del contenedor |
-| M-19 | Barra lateral: ☰ en el margen y panel en modo capa (sin desplazar contenido) | Media | **Hecha** — el panel nace cerrado y, al abrirse, es una capa superpuesta fija bajo la cabecera: fuera las reglas `body.modo-drawer … { margin-left: 200px }` (y su variante móvil), el contenido recupera todo su ancho al cerrar; el ☰ ya no cuelga de `.actions`: es un botón fijo del margen izquierdo (`left: 10px`, justo bajo la cabecera) con `title` y `aria-expanded`, y queda al borde del panel cuando se abre (la vía de cierre siempre visible); también cierran Escape y un clic fuera del panel; el cableado de destinos no cambia |
+| M-19 | Barra lateral: franja del margen con ☰, panel pegado a ella, y cierre solo con la ☰ | Media | **Hecha** — una franja estrecha fija en el margen izquierdo (`.franja-drawer`, 48 px, bajo la cabecera con `--sticky-top`) lleva la hamburguesa «☰» en su parte superior (centrada) con `title` y `aria-expanded`; el panel de destinos (`.nav-drawer`) es una capa pegada a la franja (`left: 48px`), nace cerrado y SOLO abre y cierra la hamburguesa: fuera el cierre por Escape y por clic fuera del panel (`conectaCierreDrawer`/`cierraDrawerPanel` retiradas); el estado (`drawerAbierto`) se conserva al repintar la nav, así que al navegar el panel sigue abierto; el contenido aparta el hueco de la franja con `body.modo-drawer main { margin-left: 48px }` (la cabecera queda sin margen); el cableado de destinos no cambia |
 
 ---
 
@@ -292,9 +292,8 @@ Inicio · Corregir · Evaluación · Informes · Ajustes
 
 - `node --check js/app.js && node --check js/views-instrumentos.js` → sin
   errores de sintaxis.
-- `node tools/checks.js` → `TODO OK: 929 comprobaciones` (12 nuevas: 5 de M-18
-  y 7 de M-19 en la batería de navegación).
-- `node tools/build-singlefile.js` → `dist/evalora.html` (589 KB);
+- `node tools/checks.js` → `TODO OK: 950 comprobaciones`.
+- `node tools/build-singlefile.js` → `dist/evalora.html` (595 KB);
   `node tools/build-singlefile.js --check` → sincronizado.
 - **M-18 · sticky visible bajo la cabecera**: `pintaSubnav()` (a la que llega
   toda ruta de `pintaNav()`) mide `topbar.offsetHeight` y fija
@@ -306,16 +305,19 @@ Inicio · Corregir · Evaluación · Informes · Ajustes
   `thead` a `top: 0` dentro de `.scroll-correccion` (contenedor con scroll
   vertical propio). En z-index el `thead` (4/6) sigue por debajo de la
   cabecera (50): anclado a su altura exacta deja de meterse debajo y se ve.
-- **M-19 · barra lateral sin desplazar contenido**: el panel `.nav-drawer`
-  nace cerrado (`hidden = true`, `aria-expanded="false"`) y, al abrirse, es
-  una capa fija bajo la cabecera (`top: var(--sticky-top, 60px)`), con
-  sombra, sin reglas de `margin-left` (retiradas también de la variante
-  móvil). El ☰ ya no cuelga de `.actions`: es `.nav-drawer-toggle`, botón
-  fijo en el margen (`left: 10px`, bajo la cabecera) con `title` y
-  `aria-label`, siempre visible (queda al borde del panel abierto). Cierran:
-  el propio ☰, Escape y un clic fuera del panel (manejadores conectados una
-  sola vez sobre `<body>`, `conectaCierreDrawer`). Los destinos del panel no
-  cambian; tras navegar el panel repinta cerrado.
+- **M-19 · barra lateral: franja del margen y cierre solo con la ☰**: una
+  franja estrecha fija en el margen izquierdo (`.franja-drawer`,
+  `left: 0; top: var(--sticky-top, 60px); bottom: 0; width: 48px`, con fondo y
+  borde) lleva la hamburguesa «☰» en su parte superior, centrada, con `title`,
+  `aria-label` y `aria-expanded` según el estado. El panel de destinos
+  (`.nav-drawer`) es una capa pegada a la franja (`left: 48px`), nace cerrado
+  y SOLO abre y cierra la hamburguesa, que alterna el estado y repinta la nav:
+  fuera el cierre por Escape y por clic fuera del panel
+  (`conectaCierreDrawer`/`cierraDrawerPanel` retiradas de `app.js`). El estado
+  (`drawerAbierto`) vive en el módulo y se conserva al repintar la nav: al
+  navegar, si estaba abierto sigue abierto. El contenido aparta el hueco de la
+  franja con `body.modo-drawer main { margin-left: 48px }` (la cabecera queda
+  sin margen). Los destinos del panel no cambian.
 
 ---
 

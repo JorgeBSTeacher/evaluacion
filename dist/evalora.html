@@ -101,18 +101,23 @@ body.modo-fab main, body.modo-dock main { padding-bottom: 84px; }
   border-radius: 10px; font-size: 12px; color: var(--tinta-suave); }
 .nav-dock button:hover { background: var(--acento-suave); color: var(--acento); }
 .nav-dock button.activo { background: var(--acento); color: #fff; }
-/* M-19: la barra lateral nace CERRADA y, al abrirse, es una capa superpuesta:
-   NUNCA desplaza el contenido (las reglas de margin-left de 200 px se
-   retiraron, también la variante móvil). El ☰ vive fijo en el margen
-   izquierdo, justo bajo la cabecera (--sticky-top la mide, M-18), y queda al
-   borde del panel cuando se abre: la vía de cierre siempre se ve. También
-   cierran Escape y un clic fuera del panel (conectaCierreDrawer, en app.js). */
-.nav-drawer-toggle { position: fixed; left: 10px; top: calc(var(--sticky-top, 60px) + 10px);
-  z-index: 9998; }
-.nav-drawer { position: fixed; left: 0; top: var(--sticky-top, 60px); bottom: 0; width: 220px; z-index: 40;
+/* M-19: la barra lateral es una FRANJA estrecha fija en el margen izquierdo
+   con la hamburguesa; el menú se despliega SOLO al tocarla y solo se colapsa
+   al volver a tocarla (ni Escape ni un clic fuera lo cierran, petición del
+   docente). El panel es una capa pegada a la franja y NUNCA cubre el
+   contenido: main aparta el hueco de la franja con un margen (la cabecera
+   queda sin margen). El estado del panel vive en app.js (drawerAbierto) y se
+   conserva al repintar la nav. */
+body.modo-drawer main { margin-left: 48px; }
+.franja-drawer { position: fixed; left: 0; top: var(--sticky-top, 60px); bottom: 0; width: 48px; z-index: 40;
+  background: #fff; border-right: 1px solid var(--linea); box-shadow: 4px 0 14px rgba(0, 0, 0, .12); }
+.franja-drawer .nav-drawer-toggle { display: block; margin: 10px auto 0; padding: 6px 8px;
+  border: 0; background: transparent; border-radius: 8px; cursor: pointer;
+  font-family: inherit; font-size: 18px; line-height: 1.1; color: var(--tinta); }
+.franja-drawer .nav-drawer-toggle:hover { background: var(--acento-suave); color: var(--acento); }
+.nav-drawer { position: fixed; left: 48px; top: var(--sticky-top, 60px); bottom: 0; width: 220px; z-index: 40;
   background: #fff; border-right: 1px solid var(--linea); box-shadow: 0 0 30px rgba(0, 0, 0, .3);
-  /* El primer botón arranca bajo el ☰, que flota sobre la esquina del panel. */
-  padding: 58px 8px 14px; overflow: auto; }
+  padding: 14px 8px; overflow: auto; }
 .nav-drawer[hidden] { display: none; }
 .nav-drawer button { display: block; width: 100%; text-align: left; padding: 10px 12px;
   margin-bottom: 2px; border: 0; background: transparent; border-radius: 8px; }
@@ -8699,36 +8704,11 @@ const App = (() => {
     });
   }
 
-  // M-19: cierre de la barra lateral con Escape o con un clic fuera del panel.
-  // Los manejadores se conectan UNA sola vez sobre <body> (clics y teclado
-  // burbujean hasta él) para que repintar la nav no los acumule, y solo actúan
-  // en modo barra lateral con el panel abierto.
-  let cierreDrawerConectado = false;
-  function cierraDrawerPanel() {
-    const panel = document.querySelector('.nav-drawer');
-    if (!panel || panel.hidden) return;
-    panel.hidden = true;
-    const toggle = document.querySelector('.nav-drawer-toggle');
-    if (toggle) toggle.setAttribute('aria-expanded', 'false');
-  }
-  function conectaCierreDrawer() {
-    if (cierreDrawerConectado) return;
-    const cuerpo = document.body;
-    if (!cuerpo || typeof cuerpo.addEventListener !== 'function') return;
-    cierreDrawerConectado = true;
-    cuerpo.addEventListener('click', ev => {
-      if (!document.body.classList.contains('modo-drawer')) return;
-      const panel = document.querySelector('.nav-drawer');
-      if (!panel || panel.hidden) return;
-      const objetivo = ev && ev.target;
-      if (objetivo && objetivo.closest
-        && (objetivo.closest('.nav-drawer') || objetivo.closest('.nav-drawer-toggle'))) return;
-      cierraDrawerPanel();
-    });
-    cuerpo.addEventListener('keydown', ev => {
-      if (ev && ev.key === 'Escape') cierraDrawerPanel();
-    });
-  }
+  // M-19: el panel de la barra lateral solo abre y cierra la HAMBURGUESA de la
+  // franja (ni Escape ni un clic fuera lo cierran, petición del docente). El
+  // estado vive aquí y se conserva al repintar la nav: al navegar, si estaba
+  // abierto sigue abierto.
+  let drawerAbierto = false;
 
   // Navegación según la organización elegida en Configuración → Tema y menús.
   function pintaNav() {
@@ -8740,7 +8720,7 @@ const App = (() => {
     // barra superior, sin migrar el estado.
     const modoBruto = (Storage.db && Storage.db.tema && Storage.db.tema.nav) || 'topbar';
     const modo = modoBruto === 'basic' ? 'topbar' : modoBruto;
-    document.querySelectorAll('.nav-fab,.nav-menu,.nav-dock,.nav-drawer,.nav-drawer-toggle')
+    document.querySelectorAll('.nav-fab,.nav-menu,.nav-dock,.nav-drawer,.nav-drawer-toggle,.franja-drawer')
       .forEach(e => e.remove());
     const nav = document.getElementById('nav');
     nav.style.display = '';
@@ -8783,27 +8763,31 @@ const App = (() => {
       pinta(dock);
       document.body.appendChild(dock);
     } else if (modo === 'drawer') {
-      // M-19: el panel nace CERRADO (sin panel a la vista y sin desplazar el
-      // contenido: las reglas de margin-left de 200 px se retiraron) y al
-      // abrirse es una capa superpuesta. El ☰ ya no cuelga de .actions: es un
-      // botón fijo del margen izquierdo, bajo la cabecera, y queda al borde
-      // del panel cuando se abre, de modo que la vía de cierre se ve siempre.
-      const d = document.createElement('aside');
-      d.className = 'nav-drawer';
-      d.hidden = true;
-      pinta(d);
-      document.body.insertBefore(d, document.getElementById('app'));
+      // M-19: una franja estrecha fija en el margen izquierdo lleva la
+      // hamburguesa; el menú se despliega SOLO al tocarla y solo se colapsa al
+      // volver a tocarla (ni Escape ni un clic fuera lo cierran, petición del
+      // docente). El panel es una capa pegada a la franja (no desplaza el
+      // contenido: main aparta el hueco de la franja con un margen) y su
+      // estado se conserva al repintar la nav: al navegar, si estaba abierto
+      // sigue abierto.
+      const franja = document.createElement('aside');
+      franja.className = 'franja-drawer';
       const t = document.createElement('button');
-      t.type = 'button'; t.className = 'btn btn-mini nav-drawer-toggle'; t.textContent = '☰';
+      t.type = 'button'; t.className = 'nav-drawer-toggle'; t.textContent = '☰';
       t.setAttribute('title', 'Mostrar u ocultar la barra lateral');
       t.setAttribute('aria-label', 'Mostrar u ocultar la barra lateral');
-      t.setAttribute('aria-expanded', 'false');
+      t.setAttribute('aria-expanded', String(drawerAbierto));
       t.onclick = () => {
-        d.hidden = !d.hidden;
-        t.setAttribute('aria-expanded', String(!d.hidden));
+        drawerAbierto = !drawerAbierto;
+        pintaNav(); // repinta: el panel aparece o desaparece con el estado
       };
-      document.body.appendChild(t);
-      conectaCierreDrawer();
+      franja.appendChild(t);
+      document.body.appendChild(franja);
+      const d = document.createElement('aside');
+      d.className = 'nav-drawer';
+      d.hidden = !drawerAbierto;
+      pinta(d);
+      document.body.insertBefore(d, document.getElementById('app'));
     }
     pintaSubnav();
   }
