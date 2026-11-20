@@ -90,7 +90,9 @@ body.modo-fab main, body.modo-dock main { padding-bottom: 84px; }
    contenido: main aparta el hueco de la franja con un margen (la cabecera
    queda sin margen). El estado del panel vive en app.js (drawerAbierto) y se
    conserva al repintar la nav. */
-body.modo-drawer main { margin-left: 48px; }
+body.modo-drawer main { margin-left: 48px; transition: margin-left .2s ease; }
+/* Panel desplegado: aparta el contenido (franja + panel), no lo tapa. */
+body.modo-drawer.drawer-abierto main { margin-left: 268px; }
 .franja-drawer { position: fixed; left: 0; top: var(--sticky-top, 60px); bottom: 0; width: 48px; z-index: 40;
   background: #fff; border-right: 1px solid var(--linea); box-shadow: 4px 0 14px rgba(0, 0, 0, .12); }
 .franja-drawer .nav-drawer-toggle { display: block; margin: 10px auto 0; padding: 6px 8px;

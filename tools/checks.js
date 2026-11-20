@@ -4838,10 +4838,11 @@ async function main() {
     check('M-18 · app.js mide la altura real de la cabecera en --sticky-top y la remide al redimensionar',
       /--sticky-top/.test(jsNav) && /offsetHeight/.test(jsNav)
       && /addEventListener\('resize', mideStickyTop\)/.test(jsNav));
-    check('M-19 · el CSS crea la franja del margen, pega el panel a ella y deja hueco al contenido',
+    check('M-19 · el CSS crea la franja del margen, pega el panel a ella y aparta el contenido al desplegar',
       /\.franja-drawer \{ position: fixed/.test(cssNav)
       && /\.nav-drawer \{[^}]*left: 48px/.test(cssNav)
-      && /body\.modo-drawer main \{ margin-left: 48px; \}/.test(cssNav)
+      && /body\.modo-drawer main \{ margin-left: 48px; transition/.test(cssNav)
+      && /body\.modo-drawer\.drawer-abierto main \{ margin-left: 268px; \}/.test(cssNav)
       && !/margin-left: 200px/.test(cssNav));
   }
 

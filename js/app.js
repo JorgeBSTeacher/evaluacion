@@ -919,6 +919,9 @@ const App = (() => {
       pinta(dock);
       document.body.appendChild(dock);
     } else if (modo === 'drawer') {
+      // El estado (abierto/cerrado) refleja en una clase para que el CSS
+      // aparte el hueco del contenido.
+      document.body.classList.toggle('drawer-abierto', drawerAbierto);
       // M-19: una franja estrecha fija en el margen izquierdo lleva la
       // hamburguesa; el menú se despliega SOLO al tocarla y solo se colapsa al
       // volver a tocarla (ni Escape ni un clic fuera lo cierran, petición del
@@ -935,6 +938,9 @@ const App = (() => {
       t.setAttribute('aria-expanded', String(drawerAbierto));
       t.onclick = () => {
         drawerAbierto = !drawerAbierto;
+        // El panel desplegado NO tapa el contenido: main se aparta el hueco
+        // (la franja + el panel). La clase refleja el estado para el CSS.
+        document.body.classList.toggle('drawer-abierto', drawerAbierto);
         pintaNav(); // repinta: el panel aparece o desaparece con el estado
       };
       franja.appendChild(t);
