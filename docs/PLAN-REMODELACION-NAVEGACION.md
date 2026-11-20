@@ -376,3 +376,39 @@ Tras la remodelación, el inventario de accesos queda así:
 
 Ningún acceso queda huérfano ni duplicado en el mismo sitio: los repetidos son
 atajos desde el punto donde el docente está trabajando.
+
+## 15. Lista de comprobaciones pendientes (tableta, móvil y 360 px)
+
+**Pendientes de verificar en navegador por el docente** — aquí no hay render.
+Marca cada casilla al comprobarla y dime lo que falle.
+
+### Tableta (~768–1024 px, en clase)
+- [ ] Cuadrícula (Instrumentos): la cabecera fija al desplazar, la primera
+  columna y «Evaluación» siempre visibles, y el scroll dentro de la ventana
+  de tabla.
+- [ ] Cuadrícula (Criterios): la matriz con la cabecera fija y los códigos
+  de criterio con su descripción al tocar.
+- [ ] Informes: el contexto (clase · nivel · trimestre · unidad) y las cinco
+  subvistas legibles; el aviso «Estás viendo N de M alumnos».
+- [ ] El subnav de Evaluación integrado en cada modo (fila en la barra
+  superior, anidado en el panel del drawer y en el menú del FAB, y segunda
+  fila del dock).
+- [ ] La corrección: el marcado desaparece al asignar nota; el ojo de
+  privacidad oculta los nombres y se revela manteniendo pulsado.
+- [ ] El menú contextual de la celda (clic derecho) y el menú ⋯ de
+  instrumentos.
+- [ ] La barra lateral: la franja, el despliegue sin tapar el contenido y el
+  colapso solo con la hamburguesa.
+
+### Móvil (360 px)
+- [ ] La cabecera en dos filas como máximo (marca · estado de copia ·
+  Guardar · engranaje) y el subnav debajo.
+- [ ] La cola de Corregir y el panel de pendientes legibles.
+- [ ] Los modales a ancho completo (configuración, instrumento, criterios).
+- [ ] La impresión/PDF desde móvil y el guardado (descarga con nombre
+  estable).
+
+### Móvil — tras implementar M-16
+- [ ] La barra de pestañas inferior con las secciones.
+- [ ] La corrección a pantalla completa con entrada numérica grande y el
+  botón «No realiza».
