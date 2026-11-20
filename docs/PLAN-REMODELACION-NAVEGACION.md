@@ -28,8 +28,8 @@ recordar dónde está cada cosa y consulte informes según una pregunta concreta
 | M-11 | Contraste y tamaño mínimo (≥12 px); no depender solo del color | Alta | **Hecha** |
 | M-12 | Modo privacidad (nombres → iniciales) para proyectar/imprimir | Media | **Hecha** — estado solo de sesión (`App.esAnonimo/nombreVisible/toggleAnonimo`); iniciales «G. J.» en la Cuadrícula (3 pestañas), el Informe y los informes imprimibles; conmutador único de icono de ojo (`App.crearBotonPrivacidad`) en Cuadrícula e Informe: un clic oculta, mantener pulsado ≥1 s vuelve a mostrar; la corrección mantiene el nombre |
 | M-13 | Inicio adaptativo (plegar montaje/flujo, KPI de pendientes y copia) | Media | **Hecha (Fase 3)** |
-| M-14 | Accesos duplicados: unificar o documentar | Baja | Pendiente |
-| M-15 | Revisar estado activo/hover del menú | Baja | Pendiente |
+| M-14 | Accesos duplicados: unificar o documentar | Baja | **Hecha** — auditoría documentada; los duplicados que quedan son intencionales (ver §14) |
+| M-15 | Revisar estado activo/hover del menú | Baja | **Hecha** — el activo es píldora blanca sobre la marca (verificado por los checks de sección activa en los 4 modos); el hover es sutil y no deja estado pegado |
 | M-16 | Móvil: bottom tab bar y corrección a pantalla completa | Media | **Apartada** (mejora propia) |
 | M-17 | Agrupar instrumentos por nombre con variantes por nivel | Baja | **Hecha** — en cada bloque de unidad, los instrumentos con el mismo título (insensible a mayúsculas y espacios) forman un grupo: fila de grupo (título · N variantes · pendientes del grupo) + una fila por variante con el nivel como primera celda; un título único sigue como fila normal y sus acciones (Corregir + ⋯) funcionan por fila |
 | M-18 | Cabecera sticky de tabla visible bajo la cabecera de color | Media | **Hecha** — `app.js` mide la altura real de `.topbar` (`offsetHeight`, con el subnav cuando se ve) y la publica en `--sticky-top` (recalculada al repintar la nav/subnav y en `resize`, con guardia para el arnés sin DOM); en `styles.css`, las tablas cuyo desplazamiento vertical es la página (Cuadrícula e Informe, dentro de `.scroll-x`) anclan su `thead` a `top: var(--sticky-top, 0px)` (también las variantes sticky de la Cuadrícula `th:first-child` y `th.col-eval`); la corrección (`.scroll-correccion`, scroll propio) conserva su `thead` pegado a `top: 0` dentro del contenedor |
@@ -360,3 +360,19 @@ Inicio · Corregir · Evaluación · Informes · Ajustes
   ya son botones reales y el orden del DOM es razonable.
 - La trampa de foco de los modales (`focablesEn`) solo consulta dentro de
   `modal-root`: los nuevos `[tabindex]` de la página no la afectan.
+
+## 14. Accesos duplicados (M-14): auditoría
+
+Tras la remodelación, el inventario de accesos queda así:
+
+| Función | Accesos | Decisión |
+|---|---|---|
+| **Crear instrumento** | Evaluación → Instrumentos («+ Nuevo») · Cuadrícula («+ Crear instrumento») · Importar rúbrica (en el modal nuevo) | **Intencional**: el mismo modal desde donde estés; la importación es un caso propio |
+| **Corregir** | Sección **Corregir** (la cola) · Cuadrícula: botón «Corregir · N» · Cuadrícula: celda (alumno/instrumento) · Instrumentos: fila | **Intencional**: la sección es el hub; los demás son accesos directos desde donde estás |
+| **Abrir currículo** | Evaluación → subpestaña Currículo | Único acceso |
+| **Ver informe** | Sección **Informes** · Cuadrícula → «Imprimir / PDF → Informe de análisis» (PDF) | **Intencional**: uno navegable y el PDF desde Imprimir |
+| **Ajustes** | Engranaje de la cabecera · **F2** (atajo) | Único acceso + atajo |
+| **Backup** | «Guardar» (cabecera, sobrescribe el JSON) · «Hacer backup» (Inicio) · «Exportar backup» (Ajustes, crea con fecha) | **Documentar**: Guardar sobrescribe; Exportar/Exportar crea uno nuevo con fecha |
+
+Ningún acceso queda huérfano ni duplicado en el mismo sitio: los repetidos son
+atajos desde el punto donde el docente está trabajando.
