@@ -617,10 +617,14 @@ const App = (() => {
       detalles.appendChild(texto);
       bloqueAcerca.appendChild(detalles);
     }
-    body.querySelector('#btn-exportar-ajustes').onclick = () =>
+    const btnExpAjustes = body.querySelector('#btn-exportar-ajustes');
+    btnExpAjustes.onclick = () => {
+      btnExpAjustes.disabled = true; // ocupado: sin doble clic durante la copia
       Storage.exportar()
         .then(ok => { if (ok) { UI.toast('Backup exportado'); pintaEstadoCopia(); modalAjustes(); } })
-        .catch(e => alert('Error al exportar: ' + e.message));
+        .catch(e => alert('Error al exportar: ' + e.message))
+        .finally(() => { btnExpAjustes.disabled = false; });
+    };
     body.querySelector('#btn-importar-ajustes').onclick = () =>
       document.getElementById('input-importar').click();
     // Carpeta de backups: con carpeta elegida, «Guardar» sobrescribe
@@ -762,9 +766,14 @@ const App = (() => {
     // Pendientes y copia (Fase 3): acciones del panel y de los accesos rápidos.
     const btnCorregirPend = el.querySelector('#btn-corregir-pendientes');
     if (btnCorregirPend) btnCorregirPend.onclick = () => ir('corregir');
-    const hacerBackup = () => Storage.exportar()
-      .then(ok => { if (ok) { UI.toast('Backup exportado'); pintaEstadoCopia(); App.ir('inicio'); } })
-      .catch(e => alert('Error al exportar: ' + e.message));
+    const hacerBackup = ev => {
+      const btn = ev && ev.currentTarget ? ev.currentTarget : null;
+      if (btn) btn.disabled = true; // ocupado: sin doble clic durante la copia
+      Storage.exportar()
+        .then(ok => { if (ok) { UI.toast('Backup exportado'); pintaEstadoCopia(); App.ir('inicio'); } })
+        .catch(e => alert('Error al exportar: ' + e.message))
+        .finally(() => { if (btn) btn.disabled = false; });
+    };
     const btnBackupAviso = el.querySelector('#btn-backup-aviso');
     if (btnBackupAviso) btnBackupAviso.onclick = hacerBackup;
     const btnBackupRapido = el.querySelector('#btn-backup-rapido');
@@ -1046,14 +1055,19 @@ const App = (() => {
         ? 'Se han corregido los criterios de 1 instrumento para que coincidan con su nivel.'
         : 'Se han corregido los criterios de ' + Storage.reparadosCriterios + ' instrumentos para que coincidan con su nivel.');
     }
-    document.getElementById('btn-guardar').onclick = () => Storage.guardar()
-      .then(ok => {
-        pintaEstadoCopia();
-        // Sin esto, un fallo silencioso (permiso denegado, cancelado) se lee
-        // como «el botón no hace nada».
-        if (!ok) UI.toast('No se ha guardado la copia. Prueba de nuevo o usa Configuración → Copias de seguridad.', 'error');
-      })
-      .catch(e => alert('Error al guardar: ' + e.message));
+    const btnGuardar = document.getElementById('btn-guardar');
+    btnGuardar.onclick = () => {
+      btnGuardar.disabled = true; // ocupado: sin doble clic durante la copia
+      Storage.guardar()
+        .then(ok => {
+          pintaEstadoCopia();
+          // Sin esto, un fallo silencioso (permiso denegado, cancelado) se lee
+          // como «el botón no hace nada».
+          if (!ok) UI.toast('No se ha guardado la copia. Prueba de nuevo o usa Configuración → Copias de seguridad.', 'error');
+        })
+        .catch(e => alert('Error al guardar: ' + e.message))
+        .finally(() => { btnGuardar.disabled = false; });
+    };
     document.getElementById('btn-ajustes').onclick = () => modalAjustes();
 
     // El isotipo de la cabecera lleva a Inicio (petición del docente): es un

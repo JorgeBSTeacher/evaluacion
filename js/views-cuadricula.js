@@ -562,7 +562,14 @@ const CuadriculaView = (() => {
       el.innerHTML = `<section class="card"><div class="vacio-grande">
         <strong>No hay clases todavía</strong>
         Crea grupos, alumnos y clases para ver aquí la cuadrícula de calificación.
+        <div class="acciones" style="justify-content:center;margin-top:12px">
+          <button class="btn btn-primario" id="btn-ir-alumnos">Ir a Alumnos y grupos</button>
+        </div>
       </div></section>`;
+      const btnAlu = el.querySelector('#btn-ir-alumnos');
+      // «Alumnos y grupos» es la primera vista de preparación (subpestaña de
+      // Evaluación): desde ahí se llega a clases, currículo e instrumentos.
+      if (btnAlu) btnAlu.onclick = () => App.ir('alumnos');
       return;
     }
 

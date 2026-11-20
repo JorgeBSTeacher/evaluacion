@@ -90,7 +90,12 @@ const CurriculoView = (() => {
       el.innerHTML = `<section class="card"><div class="vacio-grande">
         <strong>Aún no hay asignaturas</strong>
         Crea una asignatura en «Asignaturas y clases» y recupera su currículo oficial, o edítalo a mano.
+        <div class="acciones" style="justify-content:center;margin-top:12px">
+          <button class="btn btn-primario" id="btn-ir-clases">Ir a Asignaturas y clases</button>
+        </div>
       </div></section>`;
+      const btnClas = el.querySelector('#btn-ir-clases');
+      if (btnClas) btnClas.onclick = () => App.ir('clases');
       return;
     }
 
