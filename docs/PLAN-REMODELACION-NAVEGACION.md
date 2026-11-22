@@ -382,6 +382,34 @@ atajos desde el punto donde el docente está trabajando.
 **Pendientes de verificar en navegador por el docente** — aquí no hay render.
 Marca cada casilla al comprobarla y dime lo que falle.
 
+### Ronda de prueba del docente — móvil vertical y apaisado (2026-11)
+
+Lo que falló en la ronda de pruebas y ya está arreglado (checks UX-1…UX-6 en
+`tools/checks.js`):
+
+- **Desborde de los paneles de estado de Inicio** (≤520 px): las tablas van
+  ahora en su ventana de scroll `.scroll-x` (`panelesEstadoHtml` y
+  `panelesAciHtml` en `js/app.js`).
+- **Scroll lateral pequeño de página**: medido en navegador real, lo causaban
+  tablas a página completa más anchas que su tarjeta (Inicio +135 px, Clases
+  +77 px, Currículo +127 px en 360 px). Además de los paneles de arriba, el
+  `.card` contiene su propio desborde (`overflow-x: auto` en
+  `css/styles.css`): lo que no cabe se desplaza dentro de la tarjeta, nunca
+  la página.
+- **Cuadrícula en vertical (≤520 px)**: la primera columna y «Evaluación» ya
+  no se anclan en horizontal (td estático; en las cabeceras solo se sueltan
+  `left/right` y se conserva el sticky vertical del `thead`). El scroll
+  horizontal es libre.
+- **Apaisado**: la cabecera se compacta con un media query de altura
+  (`max-height: 480px`): isotipo más pequeño y pestañas y subnav a una línea
+  desplazable. Medido: ~45 % de la pantalla antes, 25–36 % después.
+- **Menú del FAB**: toda entrada cierra el menú antes de actuar, también
+  «Ajustes» (`pintaNav`, modo fab).
+- **Modales**: el cuerpo del modal de Configuración lleva `min-height: 420px`
+  (las pestañas no mueven el modal) y el scroll del fondo se bloquea mientras
+  haya cualquier modal abierto (`body.modal-abierto`, gestionado por
+  `UI.openModal`/`UI.closeModal` con guarda por capas).
+
 ### Tableta (~768–1024 px, en clase)
 - [ ] Cuadrícula (Instrumentos): la cabecera fija al desplazar, la primera
   columna y «Evaluación» siempre visibles, y el scroll dentro de la ventana

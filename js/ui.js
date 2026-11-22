@@ -32,6 +32,21 @@ function enfocarModal(raiz) {
   if (destino && typeof destino.focus === 'function') destino.focus();
 }
 
+// Bloqueo del scroll del fondo con un modal abierto (prueba del docente: con
+// el modal de Configuración abierto, el contenido de detrás se movía). La
+// clase la interpreta el CSS (`body.modal-abierto { overflow: hidden }`). La
+// guarda por capas: con dos modales apilados el bloqueo se mantiene mientras
+// haya CUALQUIERA abierto y solo se libera al cerrar el último.
+function ponBloqueoScroll() {
+  const r1 = document.getElementById('modal-root');
+  const r2 = document.getElementById('modal-root-2');
+  const abierto = !!(r1 && r1.innerHTML) || !!(r2 && r2.innerHTML);
+  const b = document.body;
+  if (b && b.classList && typeof b.classList.toggle === 'function') {
+    b.classList.toggle('modal-abierto', abierto);
+  }
+}
+
 const UI = {
   // `capa` (1 por defecto, 2 para modales anidados, p. ej. elegir criterios
   // dentro del modal de instrumento) permite abrir un segundo modal por encima
@@ -84,6 +99,9 @@ const UI = {
       else if (!ev.shiftKey && document.activeElement === ultimo) { ev.preventDefault(); primero.focus(); }
     };
     enfocarModal(root);
+    // El fondo deja de desplazarse mientras el modal está abierto (con la
+    // guarda por capas: si ya había otro, el bloqueo se mantiene).
+    ponBloqueoScroll();
     return body;
   },
 
@@ -95,6 +113,9 @@ const UI = {
     if (!root) { elementoFocoPrevio = null; return; }
     root.innerHTML = '';
     root.onkeydown = null;
+    // Si queda algún modal abierto (la otra capa), el bloqueo del fondo se
+    // mantiene; si no quedaba ninguno, se libera.
+    ponBloqueoScroll();
     // Devolver el foco al disparador, si sigue vivo (un repintado pudo
     // sustituirlo). `isConnected` evita enfocar un nodo huérfano.
     const previo = elementoFocoPrevio;

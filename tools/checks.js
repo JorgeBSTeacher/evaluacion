@@ -5745,6 +5745,115 @@ async function main() {
       bloqueCorr ? 'bloque encontrado' : 'sin bloque @media 520px con #tabla-corrige');
   }
 
+  // Prueba del docente en móvil (vertical y apaisado) a nivel de fuente y de
+  // comportamiento: contención del scroll lateral, columnas de la cuadrícula
+  // sin anclaje horizontal en ≤520 px, cabecera compacta en apaisado, cierre
+  // del menú del FAB en cada entrada, altura estable del modal de
+  // Configuración y bloqueo del scroll del fondo con modal abierto.
+  console.log('\n== Prueba del docente · móvil vertical y apaisado ==');
+  {
+    const cssUx = fs.readFileSync(path.join(raiz, 'css', 'styles.css'), 'utf8');
+    const jsUx = fs.readFileSync(path.join(raiz, 'js', 'app.js'), 'utf8');
+    const uiUx = fs.readFileSync(path.join(raiz, 'js', 'ui.js'), 'utf8');
+
+    // 1 y 3 · Las tablas de los paneles de Inicio van en su ventana de scroll y
+    // las tarjetas enjaulan el desborde: nada empuja la página más allá del
+    // viewport (scroll lateral pequeño).
+    check('UX-1 · los paneles de estado de Inicio envuelven su tabla en .scroll-x',
+      /<div class="scroll-x">[\s\S]{0,200}?<table class="tabla">/.test(jsUx)
+      && (jsUx.match(/<div class="scroll-x">[\s\S]{0,200}?<table class="tabla">/g) || []).length >= 2);
+    check('UX-1 · la tarjeta contiene el desborde (overflow-x: auto), no la página',
+      /\.card \{[^}]*overflow-x: auto/.test(cssUx));
+
+    // 2 · En ≤520 px la primera columna y «Evaluación» dejan de anclarse en
+    // horizontal: el td pasa a estático y las cabeceras solo sueltan left/right
+    // (conservan el sticky vertical del thead).
+    const bloques520Ux = cssUx.split('@media').filter(b => b.startsWith(' (max-width: 520px)'));
+    const bloqueCuad = bloques520Ux.find(b => b.includes('.tabla-cuadricula td:first-child'));
+    check('UX-2 · existe el media query que retira el anclaje horizontal de columnas en ≤520 px',
+      !!bloqueCuad
+      && /\.tabla-cuadricula td:first-child, \.tabla-cuadricula td\.col-eval \{[^}]*position: static/.test(bloqueCuad)
+      && /\.tabla-cuadricula th:first-child, \.tabla-cuadricula th\.col-eval \{[^}]*left: auto/.test(bloqueCuad)
+      && /right: auto/.test(bloqueCuad),
+      bloqueCuad ? 'bloque encontrado' : 'sin bloque @media 520px con .tabla-cuadricula td:first-child');
+
+    // 4 · En apaisado (poco alto) la cabecera se compacta: media query de altura
+    // con marca pequeña y pestañas a una línea desplazable.
+    const bloqueApaisado = cssUx.split('@media').find(b => b.startsWith(' (max-height: 480px)'));
+    check('UX-4 · existe el media query de altura que compacta la cabecera en apaisado',
+      !!bloqueApaisado
+      && /\.topbar \{[^}]*padding: 4px/.test(bloqueApaisado)
+      && /\.logo \{[^}]*width: 28px/.test(bloqueApaisado)
+      && /\.topbar \.nav, \.subnav \{[^}]*flex-wrap: nowrap/.test(bloqueApaisado)
+      && /\.nav button \{[^}]*min-height: 30px/.test(bloqueApaisado),
+      bloqueApaisado ? 'bloque encontrado' : 'sin bloque @media (max-height: 480px)');
+
+    // 6a · El cuerpo del modal de Configuración tiene altura mínima: las
+    // pestañas no mueven el modal.
+    check('UX-6 · el modal de Configuración lleva min-height en su cuerpo (las pestañas no lo mueven)',
+      /\.modal:has\(#tabs-ajustes\) \.modal-body \{ min-height: 420px; \}/.test(cssUx));
+
+    // 6b · El scroll del fondo se bloquea con modal abierto y se libera al
+    // cerrar el último, con guarda por capas (ui.js) y regla CSS.
+    check('UX-6 · el CSS bloquea el scroll del body mientras haya modal',
+      /body\.modal-abierto \{ overflow: hidden; \}/.test(cssUx));
+    check('UX-6 · ui.js ajusta el bloqueo por capas al abrir y al cerrar',
+      /function ponBloqueoScroll\(\) \{[\s\S]{0,400}modal-root-2/.test(uiUx)
+      && /b\.classList\.toggle\('modal-abierto', abierto\)/.test(uiUx)
+      && /enfocarModal\(root\);[\s\S]{0,200}ponBloqueoScroll\(\)/.test(uiUx)
+      && /root\.onkeydown = null;[\s\S]{0,200}ponBloqueoScroll\(\)/.test(uiUx));
+
+    // Comportamiento en el arnés con DOM: paneles de Inicio, menú del FAB y
+    // bloqueo de scroll real (capa 1, capa 2 y liberación final).
+    const app = cargarApp({ dom: true });
+    app.Storage.load();
+    await importarJson(app, estadoPrueba());
+    const doc = app.document;
+
+    app.App.ir('inicio');
+    check('UX-1 · al pintar Inicio, la tabla de estado cuelga de un .scroll-x',
+      !!doc.querySelector('#app .scroll-x table'));
+
+    // 5 · El menú del FAB se cierra SIEMPRE al elegir una entrada, también
+    // «Ajustes» (que abre Configuración sin pasar por ir()).
+    app.Storage.db.tema.nav = 'fab';
+    app.App.ir('inicio');
+    const fab = () => doc.querySelector('.nav-fab');
+    const menu = () => doc.querySelector('.nav-menu');
+    check('UX-5 · el menú del FAB nace cerrado', menu().hidden === true);
+    fab().click();
+    check('UX-5 · tocar el FAB abre el menú y refleja aria-expanded', menu().hidden === false
+      && fab().getAttribute('aria-expanded') === 'true');
+    const entradaAjustes = [...menu().querySelectorAll('button')].find(b => b.textContent === 'Ajustes');
+    entradaAjustes.click();
+    check('UX-5 · elegir «Ajustes» cierra el menú y abre Configuración',
+      menu().hidden === true && fab().getAttribute('aria-expanded') === 'false'
+      && !!doc.querySelector('#modal-root .modal'));
+    app.UI.closeModal();
+    app.App.ir('inicio');
+    doc.querySelector('.nav-fab').click();
+    const entradaInicio = [...doc.querySelector('.nav-menu').querySelectorAll('button')]
+      .find(b => b.textContent === 'Inicio');
+    entradaInicio.click();
+    check('UX-5 · elegir una entrada que navega también cierra el menú',
+      doc.querySelector('.nav-menu').hidden === true && app.App.seccionActual() === 'inicio');
+
+    // 6b · Bloqueo del scroll del fondo: se mantiene con dos capas y se libera
+    // al cerrar la última.
+    app.UI.openModal({ titulo: 'capa 1', cuerpo: '<p>x</p>' });
+    check('UX-6 · al abrir un modal el body lleva modal-abierto',
+      doc.body.classList.contains('modal-abierto') === true);
+    app.UI.openModal({ titulo: 'capa 2', cuerpo: '<p>x</p>' }, 2);
+    check('UX-6 · con dos capas el bloqueo se mantiene',
+      doc.body.classList.contains('modal-abierto') === true);
+    app.UI.closeModal();
+    check('UX-6 · al cerrar la capa 2 el bloqueo se mantiene (queda la 1)',
+      doc.body.classList.contains('modal-abierto') === true);
+    app.UI.closeModal();
+    check('UX-6 · al cerrar la última capa el fondo se libera',
+      doc.body.classList.contains('modal-abierto') === false);
+  }
+
   console.log('\n' + (fallos ? 'FALLOS: ' + fallos + '/' + total : 'TODO OK: ' + total + ' comprobaciones')
     + (avisos ? ' · ' + avisos + ' aviso(s)' : ''));
   process.exitCode = fallos ? 1 : 0;

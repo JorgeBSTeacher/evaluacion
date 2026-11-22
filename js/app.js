@@ -261,10 +261,12 @@ const App = (() => {
       <section class="card">
         <div class="card-head"><h2>Estado por clase</h2>
           <small style="color:var(--tinta-suave)">Toca una fila para abrir Calificaciones</small></div>
-        <table class="tabla">
-          <thead><tr><th>Asignatura · grupo</th><th class="num">Alumnos</th><th class="num">Instrumentos</th><th>Corrección</th></tr></thead>
-          <tbody>${filas}</tbody>
-        </table>
+        <div class="scroll-x">
+          <table class="tabla">
+            <thead><tr><th>Asignatura · grupo</th><th class="num">Alumnos</th><th class="num">Instrumentos</th><th>Corrección</th></tr></thead>
+            <tbody>${filas}</tbody>
+          </table>
+        </div>
       </section>`;
   }
 
@@ -331,10 +333,12 @@ const App = (() => {
       <section class="card">
         <div class="card-head"><h2>Niveles ACI por asignatura</h2>
           <button class="btn btn-mini" id="btn-ir-clases">Abrir Asignaturas y clases</button></div>
-        <table class="tabla">
-          <thead><tr><th>Asignatura · grupo</th><th>Niveles (alumnado)</th></tr></thead>
-          <tbody>${filas.join('')}</tbody>
-        </table>
+        <div class="scroll-x">
+          <table class="tabla">
+            <thead><tr><th>Asignatura · grupo</th><th>Niveles (alumnado)</th></tr></thead>
+            <tbody>${filas.join('')}</tbody>
+          </table>
+        </div>
       </section>`;
   }
 
@@ -937,6 +941,20 @@ const App = (() => {
         menu.hidden = !menu.hidden;
         fab.setAttribute('aria-expanded', String(!menu.hidden));
       };
+      // Prueba del docente: SIEMPRE que se elige una entrada, el menú se cierra
+      // antes de actuar. Casi todas las entradas navegan (ir() repinta la nav y
+      // el menú desaparece), pero «Ajustes» abre Configuración sin pasar por
+      // ir(): sin esta envoltura el menú quedaba abierto tras el modal. Cada
+      // entrada oculta el menú y refleja el estado en aria-expanded, y luego
+      // ejecuta su acción de siempre.
+      menu.querySelectorAll('button').forEach(b => {
+        const actua = b.onclick;
+        b.onclick = ev => {
+          menu.hidden = true;
+          fab.setAttribute('aria-expanded', 'false');
+          if (typeof actua === 'function') actua.call(b, ev);
+        };
+      });
     } else if (modo === 'dock') {
       const dock = document.createElement('div');
       dock.className = 'nav-dock';

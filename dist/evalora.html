@@ -258,6 +258,30 @@ body.modo-drawer.drawer-abierto main { margin-left: 268px; }
 .subnav button:hover { color: var(--marca); border-bottom-color: var(--linea); }
 .subnav button.activo { color: var(--marca); border-bottom-color: var(--marca); font-weight: 700; }
 
+/* Móvil apaisado (poco alto, prueba del docente): la cabecera sticky con la
+   marca grande, las pestañas de 40 px y el subnav ocupaba casi media pantalla.
+   Se compacta: isotipo y marca más pequeños, y pestañas y subnav en UNA línea
+   cada uno (se dejan desplazar en horizontal en vez de envolver), con menos
+   aire en los botones y controles de cabecera. Las fuentes no bajan de 12 px
+   (M-11) y, al ser una regla de altura, no toca los objetivos táctiles de
+   44 px del móvil vertical (esas reglas viven en el media query de anchura). */
+@media (max-height: 480px) {
+  .topbar { padding: 4px var(--pad-x); gap: 10px; }
+  .brand { gap: 8px; }
+  .logo { width: 28px; height: 28px; border-radius: 8px; }
+  .logo.isotipo svg { width: 18px; height: 18px; }
+  .brand-txt strong { font-size: 14px; }
+  /* Pestañas y subnav a una sola línea: no envuelven, se dejan arrastrar. */
+  .topbar .nav, .subnav { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .topbar .nav::-webkit-scrollbar, .subnav::-webkit-scrollbar { display: none; }
+  .nav button { min-height: 30px; padding: 4px 10px; font-size: 13px; white-space: nowrap; }
+  .subnav { padding: 0 10px; }
+  .subnav button { min-height: 26px; padding: 3px 8px; white-space: nowrap; }
+  .topbar .btn { min-height: 30px; padding: 4px 10px; }
+  .actions { gap: 4px; }
+  .icon-btn-lg { width: 34px; height: 34px; }
+}
+
 /* Los controles de la cabecera (indicador de copia, Copia de seguridad y
    engranaje) van pegados a la derecha. */
 .actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
@@ -300,6 +324,15 @@ main { max-width: 1440px; margin: 0 auto; padding: 20px 18px 60px; }
   background: #fff; border: 1px solid var(--linea);
   border-radius: var(--radio); box-shadow: var(--sombra);
   padding: 18px; margin-bottom: 18px;
+  /* Contención del scroll lateral de página (prueba del docente en móvil):
+     una tabla (o cualquier bloque) más ancha que la tarjeta empujaba la página
+     entera más allá del viewport y aparecía un scroll horizontal pequeño. Con
+     el desbordamiento enjaulado en la tarjeta, lo que no cabe se desplaza DENTRO
+     de ella (el patrón .scroll-x que ya usan las vistas), nunca la página. Las
+     tablas de las ventanas de scroll (.scroll-tabla, .scroll-correccion) siguen
+     desplazándose en su propio contenedor y los paneles de Inicio llevan su
+     .scroll-x propio; esto es la red para el resto. */
+  overflow-x: auto;
 }
 .card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
 .card h1 { margin: 0; font-size: 24px; font-weight: 800; line-height: 1.2; }
@@ -527,6 +560,24 @@ main { max-width: 1440px; margin: 0 auto; padding: 20px 18px 60px; }
 .tabla-cuadricula thead th.col-eval { z-index: 6; }
 .tabla-cuadricula tbody tr:hover td:first-child { background: #faf9f4; }
 .tabla-cuadricula tbody tr:hover td.col-eval { background: #faf9f4; }
+/* Móvil estrecho (≤520 px, prueba del docente): no caben a la vez la columna
+   del alumno anclada a la izquierda y «Evaluación» anclada a la derecha — el
+   hueco central de instrumentos se queda sin sitio y ambas se superponen con
+   las columnas. Se retira el anclaje: en el cuerpo (td) la celda pasa a estática
+   y en las cabeceras (th) solo se sueltan los anclajes HORIZONTALES (left/right
+   a auto), conservando el sticky vertical del thead. El desplazamiento
+   horizontal queda libre, sin columnas fijas. */
+@media (max-width: 520px) {
+  .tabla-cuadricula td:first-child, .tabla-cuadricula td.col-eval {
+    position: static;
+    box-shadow: none;
+  }
+  .tabla-cuadricula th:first-child, .tabla-cuadricula th.col-eval {
+    left: auto;
+    right: auto;
+    box-shadow: none;
+  }
+}
 /* En la cuadrícula solo la columna del alumno va a la izquierda: cabeceras y
    notas se centran para que cada cifra quede bajo su columna. */
 .tabla-cuadricula th:not(:first-child),
@@ -728,6 +779,16 @@ details.guia-inicio > summary .guia-titulo { display: inline; font-size: 16px; f
 .modal-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--linea); }
 .modal-head h3 { margin: 0; font-size: 18px; line-height: 1.25; }
 .modal-body { padding: 18px; overflow: auto; }
+/* El modal de Configuración no cambia de altura al saltar de pestaña (Perfil →
+   Tema, prueba del docente): todas las secciones comparten una altura mínima
+   y el contenido no «salta». Solo ese modal: los modales pequeños (avisos,
+   confirmaciones) no deben crecer. */
+.modal:has(#tabs-ajustes) .modal-body { min-height: 420px; }
+/* Con un modal abierto el fondo no se desplaza: el scroll del body se bloquea
+   mientras haya CUALQUIER modal abierto (también con las dos capas apiladas)
+   y se libera al cerrar el último. La clase la gestionan
+   UI.openModal/UI.closeModal en js/ui.js. */
+body.modal-abierto { overflow: hidden; }
 /* La cuadrícula de rúbrica necesita más ancho para sus columnas de nivel */
 .modal:has(.rub-head) { width: min(1080px, 100%); }
 .modal:has(#ia-prompt) { width: min(860px, 100%); }
@@ -3240,6 +3301,21 @@ function enfocarModal(raiz) {
   if (destino && typeof destino.focus === 'function') destino.focus();
 }
 
+// Bloqueo del scroll del fondo con un modal abierto (prueba del docente: con
+// el modal de Configuración abierto, el contenido de detrás se movía). La
+// clase la interpreta el CSS (`body.modal-abierto { overflow: hidden }`). La
+// guarda por capas: con dos modales apilados el bloqueo se mantiene mientras
+// haya CUALQUIERA abierto y solo se libera al cerrar el último.
+function ponBloqueoScroll() {
+  const r1 = document.getElementById('modal-root');
+  const r2 = document.getElementById('modal-root-2');
+  const abierto = !!(r1 && r1.innerHTML) || !!(r2 && r2.innerHTML);
+  const b = document.body;
+  if (b && b.classList && typeof b.classList.toggle === 'function') {
+    b.classList.toggle('modal-abierto', abierto);
+  }
+}
+
 const UI = {
   // `capa` (1 por defecto, 2 para modales anidados, p. ej. elegir criterios
   // dentro del modal de instrumento) permite abrir un segundo modal por encima
@@ -3292,6 +3368,9 @@ const UI = {
       else if (!ev.shiftKey && document.activeElement === ultimo) { ev.preventDefault(); primero.focus(); }
     };
     enfocarModal(root);
+    // El fondo deja de desplazarse mientras el modal está abierto (con la
+    // guarda por capas: si ya había otro, el bloqueo se mantiene).
+    ponBloqueoScroll();
     return body;
   },
 
@@ -3303,6 +3382,9 @@ const UI = {
     if (!root) { elementoFocoPrevio = null; return; }
     root.innerHTML = '';
     root.onkeydown = null;
+    // Si queda algún modal abierto (la otra capa), el bloqueo del fondo se
+    // mantiene; si no quedaba ninguno, se libera.
+    ponBloqueoScroll();
     // Devolver el foco al disparador, si sigue vivo (un repintado pudo
     // sustituirlo). `isConnected` evita enfocar un nodo huérfano.
     const previo = elementoFocoPrevio;
@@ -8262,10 +8344,12 @@ const App = (() => {
       <section class="card">
         <div class="card-head"><h2>Estado por clase</h2>
           <small style="color:var(--tinta-suave)">Toca una fila para abrir Calificaciones</small></div>
-        <table class="tabla">
-          <thead><tr><th>Asignatura · grupo</th><th class="num">Alumnos</th><th class="num">Instrumentos</th><th>Corrección</th></tr></thead>
-          <tbody>${filas}</tbody>
-        </table>
+        <div class="scroll-x">
+          <table class="tabla">
+            <thead><tr><th>Asignatura · grupo</th><th class="num">Alumnos</th><th class="num">Instrumentos</th><th>Corrección</th></tr></thead>
+            <tbody>${filas}</tbody>
+          </table>
+        </div>
       </section>`;
   }
 
@@ -8332,10 +8416,12 @@ const App = (() => {
       <section class="card">
         <div class="card-head"><h2>Niveles ACI por asignatura</h2>
           <button class="btn btn-mini" id="btn-ir-clases">Abrir Asignaturas y clases</button></div>
-        <table class="tabla">
-          <thead><tr><th>Asignatura · grupo</th><th>Niveles (alumnado)</th></tr></thead>
-          <tbody>${filas.join('')}</tbody>
-        </table>
+        <div class="scroll-x">
+          <table class="tabla">
+            <thead><tr><th>Asignatura · grupo</th><th>Niveles (alumnado)</th></tr></thead>
+            <tbody>${filas.join('')}</tbody>
+          </table>
+        </div>
       </section>`;
   }
 
@@ -8938,6 +9024,20 @@ const App = (() => {
         menu.hidden = !menu.hidden;
         fab.setAttribute('aria-expanded', String(!menu.hidden));
       };
+      // Prueba del docente: SIEMPRE que se elige una entrada, el menú se cierra
+      // antes de actuar. Casi todas las entradas navegan (ir() repinta la nav y
+      // el menú desaparece), pero «Ajustes» abre Configuración sin pasar por
+      // ir(): sin esta envoltura el menú quedaba abierto tras el modal. Cada
+      // entrada oculta el menú y refleja el estado en aria-expanded, y luego
+      // ejecuta su acción de siempre.
+      menu.querySelectorAll('button').forEach(b => {
+        const actua = b.onclick;
+        b.onclick = ev => {
+          menu.hidden = true;
+          fab.setAttribute('aria-expanded', 'false');
+          if (typeof actua === 'function') actua.call(b, ev);
+        };
+      });
     } else if (modo === 'dock') {
       const dock = document.createElement('div');
       dock.className = 'nav-dock';
