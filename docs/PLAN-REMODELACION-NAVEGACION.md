@@ -410,6 +410,45 @@ Lo que falló en la ronda de pruebas y ya está arreglado (checks UX-1…UX-6 en
   haya cualquier modal abierto (`body.modal-abierto`, gestionado por
   `UI.openModal`/`UI.closeModal` con guarda por capas).
 
+### Ronda B del docente — tableta y exportaciones (2026-11)
+
+Lo que falló en esta segunda ronda y ya está arreglado (checks «Ronda B» en
+`tools/checks.js`):
+
+- **Criterios en tableta: la columna «Evaluación» sticky solapa columnas de
+  criterio** (portrait, ≤820 px): la tabla de Criterios lleva ahora su clase
+  propia (`.tabla-criterios`, `tablaCriterios` en `js/views-cuadricula.js`) y
+  un media query de tableta le retira el anclaje horizontal con el mismo
+  patrón del bloque ≤520 px (td estático, `right: auto` en la cabecera, sticky
+  vertical del `thead` intacto). En la pestaña Instrumentos y en pantallas
+  anchas el anclaje se conserva.
+- **«Imprimir vista actual» salía con los marcos de menús**: el bloque
+  `@media print` de `css/styles.css` oculta ahora también el nav lateral
+  (`.nav-drawer`, `.nav-drawer-toggle`, `.franja-drawer`), el FAB y su menú,
+  el dock con su barra de subpestañas (`.nav-dock`, `.nav-dock-sub`), el
+  `#subnav` suelto, el botón de pantalla completa, el segundo raíz de modales
+  (`#modal-root-2`) y los menús flotantes de la Cuadrícula (`#menu-color-ud`,
+  `#menu-celda`). La vía `body.imprimiendo-informe` no cambia.
+- **El ojo de privacidad faltaba en el listado de alumnos de un grupo**: el
+  listado mostraba nombres completos aunque el resto de la app estuviera
+  ocultándolos. Ahora la vista Alumnos lleva el mismo botón de ojo (mismo
+  componente y estado global) y, con la privacidad activa, cada fila muestra
+  solo las iniciales «N. P. S.» en una celda a lo ancho (`js/views-alumnos.js`).
+- **Pantalla completa**: botón nuevo en la cabecera (junto al engranaje,
+  `montaPantallaCompleta` en `js/app.js`). Fullscreen API estándar con
+  prefijo `webkit` y tolerancia a navegadores sin ella (aviso, sin romper
+  nada); el icono alterna con `fullscreenchange`; oculto al imprimir.
+
+Tableta — casillas nuevas de esta ronda:
+- [ ] Criterios: la columna «Evaluación» ya no solapa columnas de criterio
+  (portrait); con el scroll horizontal se ve toda la matriz.
+- [ ] El botón de pantalla completa de la cabecera pone la app a pantalla
+  completa y el icono cambia al salir.
+- [ ] El ojo del listado de alumnos de un grupo oculta los nombres
+  (iniciales) y se revela manteniendo pulsado.
+- [ ] «Imprimir vista actual» desde la tableta sale solo con el contenido
+  útil, sin menú lateral, FAB ni marcos.
+
 ### Tableta (~768–1024 px, en clase)
 - [ ] Cuadrícula (Instrumentos): la cabecera fija al desplazar, la primera
   columna y «Evaluación» siempre visibles, y el scroll dentro de la ventana

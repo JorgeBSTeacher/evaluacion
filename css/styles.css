@@ -560,6 +560,23 @@ main { max-width: 1440px; margin: 0 auto; padding: 20px 18px 60px; }
     box-shadow: none;
   }
 }
+/* Tableta (prueba del docente): en la tabla de Criterios la columna
+   «Evaluación» anclada a la derecha solapa columnas de criterio cuando hay
+   muchos criterios y la tableta es estrecha (≤820 px, portrait). Mismo
+   patrón que el bloque de móvil de arriba: td estático y anclaje derecho
+   liberado en la cabecera, conservando el sticky vertical del thead; el
+   scroll horizontal queda libre. En la pestaña Instrumentos el anclaje se
+   conserva (pocas columnas por UD) y en pantallas anchas también. */
+@media (max-width: 820px) {
+  .tabla-criterios td.col-eval {
+    position: static;
+    box-shadow: none;
+  }
+  .tabla-criterios th.col-eval {
+    right: auto;
+    box-shadow: none;
+  }
+}
 /* En la cuadrícula solo la columna del alumno va a la izquierda: cabeceras y
    notas se centran para que cada cifra quede bajo su columna. */
 .tabla-cuadricula th:not(:first-child),
@@ -1032,6 +1049,15 @@ body.modal-abierto { overflow: hidden; }
 
 @media print {
   .topbar, #modal-root, #toast-root, .no-print { display: none !important; }
+  /* Marcos de navegación fuera de la impresión (prueba del docente): el nav
+     lateral (drawer, su franja y su hamburguesa), el FAB con su menú, el dock
+     con su barra de subpestañas, el subnav suelto (en modos fab/dock/drawer
+     puede quedar colgado del body), el botón de pantalla completa, el segundo
+     raíz de modales y los menús flotantes de la Cuadrícula (color de UD y
+     menú de celda). La vía de «imprimiendo-informe» de abajo no cambia. */
+  .nav-fab, .nav-menu, .nav-dock, .nav-dock-sub, .nav-drawer,
+  .nav-drawer-toggle, .franja-drawer, #subnav, .btn-pantalla-completa,
+  #modal-root-2, #menu-color-ud, #menu-celda { display: none !important; }
   /* Al imprimir, los bloques plegables de Instrumentos salen abiertos. */
   .ud-bloque .ud-cuerpo { display: block !important; }
   body { background: #fff; }

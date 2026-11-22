@@ -101,6 +101,7 @@ const AlumnosView = (() => {
           <div class="card-head">
             <h2>Alumnos${grupoSel ? ' · ' + Utils.esc(nombreGrupo()) : ''}</h2>
             <div class="acciones">
+              <span id="slot-privacidad"></span>
               <button class="btn" id="add-varios" ${grupoSel ? '' : 'disabled'}>Añadir varios</button>
               <button class="btn btn-primario" id="add-alumno" ${grupoSel ? '' : 'disabled'}>Nuevo alumno</button>
             </div>
@@ -108,8 +109,20 @@ const AlumnosView = (() => {
           <table class="tabla">
             <thead><tr><th>Apellidos</th><th>Nombre</th><th></th></tr></thead>
             <tbody>
-              ${grupoSel ? alumnosDe(grupoSel).map(a => `
-                <tr>
+              ${grupoSel ? alumnosDe(grupoSel).map(a => App.esAnonimo()
+                // M-12: con el modo privacidad activo la fila muestra solo las
+                // iniciales (mismo formato «N. P. S.» que en la Cuadrícula, el
+                // Informe y la corrección): una sola celda a lo ancho de las
+                // dos columnas del nombre.
+                ? `<tr>
+                  <td colspan="2">${Utils.esc(App.nombreVisible(a))}</td>
+                  <td>
+                    <div class="acciones">
+                      <button class="btn btn-mini editar-alumno" data-id="${a.id}">Editar</button>
+                      <button class="icon-btn borrar-alumno" data-id="${a.id}" title="Eliminar">×</button>
+                    </div></td>
+                </tr>`
+                : `<tr>
                   <td>${Utils.esc(a.apellidos)}</td>
                   <td>${Utils.esc(a.nombre)}</td>
                   <td>
@@ -127,6 +140,16 @@ const AlumnosView = (() => {
     el.querySelector('#add-grupo').onclick = () => modalGrupo(null);
     el.querySelector('#add-alumno').onclick = () => modalAlumno(null);
     el.querySelector('#add-varios').onclick = () => modalAlumnosVarios();
+    // M-12: el ojo de privacidad también en el listado de alumnos de un grupo
+    // (petición del docente): mismo componente (botón ojo, clic para ocultar,
+    // mantener pulsado 1 s para revelar) y mismo estado global que en la
+    // Cuadrícula, el Informe y la corrección. El hueco del HTML encaja el
+    // botón que crea el componente.
+    const slotPriv = el.querySelector('#slot-privacidad');
+    if (slotPriv && typeof slotPriv.insertBefore === 'function') {
+      slotPriv.parentNode.insertBefore(App.crearBotonPrivacidad(() => render(el)), slotPriv);
+      slotPriv.remove();
+    }
     el.querySelectorAll('#lista-grupos li[data-id]').forEach(li => {
       li.addEventListener('click', e => {
         if (e.target.closest('.borrar-grupo') || e.target.closest('.editar-grupo')) return;

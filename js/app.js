@@ -1105,6 +1105,66 @@ const App = (() => {
     history.replaceState(null, '', '#' + id);
   }
 
+  // Botón de pantalla completa en la cabecera (petición del docente: en la
+  // tableta no encontraba cómo poner la app a pantalla completa). Usa la
+  // Fullscreen API estándar con tolerancia a navegadores sin ella (prefijo
+  // webkit y, si no hay API, un aviso sin romper nada). El icono alterna con
+  // fullscreenchange; en el arnés document.addEventListener es no-op y el
+  // clic repinta el icono por sí mismo.
+  function montaPantallaCompleta() {
+    // Solo en la cabecera real: el arnés mínimo devuelve un elemento falso
+    // sin insertBefore y el DOM de pruebas no pinta .topbar.
+    const acciones = document.querySelector('.topbar .actions');
+    const ajustes = document.getElementById('btn-ajustes');
+    if (!acciones || !ajustes || typeof acciones.insertBefore !== 'function') return;
+    const ICONO_EXPANDIR =
+      '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" ' +
+      'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>';
+    const ICONO_CONTRAER =
+      '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" ' +
+      'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>';
+    const enPantallaCompleta = () =>
+      !!(document.fullscreenElement || document.webkitFullscreenElement);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'icon-btn btn-pantalla-completa';
+    const pinta = () => {
+      const dentro = enPantallaCompleta();
+      btn.innerHTML = dentro ? ICONO_CONTRAER : ICONO_EXPANDIR;
+      const texto = dentro ? 'Salir de pantalla completa' : 'Pantalla completa';
+      if (typeof btn.setAttribute === 'function') {
+        btn.setAttribute('aria-label', texto);
+        btn.setAttribute('title', texto);
+      } else btn.title = texto;
+    };
+    pinta();
+    btn.onclick = () => {
+      const raiz = document.documentElement;
+      const dentro = enPantallaCompleta();
+      // Segundo parámetro de call(): el dueño del método (document para salir,
+      // el propio elemento raíz para entrar).
+      const accion = dentro
+        ? (document.exitFullscreen || document.webkitExitFullscreen)
+        : (raiz.requestFullscreen || raiz.webkitRequestFullscreen);
+      if (typeof accion !== 'function') {
+        UI.toast('Tu navegador no permite la pantalla completa.');
+        return;
+      }
+      try {
+        const r = accion.call(dentro ? document : raiz);
+        if (r && typeof r.catch === 'function') r.catch(() => {});
+      } catch (e) { /* sin API o permiso denegado: no rompe nada */ }
+      pinta();
+    };
+    if (typeof document.addEventListener === 'function') {
+      ['fullscreenchange', 'webkitfullscreenchange'].forEach(ev =>
+        document.addEventListener(ev, pinta));
+    }
+    acciones.insertBefore(btn, ajustes);
+  }
+
   function arrancar() {
     Storage.load();
     aplicaTema();
@@ -1140,6 +1200,7 @@ const App = (() => {
         .finally(() => { btnGuardar.disabled = false; });
     };
     document.getElementById('btn-ajustes').onclick = () => modalAjustes();
+    montaPantallaCompleta();
 
     // El isotipo de la cabecera lleva a Inicio (petición del docente): es un
     // <span> con role="link" (index.html), así que también responde a teclado.

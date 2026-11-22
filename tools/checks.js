@@ -2222,6 +2222,82 @@ async function main() {
       !!apCols && apCols.trim().split(/\s+/).length === 5, apCols);
   }
 
+  // Ronda B de la batería del docente (tableta y exportaciones): sticky de
+  // Criterios, marcos en la impresión, privacidad en el listado del grupo y
+  // botón de pantalla completa.
+  {
+    const css = fs.readFileSync(path.join(raiz, 'css', 'styles.css'), 'utf8');
+    const cuad = fs.readFileSync(path.join(raiz, 'js', 'views-cuadricula.js'), 'utf8');
+    const alum = fs.readFileSync(path.join(raiz, 'js', 'views-alumnos.js'), 'utf8');
+    const appjs = fs.readFileSync(path.join(raiz, 'js', 'app.js'), 'utf8');
+
+    // 1 · Tableta: en Criterios la columna «Evaluación» anclada a la derecha
+    // solapa columnas de criterio. La tabla se distingue con .tabla-criterios
+    // y un media query de tableta retira el anclaje (patrón del bloque ≤520 px).
+    check('la tabla de Criterios lleva su propia clase para el anclaje',
+      cuad.includes('<table class="tabla tabla-cuadricula tabla-criterios">'));
+    check('en tableta (≤820 px) la columna Evaluación de Criterios pierde el anclaje',
+      /@media \(max-width: 820px\)\s*\{[^@]*?\.tabla-criterios td\.col-eval\s*\{[^}]*position: static/.test(css)
+      && /@media \(max-width: 820px\)\s*\{[^@]*?\.tabla-criterios th\.col-eval\s*\{[^}]*right: auto/.test(css));
+
+    // 2 · Exportaciones: al imprimir no salen marcos de navegación (nav lateral,
+    // FAB, dock con subpestañas, subnav suelto, pantalla completa, menús
+    // flotantes de la Cuadrícula) y la vía «imprimiendo-informe» sigue intacta.
+    check('al imprimir se ocultan el nav lateral, el FAB, el dock y el subnav',
+      css.includes('.nav-fab, .nav-menu, .nav-dock, .nav-dock-sub, .nav-drawer,') &&
+      css.includes('.nav-drawer-toggle, .franja-drawer, #subnav, .btn-pantalla-completa,'));
+    check('al imprimir se ocultan los menús flotantes de la Cuadrícula',
+      /@media print\s*\{[\s\S]*?#menu-color-ud, #menu-celda \{ display: none !important; \}/.test(css));
+    check('al imprimir el segundo raíz de modales queda fuera',
+      /@media print\s*\{[\s\S]*?#modal-root-2/.test(css));
+    check('la impresión del informe completo sigue sustituyendo a la vista',
+      css.includes('body.imprimiendo-informe main { display: none !important; }') &&
+      css.includes('body.imprimiendo-informe #informe-impresion { display: block !important; }'));
+
+    // 3 · Privacidad en el listado de alumnos de un grupo: mismo componente de
+    // ojo y mismas iniciales que en el resto de la app.
+    check('el listado de alumnos del grupo lleva el hueco del ojo de privacidad',
+      alum.includes('<span id="slot-privacidad"></span>'));
+    check('el listado de alumnos del grupo monta el botón de privacidad compartido',
+      alum.includes('App.crearBotonPrivacidad(() => render(el))'));
+    check('con privacidad, el listado de alumnos del grupo muestra iniciales',
+      alum.includes('App.esAnonimo()') && alum.includes('<td colspan="2">${Utils.esc(App.nombreVisible(a))}</td>'));
+
+    // 3 · Comportamiento con DOM: el ojo oculta el listado del grupo y el
+    // nombre pasa a iniciales («N. Á.» para Noa Álvarez).
+    {
+      const app = cargarApp({ dom: true });
+      app.Storage.load();
+      await importarJson(app, estadoPrueba());
+      const doc = app.document;
+      app.App.ir('alumnos');
+      doc.querySelector('#lista-grupos li[data-id]').click();
+      check('el listado del grupo muestra el ojo de privacidad',
+        !!doc.querySelector('#app .btn-privacidad'));
+      const tds = () => [...doc.querySelectorAll('#app .tabla tbody td')].map(td => td.textContent);
+      check('con el ojo abierto, el listado muestra los nombres completos',
+        tds().some(t => t.indexOf('Álvarez') !== -1));
+      doc.querySelector('#app .btn-privacidad').click();
+      check('al ocultar, el listado del grupo muestra solo iniciales',
+        tds().some(t => t.trim() === 'N. Á.') && !tds().some(t => t.indexOf('Álvarez') !== -1),
+        JSON.stringify(tds().slice(0, 3)));
+    }
+
+    // 4 · Botón de pantalla completa: Fullscreen API con tolerancia a
+    // navegadores sin ella y oculto al imprimir.
+    check('la cabecera monta un botón de pantalla completa',
+      appjs.includes('function montaPantallaCompleta') && appjs.includes('btn-pantalla-completa'));
+    check('el botón de pantalla completa usa la Fullscreen API estándar (con prefijo webkit)',
+      appjs.includes('document.documentElement') && appjs.includes('requestFullscreen')
+      && appjs.includes('exitFullscreen') && appjs.includes('webkitRequestFullscreen'));
+    check('el botón de pantalla completa alterna el icono con fullscreenchange',
+      appjs.includes("'fullscreenchange'") && appjs.includes('enPantallaCompleta'));
+    check('sin Fullscreen API el botón avisa y no rompe nada',
+      /typeof accion !== 'function'/.test(appjs) && /Tu navegador no permite la pantalla completa/.test(appjs));
+    check('el botón de pantalla completa no se imprime',
+      /@media print\s*\{[\s\S]*?\.btn-pantalla-completa/.test(css));
+  }
+
   console.log('\n== Nivel ACI: los criterios del instrumento deben ser de su currículo ==');
   {
     const app = cargarApp();

@@ -259,7 +259,7 @@ const CuadriculaView = (() => {
     if (!alumnos.length) return '<div class="aviso">El grupo de esta clase no tiene alumnado en este nivel.</div>';
     if (!criterios.length) return '<div class="vacio-grande">Este nivel no tiene criterios definidos.</div>';
     return `
-      <table class="tabla tabla-cuadricula">
+      <table class="tabla tabla-cuadricula tabla-criterios">
         <thead><tr><th>Alumno</th>${criterios.map(c =>
           `<th title="${Utils.esc(c.descripcion)}">${Utils.esc(c.codigo)}<br><small>${Utils.fmt(c.peso)}%</small></th>`
         ).join('')}<th class="num col-eval">Evaluación</th></tr></thead>
