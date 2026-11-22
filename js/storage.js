@@ -513,7 +513,6 @@ const Storage = {
     // antiguo (o editado a mano) no rompa la vista del banco.
     if (!Array.isArray(db.bancoInstrumentos)) db.bancoInstrumentos = [];
     db.bancoInstrumentos.forEach(m => {
-      if (m.unidad == null) m.unidad = '';
       if (m.criteriosModo == null) m.criteriosModo = 'desglosado';
       if (!Array.isArray(m.niveles)) m.niveles = [];
       if (!Array.isArray(m.criterioCodesGlobal)) m.criterioCodesGlobal = [];
@@ -523,6 +522,34 @@ const Storage = {
         if (!Array.isArray(ap.criterioCodes)) ap.criterioCodes = [];
         if (!Array.isArray(ap.niveles)) ap.niveles = [];
       });
+      // v0.11.5: el molde NO guarda T ni UD (el destino se pregunta al
+      // usarlo) — los moldes de backups antiguos se despellan al cargar.
+      delete m.unidad;
+      delete m.periodo;
+      // CURRO y ÁREA PROPIOS del molde: lo que manda al usarlo y en la
+      // visualización; `origen` queda como historial. Para moldes antiguos,
+      // la cadena de relleno del curso: origen.curso → PREFIJO de los códigos
+      // de criterio («5.1» → 5º — la fuente más fiable que existe, porque los
+      // códigos del docente llevan el nivel) → curso de la ASIGNATURA de
+      // origen → desconocido (''), que la UI preguntará al usar el molde.
+      if (typeof m.curso !== 'string') {
+        const porOrigen = m.origen && m.origen.curso != null ? String(m.origen.curso).trim() : '';
+        const porCodigos = (m.apartados || []).reduce((acc, ap) => acc.concat(ap.criterioCodes || []), [])
+          .concat(m.criterioCodesGlobal || [])
+          .map(cod => /^([1-6])[.\-]/.exec(String(cod || '').trim()))
+          .filter(Boolean)[0];
+        const porAsignatura = m.origen && m.origen.asignaturaId
+          ? (db.asignaturas || []).find(a => a.id === m.origen.asignaturaId)
+          : null;
+        m.curso = porOrigen || (porCodigos ? porCodigos[1] + 'º' : '')
+          || (porAsignatura ? String(porAsignatura.curso || '').trim() : '');
+      }
+      if (typeof m.area !== 'string') {
+        const asigOrigen = m.origen && m.origen.asignaturaId
+          ? (db.asignaturas || []).find(a => a.id === m.origen.asignaturaId)
+          : null;
+        m.area = asigOrigen ? String(asigOrigen.area || '') : '';
+      }
     });
     // Un instrumento con nivel ACI debe evaluar los criterios de SU currículo.
     // Los creados con «Duplicar» antes de esta versión copiaban los del original
@@ -1069,12 +1096,186 @@ const Storage = {
 
   // --- Banco de instrumentos (D-48) ---
   // Guarda un instrumento del curso como molde reutilizable. Devuelve el molde.
+  // v0.11.5: el molde NO guarda T ni UD del instrumento de origen (el destino
+  // se pregunta explícitamente al usarlo) y lleva su CURSO y su ÁREA PROPIOS
+  // (lo que manda es el molde; `origen` queda como historial informativo).
+  // Calc.moldeDeInstrumento (que no se toca) aún copia `unidad`: se despella
+  // aquí, junto con cualquier `periodo` que un molde antiguo arrastrara.
   guardarEnBanco(inst) {
     if (!Array.isArray(this.db.bancoInstrumentos)) this.db.bancoInstrumentos = [];
     const molde = Calc.moldeDeInstrumento(this.db, inst);
+    delete molde.unidad;
+    delete molde.periodo;
+    const claseOrigen = (this.db.clases || []).find(c => c.id === inst.claseId);
+    const asigOrigen = claseOrigen
+      ? (this.db.asignaturas || []).find(a => a.id === claseOrigen.asignaturaId)
+      : null;
+    molde.curso = asigOrigen ? String(asigOrigen.curso || '') : '';
+    molde.area = asigOrigen ? String(asigOrigen.area || '') : '';
     this.db.bancoInstrumentos.push(molde);
     this.save();
     return molde;
+  },
+
+  // Áreas del currículo oficial (las que traen las plantillas del decreto),
+  // ordenadas — la lista del selector de área del editor de moldes.
+  areasOficiales() {
+    const plantillas = typeof PLANTILLAS_CURRICULO === 'undefined' ? [] : PLANTILLAS_CURRICULO;
+    return [...new Set(plantillas.map(p => (p.asignatura || {}).nombre || '').filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, 'es'));
+  },
+
+  // Fija SOLO el curso propio de un molde (lo que el docente responde en el
+  // modal de uso cuando el molde no tiene curso conocido): una edición mínima
+  // que no toca estructura, criterios ni origen. Devuelve el molde o null.
+  fijarCursoMolde(moldeId, curso) {
+    const m = (this.db.bancoInstrumentos || []).find(x => x.id === moldeId);
+    if (!m) return null;
+    m.curso = String(curso || '').trim();
+    this.save();
+    return m;
+  },
+
+  // Criterios disponibles de un CURSO, agrupados por asignatura — la fuente
+  // del selector de criterios del editor de moldes del banco. Se lee de la
+  // BASE (el currículo que el docente tiene importado): son los códigos y
+  // descripciones reales que usa el resto de la app; las plantillas del
+  // decreto traerían el catálogo completo de todas las áreas, incluidas las
+  // que el docente no usa. Si ese nivel no está importado no hay grupos: el
+  // molde se guarda sin criterios y se asignan luego en la ficha del
+  // instrumento (la regla de «curso distinto» ya lo contempla). Devuelve
+  // [{ asignaturaId, asignatura, criterios: [{ codigo, descripcion }] }].
+  criteriosDeCurso(curso) {
+    const nivel = String(curso || '').trim();
+    if (!nivel) return [];
+    const salida = [];
+    (this.db.asignaturas || []).forEach(a => {
+      if (String(a.curso || '').trim() !== nivel) return;
+      const crits = (this.db.criterios || [])
+        .filter(x => x.asignaturaId === a.id)
+        .sort((x, y) => String(x.codigo).localeCompare(String(y.codigo), 'es'));
+      if (crits.length) salida.push({
+        asignaturaId: a.id,
+        asignatura: a.nombre,
+        criterios: crits.map(x => ({ codigo: x.codigo, descripcion: x.descripcion }))
+      });
+    });
+    return salida;
+  },
+
+  // Criterios del CURRÍCULO OFICIAL de un curso, agrupados por área — la
+  // FUENTE PROPIA del banco (v0.11.5): sale de las plantillas del decreto
+  // (`PLANTILLAS_CURRICULO`, js/plantillas.js) filtradas por el nivel, de
+  // modo que el docente puede PREPARAR moldes de cursos que no imparte este
+  // año aunque no tenga asignaturas de ese nivel importadas. Los criterios
+  // viajan por CÓDIGO, así que al USAR el molde los resuelve el currículo de
+  // la clase de destino (regla de siempre). Devuelve
+  // [{ asignatura (área), etapa, criterios: [{ codigo, descripcion }] }].
+  criteriosDePlantilla(curso) {
+    const nivel = String(curso || '').trim();
+    if (!nivel) return [];
+    const plantillas = typeof PLANTILLAS_CURRICULO === 'undefined' ? [] : PLANTILLAS_CURRICULO;
+    const salida = [];
+    plantillas.forEach(p => {
+      const asig = p.asignatura || {};
+      if (!(asig.cursos || []).map(String).includes(nivel)) return;
+      const crits = (p.criterios || [])
+        .map(c => ({ codigo: c.codigo, descripcion: c.descripcion }))
+        .sort((x, y) => String(x.codigo).localeCompare(String(y.codigo), 'es'));
+      if (crits.length) salida.push({
+        asignatura: asig.nombre || '',
+        etapa: asig.etapa || '',
+        criterios: crits
+      });
+    });
+    return salida;
+  },
+
+  // Duplica un molde del banco: copia INDEPENDIENTE (id nuevo) con el nombre
+  // del original + « (copia)» — misma estructura, mismos criterios y mismo
+  // curso de origen —, lista para editarla y adaptarla a otro curso con otros
+  // criterios (el caso de los instrumentos comunes: comportamiento, libretas,
+  // presentaciones…). Devuelve la copia, o null si el molde no existe.
+  duplicarMolde(moldeId) {
+    const m = (this.db.bancoInstrumentos || []).find(x => x.id === moldeId);
+    if (!m) return null;
+    const copia = JSON.parse(JSON.stringify(m));
+    copia.id = Utils.uid();
+    copia.titulo = m.titulo + ' (copia)';
+    this.db.bancoInstrumentos.push(copia);
+    this.save();
+    return copia;
+  },
+
+  // Crea o edita un molde del banco SIN instrumento vivo (el «Crear molde»
+  // del modal de gestión). Editor mínimo: nombre, tipo, curso de origen,
+  // modo de criterios (desglosado/global) y apartados (descripción, puntos,
+  // peso y criterios). Los criterios viajan por CÓDIGO como en todo el banco:
+  // `criteriosCodes` (array por apartado) y `criterioCodesGlobal`. Al editar,
+  // si la llamada no trae criterios (compatibilidad), se conservan los que ya
+  // tenía el molde por posición; si los trae, se sustituyen — la estructura
+  // nunca se pierde. Devuelve el molde, o null sin título.
+  guardarMoldeBanco(datos, id) {
+    const titulo = String(datos.titulo || '').trim();
+    if (!titulo) return null;
+    const lista = this.db.bancoInstrumentos = this.db.bancoInstrumentos || [];
+    const tipo = String(datos.tipo || 'Control');
+    const curso = String(datos.curso || '').trim();
+    const area = String(datos.area || '').trim();
+    const modo = datos.criteriosModo != null ? String(datos.criteriosModo) : null;
+    const codesPorApartado = Array.isArray(datos.criteriosCodes) ? datos.criteriosCodes : null;
+    const codesGlobal = Array.isArray(datos.criterioCodesGlobal) ? datos.criterioCodesGlobal : null;
+    const entrada = Array.isArray(datos.apartados) ? datos.apartados : [];
+    const num = (v, def) => (isFinite(Number(v)) && Number(v) > 0 ? Number(v) : def);
+    if (id) {
+      const m = lista.find(x => x.id === id);
+      if (!m) return null;
+      m.titulo = titulo;
+      m.tipo = tipo;
+      // Curso y área PROPIOS: lo que manda el molde (el origen queda como
+      // historial, sin reescribirse).
+      m.curso = curso;
+      m.area = area;
+      m.criteriosModo = modo || m.criteriosModo || 'desglosado';
+      m.criterioCodesGlobal = codesGlobal || m.criterioCodesGlobal || [];
+      m.apartados = entrada.map((ap, i) => {
+        const previo = (m.apartados || [])[i] || {};
+        return {
+          descripcion: String(ap.descripcion || '').trim(),
+          maxPts: num(ap.maxPts, previo.maxPts || 10),
+          peso: num(ap.peso, previo.peso || 1),
+          niveles: previo.niveles || [],
+          criterioCodes: codesPorApartado
+            ? (codesPorApartado[i] || [])
+            : (previo.criterioCodes || [])
+        };
+      });
+      this.save();
+      return m;
+    }
+    const nuevo = {
+      id: Utils.uid(),
+      titulo,
+      tipo,
+      curso,
+      area,
+      saberes: '',
+      url: '',
+      niveles: [],
+      criteriosModo: modo || 'desglosado',
+      criterioCodesGlobal: codesGlobal || [],
+      apartados: entrada.map((ap, i) => ({
+        descripcion: String(ap.descripcion || '').trim(),
+        maxPts: num(ap.maxPts, 10),
+        peso: num(ap.peso, 1),
+        niveles: [],
+        criterioCodes: (codesPorApartado && codesPorApartado[i]) || []
+      })),
+      origen: { asignaturaId: '', asignatura: '', etapa: '', guardadoEn: Utils.hoy() }
+    };
+    lista.push(nuevo);
+    this.save();
+    return nuevo;
   },
 
   borrarDelBanco(moldeId) {
@@ -1082,14 +1283,42 @@ const Storage = {
     this.save();
   },
 
-  // Crea un instrumento nuevo en `claseId` a partir de un molde del banco. Si
-  // algún criterio del molde no existe en el currículo de destino, no crea nada
-  // y devuelve esa lista en `faltan`.
-  anadirDesdeBanco(moldeId, claseId, nivel, periodo) {
+  // Crea un instrumento nuevo en `claseId` a partir de un molde del banco, con
+  // el T y la unidad de programación (UD, proyecto…) que se preguntan al
+  // usarlo — el molde no guarda ni aporta ninguna de las dos. Regla binaria
+  // por CURSO (v0.11.5): compara el curso PROPIO del molde (con el campo
+  // `origen.curso` como última red para datos a medias migrar) con el del
+  // destino: si coincide (o no se sabe), los códigos se resuelven contra el
+  // currículo de destino y algún código que falte se avisa SIN crear nada; si
+  // el curso del molde es OTRO, se crea con la estructura (apartados, pesos,
+  // descriptores) y SIN criterios, marcado con `sinCriterios` para que la UI
+  // avise en claro («asígnalos a mano»). Antes se rechazaba entero si faltaba
+  // cualquier código: reutilizar un molde de otro curso no creaba nada.
+  anadirDesdeBanco(moldeId, claseId, nivel, periodo, unidad) {
     const molde = (this.db.bancoInstrumentos || []).find(m => m.id === moldeId);
     if (!molde) return { faltan: ['(el molde ya no está en el banco)'] };
+    const destino = String(unidad == null ? '' : unidad).trim();
+    const cursoOrigen = String((molde.curso != null ? molde.curso
+      : (molde.origen || {}).curso) || '').trim();
+    const asigDestino = Calc.asignaturaDeNivel(claseId, nivel || '');
+    const cursoDestino = asigDestino ? String(asigDestino.curso || '').trim() : '';
+    if (cursoOrigen && cursoDestino && cursoOrigen !== cursoDestino) {
+      // Sin criterios: una copia del molde con los códigos vacíos pasa por el
+      // mismo motor, así que ids de apartado, pesos y descriptores se crean
+      // exactamente igual que en el camino normal.
+      const sinCodigos = Object.assign({}, molde, {
+        apartados: (molde.apartados || []).map(ap => Object.assign({}, ap, { criterioCodes: [] })),
+        criterioCodesGlobal: []
+      });
+      const r = Calc.instrumentoDesdeMolde(sinCodigos, claseId, nivel, periodo);
+      r.inst.unidad = destino;
+      this.db.instrumentos.push(r.inst);
+      this.save();
+      return { inst: r.inst, faltan: [], molde, sinCriterios: true };
+    }
     const r = Calc.instrumentoDesdeMolde(molde, claseId, nivel, periodo);
     if (r.faltan.length) return { faltan: r.faltan, molde };
+    r.inst.unidad = destino;
     this.db.instrumentos.push(r.inst);
     this.save();
     return { inst: r.inst, faltan: [], molde };

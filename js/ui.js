@@ -51,7 +51,12 @@ const UI = {
   // `capa` (1 por defecto, 2 para modales anidados, p. ej. elegir criterios
   // dentro del modal de instrumento) permite abrir un segundo modal por encima
   // sin destruir el primero.
-  openModal({ titulo, cuerpo, textoGuardar, alGuardar, peligro }, capa) {
+  // `alCerrar` (opcional): aviso al cerrar el modal — cancelar, ×, Escape o
+  // después de guardar. En el guardado se notifica DESPUÉS del refresco de la
+  // vista, de modo que quien abrió el modal desde un contexto concreto (p. ej.
+  // la corrección de un instrumento) pueda repintar ESE contexto con los datos
+  // nuevos en lugar de que `App.refrescar()` lo pise con la vista general.
+  openModal({ titulo, cuerpo, textoGuardar, alGuardar, alCerrar, peligro }, capa) {
     const nivel = capa === 2 ? 2 : 1;
     const root = document.getElementById(nivel === 2 ? 'modal-root-2' : 'modal-root');
     elementoFocoPrevio = (document.activeElement && document.activeElement.focus) ? document.activeElement : null;
@@ -71,7 +76,8 @@ const UI = {
       </div>`;
     const body = root.querySelector('.modal-body');
     body.innerHTML = cuerpo;
-    const cerrar = () => { UI.closeModal(); };
+    const notificarCierre = () => { if (typeof alCerrar === 'function') alCerrar(); };
+    const cerrar = () => { UI.closeModal(); notificarCierre(); };
     root.querySelector('.cerrar').onclick = cerrar;
     root.querySelector('.cancelar').onclick = cerrar;
     if (alGuardar) {
@@ -79,9 +85,11 @@ const UI = {
       if (peligro) btn.classList.add('btn-peligro');
       btn.onclick = () => {
         if (alGuardar(body, cerrar) !== false) {
-          cerrar();
-          // La segunda capa no refresca la vista: el modal padre sigue abierto.
+          // Cierre silencioso: `alCerrar` se notifica tras el refresco (ver
+          // cabecera), para que el repintado del contexto gane al final.
+          UI.closeModal();
           if (nivel === 1 && typeof App !== 'undefined' && App.refrescar) App.refrescar();
+          notificarCierre();
         }
       };
     }

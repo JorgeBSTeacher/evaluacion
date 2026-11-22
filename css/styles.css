@@ -1046,6 +1046,14 @@ body.modal-abierto { overflow: hidden; }
 .fila-banco-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .fila-banco-txt b { font-size: 14px; }
 .fila-banco-txt small { color: var(--tinta-suave); font-size: 12px; }
+.tarjeta-banco-acciones { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+
+/* Editor mínimo de moldes del banco (D-48, v0.11.5): filas de apartados con
+   descripción, puntos y peso; añadir/quitar filas sin recargar el modal. */
+.fila-molde-apartado { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.fila-molde-apartado input[type="text"] { flex: 1; min-width: 130px; }
+.fila-molde-apartado input[type="number"] { width: 86px; flex: 0 0 auto; }
+.fila-molde-apartado .icon-btn { flex: 0 0 auto; }
 
 @media print {
   .topbar, #modal-root, #toast-root, .no-print { display: none !important; }

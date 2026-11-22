@@ -1064,6 +1064,14 @@ body.modal-abierto { overflow: hidden; }
 .fila-banco-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .fila-banco-txt b { font-size: 14px; }
 .fila-banco-txt small { color: var(--tinta-suave); font-size: 12px; }
+.tarjeta-banco-acciones { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+
+/* Editor mínimo de moldes del banco (D-48, v0.11.5): filas de apartados con
+   descripción, puntos y peso; añadir/quitar filas sin recargar el modal. */
+.fila-molde-apartado { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.fila-molde-apartado input[type="text"] { flex: 1; min-width: 130px; }
+.fila-molde-apartado input[type="number"] { width: 86px; flex: 0 0 auto; }
+.fila-molde-apartado .icon-btn { flex: 0 0 auto; }
 
 @media print {
   .topbar, #modal-root, #toast-root, .no-print { display: none !important; }
@@ -1843,7 +1851,6 @@ const Storage = {
     // antiguo (o editado a mano) no rompa la vista del banco.
     if (!Array.isArray(db.bancoInstrumentos)) db.bancoInstrumentos = [];
     db.bancoInstrumentos.forEach(m => {
-      if (m.unidad == null) m.unidad = '';
       if (m.criteriosModo == null) m.criteriosModo = 'desglosado';
       if (!Array.isArray(m.niveles)) m.niveles = [];
       if (!Array.isArray(m.criterioCodesGlobal)) m.criterioCodesGlobal = [];
@@ -1853,6 +1860,34 @@ const Storage = {
         if (!Array.isArray(ap.criterioCodes)) ap.criterioCodes = [];
         if (!Array.isArray(ap.niveles)) ap.niveles = [];
       });
+      // v0.11.5: el molde NO guarda T ni UD (el destino se pregunta al
+      // usarlo) — los moldes de backups antiguos se despellan al cargar.
+      delete m.unidad;
+      delete m.periodo;
+      // CURRO y ÁREA PROPIOS del molde: lo que manda al usarlo y en la
+      // visualización; `origen` queda como historial. Para moldes antiguos,
+      // la cadena de relleno del curso: origen.curso → PREFIJO de los códigos
+      // de criterio («5.1» → 5º — la fuente más fiable que existe, porque los
+      // códigos del docente llevan el nivel) → curso de la ASIGNATURA de
+      // origen → desconocido (''), que la UI preguntará al usar el molde.
+      if (typeof m.curso !== 'string') {
+        const porOrigen = m.origen && m.origen.curso != null ? String(m.origen.curso).trim() : '';
+        const porCodigos = (m.apartados || []).reduce((acc, ap) => acc.concat(ap.criterioCodes || []), [])
+          .concat(m.criterioCodesGlobal || [])
+          .map(cod => /^([1-6])[.\-]/.exec(String(cod || '').trim()))
+          .filter(Boolean)[0];
+        const porAsignatura = m.origen && m.origen.asignaturaId
+          ? (db.asignaturas || []).find(a => a.id === m.origen.asignaturaId)
+          : null;
+        m.curso = porOrigen || (porCodigos ? porCodigos[1] + 'º' : '')
+          || (porAsignatura ? String(porAsignatura.curso || '').trim() : '');
+      }
+      if (typeof m.area !== 'string') {
+        const asigOrigen = m.origen && m.origen.asignaturaId
+          ? (db.asignaturas || []).find(a => a.id === m.origen.asignaturaId)
+          : null;
+        m.area = asigOrigen ? String(asigOrigen.area || '') : '';
+      }
     });
     // Un instrumento con nivel ACI debe evaluar los criterios de SU currículo.
     // Los creados con «Duplicar» antes de esta versión copiaban los del original
@@ -2399,12 +2434,186 @@ const Storage = {
 
   // --- Banco de instrumentos (D-48) ---
   // Guarda un instrumento del curso como molde reutilizable. Devuelve el molde.
+  // v0.11.5: el molde NO guarda T ni UD del instrumento de origen (el destino
+  // se pregunta explícitamente al usarlo) y lleva su CURSO y su ÁREA PROPIOS
+  // (lo que manda es el molde; `origen` queda como historial informativo).
+  // Calc.moldeDeInstrumento (que no se toca) aún copia `unidad`: se despella
+  // aquí, junto con cualquier `periodo` que un molde antiguo arrastrara.
   guardarEnBanco(inst) {
     if (!Array.isArray(this.db.bancoInstrumentos)) this.db.bancoInstrumentos = [];
     const molde = Calc.moldeDeInstrumento(this.db, inst);
+    delete molde.unidad;
+    delete molde.periodo;
+    const claseOrigen = (this.db.clases || []).find(c => c.id === inst.claseId);
+    const asigOrigen = claseOrigen
+      ? (this.db.asignaturas || []).find(a => a.id === claseOrigen.asignaturaId)
+      : null;
+    molde.curso = asigOrigen ? String(asigOrigen.curso || '') : '';
+    molde.area = asigOrigen ? String(asigOrigen.area || '') : '';
     this.db.bancoInstrumentos.push(molde);
     this.save();
     return molde;
+  },
+
+  // Áreas del currículo oficial (las que traen las plantillas del decreto),
+  // ordenadas — la lista del selector de área del editor de moldes.
+  areasOficiales() {
+    const plantillas = typeof PLANTILLAS_CURRICULO === 'undefined' ? [] : PLANTILLAS_CURRICULO;
+    return [...new Set(plantillas.map(p => (p.asignatura || {}).nombre || '').filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, 'es'));
+  },
+
+  // Fija SOLO el curso propio de un molde (lo que el docente responde en el
+  // modal de uso cuando el molde no tiene curso conocido): una edición mínima
+  // que no toca estructura, criterios ni origen. Devuelve el molde o null.
+  fijarCursoMolde(moldeId, curso) {
+    const m = (this.db.bancoInstrumentos || []).find(x => x.id === moldeId);
+    if (!m) return null;
+    m.curso = String(curso || '').trim();
+    this.save();
+    return m;
+  },
+
+  // Criterios disponibles de un CURSO, agrupados por asignatura — la fuente
+  // del selector de criterios del editor de moldes del banco. Se lee de la
+  // BASE (el currículo que el docente tiene importado): son los códigos y
+  // descripciones reales que usa el resto de la app; las plantillas del
+  // decreto traerían el catálogo completo de todas las áreas, incluidas las
+  // que el docente no usa. Si ese nivel no está importado no hay grupos: el
+  // molde se guarda sin criterios y se asignan luego en la ficha del
+  // instrumento (la regla de «curso distinto» ya lo contempla). Devuelve
+  // [{ asignaturaId, asignatura, criterios: [{ codigo, descripcion }] }].
+  criteriosDeCurso(curso) {
+    const nivel = String(curso || '').trim();
+    if (!nivel) return [];
+    const salida = [];
+    (this.db.asignaturas || []).forEach(a => {
+      if (String(a.curso || '').trim() !== nivel) return;
+      const crits = (this.db.criterios || [])
+        .filter(x => x.asignaturaId === a.id)
+        .sort((x, y) => String(x.codigo).localeCompare(String(y.codigo), 'es'));
+      if (crits.length) salida.push({
+        asignaturaId: a.id,
+        asignatura: a.nombre,
+        criterios: crits.map(x => ({ codigo: x.codigo, descripcion: x.descripcion }))
+      });
+    });
+    return salida;
+  },
+
+  // Criterios del CURRÍCULO OFICIAL de un curso, agrupados por área — la
+  // FUENTE PROPIA del banco (v0.11.5): sale de las plantillas del decreto
+  // (`PLANTILLAS_CURRICULO`, js/plantillas.js) filtradas por el nivel, de
+  // modo que el docente puede PREPARAR moldes de cursos que no imparte este
+  // año aunque no tenga asignaturas de ese nivel importadas. Los criterios
+  // viajan por CÓDIGO, así que al USAR el molde los resuelve el currículo de
+  // la clase de destino (regla de siempre). Devuelve
+  // [{ asignatura (área), etapa, criterios: [{ codigo, descripcion }] }].
+  criteriosDePlantilla(curso) {
+    const nivel = String(curso || '').trim();
+    if (!nivel) return [];
+    const plantillas = typeof PLANTILLAS_CURRICULO === 'undefined' ? [] : PLANTILLAS_CURRICULO;
+    const salida = [];
+    plantillas.forEach(p => {
+      const asig = p.asignatura || {};
+      if (!(asig.cursos || []).map(String).includes(nivel)) return;
+      const crits = (p.criterios || [])
+        .map(c => ({ codigo: c.codigo, descripcion: c.descripcion }))
+        .sort((x, y) => String(x.codigo).localeCompare(String(y.codigo), 'es'));
+      if (crits.length) salida.push({
+        asignatura: asig.nombre || '',
+        etapa: asig.etapa || '',
+        criterios: crits
+      });
+    });
+    return salida;
+  },
+
+  // Duplica un molde del banco: copia INDEPENDIENTE (id nuevo) con el nombre
+  // del original + « (copia)» — misma estructura, mismos criterios y mismo
+  // curso de origen —, lista para editarla y adaptarla a otro curso con otros
+  // criterios (el caso de los instrumentos comunes: comportamiento, libretas,
+  // presentaciones…). Devuelve la copia, o null si el molde no existe.
+  duplicarMolde(moldeId) {
+    const m = (this.db.bancoInstrumentos || []).find(x => x.id === moldeId);
+    if (!m) return null;
+    const copia = JSON.parse(JSON.stringify(m));
+    copia.id = Utils.uid();
+    copia.titulo = m.titulo + ' (copia)';
+    this.db.bancoInstrumentos.push(copia);
+    this.save();
+    return copia;
+  },
+
+  // Crea o edita un molde del banco SIN instrumento vivo (el «Crear molde»
+  // del modal de gestión). Editor mínimo: nombre, tipo, curso de origen,
+  // modo de criterios (desglosado/global) y apartados (descripción, puntos,
+  // peso y criterios). Los criterios viajan por CÓDIGO como en todo el banco:
+  // `criteriosCodes` (array por apartado) y `criterioCodesGlobal`. Al editar,
+  // si la llamada no trae criterios (compatibilidad), se conservan los que ya
+  // tenía el molde por posición; si los trae, se sustituyen — la estructura
+  // nunca se pierde. Devuelve el molde, o null sin título.
+  guardarMoldeBanco(datos, id) {
+    const titulo = String(datos.titulo || '').trim();
+    if (!titulo) return null;
+    const lista = this.db.bancoInstrumentos = this.db.bancoInstrumentos || [];
+    const tipo = String(datos.tipo || 'Control');
+    const curso = String(datos.curso || '').trim();
+    const area = String(datos.area || '').trim();
+    const modo = datos.criteriosModo != null ? String(datos.criteriosModo) : null;
+    const codesPorApartado = Array.isArray(datos.criteriosCodes) ? datos.criteriosCodes : null;
+    const codesGlobal = Array.isArray(datos.criterioCodesGlobal) ? datos.criterioCodesGlobal : null;
+    const entrada = Array.isArray(datos.apartados) ? datos.apartados : [];
+    const num = (v, def) => (isFinite(Number(v)) && Number(v) > 0 ? Number(v) : def);
+    if (id) {
+      const m = lista.find(x => x.id === id);
+      if (!m) return null;
+      m.titulo = titulo;
+      m.tipo = tipo;
+      // Curso y área PROPIOS: lo que manda el molde (el origen queda como
+      // historial, sin reescribirse).
+      m.curso = curso;
+      m.area = area;
+      m.criteriosModo = modo || m.criteriosModo || 'desglosado';
+      m.criterioCodesGlobal = codesGlobal || m.criterioCodesGlobal || [];
+      m.apartados = entrada.map((ap, i) => {
+        const previo = (m.apartados || [])[i] || {};
+        return {
+          descripcion: String(ap.descripcion || '').trim(),
+          maxPts: num(ap.maxPts, previo.maxPts || 10),
+          peso: num(ap.peso, previo.peso || 1),
+          niveles: previo.niveles || [],
+          criterioCodes: codesPorApartado
+            ? (codesPorApartado[i] || [])
+            : (previo.criterioCodes || [])
+        };
+      });
+      this.save();
+      return m;
+    }
+    const nuevo = {
+      id: Utils.uid(),
+      titulo,
+      tipo,
+      curso,
+      area,
+      saberes: '',
+      url: '',
+      niveles: [],
+      criteriosModo: modo || 'desglosado',
+      criterioCodesGlobal: codesGlobal || [],
+      apartados: entrada.map((ap, i) => ({
+        descripcion: String(ap.descripcion || '').trim(),
+        maxPts: num(ap.maxPts, 10),
+        peso: num(ap.peso, 1),
+        niveles: [],
+        criterioCodes: (codesPorApartado && codesPorApartado[i]) || []
+      })),
+      origen: { asignaturaId: '', asignatura: '', etapa: '', guardadoEn: Utils.hoy() }
+    };
+    lista.push(nuevo);
+    this.save();
+    return nuevo;
   },
 
   borrarDelBanco(moldeId) {
@@ -2412,14 +2621,42 @@ const Storage = {
     this.save();
   },
 
-  // Crea un instrumento nuevo en `claseId` a partir de un molde del banco. Si
-  // algún criterio del molde no existe en el currículo de destino, no crea nada
-  // y devuelve esa lista en `faltan`.
-  anadirDesdeBanco(moldeId, claseId, nivel, periodo) {
+  // Crea un instrumento nuevo en `claseId` a partir de un molde del banco, con
+  // el T y la unidad de programación (UD, proyecto…) que se preguntan al
+  // usarlo — el molde no guarda ni aporta ninguna de las dos. Regla binaria
+  // por CURSO (v0.11.5): compara el curso PROPIO del molde (con el campo
+  // `origen.curso` como última red para datos a medias migrar) con el del
+  // destino: si coincide (o no se sabe), los códigos se resuelven contra el
+  // currículo de destino y algún código que falte se avisa SIN crear nada; si
+  // el curso del molde es OTRO, se crea con la estructura (apartados, pesos,
+  // descriptores) y SIN criterios, marcado con `sinCriterios` para que la UI
+  // avise en claro («asígnalos a mano»). Antes se rechazaba entero si faltaba
+  // cualquier código: reutilizar un molde de otro curso no creaba nada.
+  anadirDesdeBanco(moldeId, claseId, nivel, periodo, unidad) {
     const molde = (this.db.bancoInstrumentos || []).find(m => m.id === moldeId);
     if (!molde) return { faltan: ['(el molde ya no está en el banco)'] };
+    const destino = String(unidad == null ? '' : unidad).trim();
+    const cursoOrigen = String((molde.curso != null ? molde.curso
+      : (molde.origen || {}).curso) || '').trim();
+    const asigDestino = Calc.asignaturaDeNivel(claseId, nivel || '');
+    const cursoDestino = asigDestino ? String(asigDestino.curso || '').trim() : '';
+    if (cursoOrigen && cursoDestino && cursoOrigen !== cursoDestino) {
+      // Sin criterios: una copia del molde con los códigos vacíos pasa por el
+      // mismo motor, así que ids de apartado, pesos y descriptores se crean
+      // exactamente igual que en el camino normal.
+      const sinCodigos = Object.assign({}, molde, {
+        apartados: (molde.apartados || []).map(ap => Object.assign({}, ap, { criterioCodes: [] })),
+        criterioCodesGlobal: []
+      });
+      const r = Calc.instrumentoDesdeMolde(sinCodigos, claseId, nivel, periodo);
+      r.inst.unidad = destino;
+      this.db.instrumentos.push(r.inst);
+      this.save();
+      return { inst: r.inst, faltan: [], molde, sinCriterios: true };
+    }
     const r = Calc.instrumentoDesdeMolde(molde, claseId, nivel, periodo);
     if (r.faltan.length) return { faltan: r.faltan, molde };
+    r.inst.unidad = destino;
     this.db.instrumentos.push(r.inst);
     this.save();
     return { inst: r.inst, faltan: [], molde };
@@ -3594,7 +3831,12 @@ const UI = {
   // `capa` (1 por defecto, 2 para modales anidados, p. ej. elegir criterios
   // dentro del modal de instrumento) permite abrir un segundo modal por encima
   // sin destruir el primero.
-  openModal({ titulo, cuerpo, textoGuardar, alGuardar, peligro }, capa) {
+  // `alCerrar` (opcional): aviso al cerrar el modal — cancelar, ×, Escape o
+  // después de guardar. En el guardado se notifica DESPUÉS del refresco de la
+  // vista, de modo que quien abrió el modal desde un contexto concreto (p. ej.
+  // la corrección de un instrumento) pueda repintar ESE contexto con los datos
+  // nuevos en lugar de que `App.refrescar()` lo pise con la vista general.
+  openModal({ titulo, cuerpo, textoGuardar, alGuardar, alCerrar, peligro }, capa) {
     const nivel = capa === 2 ? 2 : 1;
     const root = document.getElementById(nivel === 2 ? 'modal-root-2' : 'modal-root');
     elementoFocoPrevio = (document.activeElement && document.activeElement.focus) ? document.activeElement : null;
@@ -3614,7 +3856,8 @@ const UI = {
       </div>`;
     const body = root.querySelector('.modal-body');
     body.innerHTML = cuerpo;
-    const cerrar = () => { UI.closeModal(); };
+    const notificarCierre = () => { if (typeof alCerrar === 'function') alCerrar(); };
+    const cerrar = () => { UI.closeModal(); notificarCierre(); };
     root.querySelector('.cerrar').onclick = cerrar;
     root.querySelector('.cancelar').onclick = cerrar;
     if (alGuardar) {
@@ -3622,9 +3865,11 @@ const UI = {
       if (peligro) btn.classList.add('btn-peligro');
       btn.onclick = () => {
         if (alGuardar(body, cerrar) !== false) {
-          cerrar();
-          // La segunda capa no refresca la vista: el modal padre sigue abierto.
+          // Cierre silencioso: `alCerrar` se notifica tras el refresco (ver
+          // cabecera), para que el repintado del contexto gane al final.
+          UI.closeModal();
           if (nivel === 1 && typeof App !== 'undefined' && App.refrescar) App.refrescar();
+          notificarCierre();
         }
       };
     }
@@ -5407,6 +5652,10 @@ function columnasNivel(filas) {
           return true;
         }
       }, 2);
+      // Las pills del chooser DEBEN responder al clic: el checkbox es
+      // invisible (opacidad 0) y sin esto, marcar no produce NINGÚN feedback
+      // visible en el navegador real — el docente lo lee como «bloqueado».
+      UI.wireChips(body);
       const busca = body.querySelector('#busca-crit');
       if (busca) busca.oninput = () => {
         const q = busca.value.trim().toLowerCase();
@@ -5551,22 +5800,20 @@ function columnasNivel(filas) {
     });
   }
 
-  // Lista del banco para añadir una copia a la clase activa, con las notas en
-  // blanco y los criterios reapuntados al currículo de esa clase.
+  // --- Banco de instrumentos (D-48, v0.11.5) ---
+  // El acceso es el botón «Banco de instrumentos» de la vista Instrumentos:
+  // abre el MODAL DE GESTIÓN (tarjetas de moldes con usar/ver/editar/eliminar
+  // y «Crear molde para el banco» — un molde que nace sin instrumento vivo).
+  // No hay pestaña en Configuración ni pantalla paralela. «Usar» se hace desde
+  // dentro de una clase: abre el flujo con el molde arriba y DOS preguntas a
+  // la vista (¿qué T? y ¿qué unidad de programación?), porque el molde no
+  // guarda ni T ni UD (v0.11.5).
   function modalBanco(el) {
     const banco = (Storage.db.bancoInstrumentos || []).slice().reverse(); // los últimos, primero
     const asig = Calc.asignaturaDeClase(claseSel);
     const clase = Calc.clase(claseSel);
     const grupo = clase ? (Calc.byId(Storage.db.grupos, clase.grupoId) || {}) : {};
     const destino = asig ? `${asig.nombre} · ${grupo.nombre || '?'}` : 'la clase elegida';
-    if (!banco.length) {
-      UI.openModal({
-        titulo: 'Banco de instrumentos',
-        cuerpo: `<div class="aviso">Todavía no has guardado ningún instrumento en el banco.
-          Para guardar uno, tócalo en la lista con <b>«Al banco»</b> y quedará disponible aquí.</div>`
-      });
-      return;
-    }
     // Las asignaturas del filtro salen de lo que hay guardado, no de un
     // catálogo: si no hay moldes de Inglés, no aparece la opción. Si todos los
     // moldes son de la misma asignatura, el filtro no aporta y no se pinta.
@@ -5574,9 +5821,31 @@ function columnasNivel(filas) {
       .map(m => (m.origen && m.origen.asignatura) || '')
       .filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
     const conFiltro = asignaturas.length > 1;
+    const tarjetaBanco = m => {
+      const n = (m.apartados || []).length;
+      // Visualización limpia: nombre · tipo · apartados · área · curso — lo
+      // que manda es el MOLDE (sus claves propias); el origen no aparece.
+      const ficha = [m.area || (m.origen || {}).asignatura || '', m.curso || '']
+        .filter(Boolean).join(' · ');
+      return `
+      <div class="fila-banco" data-molde="${Utils.esc(m.id)}" data-asignatura="${Utils.esc(m.area || (m.origen || {}).asignatura || '')}">
+        <span class="fila-banco-txt">
+          <b>${Utils.esc(m.titulo || '(sin título)')}</b>
+          <small>${Utils.esc(m.tipo || '')}${n ? ' · ' + n + ' apartado' + (n === 1 ? '' : 's') : ''}${ficha ? ' · ' + Utils.esc(ficha) : ''}</small>
+        </span>
+        <span class="tarjeta-banco-acciones">
+          <button type="button" class="btn btn-mini btn-primario banco-usar" title="Añadir una copia a ${Utils.esc(destino)}">Usar</button>
+          <button type="button" class="btn btn-mini banco-ver">Ver</button>
+          <button type="button" class="btn btn-mini banco-editar">Editar</button>
+          <button type="button" class="btn btn-mini banco-duplicar" title="Copiar el molde para adaptarlo a otro curso con otros criterios">Duplicar</button>
+          <button type="button" class="icon-btn banco-quitar" title="Eliminar del banco (no borra ningún instrumento del curso)">×</button>
+        </span>
+      </div>`;
+    };
     const cuerpo = `
-      <p class="hint">Instrumentos guardados para reutilizar. Al pulsar «Usar» se añade una copia a
-        <b>${Utils.esc(destino)}</b>, con las notas en blanco y los mismos apartados y criterios.</p>
+      <p class="hint">Moldes guardados para reutilizar en cualquier clase o curso. «Usar» añade una copia a
+        <b>${Utils.esc(destino)}</b> con las notas en blanco: te pregunta el T y la unidad de programación,
+        y si el molde es de otro curso se crea sin criterios (los asignas a mano en la ficha).</p>
       ${conFiltro ? `<label class="campo"><span>Ver los de</span>
         <select id="banco-filtro">
           <option value="">Todas las asignaturas (${banco.length})</option>
@@ -5585,21 +5854,17 @@ function columnasNivel(filas) {
             return `<option value="${Utils.esc(a)}">${Utils.esc(a)} (${n})</option>`;
           }).join('')}
         </select></label>` : ''}
-      <label class="campo"><span>Periodo del instrumento que se añada</span>
-        <select id="banco-periodo">${PERIODOS.map(p => `<option ${p === 'T1' ? 'selected' : ''}>${p}</option>`).join('')}</select></label>
-      <div id="banco-lista">${banco.map(m => `
-        <div class="fila-banco" data-molde="${Utils.esc(m.id)}" data-asignatura="${Utils.esc((m.origen && m.origen.asignatura) || '')}">
-          <span class="fila-banco-txt">
-            <b>${Utils.esc(m.titulo || '(sin título)')}</b>
-            <small>${Utils.esc(m.tipo || '')}${m.unidad ? ' · ' + Utils.esc(m.unidad) : ''}${m.origen && m.origen.asignatura ? ' · de ' + Utils.esc(m.origen.asignatura) : ''} · ${(m.apartados || []).length} apartado${(m.apartados || []).length === 1 ? '' : 's'}</small>
-          </span>
-          <button type="button" class="btn btn-mini btn-primario banco-usar">Usar</button>
-          <button type="button" class="icon-btn banco-quitar" title="Quitar del banco (no borra ningún instrumento del curso)">×</button>
-        </div>`).join('')}</div>
-      <div id="banco-vacio" class="aviso" style="display:none">No hay instrumentos de esa asignatura en el banco.</div>`;
+      <div class="acciones" style="margin-bottom:10px">
+        <button type="button" class="btn btn-primario" id="banco-crear">Crear molde para el banco</button>
+      </div>
+      ${banco.length
+        ? `<div id="banco-lista">${banco.map(tarjetaBanco).join('')}</div>
+          <div id="banco-vacio" class="aviso" style="display:none">No hay instrumentos de esa asignatura en el banco.</div>`
+        : `<div class="aviso">Todavía no has guardado ningún instrumento en el banco. Para guardar uno, tócalo
+          en la lista con <b>«Al banco»</b>; también puedes crear un molde a mano con «Crear molde para el banco».</div>`}`;
     const mbody = UI.openModal({ titulo: 'Banco de instrumentos', cuerpo });
 
-    // Filtro por asignatura: oculta filas sin recargar el modal.
+    // Filtro por asignatura: oculta tarjetas sin recargar el modal.
     const selFiltro = mbody.querySelector('#banco-filtro');
     if (selFiltro) selFiltro.addEventListener('change', () => {
       const valor = selFiltro.value;
@@ -5612,21 +5877,34 @@ function columnasNivel(filas) {
       const vacio = mbody.querySelector('#banco-vacio');
       if (vacio) vacio.style.display = visibles ? 'none' : '';
     });
+    const btnCrear = mbody.querySelector('#banco-crear');
+    if (btnCrear) btnCrear.onclick = () => modalMoldeEditor(el, null);
     mbody.querySelectorAll('.banco-usar').forEach(b => {
       b.onclick = () => {
-        const moldeId = b.closest('[data-molde]').dataset.molde;
-        const periodo = (mbody.querySelector('#banco-periodo') || {}).value || 'T1';
-        const r = Storage.anadirDesdeBanco(moldeId, claseSel, '', periodo);
-        if (r.faltan.length) {
-          const nombre = (r.molde && r.molde.titulo) || '';
-          alert('No se puede añadir «' + nombre + '» a ' + (asig ? asig.nombre : 'esta clase') +
-            '.\n\nEstos criterios del instrumento no existen en esa asignatura:\n' + r.faltan.join(', ') +
-            '\n\nSe guardó desde un currículo distinto. Créalos en «Currículo», o guárdalo desde una clase que use esa asignatura.');
-          return;
-        }
-        UI.closeModal();
-        UI.toast('Añadido: ' + r.inst.titulo);
-        render(el);
+        const m = (Storage.db.bancoInstrumentos || []).find(x => x.id === b.closest('[data-molde]').dataset.molde);
+        if (m) modalBancoUsar(el, m);
+      };
+    });
+    mbody.querySelectorAll('.banco-ver').forEach(b => {
+      b.onclick = () => {
+        const m = (Storage.db.bancoInstrumentos || []).find(x => x.id === b.closest('[data-molde]').dataset.molde);
+        if (m) modalMoldeVer(m);
+      };
+    });
+    mbody.querySelectorAll('.banco-editar').forEach(b => {
+      b.onclick = () => {
+        const m = (Storage.db.bancoInstrumentos || []).find(x => x.id === b.closest('[data-molde]').dataset.molde);
+        if (m) modalMoldeEditor(el, m);
+      };
+    });
+    mbody.querySelectorAll('.banco-duplicar').forEach(b => {
+      b.onclick = () => {
+        const fila = b.closest('[data-molde]');
+        const m = (Storage.db.bancoInstrumentos || []).find(x => x.id === fila.dataset.molde);
+        const copia = Storage.duplicarMolde(fila.dataset.molde);
+        if (!copia) return;
+        UI.toast('Molde duplicado: ' + copia.titulo + (m ? ' · adáptalo a otro curso editándolo' : ''));
+        modalBanco(el);
       };
     });
     mbody.querySelectorAll('.banco-quitar').forEach(b => {
@@ -5638,6 +5916,324 @@ function columnasNivel(filas) {
         modalBanco(el);
       };
     });
+  }
+
+  // Flujo de USO (capa 2 sobre la gestión): el molde arriba (nombre y curso de
+  // origen) y DOS preguntas a la vista: ¿qué T? y ¿qué unidad de programación?
+  // El molde no guarda ni T ni UD (v0.11.5): el destino se pregunta aquí. Una
+  // unidad que no existe se crea al añadir (el campo es un datalist editable,
+  // como en el editor de instrumentos). Al crear, la app abre la ficha del
+  // instrumento — nada de buscarlo por las vistas.
+  function modalBancoUsar(el, molde) {
+    const asig = Calc.asignaturaDeClase(claseSel);
+    const n = (molde.apartados || []).length;
+    // Visualización limpia con lo PROPIO del molde; y si el molde no tiene
+    // curso conocido (moldes viejos a los que la cadena de migrar no pudo
+    // deducírselo), el modal no puede decidir solo: lo dice y pregunta de qué
+    // curso es — la respuesta se guarda en el molde para la próxima.
+    const sinCurso = !String(molde.curso || '').trim();
+    const ficha = [molde.area || (molde.origen || {}).asignatura || '', molde.curso || '']
+      .filter(Boolean).join(' · ');
+    UI.openModal({
+      titulo: 'Usar del banco',
+      cuerpo: `
+        <div class="fila-banco" style="margin-bottom:10px">
+          <span class="fila-banco-txt">
+            <b>${Utils.esc(molde.titulo || '(sin título)')}</b>
+            <small>${Utils.esc(molde.tipo || '')}${n ? ' · ' + n + ' apartado' + (n === 1 ? '' : 's') : ''}${ficha ? ' · ' + Utils.esc(ficha) : ''}</small>
+          </span>
+        </div>
+        <label class="campo"><span>Trimestre (T)</span>
+          <select id="banco-usar-periodo">${PERIODOS.map(p => `<option ${p === 'T1' ? 'selected' : ''}>${p}</option>`).join('')}</select></label>
+        <label class="campo"><span>Unidad de programación (UD, proyecto…)</span>
+          <input type="text" id="banco-usar-unidad" list="lista-unidades" placeholder="Ej. UD5 · escribe un nombre nuevo para crear la unidad">
+          ${datalistUnidades(asig ? asig.id : '')}</label>
+        ${sinCurso ? `
+        <div class="aviso">No se sabe el curso de este molde. Dinos de qué curso es para decidir
+          si lleva criterios (se guarda en el molde para la próxima):</div>
+        <label class="campo"><span>Curso del molde</span>
+          <select id="banco-usar-curso">
+            <option value="">— di de qué curso es —</option>
+            ${['1º', '2º', '3º', '4º', '5º', '6º'].map(c => `<option value="${c}">${c}</option>`).join('')}
+          </select></label>` : `
+        <p class="hint">Si escribes una unidad que no existe, se crea al añadir el instrumento. El molde
+          es de <b>${Utils.esc(molde.curso)}</b>: si esta clase evalúa otro curso, el instrumento se crea
+          con la estructura y <b>sin criterios</b> (los asignas a mano en la ficha).</p>`}`,
+      textoGuardar: 'Añadir a la clase',
+      alGuardar(body2) {
+        const periodo = (body2.querySelector('#banco-usar-periodo') || {}).value || 'T1';
+        const unidad = String((body2.querySelector('#banco-usar-unidad') || {}).value || '').trim();
+        if (sinCurso) {
+          // La respuesta del docente queda en el molde (curso PROPIO): la
+          // regla binaria decide con ella y no vuelve a preguntar.
+          const respuesta = String((body2.querySelector('#banco-usar-curso') || {}).value || '').trim();
+          if (respuesta) Storage.fijarCursoMolde(molde.id, respuesta);
+        }
+        const r = Storage.anadirDesdeBanco(molde.id, claseSel, '', periodo, unidad);
+        if (r.faltan.length) {
+          // Mismo curso, pero un código del molde no existe en el destino:
+          // no se crea nada y se avisan los códigos (como siempre).
+          const nombre = (r.molde && r.molde.titulo) || '';
+          alert('No se puede añadir «' + nombre + '» a ' + (asig ? asig.nombre : 'esta clase') +
+            '.\n\nEstos criterios del instrumento no existen en esa asignatura:\n' + r.faltan.join(', ') +
+            '\n\nSe guardó desde un currículo distinto. Créalos en «Currículo», o guárdalo desde una clase que use esa asignatura.');
+          return false;
+        }
+        // Se cierran las DOS capas (flujo y gestión) y se abre la FICHA del
+        // instrumento creado: nada de buscarlo por las vistas.
+        UI.closeModal();
+        UI.closeModal();
+        if (r.sinCriterios) {
+          // Aviso claro de curso distinto: estructura sí, criterios no.
+          const destinoCurso = ((Calc.asignaturaDeClase(claseSel) || {}).curso || '').trim();
+          const tramo = (molde.curso || '').trim() && destinoCurso
+            ? ' (el molde es de ' + molde.curso + ' y esta clase evalúa ' + destinoCurso + ')'
+            : ' (el molde viene de otro curso)';
+          alert('«' + (r.inst.titulo || molde.titulo) + '» se ha creado sin criterios' + tramo +
+            ': asígnalos a mano en la ficha.');
+        } else {
+          UI.toast('Añadido: ' + r.inst.titulo);
+        }
+        renderCorreccion(el, r.inst.id, () => render(el));
+      }
+    }, 2);
+  }
+
+  // Ficha del molde (solo lectura, capa 2): título, tipo, origen con curso y
+  // apartados con sus puntos, peso y códigos de criterio.
+  function modalMoldeVer(molde) {
+    const n = (molde.apartados || []).length;
+    // Visualización limpia con lo PROPIO del molde (área · curso); sin área,
+    // se muestra lo que hay y se invita a completarla al editar.
+    UI.openModal({
+      titulo: molde.titulo || '(sin título)',
+      cuerpo: `
+        <p class="hint">${Utils.esc(molde.tipo || '')} · ${n} apartado${n === 1 ? '' : 's'}
+          · ${molde.area ? Utils.esc(molde.area) : 'sin área'} · ${molde.curso ? Utils.esc(molde.curso) : 'sin curso'}</p>
+        ${(molde.area ? '' : '<p class="hint">Este molde no tiene área: complétala al editarlo, para que el selector de criterios solo muestre los de su currículo.</p>')}
+        ${n ? `<ul class="lista">${(molde.apartados || []).map(ap => `
+          <li><b>${Utils.esc(ap.descripcion || '(sin nombre)')}</b> · ${Utils.fmt(ap.maxPts)} pts · peso ${Utils.fmt(ap.peso)}
+            ${((ap.criterioCodes || []).length ? ' · ' + Utils.esc(ap.criterioCodes.join(', ')) : ' · <em>sin criterios en el molde</em>')}</li>`).join('')}</ul>`
+        : '<div class="aviso">El molde no tiene apartados.</div>'}
+        ${((molde.criterioCodesGlobal || []).length ? `<p class="hint">Criterios globales: ${Utils.esc(molde.criterioCodesGlobal.join(', '))}</p>` : '')}
+        ${(molde.url ? `<p class="hint">Enlace del instrumento de origen: ${Utils.esc(molde.url)}</p>` : '')}`,
+      textoGuardar: 'Cerrar'
+    }, 2);
+  }
+
+  // Editor mínimo de molde (capa 2): nombre, tipo, curso de origen, modo de
+  // criterios (desglosado/global) y apartados (descripción, puntos, peso y
+  // CRITERIOS). Sirve para CREAR (molde que nace sin instrumento vivo) y para
+  // EDITAR (los criterios del molde se asignan aquí, por código, con el
+  // selector de nivel). Los criterios se sacan de la BASE del docente
+  // (`Storage.criteriosDeCurso`): si ese nivel no está importado, se avisa y
+  // el molde se guarda igual sin criterios.
+  // El estado vive en un objeto (`estado`) que sobrevive a los saltos
+  // editor ↔ selector (ambos pintan la capa 2): cada repintado parte de él,
+  // nunca de los inputs sueltos.
+  function modalMoldeEditor(el, molde) {
+    const estado = {
+      titulo: molde ? molde.titulo : '',
+      tipo: molde ? molde.tipo : 'Control',
+      curso: molde ? String(molde.curso || '') : '',
+      area: molde ? String(molde.area || '') : '',
+      modo: molde ? (molde.criteriosModo || 'desglosado') : 'desglosado',
+      globalCodes: molde ? (molde.criterioCodesGlobal || []).slice() : [],
+      apartados: (molde && molde.apartados && molde.apartados.length)
+        ? molde.apartados.map(ap => ({
+          descripcion: ap.descripcion || '',
+          maxPts: ap.maxPts != null ? ap.maxPts : '',
+          peso: ap.peso != null ? ap.peso : '',
+          codes: (ap.criterioCodes || []).slice()
+        }))
+        : [{ descripcion: '', maxPts: '', peso: '', codes: [] }]
+    };
+
+    // Vuelca lo tecleado en el estado (antes de repintar o abrir el selector).
+    const sincroniza = root2 => {
+      if (!root2) return;
+      estado.titulo = String((root2.querySelector('#f-molde-titulo') || {}).value || '').trim();
+      estado.tipo = String((root2.querySelector('#f-molde-tipo') || {}).value || 'Control');
+      estado.curso = String((root2.querySelector('#f-molde-curso') || {}).value || '').trim();
+      estado.area = String((root2.querySelector('#f-molde-area') || {}).value || '').trim();
+      estado.modo = String((root2.querySelector('#f-molde-critmodo') || {}).value || estado.modo);
+      Array.from(root2.querySelectorAll('.fila-molde-apartado')).forEach((fila, i) => {
+        const ap = estado.apartados[i];
+        if (!ap) return;
+        ap.descripcion = String((fila.querySelector('input[type="text"]') || {}).value || '').trim();
+        ap.maxPts = (fila.querySelector('input[type="number"]') || {}).value;
+        ap.peso = (fila.querySelectorAll('input[type="number"]')[1] || {}).value;
+      });
+    };
+
+    const filaHtml = (ap, esGlobal) => `
+      <div class="fila-molde-apartado">
+        <input type="text" placeholder="Descripción del apartado" value="${Utils.esc(ap.descripcion)}">
+        <input type="number" placeholder="10" min="0" step="any" title="Puntos máximos del apartado" value="${ap.maxPts != null ? Utils.esc(ap.maxPts) : ''}">
+        <input type="number" placeholder="1" min="0" step="any" title="Peso del apartado" value="${ap.peso != null ? Utils.esc(ap.peso) : ''}">
+        ${esGlobal
+          ? '<small style="color:var(--tinta-suave)">aplica criterios globales</small>'
+          : `<button type="button" class="btn btn-mini molde-crit molde-crit-toggle" title="Criterios que evalúa este apartado (del curso elegido)">Criterios (${ap.codes.length})</button>`}
+        <button type="button" class="icon-btn molde-quitar-apartado" title="Quitar este apartado">×</button>
+      </div>`;
+
+    // El contador SIEMPRE honesto: un código que no existe en la (área,
+    // curso) vigente NO es selección real — el docente lo ve como «no hay
+    // criterios marcados pero dice que hay 1». El CAMBIO de contexto (área o
+    // curso, el gesto de «adaptar el molde») invalida la selección que no
+    // encaje: se despella al cambiar (igual que el editor de instrumentos
+    // descarta los criterios del nivel anterior al cambiar de nivel); los
+    // que SÍ existen en el nuevo contexto se conservan.
+    const limpiaCodigosFueraDeContexto = () => {
+      const validos = new Set(Storage.criteriosDePlantilla(estado.curso)
+        .filter(g => !estado.area || g.asignatura === estado.area)
+        .flatMap(g => g.criterios.map(c => c.codigo)));
+      estado.apartados.forEach(a => { a.codes = a.codes.filter(c => validos.has(c)); });
+      estado.globalCodes = estado.globalCodes.filter(c => validos.has(c));
+    };
+
+    const pintaEditor = () => {
+      UI.openModal({
+        titulo: molde ? 'Editar molde' : 'Crear molde para el banco',
+        cuerpo: `
+        <label class="campo"><span>Nombre del molde</span>
+          <input type="text" id="f-molde-titulo" value="${Utils.esc(estado.titulo)}" placeholder="Ej. Comportamiento"></label>
+        <div class="fila-campos">
+          <label class="campo"><span>Tipo</span>
+            <select id="f-molde-tipo">${TIPOS.map(t => `<option ${t === estado.tipo ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+          <label class="campo"><span>Área del currículo</span>
+            <select id="f-molde-area">
+              <option value="">Sin área</option>
+              ${Storage.areasOficiales().map(a => `<option value="${Utils.esc(a)}" ${a === estado.area ? 'selected' : ''}>${Utils.esc(a)}</option>`).join('')}
+            </select></label>
+          <label class="campo"><span>Curso</span>
+            <select id="f-molde-curso">
+              <option value="">Sin curso</option>
+              ${['1º', '2º', '3º', '4º', '5º', '6º'].map(c => `<option value="${c}" ${c === estado.curso ? 'selected' : ''}>${c}</option>`).join('')}
+            </select></label>
+          <label class="campo"><span>¿Cómo se evalúan los criterios?</span>
+            <select id="f-molde-critmodo">
+              <option value="desglosado" ${estado.modo === 'desglosado' ? 'selected' : ''}>Desglosado: cada apartado marca sus criterios</option>
+              <option value="global" ${estado.modo === 'global' ? 'selected' : ''}>Global: todo el molde evalúa los mismos criterios</option>
+            </select></label>
+        </div>
+        <p class="hint">El molde NO guarda el T ni la unidad: se preguntan al usarlo. ${estado.area && estado.curso
+          ? ''
+          : 'Elige área y curso para que el selector de criterios solo muestre los de su currículo.'}</p>
+        ${estado.modo === 'global' ? `
+        <div class="acciones" style="margin-bottom:10px">
+          <button type="button" class="btn btn-mini molde-crit" id="molde-crit-global">Criterios del molde (${estado.globalCodes.length})</button>
+        </div>` : ''}
+        <b>Apartados</b>
+        <div id="molde-apartados">${estado.apartados.map(ap => filaHtml(ap, estado.modo === 'global')).join('')}</div>
+        <div class="acciones">
+          <button type="button" class="btn btn-mini" id="molde-add-apartado">Añadir apartado</button>
+        </div>`,
+        textoGuardar: molde ? 'Guardar molde' : 'Crear molde',
+        alGuardar(body2) {
+          sincroniza(body2);
+          if (!estado.titulo) {
+            alert('Escribe un nombre para el molde.');
+            return false;
+          }
+          const guardado = Storage.guardarMoldeBanco({
+            titulo: estado.titulo,
+            tipo: estado.tipo,
+            curso: estado.curso,
+            area: estado.area,
+            criteriosModo: estado.modo,
+            criterioCodesGlobal: estado.globalCodes,
+            criteriosCodes: estado.apartados.map(a => a.codes),
+            apartados: estado.apartados.map(a => ({ descripcion: a.descripcion, maxPts: a.maxPts, peso: a.peso }))
+          }, molde ? molde.id : null);
+          if (!guardado) return false;
+          UI.toast(molde ? 'Molde actualizado' : 'Molde creado en el banco');
+          modalBanco(el); // la gestión se repinta con la lista nueva
+        }
+      }, 2);
+      cableaEditor(document.getElementById('modal-root-2'));
+    };
+
+    // Selector de criterios del nivel y del ÁREA elegidos (repinta la capa 2).
+    // Fuente PROPIA del banco: el currículo OFICIAL (plantilla del decreto)
+    // filtrada por curso y por área — solo los criterios de esa área y ese
+    // curso, sin el ruido de todas las áreas. Cancelar, × o Escape vuelven al
+    // editor: el estado no se pierde nunca.
+    const pintaSelector = indice => {
+      const esGlobal = indice === 'global';
+      const seleccion = new Set(esGlobal ? estado.globalCodes : estado.apartados[indice].codes);
+      const grupos = Storage.criteriosDePlantilla(estado.curso)
+        .filter(g => !estado.area || g.asignatura === estado.area);
+      UI.openModal({
+        titulo: esGlobal ? 'Criterios del molde' : 'Criterios del apartado',
+        cuerpo: `
+        <p class="hint">${esGlobal
+          ? 'Marca los criterios que evalúa el molde entero.'
+          : 'Marca los criterios que evalúa este apartado.'}
+          Fuente: el <b>currículo oficial de ${Utils.esc(estado.curso || '(sin curso)')}${estado.area ? ' · ' + Utils.esc(estado.area) : ''}</b> (plantilla del decreto).
+          Al usar el molde, el currículo de la clase destino resuelve los códigos.</p>
+        ${grupos.length ? `<div id="lista-niveles">${grupos.map(g => `
+          <details class="chips-nivel" open><summary>${Utils.esc(g.asignatura)} · <span class="chips-nivel-cuenta">${g.criterios.filter(c => seleccion.has(c.codigo)).length}</span></summary>
+          <div class="chips-grupo">${g.criterios.map(c => `
+            <label class="chip ${seleccion.has(c.codigo) ? 'on' : ''}"><input type="checkbox" value="${Utils.esc(c.codigo)}" ${seleccion.has(c.codigo) ? 'checked' : ''}>${Utils.esc(c.codigo)} · ${Utils.esc(c.descripcion)}</label>`).join('')}</div></details>`).join('')}</div>`
+        : `<div class="aviso">${estado.area
+          ? `La plantilla oficial no trae criterios de ${Utils.esc(estado.area)} en ${Utils.esc(estado.curso || 'ese nivel')}.`
+          : `No hay currículo oficial de ${Utils.esc(estado.curso || 'ese nivel')} en las plantillas.`}
+          El molde se puede guardar sin criterios y asignárselos luego en la ficha del instrumento
+          (o importa el currículo del nivel en «Currículo»).</div>`}`,
+        textoGuardar: 'Listo',
+        alCerrar: () => pintaEditor(),
+        alGuardar(body2) {
+          const elegidos = UI.valoresChips(body2.querySelector('#lista-niveles') || body2);
+          if (esGlobal) estado.globalCodes = elegidos;
+          else estado.apartados[indice].codes = elegidos;
+          // Al cerrarse, alCerrar repinta el editor con la selección nueva.
+        }
+      }, 2);
+      // Pills que responden al clic: el checkbox es invisible (opacidad 0);
+      // sin esto, marcar no produce NINGÚN feedback visible en el navegador.
+      UI.wireChips(document.getElementById('modal-root-2'));
+    };
+
+    // Cableado del editor: añadir/quitar apartados, abrir el selector y los
+    // cambios de área/curso (repintan para que el selector salga filtrado).
+    // Cada acción repinta el editor entero DESDE EL ESTADO (los nodos nuevos
+    // no heredan onclick: nada de cablear a mano tras repintados parciales).
+    const cableaEditor = root2 => {
+      if (!root2) return;
+      const add = root2.querySelector('#molde-add-apartado');
+      if (add) add.onclick = () => {
+        sincroniza(root2);
+        estado.apartados.push({ descripcion: '', maxPts: '', peso: '', codes: [] });
+        pintaEditor();
+      };
+      root2.querySelectorAll('.molde-quitar-apartado').forEach(b => {
+        b.onclick = () => {
+          if (root2.querySelectorAll('.fila-molde-apartado').length <= 1) {
+            UI.toast('El molde necesita al menos un apartado', 'error');
+            return;
+          }
+          sincroniza(root2);
+          estado.apartados.splice(Array.from(root2.querySelectorAll('.fila-molde-apartado')).indexOf(b.closest('.fila-molde-apartado')), 1);
+          pintaEditor();
+        };
+      });
+      root2.querySelectorAll('.molde-crit-toggle').forEach(b => {
+        b.onclick = () => {
+          sincroniza(root2);
+          pintaSelector(Array.from(root2.querySelectorAll('.fila-molde-apartado')).indexOf(b.closest('.fila-molde-apartado')));
+        };
+      });
+      const btnGlobal = root2.querySelector('#molde-crit-global');
+      if (btnGlobal) btnGlobal.onclick = () => { sincroniza(root2); pintaSelector('global'); };
+      const selModo = root2.querySelector('#f-molde-critmodo');
+      if (selModo) selModo.onchange = () => { sincroniza(root2); pintaEditor(); };
+      const selArea = root2.querySelector('#f-molde-area');
+      if (selArea) selArea.onchange = () => { sincroniza(root2); limpiaCodigosFueraDeContexto(); pintaEditor(); };
+      const selCurso = root2.querySelector('#f-molde-curso');
+      if (selCurso) selCurso.onchange = () => { sincroniza(root2); limpiaCodigosFueraDeContexto(); pintaEditor(); };
+    };
+    pintaEditor();
   }
 
   // «¿Qué quieres corregir?»: listado de la clase ordenado por lo que falta.
@@ -5741,6 +6337,7 @@ function columnasNivel(filas) {
           <div class="acciones">
             ${url ? `<a class="btn" href="${Utils.esc(url)}" target="_blank" rel="noopener" title="${Utils.esc(url)}">Abrir enlace</a>` : ''}
             <span id="slot-privacidad"></span>
+            <button class="btn" id="btn-editar" title="Editar el instrumento: título, apartados y criterios">Editar</button>
             <button class="btn" id="volver">Volver</button>
           </div>
         </div>
@@ -5817,6 +6414,14 @@ function columnasNivel(filas) {
       return volverA ? volverA() : render(el);
     };
     el.querySelector('#volver').onclick = () => salir();
+    // «Editar» desde la corrección: el editor del instrumento (título,
+    // apartados y criterios — añadir, quitar o cambiar). Es la salida que
+    // promete el aviso del banco («asígnalos a mano en la ficha»): el
+    // instrumento creado desde el banco — con o sin criterios — se edita aquí
+    // sin recrearlo. `alCerrar` repinta la corrección (guardar o cancelar)
+    // en vez de caer en la lista: ui.js lo notifica tras el refresco.
+    el.querySelector('#btn-editar').onclick = () =>
+      modalInstrumento(inst, null, () => renderCorreccion(el, instId, volverA, alumnoId));
 
     const tabla = el.querySelector('#tabla-corrige');
 
@@ -6315,7 +6920,7 @@ ${codigos}`;
           ${lista.length ? selPer : ''}
           <div class="acciones">
             <button class="btn btn-primario" id="add-inst">Nuevo instrumento</button>
-            <button class="btn" id="btn-banco" title="Reutilizar un instrumento guardado (otra clase o el curso siguiente)">Añadir desde el banco${(db.bancoInstrumentos || []).length ? ' (' + db.bancoInstrumentos.length + ')' : ''}</button>
+            <button class="btn" id="btn-banco" title="Moldes guardados para reutilizar (otra clase o el curso siguiente)">Banco de instrumentos${(db.bancoInstrumentos || []).length ? ' (' + db.bancoInstrumentos.length + ')' : ''}</button>
           </div>
         </div>
         ${lista.length ? secciones : '<div class="aviso">Sin instrumentos en esta clase.</div>'}

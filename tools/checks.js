@@ -215,8 +215,8 @@ function estadoBanco() {
       { id: 'a2', nombre: 'Beto', apellidos: 'Dos', grupoId: 'g2' }
     ],
     asignaturas: [
-      { id: 's1', nombre: 'Matemáticas 6º', etapa: 'Primaria' },
-      { id: 's2', nombre: 'Matemáticas 4º', etapa: 'Primaria' }
+      { id: 's1', nombre: 'Matemáticas 6º', area: 'Matemáticas', etapa: 'Primaria', curso: '6º' },
+      { id: 's2', nombre: 'Matemáticas 4º', area: 'Matemáticas', etapa: 'Primaria', curso: '4º' }
     ],
     clases: [
       { id: 'c1', asignaturaId: 's1', grupoId: 'g1' },
@@ -2377,15 +2377,23 @@ async function main() {
     check('el molde guarda los criterios por CÓDIGO (no por id)',
       molde.apartados[0].criterioCodes.join(',') === 'MAT.TC.1.1' && molde.apartados[1].criterioCodes.join(',') === 'MAT.TC.2.1',
       JSON.stringify(molde.apartados.map(a => a.criterioCodes)));
+    check('el molde NO guarda T ni UD del instrumento de origen (el destino se pregunta al usarlo)',
+      !('unidad' in molde) && !('periodo' in molde),
+      JSON.stringify(Object.keys(molde)));
+    check('el molde lleva su CURSO y su ÁREA PROPIOS (lo que manda es el molde, no el origen)',
+      molde.curso === '6º' && molde.area === 'Matemáticas',
+      JSON.stringify({ curso: molde.curso, area: molde.area }));
     check('el molde conserva el enlace del instrumento', molde.url === 'https://ejemplo.test/examen', molde.url);
     check('el molde recuerda su asignatura de origen', molde.origen.asignatura === 'Matemáticas 6º', molde.origen.asignatura);
     check('guardar en el banco no duplica el instrumento del curso', S.db.instrumentos.length === 1);
     check('guardar en el banco no toca las notas del original', S.db.registros.i1.a1.p1 === 8);
 
     // Reutilizar en otra clase de la MISMA asignatura: los criterios se resuelven por código.
-    const r = S.anadirDesdeBanco(molde.id, 'c2', '', 'T2');
-    check('se añade a otra clase sin fallar', r.faltan.length === 0 && !!r.inst);
-    check('el instrumento añadido queda en la clase y periodo elegidos', r.inst.claseId === 'c2' && r.inst.periodo === 'T2');
+    const r = S.anadirDesdeBanco(molde.id, 'c2', '', 'T2', 'UD5');
+    check('se añade a otra clase sin fallar', r.faltan.length === 0 && !!r.inst && !r.sinCriterios);
+    check('el instrumento añadido queda en la clase, el T y la UD preguntados',
+      r.inst.claseId === 'c2' && r.inst.periodo === 'T2' && r.inst.unidad === 'UD5',
+      JSON.stringify({ periodo: r.inst.periodo, unidad: r.inst.unidad }));
     check('los criterios del molde se resuelven a los ids de la clase destino',
       r.inst.apartados[0].criterioIds.join(',') === 'k1' && r.inst.apartados[1].criterioIds.join(',') === 'k2',
       JSON.stringify(r.inst.apartados.map(a => a.criterioIds)));
@@ -2393,11 +2401,22 @@ async function main() {
     check('la copia recibe ids de apartado nuevos', r.inst.apartados[0].id !== 'p1');
     check('la copia conserva el enlace del molde', r.inst.url === 'https://ejemplo.test/examen', r.inst.url);
 
-    // Otro currículo: si un código no existe en el destino no se crea nada.
+    // Regla binaria por CURSO (v0.11.5): molde de 6º a una clase de 4º → se
+    // crea con la estructura (apartados, pesos, descriptores) y SIN criterios.
+    // Antes se rechazaba entero si faltaba cualquier código.
     const antes = S.db.instrumentos.length;
-    const r2 = S.anadirDesdeBanco(molde.id, 'c4', '', 'T1');
-    check('si falta un código en el destino no se crea nada y se avisan los que faltan',
-      S.db.instrumentos.length === antes && r2.faltan.length === 2, JSON.stringify(r2.faltan));
+    const r2 = S.anadirDesdeBanco(molde.id, 'c4', '', 'T1', 'UD1');
+    check('un molde de otro curso se crea SIN criterios (no se rechaza entero)',
+      !!r2.inst && r2.sinCriterios === true && S.db.instrumentos.length === antes + 1,
+      JSON.stringify(r2));
+    check('el instrumento de curso distinto conserva la estructura (apartados, pesos y descriptores)',
+      r2.inst.apartados.length === 2
+      && r2.inst.apartados[0].maxPts === molde.apartados[0].maxPts
+      && r2.inst.apartados[0].peso === molde.apartados[0].peso
+      && r2.inst.apartados[1].descripcion === molde.apartados[1].descripcion);
+    check('el instrumento de curso distinto queda sin criterios y con el T y la UD preguntados',
+      r2.inst.apartados.every(ap => !ap.criterioIds.length) && !r2.inst.criterioIdsGlobal.length
+      && r2.inst.periodo === 'T1' && r2.inst.unidad === 'UD1');
 
     // Modo global y rúbrica: el molde conserva lo que define el motor.
     const instG = Object.assign({}, inst, {
@@ -2417,23 +2436,172 @@ async function main() {
       desdeR.inst.niveles.length === 2 && desdeR.inst.apartados[0].peso === 3 &&
       desdeR.inst.apartados[0].niveles[0].descriptor === 'b' && desdeR.faltan.length === 0);
 
-    // Un molde de 4º añadido al NIVEL ACI de una clase de 6º: usa el currículo del nivel.
+    // Un molde de 4º añadido al NIVEL ACI de una clase de 6º: usa el currículo
+    // del nivel (mismo curso que el molde → criterios resueltos).
     const inst4 = { id: 'i4', claseId: 'c4', tipo: 'Control', titulo: 'Control 4º',
       apartados: [{ id: 'q1', orden: 1, descripcion: 'a', maxPts: 10, criterioIds: ['m1'] }] };
     const molde4 = C.moldeDeInstrumento(S.db, inst4);
+    molde4.curso = '4º'; molde4.area = 'Matemáticas'; // como los deja guardarEnBanco
     S.db.bancoInstrumentos.push(molde4);
-    const r4 = S.anadirDesdeBanco(molde4.id, 'c3', 'B', 'T1');
-    check('un molde de otro curso se resuelve contra el currículo de su nivel ACI',
-      r4.faltan.length === 0 && r4.inst.nivel === 'B' && r4.inst.apartados[0].criterioIds.join(',') === 'm1',
+    const r4 = S.anadirDesdeBanco(molde4.id, 'c3', 'B', 'T1', 'UD2');
+    check('un molde del mismo curso (por nivel ACI) se resuelve con criterios y sin aviso',
+      r4.faltan.length === 0 && !r4.sinCriterios && r4.inst.nivel === 'B'
+      && r4.inst.apartados[0].criterioIds.join(',') === 'm1',
       JSON.stringify(r4.faltan));
     check('el instrumento ACI añadido no queda con criterios fuera de su nivel',
       C.criteriosFueraDeNivel(S.db, r4.inst).length === 0);
+
+    // Moldes de backups antiguos: migrar despella T/UD y les da curso y área
+    // PROPIOS (heredados del origen y de su asignatura).
+    const moldeViejo = JSON.parse(JSON.stringify(molde));
+    moldeViejo.unidad = 'UD1';
+    moldeViejo.periodo = 'T2';
+    delete moldeViejo.curso;
+    delete moldeViejo.area;
+    const migrado = S.migrar({ schemaVersion: 1,
+      asignaturas: [{ id: 's1', nombre: 'Matemáticas 6º', curso: '6º', area: 'Matemáticas' }],
+      bancoInstrumentos: [moldeViejo] });
+    const limpio = migrado.bancoInstrumentos[0];
+    check('migrar despella T y UD de los moldes de backups antiguos',
+      !('unidad' in limpio) && !('periodo' in limpio), JSON.stringify(Object.keys(limpio)));
+    check('migrar da CURSO y ÁREA PROPIOS al molde antiguo (heredados de su origen)',
+      limpio.curso === '6º' && limpio.area === 'Matemáticas',
+      JSON.stringify({ curso: limpio.curso, area: limpio.area }));
+    // La cadena de relleno del curso viejo: origen.curso → prefijo de los
+    // códigos («5.1» → 5º) → asignatura de origen → desconocido ('').
+    const sinOrigen = JSON.parse(JSON.stringify(molde));
+    delete sinOrigen.curso; delete sinOrigen.area;
+    sinOrigen.origen = { asignaturaId: 'sBorrada', asignatura: 'Matemáticas 5º', etapa: 'Primaria', guardadoEn: '2025-10-01' };
+    sinOrigen.apartados = [{ descripcion: 'a', maxPts: 10, peso: 1, niveles: [], criterioCodes: ['5.1', '5.2'] }];
+    const migrado2 = S.migrar({ schemaVersion: 1, asignaturas: [], bancoInstrumentos: [sinOrigen] });
+    check('sin origen.curso, migrar deduce el curso del PREFIJO de los códigos («5.1» → 5º)',
+      migrado2.bancoInstrumentos[0].curso === '5º', migrado2.bancoInstrumentos[0].curso);
+    const sinNada = JSON.parse(JSON.stringify(molde));
+    delete sinNada.curso; delete sinNada.area;
+    sinNada.origen = { asignaturaId: 's1', asignatura: 'Matemáticas 6º', etapa: 'Primaria', guardadoEn: '2025-10-01' };
+    sinNada.apartados = [{ descripcion: 'a', maxPts: 10, peso: 1, niveles: [], criterioCodes: ['MAT.TC.1.1'] }];
+    const migrado3 = S.migrar({ schemaVersion: 1,
+      asignaturas: [{ id: 's1', nombre: 'Matemáticas 6º', curso: '6º', area: 'Matemáticas' }],
+      bancoInstrumentos: [sinNada] });
+    check('sin origen.curso ni prefijo en los códigos, migrar mira la ASIGNATURA de origen',
+      migrado3.bancoInstrumentos[0].curso === '6º', migrado3.bancoInstrumentos[0].curso);
+    const desconocido = JSON.parse(JSON.stringify(molde));
+    delete desconocido.curso; delete desconocido.area;
+    desconocido.origen = { asignaturaId: 'sBorrada', asignatura: 'Matemáticas 5º', etapa: 'Primaria', guardadoEn: '2025-10-01' };
+    desconocido.apartados = [{ descripcion: 'a', maxPts: 10, peso: 1, niveles: [], criterioCodes: ['MAT.TC.1.1'] }];
+    const migrado4 = S.migrar({ schemaVersion: 1, asignaturas: [], bancoInstrumentos: [desconocido] });
+    check('si nada lo dice, el molde queda con curso DESCONOCIDO (la UI lo preguntará al usarlo)',
+      migrado4.bancoInstrumentos[0].curso === '', migrado4.bancoInstrumentos[0].curso);
+
+    // Moldes nacidos sin instrumento: crear y editar (el editor mínimo).
+    const sinInst = S.guardarMoldeBanco({
+      titulo: 'Control de tablas', tipo: 'Control', curso: '3º',
+      apartados: [{ descripcion: 'Tablas del 2', maxPts: 5, peso: 1 }, { descripcion: 'Problemas', maxPts: 10, peso: 1 }]
+    });
+    check('guardarMoldeBanco crea un molde SIN instrumento vivo, con su curso y área propios',
+      !!sinInst && S.db.bancoInstrumentos.some(m => m.id === sinInst.id)
+      && sinInst.curso === '3º' && sinInst.area === ''
+      && sinInst.apartados.length === 2 && sinInst.apartados[0].criterioCodes.length === 0
+      && !('unidad' in sinInst) && !('periodo' in sinInst),
+      JSON.stringify({ curso: sinInst.curso, area: sinInst.area }));
+    check('un molde sin título no se crea', S.guardarMoldeBanco({ titulo: '   ', apartados: [] }) === null);
+    sinInst.apartados[0].criterioCodes = ['MAT 3.1']; // el docente puede asignarlos a mano
+    const editado = S.guardarMoldeBanco({
+      titulo: 'Control de tablas (v2)', tipo: 'Proyecto', curso: '4º',
+      apartados: [{ descripcion: 'Tablas del 2 (ampliado)', maxPts: 8, peso: 2 }]
+    }, sinInst.id);
+    check('editar un molde conserva su id, actualiza lo expuesto y NO toca sus criterios',
+      editado.id === sinInst.id && editado.titulo === 'Control de tablas (v2)'
+      && editado.tipo === 'Proyecto' && editado.curso === '4º'
+      && editado.apartados[0].descripcion === 'Tablas del 2 (ampliado)'
+      && editado.apartados[0].criterioCodes.join(',') === 'MAT 3.1',
+      JSON.stringify(editado.curso));
 
     // Quitar del banco no toca nada del curso.
     const nInst = S.db.instrumentos.length;
     S.borrarDelBanco(molde.id);
     check('quitar del banco no borra instrumentos del curso',
       !S.db.bancoInstrumentos.some(m => m.id === molde.id) && S.db.instrumentos.length === nInst);
+  }
+
+  console.log('\n== Banco: duplicar molde y criterios del editor de moldes (datos) ==');
+  {
+    const app = cargarApp();
+    app.Storage.load();
+    await importarJson(app, estadoBanco());
+    const S = app.Storage;
+    const molde = S.guardarEnBanco(S.db.instrumentos.find(i => i.id === 'i1')); // 6º, MAT.TC.*
+    // Duplicar: copia independiente lista para adaptar a otro curso.
+    const copia = S.duplicarMolde(molde.id);
+    check('duplicar crea un molde NUEVO con el nombre original + « (copia)»',
+      !!copia && copia.id !== molde.id && copia.titulo === 'Control 1 (copia)',
+      copia && copia.id + ' / ' + copia.titulo);
+    check('la copia conserva estructura, criterios, curso y área propios intactos',
+      JSON.stringify(copia.apartados) === JSON.stringify(molde.apartados)
+      && copia.curso === '6º' && copia.area === 'Matemáticas' && copia.tipo === molde.tipo);
+    // La copia se edita y se adapta a otro curso (4º): el original no se toca.
+    S.guardarMoldeBanco({
+      titulo: 'Control 1 (copia) adaptado', tipo: 'Control', curso: '4º', area: 'Matemáticas',
+      apartados: [{ descripcion: 'cambiado', maxPts: 5, peso: 1 }],
+      criteriosCodes: [['MAT.SC.1.1']]
+    }, copia.id);
+    check('editar la copia NO toca el original (independientes)',
+      molde.apartados[0].descripcion === 'a' && molde.curso === '6º' && molde.area === 'Matemáticas'
+      && molde.apartados[0].criterioCodes.join(',') === 'MAT.TC.1.1');
+    const en4 = S.anadirDesdeBanco(copia.id, 'c4', '', 'T1', 'UD1');
+    check('la regla de «curso distinto» lee el CURSO PROPIO del molde (4º ya no es distinto de 4º)',
+      !!en4.inst && !en4.sinCriterios && en4.inst.apartados[0].criterioIds.join(',') === 'm1',
+      JSON.stringify(en4.inst && en4.inst.apartados.map(a => a.criterioIds)));
+    check('y con el curso propio cambiado, usarla en 6º SÍ cae en la regla de curso distinto',
+      (S.anadirDesdeBanco(copia.id, 'c1', '', 'T1', 'UD1').sinCriterios === true));
+    // Criterios de un curso, agrupados por asignatura (fuente: la base).
+    const grupos = S.criteriosDeCurso('6º');
+    check('criteriosDeCurso agrupa los criterios REALES del curso por asignatura',
+      grupos.length === 1 && grupos[0].asignatura === 'Matemáticas 6º'
+      && grupos[0].criterios.map(c => c.codigo).join(',') === 'MAT.TC.1.1,MAT.TC.2.1'
+      && !!grupos[0].criterios[0].descripcion,
+      JSON.stringify(grupos.map(g => g.asignatura)));
+    check('un curso sin currículo importado no devuelve grupos (el molde puede guardarse sin criterios)',
+      S.criteriosDeCurso('5º').length === 0 && S.criteriosDeCurso('').length === 0);
+    // El editor de moldes puede guardar criterios (por apartado y globales).
+    const m2 = S.guardarMoldeBanco({
+      titulo: 'Comportamiento', tipo: 'Control', curso: '6º',
+      criteriosModo: 'global', criterioCodesGlobal: ['MAT.TC.1.1'],
+      apartados: [{ descripcion: 'Convivencia', maxPts: 10, peso: 1 }],
+      criteriosCodes: [[]]
+    });
+    check('guardarMoldeBanco acepta criterios del editor (global y por apartado)',
+      m2.criteriosModo === 'global' && m2.criterioCodesGlobal.join(',') === 'MAT.TC.1.1'
+      && Array.isArray(m2.apartados[0].criterioCodes) && !m2.apartados[0].criterioCodes.length,
+      JSON.stringify({ modo: m2.criteriosModo, glob: m2.criterioCodesGlobal }));
+    // Editar sin tocar criterios: se conservan (compatibilidad con lo ya guardado).
+    m2.apartados[0].criterioCodes = ['MAT.TC.2.1'];
+    const m3 = S.guardarMoldeBanco({
+      titulo: 'Comportamiento (ajustado)',
+      apartados: [{ descripcion: 'Convivencia', maxPts: 10, peso: 1 }]
+    }, m2.id);
+    check('editar un molde sin tocar criterios los CONSERVA',
+      m3.apartados[0].criterioCodes.join(',') === 'MAT.TC.2.1'
+      && m3.criterioCodesGlobal.join(',') === 'MAT.TC.1.1' && m3.criteriosModo === 'global',
+      JSON.stringify({ ap: m3.apartados[0].criterioCodes, glob: m3.criterioCodesGlobal }));
+    // Editar cambiándolos: la edición de criterios tampoco los pierde.
+    const m4 = S.guardarMoldeBanco({
+      titulo: 'Comportamiento (v3)',
+      apartados: [{ descripcion: 'Convivencia', maxPts: 10, peso: 1 }],
+      criteriosCodes: [['MAT.TC.1.1']]
+    }, m2.id);
+    check('editar un molde PUEDE cambiar sus criterios sin perder la estructura',
+      m4.apartados[0].criterioCodes.join(',') === 'MAT.TC.1.1'
+      && m4.apartados[0].descripcion === 'Convivencia');
+    // Duplicar un molde nacido sin instrumento y casos límite.
+    const mano = S.guardarMoldeBanco({
+      titulo: 'Libreta', tipo: 'Control', curso: '3º',
+      apartados: [{ descripcion: 'Ámbitos', maxPts: 10, peso: 1 }]
+    });
+    const copiaMano = S.duplicarMolde(mano.id);
+    check('duplicar funciona con moldes creados a mano (sin instrumento vivo)',
+      !!copiaMano && copiaMano.curso === '3º' && !copiaMano.area);
+    check('duplicar algo que no existe no hace nada', S.duplicarMolde('zzz') === null);
   }
 
   console.log('\n== Banco de instrumentos: filtro por asignatura (UI) ==');
@@ -2451,11 +2619,13 @@ async function main() {
       return app.document.querySelector('.modal-body');
     };
 
-    // Banco vacío: ni filtro ni filas, pero sí el aviso de cómo llenarlo.
+    // Banco vacío: ni filtro ni filas, pero sí el aviso de cómo llenarlo y
+    // el acceso a «Crear molde para el banco» (un molde nace sin instrumento).
     const bodyVacio = abre();
-    check('con el banco vacío no hay filtro y se explica cómo llenarlo',
+    check('con el banco vacío no hay filtro, se explica cómo llenarlo y se ofrece «Crear molde»',
       !bodyVacio.querySelector('#banco-filtro') &&
-      bodyVacio.textContent.includes('Todavía no has guardado'));
+      bodyVacio.textContent.includes('Todavía no has guardado') &&
+      !!bodyVacio.querySelector('#banco-crear'));
 
     // Un solo molde (una sola asignatura): el filtro no aporta y no se pinta.
     S.guardarEnBanco(S.db.instrumentos.find(i => i.id === 'i1')); // Matemáticas 6º
@@ -2467,6 +2637,7 @@ async function main() {
     const molde4 = JSON.parse(JSON.stringify(S.db.bancoInstrumentos[0]));
     molde4.id = 'm4f';
     molde4.titulo = 'Control 4º';
+    molde4.area = 'Matemáticas 4º';
     molde4.origen.asignatura = 'Matemáticas 4º';
     S.db.bancoInstrumentos.push(molde4);
     const body = abre();
@@ -2489,6 +2660,614 @@ async function main() {
     sel._dispara('change');
     check('volver a «Todas» muestra de nuevo todo el banco',
       Array.from(body.querySelectorAll('.fila-banco')).filter(f => f.style.display !== 'none').length === 2);
+  }
+
+  console.log('\n== Banco de instrumentos: modal de gestión (crear, ver, editar, borrar) ==');
+  {
+    const app = cargarApp({ dom: true });
+    app.Storage.load();
+    await importarJson(app, estadoBanco());
+    const doc = app.document;
+    const S = app.Storage;
+    // Camino real: Evaluación → Instrumentos (la vista fija la clase activa).
+    app.App.ir('instrumentos');
+    const el = doc.getElementById('app');
+    const btnBanco = el.querySelector('#btn-banco');
+    check('el acceso es el botón «Banco de instrumentos» de la vista Instrumentos (sin pestañas nuevas)',
+      !!btnBanco && btnBanco.textContent.startsWith('Banco de instrumentos'),
+      btnBanco && btnBanco.textContent);
+    // Con al menos un molde en el banco (guardado con «Al banco»): tarjetas.
+    S.guardarEnBanco(S.db.instrumentos.find(i => i.id === 'i1'));
+    btnBanco.click();
+    let body = doc.querySelector('.modal-body');
+    check('el modal de gestión ofrece «Crear molde para el banco»',
+      !!body.querySelector('#banco-crear') && body.textContent.includes('Crear molde para el banco'));
+    check('las tarjetas del banco ofrecen usar, ver, editar y eliminar',
+      !!body.querySelector('.banco-usar') && !!body.querySelector('.banco-ver')
+      && !!body.querySelector('.banco-editar') && !!body.querySelector('.banco-quitar'));
+    // Crear un molde que nace SIN instrumento vivo.
+    body.querySelector('#banco-crear').click();
+    let ed = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    check('el editor de molde pide nombre, tipo, curso de origen y apartados',
+      !!ed.querySelector('#f-molde-titulo') && !!ed.querySelector('#f-molde-tipo')
+      && !!ed.querySelector('#f-molde-curso') && !!ed.querySelector('.fila-molde-apartado'));
+    ed.querySelector('#f-molde-titulo').value = 'Control de tablas';
+    ed.querySelector('#f-molde-tipo').value = 'Control';
+    ed.querySelector('#f-molde-curso').value = '3º';
+    const fila1 = ed.querySelector('.fila-molde-apartado');
+    fila1.querySelector('input[type="text"]').value = 'Tablas del 2';
+    fila1.querySelector('input[type="number"]').value = '5';
+    ed.querySelector('#molde-add-apartado').click();
+    ed = doc.getElementById('modal-root-2').querySelector('.modal-body'); // reconsultar tras el repintado parcial
+    check('«Añadir apartado» engancha una fila nueva al editor',
+      ed.querySelectorAll('.fila-molde-apartado').length === 2);
+    const fila2 = ed.querySelectorAll('.fila-molde-apartado')[1];
+    fila2.querySelector('input[type="text"]').value = 'Problemas';
+    fila2.querySelector('input[type="number"]').value = '10';
+    doc.getElementById('modal-root-2').querySelector('.guardar').click();
+    const creado = S.db.bancoInstrumentos.find(m => m.titulo === 'Control de tablas');
+    check('el molde creado nace sin instrumento vivo, sin T/UD y con su curso y área propios',
+      !!creado && !S.db.instrumentos.some(i => i.titulo === 'Control de tablas')
+      && creado.curso === '3º' && creado.area === ''
+      && !('unidad' in creado) && !('periodo' in creado)
+      && creado.apartados.length === 2 && creado.apartados.every(a => !a.criterioCodes.length),
+      JSON.stringify({ curso: creado && creado.curso, area: creado && creado.area }));
+    body = doc.querySelector('.modal-body'); // la gestión se repinta con la tarjeta nueva
+    const tarjeta = Array.from(body.querySelectorAll('.fila-banco'))
+      .find(f => f.textContent.includes('Control de tablas'));
+    check('la tarjeta se ve limpia: nombre · tipo · apartados · curso (sin «de X» de origen cosido)',
+      !!tarjeta && tarjeta.textContent.includes('Control de tablas')
+      && tarjeta.textContent.includes('3º') && !tarjeta.textContent.includes('de Matemáticas'),
+      tarjeta && tarjeta.textContent.replace(/\s+/g, ' ').slice(0, 120));
+    // Editar el molde: los criterios del molde no se tocan desde el editor.
+    tarjeta.querySelector('.banco-editar').click();
+    ed = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    check('el editor llega relleno para editar el molde',
+      ed.querySelector('#f-molde-titulo').value === 'Control de tablas'
+      && ed.querySelector('#f-molde-curso').value === '3º');
+    ed.querySelector('#f-molde-titulo').value = 'Control de tablas (v2)';
+    doc.getElementById('modal-root-2').querySelector('.guardar').click();
+    check('editar conserva el molde (mismo id) y guarda el título nuevo',
+      S.db.bancoInstrumentos.some(m => m.id === creado.id && m.titulo === 'Control de tablas (v2)'));
+    // Ver el molde (solo lectura) y borrarlo.
+    body = doc.querySelector('.modal-body');
+    const tarjeta2 = Array.from(body.querySelectorAll('.fila-banco'))
+      .find(f => f.textContent.includes('Control de tablas (v2)'));
+    tarjeta2.querySelector('.banco-ver').click();
+    let ver = doc.getElementById('modal-root-2').querySelector('.modal');
+    check('«Ver» muestra el molde en solo lectura (título, apartados y curso de origen)',
+      !!ver && ver.textContent.includes('Control de tablas (v2)')
+      && ver.textContent.includes('Tablas del 2') && ver.textContent.includes('3º')
+      && !ver.querySelector('input'),
+      ver && ver.textContent.slice(0, 200));
+    ver = null;
+    doc.getElementById('modal-root-2').querySelector('.cancelar').click();
+    body = doc.querySelector('.modal-body');
+    const tarjeta3 = Array.from(body.querySelectorAll('.fila-banco'))
+      .find(f => f.textContent.includes('Control de tablas (v2)'));
+    const nMoldes = S.db.bancoInstrumentos.length;
+    tarjeta3.querySelector('.banco-quitar').click();
+    check('eliminar el molde lo quita del banco sin tocar ningún instrumento',
+      S.db.bancoInstrumentos.length === nMoldes - 1
+      && !S.db.bancoInstrumentos.some(m => m.id === creado.id)
+      && S.db.instrumentos.length === 1);
+  }
+
+  console.log('\n== Banco de instrumentos: flujo de uso (T + UD, curso distinto, ficha abierta) ==');
+  {
+    const app = cargarApp({ dom: true });
+    app.Storage.load();
+    await importarJson(app, estadoBanco());
+    const doc = app.document;
+    const S = app.Storage;
+    app.App.ir('instrumentos');
+    const el = doc.getElementById('app');
+    // Molde desde el control real de 6º (i1, clase c1).
+    S.guardarEnBanco(S.db.instrumentos.find(i => i.id === 'i1'));
+    el.querySelector('#btn-banco').click();
+    let body = doc.querySelector('.modal-body');
+    body.querySelector('.banco-usar').click();
+    let flujo = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    check('el flujo de uso muestra el molde arriba limpio: nombre · tipo · apartados · curso propio',
+      !!flujo && flujo.textContent.includes('Control 1')
+      && flujo.textContent.includes('6º') && !flujo.textContent.includes('de Matemáticas 6º'),
+      flujo && flujo.textContent.slice(0, 200));
+    check('el flujo pregunta T y UD (fallo reportado: hoy solo pedía el T)',
+      !!flujo.querySelector('#banco-usar-periodo') && !!flujo.querySelector('#banco-usar-unidad'));
+    check('el campo de UD sugiere las unidades ya usadas (datalist) y admite una nueva',
+      !!flujo.querySelector('#lista-unidades')
+      && Array.from(flujo.querySelectorAll('#lista-unidades option')).some(o => o.value === 'UD1'));
+    // T2 + unidad NUEVA (no existe en la asignatura): se crea al añadir.
+    flujo.querySelector('#banco-usar-periodo').value = 'T2';
+    flujo.querySelector('#banco-usar-unidad').value = 'Proyecto volcán';
+    doc.getElementById('modal-root-2').querySelector('.guardar').click();
+    const nuevo = S.db.instrumentos.filter(i => i.claseId === 'c1')[1];
+    check('el instrumento creado respeta el T y la UD preguntados (unidad nueva creada)',
+      !!nuevo && nuevo.periodo === 'T2' && nuevo.unidad === 'Proyecto volcán'
+      && app.Calc.unidadesDeAsignatura('s1').includes('Proyecto volcán'));
+    check('al crear, la app abre la FICHA del instrumento (modales cerrados, corrección en la vista)',
+      !doc.querySelector('.modal-body') && !doc.getElementById('modal-root-2').innerHTML
+      && el.textContent.includes('Proyecto volcán'), el.textContent.slice(0, 160));
+    check('mismo curso: la copia nace con criterios y SIN aviso de curso distinto',
+      nuevo.apartados[0].criterioIds.join(',') === 'k1' && app.alertas.length === 0);
+    // Curso distinto: molde de 6º a la clase de 4º → sin criterios, con aviso y estructura.
+    app.App.ir('instrumentos');
+    const el2 = doc.getElementById('app');
+    el2.querySelector('#sel-clase').value = 'c4';
+    el2.querySelector('#sel-clase')._dispara('change'); // la clase de 4º
+    el2.querySelector('#btn-banco').click();
+    body = doc.querySelector('.modal-body');
+    body.querySelector('.banco-usar').click();
+    flujo = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    flujo.querySelector('#banco-usar-unidad').value = 'UD1';
+    const alertasAntes = app.alertas.length;
+    doc.getElementById('modal-root-2').querySelector('.guardar').click();
+    const cruzado = S.db.instrumentos.filter(i => i.claseId === 'c4')[0];
+    check('curso distinto: se crea SIN criterios, con la estructura, y avisa en claro',
+      !!cruzado && cruzado.apartados.every(a => !a.criterioIds.length)
+      && app.alertas.length === alertasAntes + 1
+      && app.alertas[app.alertas.length - 1].includes('sin criterios'),
+      JSON.stringify(app.alertas));
+    check('el aviso de curso distinto también abre la ficha del instrumento creado',
+      !doc.querySelector('.modal-body') && el2.textContent.includes('Control 1'));
+    // Camino REAL del docente (informe: «los criterios siguen bloqueados»):
+    // el selector de criterios son PILLS con el checkbox invisible; si las
+    // pills no responden al clic (sin wireChips), en el navegador real marcar
+    // no produce NINGÚN feedback y parece bloqueado. Se simula lo que el
+    // navegador hace al tocar una pill: toggle del checkbox + 'change'.
+    app.App.ir('instrumentos');
+    const el4 = doc.getElementById('app');
+    el4.querySelector('#btn-banco').click();
+    body = doc.querySelector('.modal-body');
+    body.querySelector('.banco-usar').click();
+    flujo = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    flujo.querySelector('#banco-usar-unidad').value = 'UD3';
+    doc.getElementById('modal-root-2').querySelector('.guardar').click();
+    el4.querySelector('#btn-editar').click();
+    body = doc.querySelector('.modal-body');
+    body.querySelector('.toggle-crit').click();
+    let chooser = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    const pill = chooser.querySelector('.chip');
+    const pillInput = pill.querySelector('input');
+    pillInput.checked = true;
+    pillInput._dispara('change');
+    check('las pills del selector RESPONDEN al clic (se encienden al marcar, como el resto de chips)',
+      pill.classList.contains('on'),
+      'clase on=' + String(pill.classList.contains('on')));
+    pillInput.checked = false;
+    pillInput._dispara('change');
+    check('y al desmarcar se apagan (feedback real, no solo lectura)',
+      !pill.classList.contains('on'));
+    // Y el camino completo del docente: marcar por la entrada REAL, guardar y
+    // RECARGAR (Storage.load) — la persistencia es lo que él comprueba.
+    const fichaInst = S.db.instrumentos.filter(i => i.claseId === 'c1')[1];
+    pillInput.checked = true;
+    pillInput._dispara('change');
+    doc.getElementById('modal-root-2').querySelector('.guardar').click();
+    body = doc.querySelector('.modal-body');
+    body.querySelector('.ap-max') && (body.querySelector('.ap-max').value = '9');
+    doc.querySelector('.modal-foot .guardar').click();
+    S.load();
+    check('editar por la entrada REAL de la ficha y RECARGAR: los criterios cambiados persisten',
+      JSON.stringify(S.db.instrumentos.find(i => i.id === fichaInst.id).apartados.map(a => a.criterioIds.join(',')))
+        === JSON.stringify(['k1', 'k2']),
+      JSON.stringify(S.db.instrumentos.find(i => i.id === fichaInst.id).apartados.map(a => a.criterioIds)));
+
+    // Caso EXACTO del docente: molde viejo SIN curso conocido (la asignatura
+    // de origen ya no existe) usado en 6º — los códigos existen también en
+    // 6º, así que sin pregunta se creaba a ciegas con criterios y sin aviso.
+    const viejo = {
+      id: 'mViejo', titulo: 'Prueba 5º', tipo: 'Control',
+      saberes: '', url: '', niveles: [], criteriosModo: 'desglosado', criterioCodesGlobal: [],
+      apartados: [{ descripcion: 'a', maxPts: 10, peso: 1, niveles: [], criterioCodes: ['MAT.TC.1.1'] }],
+      origen: { asignaturaId: 'sBorrada', asignatura: 'Matemáticas 5º', etapa: 'Primaria', guardadoEn: '2025-10-01' }
+    };
+    S.db.bancoInstrumentos.push(viejo);
+    app.App.ir('instrumentos');
+    const el5 = doc.getElementById('app');
+    el5.querySelector('#btn-banco').click();
+    body = doc.querySelector('.modal-body');
+    const tarjetaV = Array.from(body.querySelectorAll('.fila-banco')).find(f => f.textContent.includes('Prueba 5º'));
+    tarjetaV.querySelector('.banco-usar').click();
+    flujo = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    check('molde SIN curso conocido: el modal de uso lo dice y pregunta de qué curso es',
+      !!flujo && flujo.textContent.includes('No se sabe el curso de este molde')
+      && !!flujo.querySelector('#banco-usar-curso'),
+      flujo && flujo.textContent.slice(0, 200));
+    // El docente responde 5º: se guarda en el molde y la regla decide con él.
+    flujo.querySelector('#banco-usar-curso').value = '5º';
+    flujo.querySelector('#banco-usar-unidad').value = 'UD1';
+    doc.getElementById('modal-root-2').querySelector('.guardar').click();
+    check('la respuesta del docente se GUARDA en el molde (la próxima ya no pregunta)',
+      S.db.bancoInstrumentos.find(m => m.id === 'mViejo').curso === '5º',
+      S.db.bancoInstrumentos.find(m => m.id === 'mViejo').curso);
+    const cruzado5a6 = S.db.instrumentos.filter(i => i.titulo === 'Prueba 5º')[0];
+    check('molde de 5º (curso dicho por el docente) usado en 6º: SIN criterios y aviso garantizado',
+      !!cruzado5a6 && cruzado5a6.apartados.every(a => !a.criterioIds.length)
+      && app.alertas.some(a => a.includes('Prueba 5º') && a.includes('sin criterios')),
+      JSON.stringify(app.alertas.map(a => a.slice(0, 60))));
+  }
+
+  console.log('\n== Banco: los criterios del instrumento creado se editan desde su ficha ==');
+  {
+    // Bug del docente: al crear desde el banco (sobre todo, curso distinto →
+    // sin criterios), la ficha que la app abre no ofrece ninguna forma de
+    // editar los criterios — y el aviso promete «asígnalos a mano en la
+    // ficha». El editor en sí SÍ edita (lo hace igual con un instrumento
+    // creado a mano): faltaba la entrada desde la ficha.
+    const app = cargarApp({ dom: true });
+    app.Storage.load();
+    await importarJson(app, estadoBanco());
+    const doc = app.document;
+    const S = app.Storage;
+    app.App.ir('instrumentos');
+    const el = doc.getElementById('app');
+    S.guardarEnBanco(S.db.instrumentos.find(i => i.id === 'i1'));
+    el.querySelector('#btn-banco').click();
+    let body = doc.querySelector('.modal-body');
+    body.querySelector('.banco-usar').click();
+    let flujo = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    flujo.querySelector('#banco-usar-unidad').value = 'UD1';
+    doc.getElementById('modal-root-2').querySelector('.guardar').click();
+    // La app ha abierto la ficha (corrección): debe ofrecer «Editar».
+    check('la ficha del instrumento creado ofrece «Editar» (la promesa del aviso, sin buscar por las vistas)',
+      !!el.querySelector('#btn-editar') && el.querySelector('#btn-editar').textContent.includes('Editar'),
+      'btn-editar=' + String(!!el.querySelector('#btn-editar')));
+    const nuevo = S.db.instrumentos.filter(i => i.claseId === 'c1')[1];
+    // Curso distinto no aplica aquí (c1 es de 6º): lo cruzado va después.
+    el.querySelector('#btn-editar').click();
+    body = doc.querySelector('.modal-body');
+    check('el botón de la ficha abre el editor del instrumento',
+      !!body.querySelector('#f-titulo') && body.querySelector('#f-titulo').value === 'Control 1');
+    // Asignar criterios al primer apartado (el molde trae k1 ya marcado).
+    body.querySelector('.toggle-crit').click();
+    let crit = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    const chips = Array.from(crit.querySelectorAll('#lista-niveles .chip input'));
+    chips.forEach(i => { i.checked = i.value === 'k2'; }); // cambia k1 → k2
+    doc.getElementById('modal-root-2').querySelector('.guardar').click();
+    doc.querySelector('.modal-foot .guardar').click();
+    check('los criterios editados desde la ficha quedan guardados (mismo curso)',
+      JSON.stringify(S.db.instrumentos.find(i => i.id === nuevo.id).apartados.map(a => a.criterioIds.join(',')))
+        === JSON.stringify(['k2', 'k2']),
+      JSON.stringify(S.db.instrumentos.find(i => i.id === nuevo.id).apartados.map(a => a.criterioIds)));
+    check('tras editar desde la ficha, se vuelve a la CORRECCIÓN (no a la lista)',
+      el.textContent.includes('Guardar y siguiente') && !doc.querySelector('.modal-body'),
+      el.textContent.slice(0, 120));
+    // Cancelar también vuelve a la ficha (no a la lista ni cerrando todo).
+    el.querySelector('#btn-editar').click();
+    doc.querySelector('.modal-foot .cancelar').click();
+    check('cancelar la edición desde la ficha vuelve a la ficha sin tocar nada',
+      el.textContent.includes('Guardar y siguiente') && !doc.querySelector('.modal-body'));
+
+    // Curso distinto: el instrumento creado SIN criterios recibe criterios a
+    // mano desde la ficha, sin recrearlo.
+    app.App.ir('instrumentos');
+    const el2 = doc.getElementById('app');
+    el2.querySelector('#sel-clase').value = 'c4';
+    el2.querySelector('#sel-clase')._dispara('change');
+    el2.querySelector('#btn-banco').click();
+    body = doc.querySelector('.modal-body');
+    body.querySelector('.banco-usar').click();
+    flujo = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    flujo.querySelector('#banco-usar-unidad').value = 'UD1';
+    doc.getElementById('modal-root-2').querySelector('.guardar').click();
+    const cruzado = S.db.instrumentos.filter(i => i.claseId === 'c4')[0];
+    check('la ficha del creado SIN criterios también ofrece «Editar»',
+      !!el2.querySelector('#btn-editar'));
+    el2.querySelector('#btn-editar').click();
+    body = doc.querySelector('.modal-body');
+    Array.from(body.querySelectorAll('.apartado-fila')).forEach(fila => {
+      fila.querySelector('.toggle-crit').click();
+      crit = doc.getElementById('modal-root-2').querySelector('.modal-body');
+      crit.querySelectorAll('.chip input')[0].checked = true;
+      doc.getElementById('modal-root-2').querySelector('.guardar').click();
+    });
+    doc.querySelector('.modal-foot .guardar').click();
+    check('el instrumento de curso distinto recibe criterios a mano desde la ficha (sin recrearlo)',
+      JSON.stringify(S.db.instrumentos.find(i => i.id === cruzado.id).apartados.map(a => a.criterioIds.join(',')))
+        === JSON.stringify(['m1', 'm1'])
+      && S.db.instrumentos.find(i => i.id === cruzado.id).id === cruzado.id,
+      JSON.stringify(S.db.instrumentos.find(i => i.id === cruzado.id).apartados.map(a => a.criterioIds)));
+    check('el aviso del flujo promete exactamente lo que ahora se puede hacer',
+      (el2.textContent.includes('Guardar y siguiente')));
+    // Modo global: el molde global cruzado de curso también recibe criterios.
+    app.App.ir('instrumentos');
+    const el3 = doc.getElementById('app');
+    const instG = S.db.instrumentos.find(i => i.id === 'i1');
+    instG.criteriosModo = 'global';
+    instG.criterioIdsGlobal = ['k1'];
+    instG.titulo = 'Examen global';
+    const moldeG = S.guardarEnBanco(instG);
+    el3.querySelector('#sel-clase').value = 'c4';
+    el3.querySelector('#sel-clase')._dispara('change');
+    el3.querySelector('#btn-banco').click();
+    body = doc.querySelector('.modal-body');
+    const filaG = Array.from(body.querySelectorAll('.fila-banco'))
+      .find(f => f.textContent.includes('Examen global'));
+    filaG.querySelector('.banco-usar').click();
+    flujo = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    flujo.querySelector('#banco-usar-unidad').value = 'UD2';
+    doc.getElementById('modal-root-2').querySelector('.guardar').click();
+    const global = S.db.instrumentos.filter(i => i.claseId === 'c4' && i.criteriosModo === 'global')[0];
+    el3.querySelector('#btn-editar').click();
+    body = doc.querySelector('.modal-body');
+    check('el editor del creado global muestra sus criterios globales para editar',
+      body.querySelector('#bloque-criterios-global').style.display !== 'none'
+      && body.querySelectorAll('#chips-criterios-global .chip').length > 0);
+    const chipG = body.querySelector('#chips-criterios-global .chip input');
+    chipG.checked = true;
+    doc.querySelector('.modal-foot .guardar').click();
+    check('los criterios GLOBALES del creado desde el banco se editan y guardan',
+      JSON.stringify(S.db.instrumentos.find(i => i.id === global.id).criterioIdsGlobal) === JSON.stringify(['m1'])
+      && S.db.instrumentos.find(i => i.id === global.id).id === global.id,
+      JSON.stringify(S.db.instrumentos.find(i => i.id === global.id).criterioIdsGlobal));
+  }
+
+  console.log('\n== Banco: editor de moldes con criterios y duplicar (UI) ==');
+  {
+    // El docente prepara VARIANTES de un instrumento común (comportamiento,
+    // libretas…) por curso: el editor del molde asigna los criterios del nivel
+    // elegido (desglosado o global) y «Duplicar» copia el molde para adaptarlo.
+    const app = cargarApp({ dom: true });
+    app.Storage.load();
+    await importarJson(app, estadoBanco());
+    const doc = app.document;
+    const S = app.Storage;
+    app.App.ir('instrumentos');
+    const el = doc.getElementById('app');
+    // Con al menos un molde (guardado con «Al banco») para comprobar la tarjeta.
+    S.guardarEnBanco(S.db.instrumentos.find(i => i.id === 'i1'));
+    el.querySelector('#btn-banco').click();
+    let body = doc.querySelector('.modal-body');
+    check('la tarjeta del molde ofrece «Duplicar» junto a Ver/Editar/Eliminar',
+      !!body.querySelector('.banco-duplicar'));
+    // Crear un molde con criterios POR APARTADO.
+    body.querySelector('#banco-crear').click();
+    let ed = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    check('el editor de molde pide el modo de criterios y ofrece «Criterios» por apartado',
+      !!ed.querySelector('#f-molde-critmodo') && !!ed.querySelector('.molde-crit-toggle'));
+    ed.querySelector('#f-molde-titulo').value = 'Comportamiento';
+    ed.querySelector('#f-molde-curso').value = '6º';
+    const fila1 = ed.querySelector('.fila-molde-apartado');
+    fila1.querySelector('input[type="text"]').value = 'Convivencia';
+    fila1.querySelector('input[type="number"]').value = '10';
+    ed.querySelector('.molde-crit-toggle').click();
+    let sel = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    check('el selector del molde usa el CURRÍCULO OFICIAL (plantilla del decreto) y lo dice en claro',
+      !!sel && sel.textContent.includes('currículo oficial de 6º')
+      && sel.textContent.includes('Matemáticas')
+      && !!sel.querySelector('.chip input[value="MAT.TC.1.1"]'),
+      sel && sel.textContent.slice(0, 150));
+    // El clic del docente debe verse: las pills responden (se encienden).
+    const pillMolde = sel.querySelector('.chip');
+    const pillMoldeIn = pillMolde.querySelector('input');
+    pillMoldeIn.checked = true;
+    pillMoldeIn._dispara('change');
+    check('las pills del selector del molde RESPONDEN al clic (se encienden al marcar)',
+      pillMolde.classList.contains('on'),
+      'clase on=' + String(pillMolde.classList.contains('on')));
+    sel.querySelectorAll('.chip input').forEach(i => { i.checked = i.value === 'MAT.TC.1.1' || i.value === 'MAT.TC.2.1'; });
+    doc.getElementById('modal-root-2').querySelector('.guardar').click(); // «Listo»: vuelve al editor
+    ed = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    check('al volver del selector, el editor conserva lo escrito y muestra el recuento',
+      ed.querySelector('#f-molde-titulo').value === 'Comportamiento'
+      && ed.querySelector('.molde-crit-toggle').textContent.includes('(2)'),
+      ed.querySelector('.molde-crit-toggle') && ed.querySelector('.molde-crit-toggle').textContent);
+    doc.getElementById('modal-root-2').querySelector('.guardar').click(); // guardar el molde
+    const creado = S.db.bancoInstrumentos.find(m => m.titulo === 'Comportamiento');
+    check('el molde creado lleva los criterios asignados por apartado (desglosado)',
+      !!creado && creado.criteriosModo === 'desglosado'
+      && creado.apartados[0].criterioCodes.join(',') === 'MAT.TC.1.1,MAT.TC.2.1',
+      creado && JSON.stringify(creado.apartados.map(a => a.criterioCodes)));
+    // El molde del editor es USABLE: el instrumento nace con sus criterios.
+    const r = S.anadirDesdeBanco(creado.id, 'c1', '', 'T1', 'UD1');
+    check('el molde preparado en el editor se usa con sus criterios (códigos resueltos)',
+      !!r.inst && r.inst.apartados[0].criterioIds.join(',') === 'k1,k2',
+      r.inst && JSON.stringify(r.inst.apartados.map(a => a.criterioIds)));
+    // Editar los criterios del molde: llegan premarcados y se pueden cambiar.
+    el.querySelector('#btn-banco').click();
+    body = doc.querySelector('.modal-body');
+    const tarjeta = Array.from(body.querySelectorAll('.fila-banco')).find(f => f.textContent.includes('Comportamiento'));
+    tarjeta.querySelector('.banco-editar').click();
+    ed = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    ed.querySelector('.molde-crit-toggle').click();
+    sel = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    check('al editar, el selector llega con los criterios ya marcados',
+      sel.querySelectorAll('.chip input:checked').length === 2);
+    sel.querySelectorAll('.chip input').forEach(i => { i.checked = i.value === 'MAT.TC.1.1'; });
+    doc.getElementById('modal-root-2').querySelector('.guardar').click();
+    ed = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    doc.getElementById('modal-root-2').querySelector('.guardar').click();
+    check('editar los criterios del molde los actualiza sin perder la estructura',
+      S.db.bancoInstrumentos.find(m => m.id === creado.id).apartados[0].criterioCodes.join(',') === 'MAT.TC.1.1'
+      && S.db.bancoInstrumentos.find(m => m.id === creado.id).apartados[0].descripcion === 'Convivencia');
+    // Modo GLOBAL: el selector para el molde entero.
+    el.querySelector('#btn-banco').click();
+    body = doc.querySelector('.modal-body');
+    body.querySelector('#banco-crear').click();
+    ed = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    ed.querySelector('#f-molde-titulo').value = 'Libreta';
+    ed.querySelector('#f-molde-curso').value = '6º';
+    ed.querySelector('#f-molde-critmodo').value = 'global';
+    ed.querySelector('#f-molde-critmodo')._dispara('change');
+    ed = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    check('en modo global el editor ofrece el toggle de criterios GLOBALES (y quita los por apartado)',
+      !!ed.querySelector('#molde-crit-global') && !ed.querySelector('.molde-crit-toggle'),
+      'global=' + String(!!ed.querySelector('#molde-crit-global')));
+    ed.querySelector('#molde-crit-global').click();
+    sel = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    sel.querySelectorAll('.chip input').forEach(i => { i.checked = i.value === 'MAT.TC.1.1'; });
+    doc.getElementById('modal-root-2').querySelector('.guardar').click();
+    ed = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    doc.getElementById('modal-root-2').querySelector('.guardar').click();
+    const libreta = S.db.bancoInstrumentos.find(m => m.titulo === 'Libreta');
+    check('el molde global guarda sus criterios globales',
+      !!libreta && libreta.criteriosModo === 'global'
+      && libreta.criterioCodesGlobal.join(',') === 'MAT.TC.1.1',
+      libreta && JSON.stringify(libreta.criterioCodesGlobal));
+    // Duplicar desde la tarjeta: copia independiente con « (copia)».
+    el.querySelector('#btn-banco').click();
+    body = doc.querySelector('.modal-body');
+    const tarjetaC = Array.from(body.querySelectorAll('.fila-banco')).find(f => f.textContent.includes('Comportamiento'));
+    const nMoldes = S.db.bancoInstrumentos.length;
+    tarjetaC.querySelector('.banco-duplicar').click();
+    const copiaUI = S.db.bancoInstrumentos.find(m => m.titulo === 'Comportamiento (copia)');
+    check('«Duplicar» crea la copia con id nuevo, criterios intactos y repinta la gestión',
+      !!copiaUI && copiaUI.id !== creado.id && nMoldes === S.db.bancoInstrumentos.length - 1
+      && copiaUI.apartados[0].criterioCodes.join(',') === 'MAT.TC.1.1'
+      && !!doc.querySelector('.modal-body .fila-banco'),
+      copiaUI && copiaUI.titulo);
+    // Un curso SIN asignaturas importadas en la base (el docente no lo imparte
+    // este año): la plantilla oficial cubre igual — es el caso de preparar
+    // variantes de cursos futuros. RED: hoy el selector sale vacío.
+    el.querySelector('#btn-banco').click();
+    body = doc.querySelector('.modal-body');
+    body.querySelector('#banco-crear').click();
+    ed = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    ed.querySelector('#f-molde-titulo').value = 'Presentación';
+    ed.querySelector('#f-molde-curso').value = '5º';
+    ed.querySelector('.molde-crit-toggle').click();
+    sel = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    check('sin asignaturas importadas del nivel, el selector usa igual la PLANTILLA oficial (5º)',
+      !!sel && sel.textContent.includes('currículo oficial de 5º')
+      && sel.querySelectorAll('.chip').length > 0,
+      sel && 'chips=' + sel.querySelectorAll('.chip').length);
+    doc.getElementById('modal-root-2').querySelector('.guardar').click(); // Listo sin marcar nada
+    ed = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    doc.getElementById('modal-root-2').querySelector('.guardar').click();
+    check('el molde sin criterios del nivel se guarda igual (y se asignan luego en la ficha)',
+      !!S.db.bancoInstrumentos.find(m => m.titulo === 'Presentación')
+      && S.db.bancoInstrumentos.find(m => m.titulo === 'Presentación').apartados[0].criterioCodes.length === 0);
+    // Y sin curso (ni área) elegido: el selector no tiene de dónde sacar
+    // criterios y lo dice en claro.
+    el.querySelector('#btn-banco').click();
+    body = doc.querySelector('.modal-body');
+    body.querySelector('#banco-crear').click();
+    ed = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    ed.querySelector('#f-molde-titulo').value = 'Sin nivel';
+    ed.querySelector('.molde-crit-toggle').click();
+    sel = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    check('sin curso elegido, el selector lo dice en claro (no hay currículo de dónde sacar)',
+      !!sel && !sel.querySelectorAll('.chip').length
+      && sel.textContent.includes('No hay currículo oficial de ese nivel'),
+      'sel=' + String(!!sel) + ' · ' + (sel ? sel.textContent.replace(/\s+/g, ' ').slice(0, 220) : '(sin chooser)'));
+    doc.getElementById('modal-root-2').querySelector('.cancelar').click();
+    ed = doc.getElementById('modal-root-2').querySelector('.modal-body'); // vuelve al editor
+    doc.getElementById('modal-root-2').querySelector('.cancelar').click();
+    // El editor de moldes pide ÁREA y CURSO (selectores), y el selector de
+    // criterios se FILTRA por área y nivel — solo los de esa área, sin el
+    // ruido de todas las áreas del nivel.
+    el.querySelector('#btn-banco').click();
+    body = doc.querySelector('.modal-body');
+    body.querySelector('#banco-crear').click();
+    ed = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    check('el editor de moldes pide ÁREA (selector con las áreas del currículo oficial) y CURSO',
+      !!ed.querySelector('#f-molde-area')
+      && Array.from(ed.querySelectorAll('#f-molde-area option')).some(o => o.value === 'Matemáticas')
+      && ed.querySelector('#f-molde-curso').tagName === 'SELECT'
+      && Array.from(ed.querySelectorAll('#f-molde-curso option')).some(o => o.value === '5º'));
+    ed.querySelector('#f-molde-titulo').value = 'Presentación 5º';
+    ed.querySelector('#f-molde-area').value = 'Matemáticas';
+    ed.querySelector('#f-molde-curso').value = '5º';
+    ed.querySelector('.molde-crit-toggle').click();
+    sel = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    check('el selector de criterios se FILTRA por área y nivel (solo MAT.*, sin el ruido de otras áreas)',
+      sel.textContent.includes('currículo oficial de 5º · Matemáticas')
+      && sel.querySelectorAll('.chip').length > 0
+      && Array.from(sel.querySelectorAll('.chip input')).every(i => i.value.startsWith('MAT.')),
+      'chips=' + sel.querySelectorAll('.chip').length + ' · ' + sel.textContent.slice(0, 120));
+    doc.getElementById('modal-root-2').querySelector('.guardar').click(); // Listo sin marcar nada
+    ed = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    doc.getElementById('modal-root-2').querySelector('.guardar').click();
+    const conArea = S.db.bancoInstrumentos.find(m => m.titulo === 'Presentación 5º');
+    check('el molde guarda su área y su curso PROPIOS (lo que manda el docente, no el origen)',
+      !!conArea && conArea.area === 'Matemáticas' && conArea.curso === '5º',
+      conArea && JSON.stringify({ area: conArea.area, curso: conArea.curso }));
+    // El caso EXACTO del docente: «Libreta (copia)» cambiada a 5º — la
+    // tarjeta se ve limpia, sin «de X» de origen ni curso pegote.
+    el.querySelector('#btn-banco').click();
+    body = doc.querySelector('.modal-body');
+    let tarjetaLib = Array.from(body.querySelectorAll('.fila-banco')).find(f => f.textContent.includes('Libreta'));
+    tarjetaLib.querySelector('.banco-editar').click();
+    ed = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    ed.querySelector('#f-molde-area').value = 'Matemáticas';
+    ed.querySelector('#f-molde-curso').value = '5º';
+    doc.getElementById('modal-root-2').querySelector('.guardar').click();
+    body = doc.querySelector('.modal-body');
+    tarjetaLib = Array.from(body.querySelectorAll('.fila-banco')).find(f => f.textContent.includes('Libreta'));
+    check('la tarjeta del docente queda limpia: «Libreta · Rúbrica · apartados · Matemáticas · 5º»',
+      !!tarjetaLib && tarjetaLib.textContent.includes('Libreta')
+      && tarjetaLib.textContent.includes('Matemáticas') && tarjetaLib.textContent.includes('5º')
+      && !tarjetaLib.textContent.includes('de Matemáticas 6º'),
+      tarjetaLib && tarjetaLib.textContent.replace(/\s+/g, ' ').slice(0, 140));
+    check('la ficha del molde (Ver) también se ve limpia, con su área y su curso propios',
+      (tarjetaLib.querySelector('.banco-ver').click(),
+        (ver => !!ver && ver.textContent.includes('Matemáticas') && ver.textContent.includes('5º')
+          && !ver.textContent.includes('de Matemáticas 6º'))
+        (doc.getElementById('modal-root-2').querySelector('.modal'))));
+
+    // El contador SIEMPRE honesto: al cambiar el área o el curso, los códigos
+    // que no existen en el nuevo contexto no son selección real — se despellan
+    // (el caso del docente: «no hay criterios marcados pero sigue indicando
+    // que hay 1, y me deja guardarlo con ese problema»).
+    S.db.bancoInstrumentos.push({
+      id: 'mFantasma', titulo: 'Prueba 5º', tipo: 'Control', curso: '5º', area: 'Matemáticas',
+      saberes: '', url: '', niveles: [], criteriosModo: 'desglosado', criterioCodesGlobal: [],
+      apartados: [{ descripcion: 'a', maxPts: 10, peso: 1, niveles: [], criterioCodes: ['MAT.5.1'] }],
+      origen: { asignaturaId: '', asignatura: '', etapa: '', guardadoEn: '2025-10-01' }
+    });
+    S.db.bancoInstrumentos.push({
+      id: 'mValido', titulo: 'Numeración PC', tipo: 'Control', curso: '5º', area: 'Matemáticas',
+      saberes: '', url: '', niveles: [], criteriosModo: 'desglosado', criterioCodesGlobal: [],
+      apartados: [{ descripcion: 'a', maxPts: 10, peso: 1, niveles: [], criterioCodes: ['MAT.PC.1.1'] }],
+      origen: { asignaturaId: '', asignatura: '', etapa: '', guardadoEn: '2025-10-01' }
+    });
+    el.querySelector('#btn-banco').click();
+    body = doc.querySelector('.modal-body');
+    let tarjetaFant = Array.from(body.querySelectorAll('.fila-banco')).find(f => f.textContent.includes('Prueba 5º'));
+    tarjetaFant.querySelector('.banco-editar').click();
+    ed = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    // El contador refleja lo GUARDADO al abrir; el selector muestra qué es
+    // válido en su contexto (lo ajeno sale sin marcar) y «Listo» limpia.
+    check('al abrir, el contador refleja lo guardado (1 código de 5º)',
+      ed.querySelector('.molde-crit-toggle').textContent.includes('(1)'),
+      ed.querySelector('.molde-crit-toggle').textContent);
+    ed.querySelector('.molde-crit-toggle').click();
+    let selFant = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    check('el selector del contexto no muestra ese código como marcado (no existe en la plantilla de 5º)',
+      !!selFant && selFant.querySelectorAll('.chip input:checked').length === 0,
+      'marcados=' + String(selFant && selFant.querySelectorAll('.chip input:checked').length));
+    doc.getElementById('modal-root-2').querySelector('.guardar').click(); // «Listo»: limpia a lo real
+    ed = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    check('tras «Listo» el contador es honesto (0): lo que se ve es lo que hay',
+      ed.querySelector('.molde-crit-toggle').textContent.includes('(0)'),
+      ed.querySelector('.molde-crit-toggle').textContent);
+    ed.querySelector('#f-molde-curso').value = '1º';
+    ed.querySelector('#f-molde-curso')._dispara('change');
+    ed = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    check('cambiar el curso despiella los códigos del contexto anterior: el contador pasa a (0)',
+      ed.querySelector('.molde-crit-toggle').textContent.includes('(0)'),
+      ed.querySelector('.molde-crit-toggle').textContent);
+    doc.getElementById('modal-root-2').querySelector('.guardar').click();
+    const moldeLimpio = S.db.bancoInstrumentos.find(m => m.id === 'mFantasma');
+    check('guardar tras el cambio NO deja códigos fantasma de 5º (mostrado y guardado coinciden)',
+      moldeLimpio.curso === '1º' && moldeLimpio.apartados[0].criterioCodes.length === 0,
+      JSON.stringify(moldeLimpio.apartados.map(a => a.criterioCodes)));
+    // Y los códigos VÁLIDOS en el nuevo contexto se conservan (no se sobre-purgan).
+    el.querySelector('#btn-banco').click();
+    body = doc.querySelector('.modal-body');
+    tarjetaFant = Array.from(body.querySelectorAll('.fila-banco')).find(f => f.textContent.includes('Numeración PC'));
+    tarjetaFant.querySelector('.banco-editar').click();
+    ed = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    ed.querySelector('#f-molde-curso').value = '1º';
+    ed.querySelector('#f-molde-curso')._dispara('change');
+    ed = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    check('los códigos que SÍ existen en el nuevo contexto (decreto) sobreviven al cambio',
+      ed.querySelector('.molde-crit-toggle').textContent.includes('(1)'),
+      ed.querySelector('.molde-crit-toggle').textContent);
+    doc.getElementById('modal-root-2').querySelector('.guardar').click();
+    check('y el molde con códigos válidos los guarda (el cambio no pierde la selección real)',
+      S.db.bancoInstrumentos.find(m => m.id === 'mValido').apartados[0].criterioCodes.join(',') === 'MAT.PC.1.1');
   }
 
   console.log('\n== Borrado en cascada sin datos huérfanos ==');
