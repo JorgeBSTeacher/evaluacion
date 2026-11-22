@@ -2261,7 +2261,8 @@ async function main() {
     check('el listado de alumnos del grupo monta el botón de privacidad compartido',
       alum.includes('App.crearBotonPrivacidad(() => render(el))'));
     check('con privacidad, el listado de alumnos del grupo muestra iniciales',
-      alum.includes('App.esAnonimo()') && alum.includes('<td colspan="2">${Utils.esc(App.nombreVisible(a))}</td>'));
+      alum.includes('App.esAnonimo()')
+      && alum.includes('<td colspan="2">${Utils.esc(App.nombreVisible(a))}${conNotas(a)}</td>'));
 
     // 3 · Comportamiento con DOM: el ojo oculta el listado del grupo y el
     // nombre pasa a iniciales («N. Á.» para Noa Álvarez).
@@ -4032,7 +4033,7 @@ async function main() {
       d.schemaVersion === 1, String(d.schemaVersion));
 
     const legacy = estadoLegacy();
-    const alumnosAntes = JSON.stringify(legacy.alumnos);
+    const alumnosAntes = JSON.stringify(legacy.alumnos.map(a => ({ ...a })));
     const registrosAntes = JSON.stringify(legacy.registros);
     check('D74-03 · el backup antiguo de referencia no trae perfil',
       legacy.perfil === undefined);
@@ -4040,8 +4041,14 @@ async function main() {
     check('D74-04 · migrar rellena perfil en un backup sin la clave',
       !!migrado.perfil && migrado.perfil.nombre === '' && migrado.perfil.centro === '' && migrado.perfil.logo === '',
       JSON.stringify(migrado.perfil));
-    check('D74-05 · migrar deja intactos alumnado y notas',
-      JSON.stringify(migrado.alumnos) === alumnosAntes && JSON.stringify(migrado.registros) === registrosAntes);
+    check('D74-05 · migrar deja intactos alumnado y notas (solo añade notas: [] a la ficha)',
+      JSON.stringify(migrado.alumnos.map(al => {
+        const copia = { ...al };
+        delete copia.notas;
+        return copia;
+      })) === alumnosAntes
+      && migrado.alumnos.every(al => Array.isArray(al.notas) && !al.notas.length)
+      && JSON.stringify(migrado.registros) === registrosAntes);
     check('D74-06 · migrar no cambia schemaVersion',
       migrado.schemaVersion === 1, String(migrado.schemaVersion));
 
@@ -5930,11 +5937,14 @@ async function main() {
       doc.body.classList.contains('modal-abierto') === false);
   }
 
-  // == Fin de curso · D-60 simplificado (promoción por paridad y archivo) ==
-  // Paridad del docente: los cursos impares (1º, 3º, 5º) PROMOCIONAN al nivel
-  // siguiente y los pares (2º, 4º, 6º) se ARCHIVAN (fichero de archivo + baja
-  // en cascada). El banco, el perfil, el tema, los ajustes y los grupos con su
-  // alumnado sobreviven siempre.
+  // == Fin de curso · D-60 «mapa completo» (dos verbos por asignatura) ==
+  // Decisión del docente: NO hay paridad automática. Cada asignatura real
+  // ofrece DOS verbos: «Promocionar a N+1º» (el grupo y el alumnado viajan,
+  // el grupo se renombra si su nombre lleva el curso; instrumentos, notas y
+  // currículo se van) y «Terminar» (cascada de borrado; si su grupo quedaría
+  // huérfano, la confirmación trae una casilla marcada por defecto para
+  // eliminarlo con su alumnado). El banco, el perfil, el tema y los ajustes
+  // sobreviven siempre.
   function estadoFinDeCurso() {
     return {
       schemaVersion: 1,
@@ -6015,15 +6025,80 @@ async function main() {
     };
   }
 
+  // Estado para el renombrado de grupos en la promoción: un grupo «3ºA» que
+  // solo usa la asignatura promovida, otro con nombre sin curso («Equipo
+  // azul») y una asignatura de apoyo sin curso para los casos compartidos.
+  function estadoPromoGrupo() {
+    return {
+      schemaVersion: 1,
+      cursoEscolar: '2025/2026',
+      grupos: [
+        { id: 'g1', nombre: '3ºA', etapa: 'Primaria' },
+        { id: 'g2', nombre: 'Equipo azul', etapa: 'Primaria' }
+      ],
+      alumnos: [
+        { id: 'a1', nombre: 'Ana', apellidos: 'Uno', grupoId: 'g1' },
+        { id: 'a2', nombre: 'Beto', apellidos: 'Dos', grupoId: 'g2' }
+      ],
+      asignaturas: [
+        { id: 's1', nombre: 'Música 3º', etapa: 'Primaria', curso: '3º' },
+        { id: 's2', nombre: 'Refuerzo', etapa: 'Primaria', curso: '' }
+      ],
+      clases: [
+        { id: 'c1', asignaturaId: 's1', grupoId: 'g1', nivelesAci: [], adaptaciones: {} },
+        { id: 'c2', asignaturaId: 's2', grupoId: 'g2', nivelesAci: [], adaptaciones: {} }
+      ],
+      competenciasEspecificas: [],
+      criterios: [],
+      instrumentos: [{
+        id: 'i1', claseId: 'c1', tipo: 'Control', titulo: 'Control 3º', fecha: '2026-02-10', periodo: 'T1',
+        saberes: '', unidad: 'UD1', nivel: '',
+        apartados: [{ id: 'p1', orden: 1, descripcion: 'a', maxPts: 10, criterioIds: [] }]
+      }],
+      registros: { i1: { a1: { p1: 7 } } },
+      observaciones: {}
+    };
+  }
+
+  // Estado de la ficha del alumno (fase 1): un instrumento con observación
+  // del docente y registro de a1 (a2 no tiene registro), para comprobar que
+  // el historial lee las observaciones del almacén real sin duplicarlas.
+  function estadoFicha() {
+    return {
+      schemaVersion: 1,
+      cursoEscolar: '2025/2026',
+      grupos: [{ id: 'g1', nombre: '6ºA', etapa: 'Primaria' }],
+      alumnos: [
+        { id: 'a1', nombre: 'Ana', apellidos: 'Uno', grupoId: 'g1' },
+        { id: 'a2', nombre: 'Beto', apellidos: 'Dos', grupoId: 'g1' }
+      ],
+      asignaturas: [{ id: 's1', nombre: 'Matemáticas 6º', etapa: 'Primaria' }],
+      clases: [{ id: 'c1', asignaturaId: 's1', grupoId: 'g1', nivelesAci: [], adaptaciones: {} }],
+      competenciasEspecificas: [],
+      criterios: [{ id: 'k1', asignaturaId: 's1', codigo: 'C1', descripcion: 'c1', peso: 100, espIds: [], claveIds: [] }],
+      instrumentos: [{
+        id: 'i1', claseId: 'c1', tipo: 'Control', titulo: 'Control T1', fecha: '2026-02-10', periodo: 'T1',
+        saberes: '', unidad: 'UD1', nivel: '',
+        apartados: [{ id: 'p1', orden: 1, descripcion: 'a', maxPts: 10, criterioIds: ['k1'] }]
+      }],
+      registros: { i1: { a1: { p1: 8 } } },
+      observaciones: { i1: 'Le cuesta el cálculo mental' }
+    };
+  }
+
   console.log('\n== Fin de curso · D-60: helpers de paridad y de fichero de archivo ==');
   {
     const fuenteStorage = fs.readFileSync(path.join(raiz, 'js', 'storage.js'), 'utf8');
     const fuenteCalc = fs.readFileSync(path.join(raiz, 'js', 'calc.js'), 'utf8');
     const fuenteApp = fs.readFileSync(path.join(raiz, 'js', 'app.js'), 'utf8');
-    check('D-60 · la lógica de datos del fin de curso vive en storage.js (archivo definitivo en el paso 1)',
-      fuenteStorage.includes('promocionarAsignatura') && fuenteStorage.includes('reiniciarAsignatura')
-      && fuenteStorage.includes('exportarContenido')
-      && !fuenteStorage.includes('snapshotDeArchivo') && !fuenteStorage.includes('archivarAsignaturas'));
+    check('D-60 · la lógica de datos del fin de curso vive en storage.js (dos verbos, sin reinicio de pares)',
+      fuenteStorage.includes('promocionarAsignatura') && fuenteStorage.includes('renombresDeGrupo')
+      && fuenteStorage.includes('gruposHuerfanosDe') && fuenteStorage.includes('exportarContenido')
+      && !fuenteStorage.includes('reiniciarAsignatura') && !fuenteStorage.includes('snapshotDeArchivo')
+      && !fuenteStorage.includes('archivarAsignaturas'));
+    check('D-60 · el paso 2 ofrece DOS verbos por asignatura (sin paridad ni lote de checkboxes)',
+      fuenteApp.includes('fdc-terminar') && fuenteApp.includes('Promocionar a')
+      && !fuenteApp.includes('fdc-marca') && !fuenteApp.includes('fdc-empezar'));
     check('D-60 · Inicio edita el curso escolar con botón y modal (sin desplegable)',
       fuenteApp.includes('btn-curso-escolar') && fuenteApp.includes('modalCursoEscolar')
       && !/id="sel-curso"/.test(fuenteApp));
@@ -6080,6 +6155,8 @@ async function main() {
     check('D-60 · las clases, los grupos y el alumnado no se tocan',
       S.db.clases.length === 4 && S.db.clases.some(c => c.id === 'c1' && c.asignaturaId === 's1')
       && S.db.grupos.length === 3 && S.db.alumnos.length === 4);
+    check('D-60 · el grupo compartido con OTRA asignatura no se renombra (aunque su nombre lleve el curso)',
+      S.db.grupos.find(g => g.id === 'g1').nombre === '1ºA');
     check('D-60 · los instrumentos de la asignatura promovida se eliminan (los demás quedan)',
       !S.db.instrumentos.some(i => i.id === 'i1')
       && S.db.instrumentos.some(i => i.id === 'i2') && S.db.instrumentos.some(i => i.id === 'i4'));
@@ -6106,7 +6183,7 @@ async function main() {
       && !app.Storage.db.instrumentos.some(i => i.id === 'i1'));
   }
 
-  console.log('\n== Fin de curso · D-60: eliminación de las pares marcadas ==');
+  console.log('\n== Fin de curso · D-60: terminar (la cascada de borrarAsignatura) ==');
   {
     const app = cargarApp({ dom: true });
     app.Storage.load();
@@ -6125,16 +6202,16 @@ async function main() {
       && (full.bancoInstrumentos || []).length === 1
       && full.perfil && full.perfil.nombre === 'María López' && full.tema && full.configuracion,
       full && 'asignaturas=' + full.asignaturas.length);
-    // Las pares marcadas se eliminan con su cascada; las que no están marcadas se quedan.
+    // Las asignaturas que terminan se eliminan con su cascada; las demás se quedan.
     ['s2', 's4'].forEach(id => S.borrarAsignatura(id));
-    check('D-60 · las pares marcadas desaparecen con sus clases, instrumentos, notas y currículo',
+    check('D-60 · las terminadas desaparecen con sus clases, instrumentos, notas y currículo',
       !S.db.asignaturas.some(x => x.id === 's2' || x.id === 's4')
       && !S.db.clases.some(c => c.id === 'c2' || c.id === 'c4')
       && !S.db.instrumentos.some(i => i.id === 'i2') && !S.db.registros.i2
       && !S.db.criterios.some(c => c.asignaturaId === 's2' || c.asignaturaId === 's4'));
-    check('D-60 · una par SIN marcar se queda en la app (dejarla no la toca, no hay exportación por asignatura)',
+    check('D-60 · las asignaturas que no se terminan se quedan en la app (quedarán en el archivo del paso 1)',
       S.db.asignaturas.some(x => x.id === 's5') && S.db.criterios.some(c => c.asignaturaId === 's5'));
-    check('D-60 · las impares no se tocan al eliminar pares',
+    check('D-60 · las demás asignaturas no se tocan al terminar',
       S.db.asignaturas.some(x => x.id === 's1') && !!S.db.registros.i1);
     check('D-60 · los grupos y el alumnado nunca se tocan',
       S.db.grupos.length === 3 && S.db.alumnos.length === 4);
@@ -6164,29 +6241,68 @@ async function main() {
       && (S.db.clases.find(c => c.id === 'c4').nivelesAci || []).some(n => n.asignaturaId === 's5'));
   }
 
-  console.log('\n== Fin de curso · D-60: reiniciar una par (empezar el curso nuevo sin cambiar de nivel) ==');
+  console.log('\n== Fin de curso · D-60: promoción renombra el grupo si su nombre lleva el curso ==');
+  {
+    const app = cargarApp();
+    app.Storage.load();
+    await importarJson(app, estadoPromoGrupo());
+    const S = app.Storage;
+    check('D-60 · la promoción PREVÉ el renombrado del grupo («3ºA» → «4ºA»)',
+      JSON.stringify(S.renombresDeGrupo('s1', '3º', '4º'))
+        === JSON.stringify([{ id: 'g1', antes: '3ºA', despues: '4ºA' }]),
+      JSON.stringify(S.renombresDeGrupo('s1', '3º', '4º')));
+    // Si OTRA asignatura usa el grupo, no se renombra: el docente lo hará a
+    // mano cuando promocione (o termine) la que lo comparte.
+    S.db.clases.push({ id: 'cX', asignaturaId: 's2', grupoId: 'g1', nivelesAci: [], adaptaciones: {} });
+    check('D-60 · un grupo usado por otra asignatura NO se renombra al promocionar',
+      S.renombresDeGrupo('s1', '3º', '4º').length === 0);
+    S.db.clases.pop();
+    // Un nombre sin patrón de curso («Equipo azul») no se toca nunca.
+    S.db.clases.push({ id: 'cY', asignaturaId: 's1', grupoId: 'g2', nivelesAci: [], adaptaciones: {} });
+    check('D-60 · un grupo cuyo nombre no lleva el curso («Equipo azul») no se renombra',
+      S.renombresDeGrupo('s1', '3º', '4º').every(r => r.antes !== 'Equipo azul'));
+    S.db.clases.pop();
+    const resp = S.promocionarAsignatura('s1', '4º');
+    check('D-60 · la promoción renombra el grupo y el alumnado viaja con él',
+      !!resp && resp.grupos.length === 1 && resp.grupos[0].antes === '3ºA'
+      && resp.grupos[0].despues === '4ºA'
+      && S.db.grupos.find(g => g.id === 'g1').nombre === '4ºA'
+      && S.db.alumnos.some(al => al.id === 'a1'), JSON.stringify(resp));
+    check('D-60 · la promoción sigue limpiando instrumentos y notas',
+      !!resp && resp.instrumentos === 1 && !S.db.registros.i1 && !S.db.instrumentos.some(i => i.id === 'i1'));
+    check('D-60 · el nombre visible de la asignatura sustituye el sufijo del nivel',
+      S.db.asignaturas.find(x => x.id === 's1').nombre === 'Música 4º');
+    check('D-60 · promocionar algo que no existe (o destino vacío) no hace nada',
+      S.promocionarAsignatura('zzz', '4º') === null && S.promocionarAsignatura('s1', '') === null);
+  }
+
+  console.log('\n== Fin de curso · D-60: terminar y el grupo huérfano (casilla marcada por defecto) ==');
   {
     const app = cargarApp();
     app.Storage.load();
     await importarJson(app, estadoFinDeCurso());
     const S = app.Storage;
-    const r = S.reiniciarAsignatura('s2');
-    check('D-60 · el reinicio vacía los instrumentos y las notas de sus clases',
-      !!r && r.instrumentos === 1 && !S.db.instrumentos.some(i => i.id === 'i2') && !S.db.registros.i2,
-      JSON.stringify(r));
-    const a = S.db.asignaturas.find(x => x.id === 's2');
-    check('D-60 · conserva la asignatura, su curso y SU currículo (no cambia de nivel)',
-      !!a && a.curso === '2º' && S.db.criterios.some(c => c.asignaturaId === 's2')
-      && S.db.competenciasEspecificas.some(c => c.asignaturaId === 's2'));
-    check('D-60 · conserva su clase, su grupo y su alumnado (nada se borra por alumno)',
-      S.db.clases.some(c => c.id === 'c2' && c.asignaturaId === 's2')
-      && S.db.grupos.some(g => g.id === 'g2') && S.db.alumnos.some(al => al.id === 'b1'));
-    check('D-60 · las demás asignaturas no se tocan',
-      !!S.db.registros.i1 && !!S.db.registros.i4 && S.db.criterios.some(c => c.asignaturaId === 's4'));
-    check('D-60 · reiniciar algo que no existe no hace nada', S.reiniciarAsignatura('zzz') === null);
-    app.Storage.load();
-    check('D-60 · el reinicio queda guardado y sobrevive a la recarga',
-      !app.Storage.db.registros.i2 && app.Storage.db.criterios.some(c => c.asignaturaId === 's2'));
+    const soportes = S.soportesAciDe(['s4']).map(x => x.id);
+    check('D-60 · Terminar PREVÉ los grupos que quedarían huérfanos, con su alumnado',
+      JSON.stringify(S.gruposHuerfanosDe(['s4'].concat(soportes)))
+        === JSON.stringify([{ id: 'g3', nombre: '6ºA', alumnos: 1 }]),
+      JSON.stringify(S.gruposHuerfanosDe(['s4'].concat(soportes))));
+    // Un grupo que OTRA asignatura sigue usando no queda huérfano.
+    S.db.clases.push({ id: 'cX', asignaturaId: 's1', grupoId: 'g3', nivelesAci: [], adaptaciones: {} });
+    check('D-60 · un grupo que otra asignatura sigue usando NO queda huérfano',
+      S.gruposHuerfanosDe(['s4'].concat(soportes)).length === 0);
+    S.db.clases.pop();
+    check('D-60 · al terminar una asignatura su grupo queda huérfano si nadie más lo usa',
+      JSON.stringify(S.gruposHuerfanosDe(['s2'])) === JSON.stringify([{ id: 'g2', nombre: '2ºA', alumnos: 1 }]));
+    // La baja completa con la casilla marcada (como en el asistente).
+    ['s4'].concat(soportes).forEach(id => S.borrarAsignatura(id));
+    S.borrarGrupo('g3');
+    check('D-60 · la baja completa elimina asignatura, soportes, clases, instrumentos, notas, grupo y alumnado',
+      !S.db.asignaturas.some(x => x.id === 's4' || x.id === 's5' || x.id === 's6')
+      && !S.db.clases.some(c => c.id === 'c4') && !S.db.grupos.some(g => g.id === 'g3')
+      && !S.db.alumnos.some(al => al.id === 'c6al') && !S.db.registros.i4);
+    check('D-60 · los demás grupos y su alumnado sobreviven',
+      S.db.grupos.length === 2 && S.db.alumnos.length === 3 && !!S.db.registros.i1);
   }
 
   console.log('\n== Fin de curso · D-60: guardas del paso 1 ==');
@@ -6208,7 +6324,7 @@ async function main() {
     await new Promise(r => setTimeout(r, 0));
     S.exportarContenido = origContenido;
     check('D-60 · si el paso 1 no se exporta, las acciones siguen bloqueadas y la copia de la sesión no cuenta',
-      S.copiaEnSesion === false && !body.querySelector('.fdc-promo') && !body.querySelector('#fdc-eliminar')
+      S.copiaEnSesion === false && !body.querySelector('.fdc-promo') && !body.querySelector('.fdc-terminar')
       && !!body.querySelector('#fdc-copia'));
     // El nombre del fichero definitivo lo fija el asistente con el curso de
     // cierre capturado al abrir: el valor del campo en vivo no lo cambia.
@@ -6247,7 +6363,7 @@ async function main() {
     check('D-60 · el campo del año es visible ya en el paso 1 (bug del input invisible)',
       !!body.querySelector('#fdc-curso') && body.querySelector('#fdc-curso').tagName === 'INPUT');
     check('D-60 · sin copia, las acciones quedan bloqueadas (no hay botones)',
-      !body.querySelector('.fdc-promo') && !body.querySelector('#fdc-empezar'));
+      !body.querySelector('.fdc-promo') && !body.querySelector('.fdc-terminar'));
     // Paso 1: «Hacer copia ahora» usa el exportar existente.
     let captura = null;
     const descargaOriginal = S.descargar.bind(S);
@@ -6264,116 +6380,112 @@ async function main() {
       body.textContent.includes('¿Comenzar nuevo curso?'));
     check('D-60 · el paso 2 propone el curso escolar siguiente por defecto',
       body.querySelector('#fdc-curso').value === '2026/2027', body.querySelector('#fdc-curso').value);
-    check('D-60 · el paso 2 agrupa por paridad: 1º promociona y los pares se marcan con checkbox',
-      !!body.querySelector('.fdc-promo[data-id="s1"]') && !!body.querySelector('.fdc-marca[data-id="s2"]')
-      && !!body.querySelector('.fdc-marca[data-id="s4"]'));
-    check('D-60 · el paso de pares es un botón único de lote, sin marcadas: «Empezar curso con las asignaturas»',
-      !!body.querySelector('#fdc-empezar')
-      && body.querySelector('#fdc-empezar').textContent === 'Empezar curso con las asignaturas'
-      && body.querySelector('#fdc-empezar').disabled === false,
-      body.querySelector('#fdc-empezar') && body.querySelector('#fdc-empezar').textContent);
+    check('D-60 · el paso 2 lista las asignaturas REALES, cada una con sus DOS verbos',
+      !!body.querySelector('.fdc-promo[data-id="s1"]') && !!body.querySelector('.fdc-terminar[data-id="s1"]')
+      && !!body.querySelector('.fdc-promo[data-id="s2"]') && !!body.querySelector('.fdc-terminar[data-id="s2"]')
+      && !!body.querySelector('.fdc-terminar[data-id="s4"]'));
+    check('D-60 · 6º no ofrece «Promocionar» (no hay 7º): solo Terminar',
+      !body.querySelector('.fdc-promo[data-id="s4"]'),
+      String(!!body.querySelector('.fdc-promo[data-id="s4"]')));
+    check('D-60 · el verbo de promoción siempre dice el nivel siguiente («Promocionar a 2º» para 1º)',
+      body.querySelector('.fdc-promo[data-id="s1"]').textContent === 'Promocionar a 2º'
+      && body.querySelector('.fdc-promo[data-id="s2"]').textContent === 'Promocionar a 3º');
+    check('D-60 · ordenadas por curso (1º antes que 2º antes que 6º), sin grupos por paridad',
+      (html => html.indexOf('data-id="s1"') < html.indexOf('data-id="s2"')
+        && html.indexOf('data-id="s2"') < html.indexOf('data-id="s4"')
+        && !html.includes('Promocionan') && !html.includes('Se eliminan'))
+      (body.innerHTML),
+      'orden=' + (body.innerHTML.indexOf('data-id="s1"') < body.innerHTML.indexOf('data-id="s2"')));
+    check('D-60 · solo las REALES aparecen (las soporte ACI nunca se ofertan)',
+      !body.querySelector('.fdc-promo[data-id="s5"]') && !body.querySelector('.fdc-terminar[data-id="s5"]')
+      && !body.textContent.includes('Lengua 1º'));
     check('D-60 · la asignatura sin curso se lista sin acción',
       body.textContent.includes('Taller de ajedrez')
-      && !body.querySelector('.fdc-promo[data-id="s3"]') && !body.querySelector('.fdc-marca[data-id="s3"]'));
-    // El campo es editable: un valor distinto del +1 manda cuando se aplica
-    // (el «input» es lo que dispara el navegador al teclear; sin él, el
-    // repintado por checkbox restauraría el valor por defecto).
-    const campo = body.querySelector('#fdc-curso');
-    campo.value = '2027/2028';
-    campo._dispara('input');
-    // Sin marcar NADA: la confirmación lista solo el bloque de mantenidas
-    // (el botón inicia el curso nuevo para todas las pares). Se cancela.
-    body.querySelector('#fdc-empezar').click();
+      && !body.querySelector('.fdc-promo[data-id="s3"]') && !body.querySelector('.fdc-terminar[data-id="s3"]'));
+    // Terminar una 2º: su grupo g2 quedaría huérfano → casilla marcada por defecto.
+    body.querySelector('.fdc-terminar[data-id="s2"]').click();
     let confirmacion = doc.getElementById('modal-root-2').querySelector('.modal-body');
-    check('D-60 · sin marcadas, la confirmación solo ofrece MANTENER las pares empezando el curso nuevo',
-      !!confirmacion && !confirmacion.textContent.includes('Se ELIMINAN')
-      && confirmacion.textContent.includes('MANTIENEN empezando')
+    check('D-60 · la confirmación de Terminar avisa de la cascada y recuerda el archivo del paso 1',
+      !!confirmacion && confirmacion.textContent.includes('ELIMINA')
       && confirmacion.textContent.includes('Matemáticas 2º')
-      && confirmacion.textContent.includes('Conocimiento del Medio 6º'),
+      && confirmacion.textContent.includes('EVALUACIÓN_2025-2026.json'),
       confirmacion && confirmacion.textContent.slice(0, 300));
-    doc.getElementById('modal-root-2').querySelector('.cancelar').click();
-    check('D-60 · cancelar no toca nada (ni borrados ni reinicios ni curso)',
-      S.db.asignaturas.some(x => x.id === 's2') && !!S.db.registros.i2
-      && S.db.cursoEscolar === '2025/2026' && !doc.getElementById('modal-root-2').innerHTML);
-    // Lote con marcada y sin marcar: la confirmación lista los DOS bloques.
-    body.querySelector('.fdc-marca[data-id="s4"]').checked = true;
-    // La etiqueta cambia con la selección (re-render del asistente).
-    body.querySelector('.fdc-marca[data-id="s4"]')._dispara('change');
-    const btnTras = doc.querySelector('.modal-body #fdc-empezar');
-    check('D-60 · con alguna marcada, la etiqueta pasa a «Eliminar las marcadas y pasar al curso nuevo»',
-      !!btnTras && btnTras.textContent === 'Eliminar las marcadas y pasar al curso nuevo',
-      btnTras && btnTras.textContent);
-    body.querySelector('#fdc-empezar').click();
+    check('D-60 · el grupo huérfano trae la casilla MARCADA POR DEFECTO con el recuento de alumnado',
+      !!confirmacion.querySelector('.fdc-baja-grupo[data-grupo="g2"]')
+      && confirmacion.querySelector('.fdc-baja-grupo[data-grupo="g2"]').checked === true
+      && confirmacion.textContent.includes('1 alumno'),
+      confirmacion && confirmacion.textContent.slice(0, 400));
+    // Casilla desmarcada → el grupo se queda (caso «línea única»: lo reutilizará).
+    confirmacion.querySelector('.fdc-baja-grupo[data-grupo="g2"]').checked = false;
+    doc.getElementById('modal-root-2').querySelector('.guardar').click();
+    await new Promise(r => setTimeout(r, 0));
+    check('D-60 · casilla desmarcada: la asignatura se elimina y el GRUPO se queda con su alumnado',
+      !S.db.asignaturas.some(x => x.id === 's2') && !S.db.registros.i2
+      && S.db.grupos.some(g => g.id === 'g2') && S.db.alumnos.some(al => al.id === 'b1'));
+    check('D-60 · mientras quede algo por tratar, el asistente sigue abierto',
+      !!doc.getElementById('modal-root').innerHTML && !!doc.querySelector('.modal-body .fdc-promo[data-id="s1"]'));
+    check('D-60 · el paso 1 ya exportó el archivo completo (todo el estado de antes de las bajas)',
+      !!captura && captura.nombre === 'EVALUACIÓN_2025-2026.json'
+      && JSON.parse(captura.contenido).asignaturas.length === 7);
+    // Terminar la de 6º: soportes ACI exclusivas + grupo huérfano con casilla.
+    body.querySelector('.fdc-terminar[data-id="s4"]').click();
     confirmacion = doc.getElementById('modal-root-2').querySelector('.modal-body');
-    check('D-60 · la confirmación lista lo que se ELIMINA (quedan en el archivo definitivo)',
-      !!confirmacion && confirmacion.textContent.includes('Se ELIMINAN')
-      && confirmacion.textContent.includes('Conocimiento del Medio 6º'),
-      confirmacion && confirmacion.textContent.slice(0, 220));
-    check('D-60 · la confirmación lista lo que se MANTIENE empezando el curso nuevo (vaciar instrumentos y notas)',
-      confirmacion.textContent.includes('MANTIENEN empezando')
-      && confirmacion.textContent.includes('Matemáticas 2º'),
-      confirmacion && confirmacion.textContent.slice(0, 300));
-    check('D-60 · la confirmación avisa de que se van también los currículos ACI de soporte de la eliminada',
-      confirmacion.textContent.includes('currículos ACI de soporte')
+    check('D-60 · la confirmación avisa de que se van también los currículos ACI de soporte',
+      !!confirmacion && confirmacion.textContent.includes('soporte')
       && confirmacion.textContent.includes('Lengua 2º')
       && confirmacion.textContent.includes('Conocimiento del Medio 4º'),
       confirmacion && confirmacion.textContent.slice(0, 400));
-    check('D-60 · la confirmación recuerda el archivo definitivo del paso 1',
-      confirmacion.textContent.includes('archivo definitivo')
-      && confirmacion.textContent.includes('EVALUACIÓN_2025-2026.json'));
+    check('D-60 · el grupo de 6ºA quedaría huérfano: casilla marcada por defecto (1 alumno)',
+      !!confirmacion.querySelector('.fdc-baja-grupo[data-grupo="g3"]')
+      && confirmacion.querySelector('.fdc-baja-grupo[data-grupo="g3"]').checked === true);
     doc.getElementById('modal-root-2').querySelector('.guardar').click();
     await new Promise(r => setTimeout(r, 0));
-    check('D-60 · la marcada se elimina (con sus soportes) y el paso 1 ya exportó el archivo completo',
+    check('D-60 · Terminar elimina la asignatura, sus soportes exclusivas y el grupo marcado con su alumnado',
       !S.db.asignaturas.some(x => x.id === 's4' || x.id === 's5' || x.id === 's6')
-      && !!captura && captura.nombre === 'EVALUACIÓN_2025-2026.json'
-      && JSON.parse(captura.contenido).asignaturas.length === 7);
-    const s2 = S.db.asignaturas.find(x => x.id === 's2');
-    check('D-60 · la SIN marcar se mantiene empezando el curso nuevo: instrumentos y notas vaciados',
-      !!s2 && !S.db.instrumentos.some(i => i.id === 'i2') && !S.db.registros.i2,
-      JSON.stringify(s2));
-    check('D-60 · la mantenida conserva curso, currículo, clase, grupo y alumnado (no cambia de nivel)',
-      !!s2 && s2.curso === '2º' && S.db.criterios.some(c => c.asignaturaId === 's2')
-      && S.db.clases.some(c => c.id === 'c2' && c.asignaturaId === 's2')
-      && S.db.alumnos.some(al => al.id === 'b1'));
-    check('D-60 · la mantenida sale del lote (sin checkbox: ya empezó el curso nuevo)',
-      !body.querySelector('.fdc-marca[data-id="s2"]'));
-    check('D-60 · mientras quede algo por tratar, el asistente sigue abierto (queda 1º por promover)',
-      !!doc.getElementById('modal-root').innerHTML && !!doc.querySelector('.modal-body .fdc-promo'));
-    check('D-60 · sin pares por tratar, el botón de pares queda desactivado (tercer estado)',
-      !!doc.querySelector('.modal-body #fdc-empezar')
-      && doc.querySelector('.modal-body #fdc-empezar').disabled === true,
-      String(doc.querySelector('.modal-body #fdc-empezar') && doc.querySelector('.modal-body #fdc-empezar').disabled));
-    check('D-60 · la acción de pares aplica el curso nuevo y repinta el Inicio de fondo sin F5',
-      S.db.cursoEscolar === '2027/2028' && appEl.textContent.includes('Curso escolar: 2027/2028'),
-      appEl.textContent.slice(0, 160));
-    check('D-60 · el asistente avisa del fichero definitivo (sobrescritura)',
-      body.textContent.includes('sobrescribe'));
-    // Promoción del impar pendiente: agota lo pendiente → cierre automático.
+      && !S.db.clases.some(c => c.id === 'c4') && !S.db.grupos.some(g => g.id === 'g3')
+      && !S.db.alumnos.some(al => al.id === 'c6al') && !S.db.registros.i4);
+    check('D-60 · el fondo se repinta sin F5 (la fila de 6ºA ya no está en Inicio)',
+      !appEl.innerHTML.includes('<td>6ºA</td>'), appEl.textContent.slice(0, 160));
+    // Promoción de la 1º pendiente: con capa 2 de confirmación.
     body.querySelector('.fdc-promo[data-id="s1"]').click();
-    check('D-60 · promocionar desde el asistente cambia el nivel y limpia instrumentos y currículo',
+    confirmacion = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    check('D-60 · la confirmación de Promocionar explica el viaje (grupo y alumnado van, lo demás se elimina)',
+      !!confirmacion && confirmacion.textContent.includes('2º')
+      && confirmacion.textContent.includes('alumnado')
+      && confirmacion.textContent.includes('Recuperar currículo oficial'),
+      confirmacion && confirmacion.textContent.slice(0, 400));
+    check('D-60 · la confirmación recuerda el archivo definitivo del paso 1',
+      confirmacion.textContent.includes('EVALUACIÓN_2025-2026.json'));
+    check('D-60 · el grupo compartido con otra asignatura no se promete renombrado',
+      !confirmacion.textContent.includes('«1ºA»'),
+      confirmacion && confirmacion.textContent.slice(0, 400));
+    doc.getElementById('modal-root-2').querySelector('.guardar').click();
+    await new Promise(r => setTimeout(r, 0));
+    check('D-60 · promocionar desde el asistente cambia el nivel y limpia instrumentos, notas y currículo',
       S.db.asignaturas.some(x => x.id === 's1' && x.curso === '2º')
       && !S.db.instrumentos.some(i => i.id === 'i1') && !S.db.registros.i1
       && !S.db.criterios.some(c => c.asignaturaId === 's1'));
-    check('D-60 · la fila promocionada sale del grupo de promoción',
-      !body.querySelector('.fdc-promo[data-id="s1"]'));
+    check('D-60 · la fila promocionada deja de ofrecer acciones (badge de sesión)',
+      !body.querySelector('.fdc-promo[data-id="s1"]') && !body.querySelector('.fdc-terminar[data-id="s1"]'));
     check('D-60 · promocionar se lleva también sus currículos ACI de soporte exclusivos (Lengua 1º)',
       !S.db.asignaturas.some(x => x.id === 's7')
-      && !(S.db.clases.find(c => c.id === 'c1').nivelesAci || []).some(n => n.asignaturaId === 's7')
-      && (S.db.clases.find(c => c.id === 'c1').nivelesAci || []).some(n => n.asignaturaId === 's2'),
+      && !(S.db.clases.find(c => c.id === 'c1').nivelesAci || []).some(n => n.asignaturaId === 's7'),
       JSON.stringify(S.db.clases.find(c => c.id === 'c1').nivelesAci));
     check('D-60 · sin nada por tratar, el asistente se cierra solo y lleva a Inicio',
       !doc.getElementById('modal-root').innerHTML && !doc.getElementById('modal-root-2').innerHTML
       && app.App.seccionActual() === 'inicio');
-    check('D-60 · el cierre avisa con el resumen (toast «Curso cerrado»)',
-      doc.getElementById('toast-root').textContent.includes('Curso cerrado'),
+    check('D-60 · el cierre avisa con el resumen: promovidas, terminadas y grupos eliminados',
+      (t => t.includes('Curso cerrado') && t.includes('1 promovida') && t.includes('2 terminada')
+        && t.includes('1 grupo'))(doc.getElementById('toast-root').textContent),
       doc.getElementById('toast-root').textContent);
-    check('D-60 · Inicio queda repintado con el estado nuevo (la promovida y la mantenida, sin 6ºA)',
+    check('D-60 · cualquier acción aplica el curso nuevo del campo (por defecto, +1)',
+      S.db.cursoEscolar === '2026/2027' && appEl.textContent.includes('Curso escolar: 2026/2027'),
+      appEl.textContent.slice(0, 160));
+    check('D-60 · Inicio queda repintado con el estado nuevo (la promovida, sin 6ºA)',
       appEl.innerHTML.includes('Matemáticas 2º</b> · 1ºA')
-      && appEl.innerHTML.includes('Matemáticas 2º</b> · 2ºA')
       && !appEl.innerHTML.includes('<td>6ºA</td>')
       && appEl.innerHTML.includes('Hay cambios desde tu última copia'),
-      'promovida=' + appEl.innerHTML.includes('Matemáticas 2º</b> · 1ºA')
-      + ' mantenida=' + appEl.innerHTML.includes('Matemáticas 2º</b> · 2ºA'));
+      'promovida=' + appEl.innerHTML.includes('Matemáticas 2º</b> · 1ºA'));
   }
 
   console.log('\n== Fin de curso · D-60: curso escolar a mano (input validado) ==');
@@ -6403,6 +6515,8 @@ async function main() {
       body.querySelector('#fdc-curso-error').textContent.includes('Formato esperado'),
       body.querySelector('#fdc-curso-error').textContent);
     body.querySelector('.fdc-promo[data-id="s1"]').click();
+    doc.getElementById('modal-root-2').querySelector('.guardar').click();
+    await new Promise(r => setTimeout(r, 0));
     check('D-60 · con el campo inválido, la promoción NO aplica el curso escolar (se conserva el de cierre)',
       S.db.cursoEscolar === '2025/2026', S.db.cursoEscolar);
     check('D-60 · con el campo inválido, la promoción de la asignatura sí se completa',
@@ -6421,12 +6535,13 @@ async function main() {
     campo2._dispara('blur');
     check('D-60 · un valor válido limpia el aviso',
       body.querySelector('#fdc-curso-error').textContent === '');
-    body.querySelector('.fdc-marca[data-id="s2"]').checked = true;
-    body.querySelector('#fdc-empezar').click();
+    body.querySelector('.fdc-terminar[data-id="s2"]').click();
     doc.getElementById('modal-root-2').querySelector('.guardar').click();
     await new Promise(r => setTimeout(r, 0));
     check('D-60 · el valor válido se aplica al completar la siguiente acción',
       S.db.cursoEscolar === '2027/2028', S.db.cursoEscolar);
+    check('D-60 · la casilla del grupo huérfano, marcada por defecto, se llevó el grupo con su alumnado',
+      !S.db.grupos.some(g => g.id === 'g2') && !S.db.alumnos.some(al => al.id === 'b1'));
   }
 
   console.log('\n== Inicio · curso escolar a mano (botón + modal validado) ==');
@@ -6468,6 +6583,132 @@ async function main() {
       S.db.cursoEscolar);
     check('el cambio queda guardado (Storage.save escribe el localStorage)',
       app.localStorage.getItem('evalcrit:data').includes('2026/2027'));
+  }
+
+  console.log('\n== Ficha del alumno (fase 1): modelo ==');
+  {
+    const fuenteVista = fs.readFileSync(path.join(raiz, 'js', 'views-alumnos.js'), 'utf8');
+    const fuenteStorage = fs.readFileSync(path.join(raiz, 'js', 'storage.js'), 'utf8');
+    check('la ficha del alumno vive en views-alumnos.js y la fila usa el botón «Ficha»',
+      fuenteVista.includes('>Ficha</button>') && !/editar-alumno[^>]*>Editar</.test(fuenteVista));
+    check('el bloque Historial alta con fecha y delega la escritura en el modelo',
+      fuenteVista.includes('historial-alumno') && fuenteVista.includes('btn-nota-add')
+      && fuenteStorage.includes('guardarNotaAlumno') && fuenteStorage.includes('historialAlumno'));
+    check('las observaciones del instrumento se LEEN del almacén real (db.observaciones + registros), sin duplicarlas',
+      fuenteStorage.includes('this.db.observaciones') && fuenteVista.includes('nota-inst'));
+
+    const app = cargarApp();
+    app.Storage.load();
+    await importarJson(app, estadoLegacy()); // backups antiguos: los alumnos no traen notas
+    const S = app.Storage;
+    check('migrar rellena notas: [] en los alumnos de backups antiguos',
+      S.db.alumnos.length > 0 && S.db.alumnos.every(a => Array.isArray(a.notas) && !a.notas.length));
+    check('guardarNotaAlumno guarda { fecha, texto } en db.alumnos[].notas',
+      !!S.guardarNotaAlumno('a1', '2026-01-15', 'Mejoró en lectura')
+      && S.db.alumnos.find(a => a.id === 'a1').notas.length === 1
+      && S.db.alumnos.find(a => a.id === 'a1').notas[0].fecha === '2026-01-15'
+      && S.db.alumnos.find(a => a.id === 'a1').notas[0].texto === 'Mejoró en lectura');
+    check('sin texto no se guarda anotación',
+      S.guardarNotaAlumno('a1', '2026-01-16', '   ') === null
+      && S.db.alumnos.find(a => a.id === 'a1').notas.length === 1);
+    check('anotar a un alumno que no existe no hace nada',
+      S.guardarNotaAlumno('zzz', '2026-01-15', 'x') === null);
+
+    await importarJson(app, estadoFicha());
+    const S2 = app.Storage;
+    S2.guardarNotaAlumno('a1', '2026-03-02', 'Duda con la ortografía');
+    const hist = S2.historialAlumno('a1');
+    check('el historial junta ficha e instrumento ordenado por fecha DESCENDENTE',
+      hist.length === 2 && hist[0].tipo === 'ficha' && hist[0].fecha === '2026-03-02'
+      && hist[1].tipo === 'instrumento' && hist[1].fecha === '2026-02-10', JSON.stringify(hist));
+    check('la entrada de instrumento enlaza con el instrumento del almacén real (no lo duplica)',
+      hist[1].instrumentoId === 'i1' && hist[1].instrumentoTitulo === 'Control T1'
+      && hist[1].texto === 'Le cuesta el cálculo mental', JSON.stringify(hist[1]));
+    check('un alumno SIN registro en el instrumento no hereda su observación',
+      S2.historialAlumno('a2').length === 0, JSON.stringify(S2.historialAlumno('a2')));
+  }
+
+  console.log('\n== Ficha del alumno (fase 1): UI (listado, historial y enlace) ==');
+  {
+    const app = cargarApp({ dom: true });
+    app.Storage.load();
+    await importarJson(app, estadoFicha());
+    const doc = app.document;
+    const S = app.Storage;
+    const v = doc.getElementById('app');
+    app.App.ir('alumnos');
+    v.querySelector('#lista-grupos li[data-id]').click();
+    check('el botón de la fila es «Ficha» (ya no «Editar»)',
+      !!v.querySelector('.editar-alumno') && v.querySelector('.editar-alumno').textContent === 'Ficha');
+    check('sin anotaciones no hay icono de aviso en el listado', !v.querySelector('.icono-nota-alumno'));
+    // Las filas van por apellidos («Dos» antes que «Uno»): se abre la ficha
+    // de Ana (a1), que es quien tiene registro en el instrumento.
+    const filaAna = Array.from(v.querySelectorAll('.tabla tbody tr')).find(tr => tr.textContent.includes('Uno'));
+    filaAna.querySelector('.editar-alumno').click();
+    let m = doc.querySelector('.modal-body');
+    check('la ficha del alumno llega con el bloque Historial',
+      !!m && !!m.querySelector('#historial-alumno') && !!m.querySelector('#f-nota-fecha'));
+    check('la fecha por defecto de la anotación es HOY, editable',
+      m.querySelector('#f-nota-fecha').value === app.Utils.hoy() && m.querySelector('#f-nota-fecha').tagName === 'INPUT');
+    m.querySelector('#f-nota-texto').value = 'Mejoró en lectura';
+    m.querySelector('#btn-nota-add').click();
+    check('el alta desde la ficha guarda la anotación con la fecha del campo',
+      S.db.alumnos.find(a => a.id === 'a1').notas.length === 1
+      && S.db.alumnos.find(a => a.id === 'a1').notas[0].texto === 'Mejoró en lectura'
+      && S.db.alumnos.find(a => a.id === 'a1').notas[0].fecha === app.Utils.hoy());
+    m = doc.querySelector('.modal-body'); // reconsultar: el historial se repintó dentro del modal
+    check('la anotación aparece en el historial con su marca de tipo (ficha)',
+      m.querySelectorAll('.historial-entrada').length === 2
+      && m.querySelector('.historial-entrada').textContent.includes('Mejoró en lectura')
+      && m.querySelector('.historial-entrada .badge').textContent.includes('ficha'));
+    // Segunda anotación, más antigua: la lista manda la reciente arriba.
+    m.querySelector('#f-nota-fecha').value = '2026-01-10';
+    m.querySelector('#f-nota-texto').value = 'Anotación antigua';
+    m.querySelector('#btn-nota-add').click();
+    m = doc.querySelector('.modal-body');
+    const entradas = Array.from(m.querySelectorAll('.historial-entrada'));
+    const hoyLegible = (([y, m2, d]) => d + '-' + m2 + '-' + y)(app.Utils.hoy().split('-'));
+    check('el historial ordena con la más RECIENTE arriba',
+      entradas.length === 3 && entradas[0].textContent.includes('Mejoró en lectura')
+      && entradas[2].textContent.includes('Anotación antigua')
+      && entradas.map(li => li.querySelector('.historial-fecha').textContent).join('|')
+        === [hoyLegible, '10-02-2026', '10-01-2026'].join('|'),
+      JSON.stringify(entradas.map(e => e.textContent.replace(/\s+/g, ' ').trim().slice(0, 40))));
+    check('la observación del instrumento aparece SOLO LECTURA, con su marca y el enlace',
+      m.textContent.includes('Le cuesta el cálculo mental')
+      && Array.from(m.querySelectorAll('.historial-entrada'))
+        .some(li => li.textContent.includes('instrumento') && !!li.querySelector('.nota-inst[data-inst="i1"]')));
+    check('las observaciones no se dejan editar desde la ficha (sin input de texto en esa entrada)',
+      !Array.from(m.querySelectorAll('.historial-entrada'))
+        .some(li => li.textContent.includes('Le cuesta el cálculo mental') && !!li.querySelector('input')));
+    m.querySelector('.nota-inst[data-inst="i1"]').click();
+    check('el enlace del instrumento abre su corrección (modal cerrado, vista repintada sin F5)',
+      !doc.querySelector('.modal-body') && v.innerHTML.includes('Control T1')
+      && app.App.seccionActual() === 'evaluacion',
+      app.App.seccionActual());
+    // Volver al listado: el icono de aviso neutro solo en el alumno con anotaciones.
+    app.App.ir('alumnos');
+    v.querySelector('#lista-grupos li[data-id]').click();
+    check('el alumno con anotaciones muestra el icono de aviso NEUTRO junto al nombre',
+      !!v.querySelector('.icono-nota-alumno'));
+    const filas = Array.from(v.querySelectorAll('.tabla tbody tr'));
+    check('el icono solo sale en la fila del alumno con anotaciones',
+      filas.some(tr => tr.textContent.includes('Ana') && !!tr.querySelector('.icono-nota-alumno'))
+      && filas.some(tr => tr.textContent.includes('Beto') && !tr.querySelector('.icono-nota-alumno')));
+    // Las notas viajan con el alumno: sobreviven a la promoción…
+    S.promocionarAsignatura('s1', '2º');
+    check('las anotaciones sobreviven a la promoción (el alumno no se toca)',
+      S.db.alumnos.find(a => a.id === 'a1').notas.length === 2);
+    // …y van al archivo definitivo si luego se elimina el grupo.
+    let captura = null;
+    const descargaOriginal = S.descargar.bind(S);
+    S.descargar = (contenido, nombre) => { captura = { contenido, nombre }; return descargaOriginal(contenido, nombre); };
+    await S.exportar('EVALUACIÓN_2025-2026.json');
+    check('las anotaciones van al archivo definitivo (snapshot completo: alumnos con sus notas)',
+      !!captura && JSON.parse(captura.contenido).alumnos.find(a => a.id === 'a1').notas.length === 2);
+    S.borrarGrupo('g1');
+    check('al eliminar el grupo, el alumnado (con sus anotaciones) queda SOLO en el archivo',
+      !S.db.alumnos.some(a => a.id === 'a1') && !!captura);
   }
 
   console.log('\n== Fin de curso · D-60: asignaturas reales y soporte ACI ==');

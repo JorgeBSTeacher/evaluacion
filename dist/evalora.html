@@ -365,8 +365,8 @@ main { max-width: 1440px; margin: 0 auto; padding: 20px 18px 60px; }
 .btn:hover:not(:disabled) { border-color: var(--acento); color: var(--acento); }
 .btn-primario { background: var(--acento); border-color: var(--acento); color: #fff; }
 .btn-primario:hover:not(:disabled) { filter: brightness(1.07); color: #fff; }
-.btn-peligro { color: var(--ko); border-color: #f3caca; }
-.btn-peligro:hover:not(:disabled) { background: var(--ko-suave); border-color: var(--ko); color: var(--ko); }
+.btn-peligro { background: var(--ko); border-color: var(--ko); color: #fff; }
+.btn-peligro:hover:not(:disabled) { filter: brightness(1.07); color: #fff; }
 /* Bloque para acciones irreversibles (p. ej. borrar todo), separado del resto. */
 .zona-peligro {
   margin-top: 14px; padding: 12px 14px;
@@ -1177,6 +1177,28 @@ body.modal-abierto { overflow: hidden; }
 /* Cada nivel (Base, ACI 1, ACI 2…) empieza en una hoja nueva. */
 .informe-seccion + .informe-seccion { break-before: page; page-break-before: always; }
 
+/* Ficha del alumno (fase 1): bloque «Historial» del modal. Las anotaciones
+   de la ficha se dan de alta con fecha (hoy por defecto, editable) y texto
+   libre; las observaciones de los instrumentos entran SOLO LECTURA, con su
+   enlace a la corrección. Lista ordenada por fecha descendente. */
+.historial-alumno { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--linea); }
+.historial-nueva { display: flex; align-items: center; gap: 8px; margin: 8px 0 10px; flex-wrap: wrap; }
+.historial-nueva input[type="date"] { width: auto; flex: 0 0 auto; }
+.historial-nueva input[type="text"] { flex: 1; min-width: 170px; }
+.historial-lista { list-style: none; margin: 0; padding: 0; max-height: 220px; overflow: auto; }
+.historial-entrada {
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 6px 0; border-bottom: 1px dashed var(--linea);
+}
+.historial-entrada .badge { flex: 0 0 auto; }
+.historial-fecha { flex: 0 0 auto; color: var(--tinta-suave); font-size: 12px; white-space: nowrap; }
+.historial-texto { flex: 1; min-width: 0; }
+.historial-texto .nota-inst { margin-left: 8px; }
+.historial-vacio { color: var(--tinta-suave); font-size: 12px; }
+/* Icono neutro de anotaciones junto al nombre en el listado (no es una
+   alarma: material interno del docente). */
+.icono-nota-alumno { color: var(--na); font-size: 12px; margin-left: 6px; }
+
 </style>
 </head>
 <body>
@@ -1750,6 +1772,11 @@ const Storage = {
     if (typeof db.tema.color !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(db.tema.color)) db.tema.color = '#1f5c6b';
     if (typeof db.tema.nav !== 'string') db.tema.nav = 'topbar';
     db.grupos.forEach(g => { if (g.etapa == null) g.etapa = ''; });
+    // Anotaciones de la ficha del alumno (fase 1): cada alumno lleva su
+    // historial en `notas` = [{ fecha (ISO), texto }]. Los backups antiguos
+    // no traen la clave: se rellena a [] y viaja con el alumno (sobrevive a
+    // la promoción y va al archivo en el snapshot de las bajas).
+    db.alumnos.forEach(al => { if (!Array.isArray(al.notas)) al.notas = []; });
     // La asignatura recuerda de qué curso es su currículo (p. ej. «6º») y su
     // fuente legal (la cita del decreto). Backups antiguos no los traen.
     db.asignaturas.forEach(a => {
@@ -2068,6 +2095,64 @@ const Storage = {
     return resp;
   },
 
+  // --- Ficha del alumno (fase 1) ---
+  // Anotaciones de la ficha: texto libre con fecha (editable, hoy por
+  // defecto), guardadas en `alumno.notas` — NUNCA participan en cálculos ni
+  // salen en informes impresos (material interno del docente). Las
+  // observaciones de los instrumentos NO se duplican: viven donde siempre
+  // (`db.observaciones[instrumentoId]`, D-74c) y el historial las lee del
+  // almacén real, enlazadas por los registros del alumno en cada instrumento.
+
+  // Alta de una anotación de ficha: { fecha (ISO), texto }. Devuelve la
+  // anotación guardada, o null si no hay texto (una anotación vacía no
+  // existe) o el alumno no existe.
+  guardarNotaAlumno(alumnoId, fecha, texto) {
+    const a = this.db.alumnos.find(x => x.id === alumnoId);
+    const t = String(texto == null ? '' : texto).trim();
+    if (!a || !t) return null;
+    if (!Array.isArray(a.notas)) a.notas = [];
+    const anotacion = { fecha: String(fecha || '').trim() || Utils.hoy(), texto: t };
+    a.notas.push(anotacion);
+    this.save();
+    return anotacion;
+  },
+
+  // Historial de la ficha: las anotaciones propias (tipo «ficha») y las
+  // observaciones de los instrumentos donde el alumno TIENE REGISTRO
+  // (`db.registros[instId][alumnoId]` con alguna nota — la exclusión
+  // «noRealiza» no cuenta: no hay notas que comentar). Cada entrada de
+  // instrumento lleva el id y el título para el enlace; el texto es el de
+  // `db.observaciones`, leído en vivo (nunca copiado). Orden: fecha
+  // descendente (lo más reciente arriba).
+  historialAlumno(alumnoId) {
+    const a = this.db.alumnos.find(x => x.id === alumnoId);
+    if (!a) return [];
+    const fichas = (Array.isArray(a.notas) ? a.notas : [])
+      .filter(n => n && String(n.texto || '').trim())
+      .map(n => ({ tipo: 'ficha', fecha: String(n.fecha || ''), texto: String(n.texto) }));
+    const registros = this.db.registros || {};
+    const observaciones = this.db.observaciones || {};
+    const insts = [];
+    Object.keys(registros).forEach(instId => {
+      const reg = registros[instId] && registros[instId][alumnoId];
+      if (!reg || typeof reg !== 'object') return;
+      const conNota = Object.keys(reg).some(k => k !== 'noRealiza' && reg[k] != null && reg[k] !== '');
+      if (!conNota) return;
+      const texto = String(observaciones[instId] == null ? '' : observaciones[instId]).trim();
+      if (!texto) return;
+      const inst = this.db.instrumentos.find(x => x.id === instId);
+      insts.push({
+        tipo: 'instrumento',
+        fecha: String((inst && inst.fecha) || ''),
+        texto,
+        instrumentoId: instId,
+        instrumentoTitulo: inst ? String(inst.titulo || '') : ''
+      });
+    });
+    return fichas.concat(insts)
+      .sort((x, y) => String(y.fecha || '').localeCompare(String(x.fecha || '')));
+  },
+
   // --- Borrado en cascada (punto único) ---
   // Antes cada vista reimplementaba su cascada a mano y dos de ellas dejaban
   // datos huérfanos: notas de instrumentos que ya no existían y notas de
@@ -2166,15 +2251,18 @@ const Storage = {
     return resp;
   },
 
-  // --- Fin de curso (D-60) ---
-  // Paridad del docente: los cursos impares (1º, 3º, 5º) PROMOCIONAN al nivel
-  // siguiente y los pares (2º, 4º, 6º) empiezan el curso nuevo: las marcadas
-  // se ELIMINAN (quedan en el archivo definitivo del paso 1) y las SIN
-  // marcar se REINICIAN (vaciar instrumentos y notas, conservando nivel,
-  // currículo, clase, grupo y alumnado) — ver reiniciarAsignatura. La
-  // paridad la decide la vista (el «curso» de una asignatura también se
-  // deduce del nombre, D-67); aquí vive solo la escritura de datos, junto a
-  // la cascada de borrado.
+  // --- Fin de curso (D-60, «mapa completo») ---
+  // Dos verbos por asignatura, decisión del docente: SIN paridad automática.
+  // Cada asignatura REAL (con alguna clase con alumnado) ofrece en el
+  // asistente «Promocionar a N+1º» o «Terminar»; la paridad del diseño
+  // anterior (impares promocionan / pares se eliminan o empiezan el curso
+  // sin cambiar de nivel) quedó fuera, junto con la acción de reinicio del
+  // lote de checkboxes que la aplicaba.
+  //
+  // La paridad SOLO sobrevive como utilidad pura de la vista (App.finCurso
+  // .paridadDeCurso) para numerar el botón «Promocionar a N+1º» y detectar
+  // asignaturas sin curso; la escritura de datos vive aquí, junto a la
+  // cascada de borrado.
   //
   // Asignaturas REALES vs SOPORTE ACI: una asignatura es REAL si tiene
   // alguna clase con alumnado (ahí viven sus calificaciones y ahí
@@ -2217,12 +2305,16 @@ const Storage = {
   // docente carga el del nivel nuevo con «Recuperar currículo oficial» (que
   // exige una asignatura sin currículo). El banco de instrumentos no se
   // toca: sus moldes guardan los criterios por código y sobreviven igual.
-  // Devuelve { clases, instrumentos, criterios } o null si no hay nada.
+  // El GRUPO viaja con ella: si su nombre lleva el curso que se deja
+  // («3ºA»), pasa al nuevo («4ºA») — solo si NINGUNA otra asignatura lo usa
+  // (un grupo compartido se renombra a mano, cuando toque, para no corromper
+  // a la que se queda). Devuelve { clases, instrumentos, criterios, grupos }
+  // o null si no hay nada.
   promocionarAsignatura(asignaturaId, cursoNuevo) {
     const a = this.db.asignaturas.find(x => x.id === asignaturaId);
     const nuevo = String(cursoNuevo == null ? '' : cursoNuevo).trim();
     if (!a || !nuevo) return null;
-    const resp = { clases: 0, instrumentos: 0, criterios: 0 };
+    const resp = { clases: 0, instrumentos: 0, criterios: 0, grupos: [] };
     const claseIds = this.db.clases.filter(c => c.asignaturaId === asignaturaId).map(c => c.id);
     resp.clases = claseIds.length;
     this._purgarInstrumentosDeClases(claseIds, resp);
@@ -2240,25 +2332,69 @@ const Storage = {
       a.nombre = nombre.slice(0, nombre.length - anterior.length - 1) + ' ' + nuevo;
     }
     a.curso = nuevo;
+    // El nombre del GRUPO solo se actualiza si encaja el patrón del curso
+    // (ver renombresDeGrupo); la previsión de la UI sale de ESTA MISMA
+    // función, así que la confirmación nunca promete lo que no ocurrirá.
+    resp.grupos = this.renombresDeGrupo(asignaturaId, anterior, nuevo);
+    resp.grupos.forEach(r => {
+      const g = this.db.grupos.find(x => x.id === r.id);
+      if (g) g.nombre = r.despues;
+    });
     this.save();
     return resp;
   },
 
-  // Reinicia una asignatura de curso par para EMPEZAR EL CURSO NUEVO sin
-  // cambiar de nivel: vacía sus instrumentos y sus notas (los del curso que
-  // se cierra) y conserva la asignatura con su curso, su currículo, sus
-  // clases, su grupo y su alumnado. Es la «promoción sin cambio de nivel»:
-  // el docente repite curso con el mismo grupo (2º, 4º, 6º) y el currículo
-  // del nivel sigue siendo el suyo. El banco no se toca. Devuelve el
-  // recuento o null si la asignatura no existe.
-  reiniciarAsignatura(asignaturaId) {
-    const a = this.db.asignaturas.find(x => x.id === asignaturaId);
-    if (!a) return null;
-    const claseIds = this.db.clases.filter(c => c.asignaturaId === asignaturaId).map(c => c.id);
-    const resp = { clases: claseIds.length, instrumentos: 0 };
-    this._purgarInstrumentosDeClases(claseIds, resp);
-    this.save();
-    return resp;
+  // Grupos cuyo nombre se RENOMBRARÍA al promocionar una asignatura de
+  // `cursoActual` a `cursoNuevo` (sin mutar nada: la UI lo usa para la
+  // confirmación, y promocionarAsignatura lo aplica). Un grupo se renombra
+  // SOLO si (1) ninguna otra asignatura tiene clases sobre él y (2) su
+  // nombre encaja el patrón del curso que se deja: «3ºA» → «4ºA», «3º A» →
+  // «4º A». «Equipo azul» no encaja y no se toca.
+  renombresDeGrupo(asignaturaId, cursoActual, cursoNuevo) {
+    const na = parseInt(String(cursoActual == null ? '' : cursoActual).trim(), 10);
+    const nn = parseInt(String(cursoNuevo == null ? '' : cursoNuevo).trim(), 10);
+    if (!na || !nn || nn !== na + 1) return [];
+    const propias = this.db.clases.filter(c => c.asignaturaId === asignaturaId);
+    if (!propias.length) return [];
+    const propiasIds = new Set(propias.map(c => c.id));
+    const deOtras = new Set(this.db.clases.filter(c => !propiasIds.has(c.id)).map(c => c.grupoId));
+    const salida = [];
+    const vistas = new Set();
+    propias.forEach(c => {
+      if (vistas.has(c.grupoId) || deOtras.has(c.grupoId)) return;
+      vistas.add(c.grupoId);
+      const g = this.db.grupos.find(x => x.id === c.grupoId);
+      if (!g) return;
+      const m = new RegExp('^' + na + 'º(.*)$').exec(String(g.nombre || '').trim());
+      const despues = m ? nn + 'º' + m[1] : '';
+      if (despues && despues !== g.nombre) salida.push({ id: g.id, antes: g.nombre, despues });
+    });
+    return salida;
+  },
+
+  // Grupos que quedarían HUÉRFANOS si desaparecieran las asignaturas de
+  // `ids` (con sus clases): los referenciados solo por clases de esas
+  // asignaturas. Los usa la confirmación de «Terminar», que ofrece la
+  // casilla «También eliminar el grupo con su alumnado» MARCADA por
+  // defecto. Devuelve [{ id, nombre, alumnos }].
+  gruposHuerfanosDe(ids) {
+    const van = new Set(Array.isArray(ids) ? ids : []);
+    const deLasQueSeVan = new Set();
+    const deLasSobrevivientes = new Set();
+    this.db.clases.forEach(c => {
+      (van.has(c.asignaturaId) ? deLasQueSeVan : deLasSobrevivientes).add(c.grupoId);
+    });
+    const salida = [];
+    deLasQueSeVan.forEach(gid => {
+      if (deLasSobrevivientes.has(gid) || salida.some(x => x.id === gid)) return;
+      const g = this.db.grupos.find(x => x.id === gid);
+      if (g) salida.push({
+        id: g.id,
+        nombre: g.nombre,
+        alumnos: this.db.alumnos.filter(a => a.grupoId === gid).length
+      });
+    });
+    return salida;
   },
 
   // --- Banco de instrumentos (D-48) ---
@@ -3638,28 +3774,94 @@ const AlumnosView = (() => {
     });
   }
 
+  // Ficha del alumno (fase 1): el modal de siempre ampliado con el bloque
+  // «Historial» — anotaciones propias (alta con fecha, hoy por defecto, y
+  // texto libre, guardadas en `alumno.notas`) y las observaciones de los
+  // instrumentos donde el alumno tiene registro, SOLO LECTURA y con enlace
+  // al instrumento, leídas del almacén real (`db.observaciones`) sin
+  // duplicarlas. Material interno del docente: nunca en cálculos ni informes.
+  function listaHistorialHtml(alumnoId) {
+    const entradas = Storage.historialAlumno(alumnoId);
+    if (!entradas.length) return '<li class="historial-vacio">Sin anotaciones todavía.</li>';
+    const fechaLegible = f => {
+      const d = new Date(f);
+      return isNaN(d.getTime()) ? f : Utils.fechaLegible(d);
+    };
+    return entradas.map(e => `
+      <li class="historial-entrada">
+        <span class="badge ${e.tipo === 'ficha' ? 'na' : 'info'}">${e.tipo === 'ficha' ? 'ficha' : 'instrumento'}</span>
+        <span class="historial-fecha">${Utils.esc(fechaLegible(e.fecha))}</span>
+        <span class="historial-texto">${Utils.esc(e.texto)}${e.instrumentoId
+          ? ` <button type="button" class="btn btn-mini nota-inst" data-inst="${Utils.esc(e.instrumentoId)}">${Utils.esc(e.instrumentoTitulo || 'instrumento')}</button>`
+          : ''}</span>
+      </li>`).join('');
+  }
+
   function modalAlumno(a) {
     const grupos = Storage.db.grupos;
     const grupoId = a ? a.grupoId : grupoSel;
     // El grupo solo se puede cambiar si hay más de uno; con un único grupo no
     // tiene sentido pedirlo.
     const varios = grupos.length > 1;
-    UI.openModal({
-      titulo: a ? 'Editar alumno' : 'Nuevo alumno en ' + nombreGrupo(),
+    const body = UI.openModal({
+      titulo: a ? 'Ficha del alumno' : 'Nuevo alumno en ' + nombreGrupo(),
       cuerpo: `
         <label class="campo"><span>Nombre</span><input type="text" id="f-nombre" placeholder="Nombre" value="${Utils.esc(a ? a.nombre : '')}"></label>
         <label class="campo"><span>Apellidos</span><input type="text" id="f-apellidos" placeholder="Apellidos" value="${Utils.esc(a ? a.apellidos : '')}"></label>
-        ${varios ? `<label class="campo"><span>Grupo</span><select id="f-grupo">${UI.selectHtml(grupos, grupoId, 'id', 'nombre')}</select></label>` : ''}`,
-      alGuardar(body) {
-        const sel = body.querySelector('#f-grupo');
+        ${varios ? `<label class="campo"><span>Grupo</span><select id="f-grupo">${UI.selectHtml(grupos, grupoId, 'id', 'nombre')}</select></label>` : ''}
+        ${a ? `<div class="historial-alumno" id="historial-alumno">
+          <b>Historial</b>
+          <div class="historial-nueva">
+            <input type="date" id="f-nota-fecha" value="${Utils.hoy()}" title="Fecha de la anotación">
+            <input type="text" id="f-nota-texto" placeholder="Anotación (texto libre)">
+            <button type="button" class="btn btn-mini btn-primario" id="btn-nota-add">Añadir</button>
+          </div>
+          <ul class="historial-lista" id="historial-lista">${listaHistorialHtml(a.id)}</ul>
+          <p class="hint">Solo lectura de las observaciones de los instrumentos: se escriben desde el
+            instrumento. Las anotaciones de la ficha nunca salen en informes ni cálculos.</p>
+        </div>` : ''}`,
+      alGuardar(body2) {
+        const sel = body2.querySelector('#f-grupo');
         const guardado = Storage.guardarAlumno({
-          nombre: body.querySelector('#f-nombre').value,
-          apellidos: body.querySelector('#f-apellidos').value,
+          nombre: body2.querySelector('#f-nombre').value,
+          apellidos: body2.querySelector('#f-apellidos').value,
           grupoId: sel ? sel.value : grupoId
         }, a ? a.id : null);
         return guardado !== null;
       }
     });
+    if (!a) return;
+    // Alta de anotación: fecha (editable) + texto obligatorio. El historial
+    // se repinta dentro del modal (la lista queda ordenada por fecha) y los
+    // enlaces se RE-CABLEAN: los nodos nuevos del repintado no heredan el
+    // onclick de los antiguos.
+    const cableaEnlacesInstrumento = () => {
+      body.querySelectorAll('.nota-inst').forEach(b => {
+        b.onclick = () => {
+          const instId = b.dataset.inst;
+          if (!instId || typeof InstrumentosView === 'undefined' || !InstrumentosView.renderCorreccion) return;
+          App.ir('cuadricula'); // cierra la ficha y repinta la vista
+          const el = document.getElementById('app');
+          if (el) InstrumentosView.renderCorreccion(el, instId, () => App.refrescar(), a.id);
+        };
+      });
+    };
+    cableaEnlacesInstrumento();
+    // Enlace al instrumento: cierra la ficha y abre la corrección del
+    // instrumento (donde se editan la nota y la observación), con el alumno
+    // seleccionado; «Volver» regresa a la vista que estaba.
+    const btnAdd = body.querySelector('#btn-nota-add');
+    if (btnAdd) btnAdd.onclick = () => {
+      const campoFecha = body.querySelector('#f-nota-fecha');
+      const campoTexto = body.querySelector('#f-nota-texto');
+      const texto = String(campoTexto.value || '').trim();
+      if (!texto) { UI.toast('Escribe el texto de la anotación', 'error'); return; }
+      Storage.guardarNotaAlumno(a.id, campoFecha.value, texto);
+      campoTexto.value = '';
+      const lista = body.querySelector('#historial-lista');
+      if (lista) lista.innerHTML = listaHistorialHtml(a.id);
+      cableaEnlacesInstrumento();
+    };
   }
 
   function modalAlumnosVarios() {
@@ -3684,6 +3886,11 @@ const AlumnosView = (() => {
       }
     });
   }
+
+  // Marca neutra junto al nombre en el listado: el alumno tiene anotaciones
+  // en su ficha. Sin color de alarma (material interno del docente).
+  const iconoNotas = '<span class="icono-nota-alumno" title="Tiene anotaciones en su ficha">✎</span>';
+  const conNotas = a => Array.isArray(a.notas) && a.notas.length ? iconoNotas : '';
 
   function render(el) {
     const db = Storage.db;
@@ -3721,19 +3928,19 @@ const AlumnosView = (() => {
                 // Informe y la corrección): una sola celda a lo ancho de las
                 // dos columnas del nombre.
                 ? `<tr>
-                  <td colspan="2">${Utils.esc(App.nombreVisible(a))}</td>
+                  <td colspan="2">${Utils.esc(App.nombreVisible(a))}${conNotas(a)}</td>
                   <td>
                     <div class="acciones">
-                      <button class="btn btn-mini editar-alumno" data-id="${a.id}">Editar</button>
+                      <button class="btn btn-mini editar-alumno" data-id="${a.id}">Ficha</button>
                       <button class="icon-btn borrar-alumno" data-id="${a.id}" title="Eliminar">×</button>
                     </div></td>
                 </tr>`
                 : `<tr>
                   <td>${Utils.esc(a.apellidos)}</td>
-                  <td>${Utils.esc(a.nombre)}</td>
+                  <td>${Utils.esc(a.nombre)}${conNotas(a)}</td>
                   <td>
                     <div class="acciones">
-                      <button class="btn btn-mini editar-alumno" data-id="${a.id}">Editar</button>
+                      <button class="btn btn-mini editar-alumno" data-id="${a.id}">Ficha</button>
                       <button class="icon-btn borrar-alumno" data-id="${a.id}" title="Eliminar">×</button>
                     </div></td>
                 </tr>`).join('') || '<tr><td colspan="3" class="vacio">Este grupo no tiene alumnos aún.</td></tr>'
@@ -8709,12 +8916,14 @@ const App = (() => {
         </div>
         <div class="bloque-copias">
           <b>Fin de curso</b>
-          <p>Cierra el curso escolar <b>asignatura a asignatura</b> según la paridad: las de curso
-            <b>impar</b> (1º, 3º, 5º) <b>promocionan</b> al nivel siguiente (mismo grupo y alumnado,
-            sin instrumentos ni notas ni currículo del nivel cerrado) y las de curso <b>par</b>
-            (2º, 4º, 6º) se <b>archivan</b> (fichero de archivo consultable + borrado de la
-            asignatura con sus clases, instrumentos y notas).</p>
-          <p class="hint">El grupo, el alumnado, el banco de instrumentos, el perfil, el tema y los ajustes nunca se tocan.</p>
+          <p>Cierra el curso escolar <b>asignatura a asignatura</b>: cada asignatura real ofrece
+            <b>«Promocionar a N+1º»</b> (el grupo y el alumnado viajan al nivel siguiente, sin
+            instrumentos, notas ni currículo del nivel cerrado; el grupo se renombra si su nombre
+            lleva el curso) o <b>«Terminar»</b> (se elimina con su cascada; si su grupo quedaría
+            sin ninguna asignatura, se ofrece eliminarlo con su alumnado). La decisión es tuya:
+            no hay paridad automática.</p>
+          <p class="hint">Todo queda antes en el fichero de archivo del paso 1. El banco de
+            instrumentos, el perfil, el tema y los ajustes nunca se tocan.</p>
           <div class="acciones">
             <button class="btn btn-primario btn-mini" id="btn-fin-curso">Abrir asistente de fin de curso</button>
           </div>
@@ -8909,23 +9118,22 @@ const App = (() => {
     if (btnFinCurso) btnFinCurso.onclick = () => modalFinDeCurso();
   }
 
-  // --- Fin de curso (D-60 simplificado) -------------------------------------
+  // --- Fin de curso (D-60 «mapa completo») -----------------------------------
   // Estado SOLO de sesión: los ficheros de archivo ya generados (para avisar
-  // de que repetir nombre sobrescribe) y las asignaturas promocionadas en
-  // este asistente (para que una recién promovida no caiga en el grupo de
-  // archivo del mismo año). No viaja en el backup.
+  // de que repetir nombre sobrescribe), las asignaturas promocionadas en
+  // este asistente (para que una recién promovida no vuelva a ofrecerse) y
+  // los recuentos del toast de cierre. No viaja en el backup.
   const ficherosArchivoSesion = [];
   const promocionadasSesion = [];
-  // Pares reales reiniciadas en esta sesión (empezaron el curso nuevo: ya no
-  // entran en el lote ni cuentan como pendientes).
-  const reiniciadasSesion = [];
-  // Pares reales eliminadas en esta sesión (para el toast de cierre).
-  let eliminadasSesion = 0;
+  // Recuentos del cierre (toast «Curso cerrado: …»).
+  let terminadasSesion = 0;
+  let gruposEliminadosSesion = 0;
 
-  // Paridad de un curso de Primaria: 1º/3º/5º promocionan, 2º/4º/6º se
-  // archivan. Devuelve el número (1..6) o 0 si el curso no es un nivel
-  // reconocible (vacío, asignatura hecha a mano, Infantil...): las de parity
-  // 0 no ofrecen ninguna acción en el asistente.
+  // Número de nivel de un curso de Primaria (1..6), o 0 si no es reconocible
+  // (vacío, asignatura hecha a mano, Infantil). En el asistente «mapa
+  // completo» NO decide la acción (la decisión es del docente): solo sirve
+  // para numerar el botón «Promocionar a N+1º» (1º..5º) y detectar las
+  // asignaturas sin curso, que se listan sin acción.
   function paridadDeCurso(curso) {
     const m = /^([1-6])º/.exec(String(curso == null ? '' : curso).trim());
     return m ? Number(m[1]) : 0;
@@ -9010,68 +9218,35 @@ const App = (() => {
     const cursoCierre = String(db.cursoEscolar || '');
     const cuerpo = UI.openModal({ titulo: 'Fin de curso', cuerpo: '' });
     let copiaHecha = !!Storage.copiaEnSesion;
-    // Asignaturas pares marcadas para eliminar en el paso de pares (solo
-    // sesión y modal: se conserva al repintar para que la etiqueta dinámica
-    // y los checkboxes sobrevivan al render).
-    let marcadasSel = [];
+    // Asignaturas promovidas en ESTE asistente (solo sesión): salen de la
+    // lista de pendientes con su badge, para no promover dos veces seguidas
+    // la misma. No viaja en el backup.
     // Lo tecleado en el campo del curso escolar (solo sesión): sobrevive a
-    // los repintados que disparan los checkboxes.
+    // los repintados.
     let cursoSel = null;
 
-    // Paso 2: asignaturas agrupadas por paridad, con su acción.
-    function filaPromo(a, paridad) {
+    // Fila del paso 2: la asignatura y sus DOS verbos. «Promocionar a N+1º»
+    // se ofrece en cualquier curso con siguiente (1º..5º); en 6º solo cabe
+    // «Terminar». Una recién promovida este año sale con badge y sin botones:
+    // ofrecerle «Terminar» a continuación sería borrar lo recién promovido.
+    function filaAccion(a) {
       const r = resumenDeAsignatura(a.id);
       const piezas = [r.clases + (r.clases === 1 ? ' clase' : ' clases'),
         r.instrumentos + (r.instrumentos === 1 ? ' instrumento' : ' instrumentos')];
-      return `<div class="fila-campos">
-        <span style="flex:1"><b>${Utils.esc(a.nombre)}</b> · <small>${Utils.esc(piezas.join(' · '))}</small></span>
-        <button class="btn btn-mini btn-primario fdc-promo" data-id="${Utils.esc(a.id)}">Promocionar a ${paridad + 1}º</button>
-      </div>`;
-    }
-
-    // Fila de una asignatura de curso par: checkbox «Eliminar» (las marcadas
-    // se eliminan; las sin marcar se mantienen empezando el curso nuevo).
-    // Una recién promovida ESTE año ya es «par» para el año siguiente, pero
-    // tocarla ahora sería borrar lo que se acaba de promover: sale como
-    // promocionada, sin checkbox y fuera del lote. Una reiniciada en esta
-    // sesión igual: ya empezó el curso nuevo.
-    function filaPar(a) {
-      const r = resumenDeAsignatura(a.id);
-      const piezas = [r.clases + (r.clases === 1 ? ' clase' : ' clases'),
-        r.instrumentos + (r.instrumentos === 1 ? ' instrumento' : ' instrumentos')];
+      const ficha = `<span style="flex:1"><b>${Utils.esc(a.nombre)}</b> · <small>${Utils.esc(piezas.join(' · '))}</small></span>`;
       if (promocionadasSesion.includes(a.id)) {
         return `<div class="fila-campos">
-          <span style="flex:1"><b>${Utils.esc(a.nombre)}</b> · <small>promocionada este curso</small></span>
-          <span class="badge ok">promociona a ${Utils.esc(ClasesView.cursoDeAsignatura(a))}</span>
+          ${ficha}
+          <span class="badge ok">promocionada este curso</span>
         </div>`;
       }
-      if (reiniciadasSesion.includes(a.id)) {
-        return `<div class="fila-campos">
-          <span style="flex:1"><b>${Utils.esc(a.nombre)}</b> · <small>empezó el curso nuevo (sin instrumentos ni notas)</small></span>
-          <span class="badge ok">empezó el curso</span>
-        </div>`;
-      }
-      return `<label class="campo campo--toggle"><input type="checkbox" class="fdc-marca" data-id="${Utils.esc(a.id)}"${marcadasSel.includes(a.id) ? ' checked' : ''}>
-        <span><b>${Utils.esc(a.nombre)}</b> · <small>${Utils.esc(piezas.join(' · '))}</small></span></label>`;
-    }
-
-    // Pares «vivas» para el lote: todas menos las recién promovidas y las
-    // ya reiniciadas en esta sesión.
-    function paresVivas() {
-      return db.asignaturas.filter(a => {
-        const n = paridadDeCurso(ClasesView.cursoDeAsignatura(a));
-        return n % 2 === 0 && n !== 0 && !promocionadasSesion.includes(a.id)
-          && !reiniciadasSesion.includes(a.id);
-      });
-    }
-
-    // Etiqueta del botón de pares según la selección: sin marcadas la acción
-    // es empezar el curso con TODAS; con alguna marcada, eliminar esas y
-    // pasar al curso nuevo (las sin marcar se mantienen y empiezan).
-    function etiquetaEmpezar() {
-      return marcadasSel.length
-        ? 'Eliminar las marcadas y pasar al curso nuevo'
-        : 'Empezar curso con las asignaturas';
+      const n = paridadDeCurso(ClasesView.cursoDeAsignatura(a));
+      const btnPromo = (n >= 1 && n <= 5)
+        ? `<button class="btn btn-mini btn-primario fdc-promo" data-id="${Utils.esc(a.id)}">Promocionar a ${n + 1}º</button>` : '';
+      return `<div class="fila-campos">
+        ${ficha}
+        <div class="acciones">${btnPromo}<button class="btn btn-mini btn-peligro fdc-terminar" data-id="${Utils.esc(a.id)}">Terminar</button></div>
+      </div>`;
     }
 
     // El campo del curso escolar es visible en AMBOS pasos (paso 1 y paso de
@@ -9100,34 +9275,29 @@ const App = (() => {
         const i = orden.indexOf(ClasesView.cursoDeAsignatura(a));
         return i < 0 ? 99 : i;
       };
-      const asignaturas = db.asignaturas.slice().sort((x, y) => porIndice(x) - porIndice(y));
-      // Solo las REALES (con alguna clase con alumnado) entran en las listas:
-      // las asignaturas sin clases con alumnado son soporte de currículo ACI
-      // y se eliminan junto con la real que las usa (nunca se ofertan).
-      const reales = a => Storage.esAsignaturaReal(a);
-      const impar = asignaturas.filter(a => reales(a) && paridadDeCurso(ClasesView.cursoDeAsignatura(a)) % 2 === 1);
-      const par = asignaturas.filter(a => reales(a) && paridadDeCurso(ClasesView.cursoDeAsignatura(a)) % 2 === 0
-        && paridadDeCurso(ClasesView.cursoDeAsignatura(a)) !== 0);
-      const sinCurso = asignaturas.filter(a => reales(a) && paridadDeCurso(ClasesView.cursoDeAsignatura(a)) === 0);
+      // Solo las REALES (con alguna clase con alumnado) entran en la lista,
+      // ordenadas por curso y SIN grupos por paridad: cada una decide su
+      // verbo (promocionar o terminar). Las asignaturas sin clases con
+      // alumnado son soporte de currículo ACI y se eliminan junto con la
+      // real que las usa (nunca se ofertan).
+      const reales = db.asignaturas.filter(a => Storage.esAsignaturaReal(a))
+        .sort((x, y) => porIndice(x) - porIndice(y));
+      const conCurso = reales.filter(a => paridadDeCurso(ClasesView.cursoDeAsignatura(a)) !== 0);
+      const sinCurso = reales.filter(a => paridadDeCurso(ClasesView.cursoDeAsignatura(a)) === 0);
       return `
         <p style="margin:0 0 8px"><b>¿Comenzar nuevo curso?</b></p>
         <div class="aviso" style="background:#eff6ff;border-color:#bfdbfe;color:#1e40af">
           El archivo definitivo del curso que se cierra ya se exportó en el paso 1
-          (completo, importable para consultarlo). Ahora puedes promocionar unas
-          (asignatura a asignatura) y eliminar otras el mismo año.</div>
+          (completo, importable para consultarlo). Decide asignatura a asignatura:
+          <b>promocionar</b> sigue al nivel siguiente con el grupo y el alumnado, sin
+          instrumentos, notas ni currículo; <b>terminar</b> la elimina (solo queda en
+          el archivo del paso 1).</div>
         ${campoCursoHtml()}
-        <p style="margin:12px 0 4px"><b>Promocionan</b> (cursos impares)</p>
-        <div id="fdc-promo-lista">${impar.map(a => filaPromo(a, paridadDeCurso(ClasesView.cursoDeAsignatura(a)))).join('') || '<p class="hint" style="margin:0">Ninguna asignatura de curso impar.</p>'}</div>
-        <p style="margin:12px 0 4px"><b>Se eliminan</b> (cursos pares)</p>
-        <p class="hint" style="margin:0">Marca las que ELIMINAR (quedarán en el archivo definitivo del paso 1,
-          <b>${Utils.esc(nombreFicheroArchivo(cursoCierre))}</b>). Las que no marques se <b>MANTIENEN empezando el curso
-          nuevo</b>: se vacían sus instrumentos y sus notas y se conservan grupo, alumnado y currículo.</p>
-        <div id="fdc-arch-lista">${par.map(filaPar).join('') || '<p class="hint" style="margin:0">Ninguna asignatura de curso par.</p>'}</div>
-        <div class="acciones">
-          <button class="btn btn-peligro" id="fdc-empezar" ${paresVivas().length ? '' : 'disabled'}>${Utils.esc(etiquetaEmpezar())}</button>
-        </div>
-        <p class="hint">Las asignaturas que solo sostienen currículos ACI (sin clases con alumnado) no aparecen:
-          se eliminan junto con la asignatura real que las usa.</p>
+        <p style="margin:12px 0 4px"><b>Asignaturas</b> (por curso)</p>
+        <div id="fdc-lista">${conCurso.map(filaAccion).join('') || '<p class="hint" style="margin:0">Ninguna asignatura con curso.</p>'}</div>
+        <p class="hint">Promocionar renombra el grupo si su nombre lleva el curso («3ºA» → «4ºA»), y solo
+          si ninguna otra asignatura lo usa. Terminar elimina la asignatura con su cascada; si su grupo
+          quedara sin ninguna asignatura, la confirmación ofrece eliminarlo con su alumnado.</p>
         ${sinCurso.length ? `<p style="margin:12px 0 4px"><b>Sin curso definido</b></p>
         <div>${sinCurso.map(a => `<div class="fila-campos"><span style="flex:1"><b>${Utils.esc(a.nombre)}</b></span>
           <span class="badge na">sin acción: ponle curso en «Asignaturas y clases»</span></div>`).join('')}</div>` : ''}
@@ -9154,12 +9324,14 @@ const App = (() => {
       if (el) el.textContent = motivo ? 'Curso escolar no aplicado: ' + motivo : '';
     }
 
-    // Pendientes de tratar: impares reales por promover y pares vivas por
-    // eliminar. Las sin curso se arreglan a mano y no cuentan.
+    // Pendientes de tratar: asignaturas REALES con curso reconocido que no
+    // hayan sido ya promovidas en esta sesión. Las sin curso se arreglan a
+    // mano y no cuentan; una recién promovida sale de la lista (badge).
     function pendientes() {
-      const impares = db.asignaturas.filter(a =>
-        Storage.esAsignaturaReal(a) && paridadDeCurso(ClasesView.cursoDeAsignatura(a)) % 2 === 1);
-      return { impares, pares: paresVivas() };
+      return db.asignaturas.filter(a =>
+        Storage.esAsignaturaReal(a)
+        && paridadDeCurso(ClasesView.cursoDeAsignatura(a)) !== 0
+        && !promocionadasSesion.includes(a.id));
     }
 
     // Tras CADA acción del asistente: el modal se repinta con el estado nuevo
@@ -9167,15 +9339,13 @@ const App = (() => {
     // el indicador), sin que el docente tenga que recargar (F5). Si ya no
     // queda nada por tratar, el asistente se cierra solo y se lleva al
     // docente a Inicio repintado, con el resumen de lo hecho en un toast.
-    function trasAccion(eliminadas, mensaje) {
-      eliminadasSesion += eliminadas || 0;
+    function trasAccion(mensaje) {
       aplicarCursoNuevo();
-      marcadasSel = []; // la lista cambió: la selección no sobrevive al render
       cursoSel = null; // el campo pasa a mostrar el curso ya aplicado
       repinta();
-      const p = pendientes();
-      if (!p.impares.length && !p.pares.length) {
-        UI.toast(`Curso cerrado: ${promocionadasSesion.length} promovida(s), ${eliminadasSesion} eliminada(s)`);
+      if (!pendientes().length) {
+        UI.toast(`Curso cerrado: ${promocionadasSesion.length} promovida(s), `
+          + `${terminadasSesion} terminada(s), ${gruposEliminadosSesion} grupo(s) eliminado(s)`);
         UI.closeModal();
         App.ir('inicio');
         return;
@@ -9234,91 +9404,109 @@ const App = (() => {
         };
         return;
       }
-      // Promoción: escribe Storage.promocionarAsignatura y repinta la lista.
+      // Los DOS verbos, cada uno con su confirmación en capa 2.
       cuerpo.querySelectorAll('.fdc-promo').forEach(b => {
         b.onclick = () => {
           const a = Calc.asignatura(b.dataset.id);
           if (!a) return;
-          const destino = (paridadDeCurso(ClasesView.cursoDeAsignatura(a)) + 1) + 'º';
-          // Las soportes ACI exclusivas de esta real mueren con ella: su
-          // currículo era del nivel que se cierra y las ACIs se redeclaran
-          // a mano cada curso (los refs muertos los depura migrar/borrado).
-          const soportes = Storage.soportesAciDe([a.id]);
-          const extra = soportes.length
-            ? `\n\nCon ella se eliminarán también sus currículos ACI de soporte (sin clases con alumnado): ${soportes.map(s => '«' + s.nombre + '»').join(', ')}.`
-            : '';
-          if (!confirm(`¿Promocionar «${a.nombre}» a ${destino}? Se eliminarán sus instrumentos y sus notas, y su currículo del nivel actual (el grupo, el alumnado y el banco de instrumentos se conservan). Después podrás cargar el currículo de ${destino} con «Recuperar».${extra}`)) return;
-          const resp = Storage.promocionarAsignatura(a.id, destino);
-          if (!resp) return;
-          soportes.forEach(s => Storage.borrarAsignatura(s.id));
-          promocionadasSesion.push(a.id);
-          trasAccion(0, `«${a.nombre}» promociona a ${destino}`);
+          const n = paridadDeCurso(ClasesView.cursoDeAsignatura(a));
+          if (n < 1 || n > 5) return; // sin nivel siguiente, no hay promoción
+          abrirConfirmacionPromocion(a, (n + 1) + 'º');
         };
       });
-      // Lote de pares: un único botón con etiqueta dinámica. Marcadas → se
-      // eliminan; sin marcar → se mantienen empezando el curso nuevo. Lo
-      // PREGUNTA todo antes de tocar nada.
-      const btnEmpezar = cuerpo.querySelector('#fdc-empezar');
-      if (btnEmpezar) btnEmpezar.onclick = () => {
-        marcadasSel = Array.from(cuerpo.querySelectorAll('.fdc-marca:checked')).map(i => i.dataset.id);
-        const mantenidas = paresVivas().filter(a => !marcadasSel.includes(a.id));
-        if (!marcadasSel.length && !mantenidas.length) return; // sin pares por tratar
-        abrirConfirmacionInicio(marcadasSel, mantenidas);
-      };
-      // La etiqueta del botón sigue a los checkboxes (re-render con estado).
-      cuerpo.querySelectorAll('.fdc-marca').forEach(chk => {
-        chk.onchange = () => {
-          marcadasSel = Array.from(cuerpo.querySelectorAll('.fdc-marca:checked')).map(i => i.dataset.id);
-          repinta();
+      cuerpo.querySelectorAll('.fdc-terminar').forEach(b => {
+        b.onclick = () => {
+          const a = Calc.asignatura(b.dataset.id);
+          if (!a) return;
+          abrirConfirmacionTerminar(a);
         };
       });
     }
 
-    // Confirmación del lote de pares (capa 2): lista los DOS bloques — lo que
-    // se ELIMINA (quedando en el archivo definitivo del paso 1, con sus
-    // soportes ACI exclusivas) y lo que se MANTIENE empezando el curso nuevo
-    // (vaciar instrumentos y notas; conservar grupo, alumnado y currículo).
-    // Nada cambia hasta que el docente confirma.
-    function abrirConfirmacionInicio(marcadas, mantenidas) {
-      const soportes = Storage.soportesAciDe(marcadas);
-      const nombres = lista => lista.map(a => '«' + a.nombre + '»').join(', ');
+    // Confirmación de PROMOCIONAR (capa 2): explica en claro qué viaja (el
+    // grupo, con su renombrado si lo preve Storage.renombresDeGrupo, y el
+    // alumnado), qué se elimina (instrumentos, notas, currículo del nivel
+    // que se cierra y las soportes ACI exclusivas) y que todo queda en el
+    // archivo del paso 1. Nada cambia hasta que el docente confirma.
+    function abrirConfirmacionPromocion(a, destino) {
+      const cursoActual = ClasesView.cursoDeAsignatura(a);
+      const soportes = Storage.soportesAciDe([a.id]);
+      const renombres = Storage.renombresDeGrupo(a.id, cursoActual, destino);
       UI.openModal({
-        titulo: 'Empezar el nuevo curso',
+        titulo: 'Promocionar asignatura',
         cuerpo: `
-          ${marcadas.length
-            ? `<p>Se <b>ELIMINAN</b> (quedan en el archivo definitivo ${Utils.esc(nombreFicheroArchivo(cursoCierre))}):
-              <b>${Utils.esc(nombres(marcadas.map(id => Calc.asignatura(id)).filter(Boolean)))}</b>.</p>
-              ${soportes.length
-                ? `<p>Y con ellas, sus <b>currículos ACI de soporte</b> (sin clases con alumnado):
-                  <b>${Utils.esc(nombres(soportes))}</b>.</p>`
-                : ''}`
-            : '<p>No se elimina ninguna (no hay marcadas).</p>'}
-          ${mantenidas.length
-            ? `<div class="aviso" style="background:#eff6ff;border-color:#bfdbfe;color:#1e40af">Se <b>MANTIENEN empezando
-              el curso nuevo</b> (se vacían sus instrumentos y sus notas; se conservan grupo, alumnado y currículo):
-              <b>${Utils.esc(nombres(mantenidas))}</b>.</div>`
+          <p><b>${Utils.esc(a.nombre)}</b> pasa a <b>${Utils.esc(destino)}</b>:</p>
+          <p>· El grupo y el alumnado <b>viajan con ella</b> (no se tocan).
+            ${renombres.length
+              ? `Su grupo <b>${Utils.esc(renombres.map(r => '«' + r.antes + '»').join(', '))}</b> pasa a
+              llamarse <b>${Utils.esc(renombres.map(r => '«' + r.despues + '»').join(', '))}</b>.`
+              : ''}</p>
+          <p>· Se <b>ELIMINAN</b> sus instrumentos y sus notas, y su currículo del nivel
+            ${Utils.esc(cursoActual)}: queda «sin currículo», y el de ${Utils.esc(destino)} lo recupera
+            después con «Recuperar currículo oficial».</p>
+          ${soportes.length
+            ? `<p>· Con ella se eliminan también sus <b>currículos ACI de soporte</b> (sin clases con
+              alumnado): <b>${Utils.esc(soportes.map(s => '«' + s.nombre + '»').join(', '))}</b>.</p>`
             : ''}
-          <p class="hint">El curso escolar pasa a <b>${Utils.esc(String((cuerpo.querySelector('#fdc-curso') || {}).value || '').trim())}</b>
-            y todo queda en el archivo definitivo del paso 1. Sus grupos y su alumnado se conservan en la app.</p>`,
-        textoGuardar: 'Sí, empezar el nuevo curso',
+          <p class="hint">Todo queda en el archivo definitivo del paso 1
+            (${Utils.esc(nombreFicheroArchivo(cursoCierre))}).</p>`,
+        textoGuardar: 'Sí, promocionar',
         peligro: true,
-        alGuardar(body2) {
-          marcadas.concat(soportes.map(s => s.id)).forEach(id => Storage.borrarAsignatura(id));
-          mantenidas.forEach(a => {
-            Storage.reiniciarAsignatura(a.id);
-            reiniciadasSesion.push(a.id); // ya empezó el curso: fuera del lote
-          });
-          trasAccion(marcadas.length,
-            (marcadas.length
-              ? `${marcadas.length} asignatura${marcadas.length === 1 ? '' : 's'} eliminada${marcadas.length === 1 ? '' : 's'}`
-                + (soportes.length ? ` (+${soportes.length} soporte${soportes.length === 1 ? '' : 's'} ACI)` : '')
-              : '')
-            + ((marcadas.length && mantenidas.length) ? ' · ' : '')
-            + (mantenidas.length
-              ? `${mantenidas.length} empieza${mantenidas.length === 1 ? '' : 'n'} el curso nuevo`
-              : ''));
+        alGuardar() {
+          const resp = Storage.promocionarAsignatura(a.id, destino);
+          if (!resp) return false;
+          soportes.forEach(s => Storage.borrarAsignatura(s.id));
+          promocionadasSesion.push(a.id);
+          trasAccion(`«${a.nombre}» promociona a ${destino}`);
           // La capa 1 se repinta; el modal de confirmación se cierra solo
           // (alGuardar no devuelve false).
+        }
+      }, 2);
+    }
+
+    // Confirmación de TERMINAR (capa 2): la cascada completa (clases,
+    // instrumentos, notas y currículo — todo queda en el archivo del paso 1),
+    // las soportes ACI exclusivas que se van con ella y, si algún grupo
+    // quedaría HUÉRFANO (ninguna asignatura viva lo referencia), una casilla
+    // «También eliminar el grupo con su alumnado» MARCADA POR DEFECTO, con
+    // el recuento. Desmarcada, el grupo se queda (caso de línea única que
+    // lo reutilizará con otra asignatura). Si otra asignatura lo usa, ni
+    // casilla: no se ofrece.
+    function abrirConfirmacionTerminar(a) {
+      const soportes = Storage.soportesAciDe([a.id]);
+      const idsQueSeVan = [a.id].concat(soportes.map(s => s.id));
+      const huerfanos = Storage.gruposHuerfanosDe(idsQueSeVan);
+      UI.openModal({
+        titulo: 'Terminar asignatura',
+        cuerpo: `
+          <p>Se <b>ELIMINA</b> <b>${Utils.esc(a.nombre)}</b> con sus clases, sus instrumentos y sus
+            notas, y su currículo: todo queda en el archivo definitivo del paso 1
+            (${Utils.esc(nombreFicheroArchivo(cursoCierre))}).</p>
+          ${soportes.length
+            ? `<p>Con ella se eliminan también sus <b>currículos ACI de soporte</b> (sin clases con
+              alumnado): <b>${Utils.esc(soportes.map(s => '«' + s.nombre + '»').join(', '))}</b>.</p>`
+            : ''}
+          ${huerfanos.map(h => `
+            <label class="campo campo--toggle"><input type="checkbox" class="fdc-baja-grupo" data-grupo="${Utils.esc(h.id)}" checked>
+              <span>También eliminar el grupo <b>${Utils.esc(h.nombre)}</b> con su alumnado
+              (${h.alumnos} alumno${h.alumnos === 1 ? '' : 's'})</span></label>
+            <p class="hint">Sin ninguna asignatura que lo use, el grupo quedaría huérfano. Desmarca la
+              casilla para conservarlo (p. ej. si lo reutilizarás con otra asignatura).</p>`).join('')}
+          ${huerfanos.length
+            ? ''
+            : '<p class="hint">Su grupo y su alumnado se quedan en la app (otra asignatura lo sigue usando).</p>'}`,
+        textoGuardar: 'Sí, terminar',
+        peligro: true,
+        alGuardar(body2) {
+          const bajarGrupos = Array.from(body2.querySelectorAll('.fdc-baja-grupo:checked')).map(c => c.dataset.grupo);
+          Storage.borrarAsignatura(a.id);
+          soportes.forEach(s => Storage.borrarAsignatura(s.id));
+          bajarGrupos.forEach(gid => {
+            const resp = Storage.borrarGrupo(gid);
+            if (resp) gruposEliminadosSesion++;
+          });
+          terminadasSesion++;
+          trasAccion(`«${a.nombre}» terminada`);
         }
       }, 2);
     }

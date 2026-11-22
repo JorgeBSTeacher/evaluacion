@@ -347,8 +347,8 @@ main { max-width: 1440px; margin: 0 auto; padding: 20px 18px 60px; }
 .btn:hover:not(:disabled) { border-color: var(--acento); color: var(--acento); }
 .btn-primario { background: var(--acento); border-color: var(--acento); color: #fff; }
 .btn-primario:hover:not(:disabled) { filter: brightness(1.07); color: #fff; }
-.btn-peligro { color: var(--ko); border-color: #f3caca; }
-.btn-peligro:hover:not(:disabled) { background: var(--ko-suave); border-color: var(--ko); color: var(--ko); }
+.btn-peligro { background: var(--ko); border-color: var(--ko); color: #fff; }
+.btn-peligro:hover:not(:disabled) { filter: brightness(1.07); color: #fff; }
 /* Bloque para acciones irreversibles (p. ej. borrar todo), separado del resto. */
 .zona-peligro {
   margin-top: 14px; padding: 12px 14px;
@@ -1158,3 +1158,25 @@ body.modal-abierto { overflow: hidden; }
 .informe-seccion table { break-before: avoid; page-break-before: avoid; break-inside: auto; page-break-inside: auto; }
 /* Cada nivel (Base, ACI 1, ACI 2…) empieza en una hoja nueva. */
 .informe-seccion + .informe-seccion { break-before: page; page-break-before: always; }
+
+/* Ficha del alumno (fase 1): bloque «Historial» del modal. Las anotaciones
+   de la ficha se dan de alta con fecha (hoy por defecto, editable) y texto
+   libre; las observaciones de los instrumentos entran SOLO LECTURA, con su
+   enlace a la corrección. Lista ordenada por fecha descendente. */
+.historial-alumno { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--linea); }
+.historial-nueva { display: flex; align-items: center; gap: 8px; margin: 8px 0 10px; flex-wrap: wrap; }
+.historial-nueva input[type="date"] { width: auto; flex: 0 0 auto; }
+.historial-nueva input[type="text"] { flex: 1; min-width: 170px; }
+.historial-lista { list-style: none; margin: 0; padding: 0; max-height: 220px; overflow: auto; }
+.historial-entrada {
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 6px 0; border-bottom: 1px dashed var(--linea);
+}
+.historial-entrada .badge { flex: 0 0 auto; }
+.historial-fecha { flex: 0 0 auto; color: var(--tinta-suave); font-size: 12px; white-space: nowrap; }
+.historial-texto { flex: 1; min-width: 0; }
+.historial-texto .nota-inst { margin-left: 8px; }
+.historial-vacio { color: var(--tinta-suave); font-size: 12px; }
+/* Icono neutro de anotaciones junto al nombre en el listado (no es una
+   alarma: material interno del docente). */
+.icono-nota-alumno { color: var(--na); font-size: 12px; margin-left: 6px; }

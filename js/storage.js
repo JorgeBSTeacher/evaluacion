@@ -442,6 +442,11 @@ const Storage = {
     if (typeof db.tema.color !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(db.tema.color)) db.tema.color = '#1f5c6b';
     if (typeof db.tema.nav !== 'string') db.tema.nav = 'topbar';
     db.grupos.forEach(g => { if (g.etapa == null) g.etapa = ''; });
+    // Anotaciones de la ficha del alumno (fase 1): cada alumno lleva su
+    // historial en `notas` = [{ fecha (ISO), texto }]. Los backups antiguos
+    // no traen la clave: se rellena a [] y viaja con el alumno (sobrevive a
+    // la promoción y va al archivo en el snapshot de las bajas).
+    db.alumnos.forEach(al => { if (!Array.isArray(al.notas)) al.notas = []; });
     // La asignatura recuerda de qué curso es su currículo (p. ej. «6º») y su
     // fuente legal (la cita del decreto). Backups antiguos no los traen.
     db.asignaturas.forEach(a => {
@@ -760,6 +765,64 @@ const Storage = {
     return resp;
   },
 
+  // --- Ficha del alumno (fase 1) ---
+  // Anotaciones de la ficha: texto libre con fecha (editable, hoy por
+  // defecto), guardadas en `alumno.notas` — NUNCA participan en cálculos ni
+  // salen en informes impresos (material interno del docente). Las
+  // observaciones de los instrumentos NO se duplican: viven donde siempre
+  // (`db.observaciones[instrumentoId]`, D-74c) y el historial las lee del
+  // almacén real, enlazadas por los registros del alumno en cada instrumento.
+
+  // Alta de una anotación de ficha: { fecha (ISO), texto }. Devuelve la
+  // anotación guardada, o null si no hay texto (una anotación vacía no
+  // existe) o el alumno no existe.
+  guardarNotaAlumno(alumnoId, fecha, texto) {
+    const a = this.db.alumnos.find(x => x.id === alumnoId);
+    const t = String(texto == null ? '' : texto).trim();
+    if (!a || !t) return null;
+    if (!Array.isArray(a.notas)) a.notas = [];
+    const anotacion = { fecha: String(fecha || '').trim() || Utils.hoy(), texto: t };
+    a.notas.push(anotacion);
+    this.save();
+    return anotacion;
+  },
+
+  // Historial de la ficha: las anotaciones propias (tipo «ficha») y las
+  // observaciones de los instrumentos donde el alumno TIENE REGISTRO
+  // (`db.registros[instId][alumnoId]` con alguna nota — la exclusión
+  // «noRealiza» no cuenta: no hay notas que comentar). Cada entrada de
+  // instrumento lleva el id y el título para el enlace; el texto es el de
+  // `db.observaciones`, leído en vivo (nunca copiado). Orden: fecha
+  // descendente (lo más reciente arriba).
+  historialAlumno(alumnoId) {
+    const a = this.db.alumnos.find(x => x.id === alumnoId);
+    if (!a) return [];
+    const fichas = (Array.isArray(a.notas) ? a.notas : [])
+      .filter(n => n && String(n.texto || '').trim())
+      .map(n => ({ tipo: 'ficha', fecha: String(n.fecha || ''), texto: String(n.texto) }));
+    const registros = this.db.registros || {};
+    const observaciones = this.db.observaciones || {};
+    const insts = [];
+    Object.keys(registros).forEach(instId => {
+      const reg = registros[instId] && registros[instId][alumnoId];
+      if (!reg || typeof reg !== 'object') return;
+      const conNota = Object.keys(reg).some(k => k !== 'noRealiza' && reg[k] != null && reg[k] !== '');
+      if (!conNota) return;
+      const texto = String(observaciones[instId] == null ? '' : observaciones[instId]).trim();
+      if (!texto) return;
+      const inst = this.db.instrumentos.find(x => x.id === instId);
+      insts.push({
+        tipo: 'instrumento',
+        fecha: String((inst && inst.fecha) || ''),
+        texto,
+        instrumentoId: instId,
+        instrumentoTitulo: inst ? String(inst.titulo || '') : ''
+      });
+    });
+    return fichas.concat(insts)
+      .sort((x, y) => String(y.fecha || '').localeCompare(String(x.fecha || '')));
+  },
+
   // --- Borrado en cascada (punto único) ---
   // Antes cada vista reimplementaba su cascada a mano y dos de ellas dejaban
   // datos huérfanos: notas de instrumentos que ya no existían y notas de
@@ -858,15 +921,18 @@ const Storage = {
     return resp;
   },
 
-  // --- Fin de curso (D-60) ---
-  // Paridad del docente: los cursos impares (1º, 3º, 5º) PROMOCIONAN al nivel
-  // siguiente y los pares (2º, 4º, 6º) empiezan el curso nuevo: las marcadas
-  // se ELIMINAN (quedan en el archivo definitivo del paso 1) y las SIN
-  // marcar se REINICIAN (vaciar instrumentos y notas, conservando nivel,
-  // currículo, clase, grupo y alumnado) — ver reiniciarAsignatura. La
-  // paridad la decide la vista (el «curso» de una asignatura también se
-  // deduce del nombre, D-67); aquí vive solo la escritura de datos, junto a
-  // la cascada de borrado.
+  // --- Fin de curso (D-60, «mapa completo») ---
+  // Dos verbos por asignatura, decisión del docente: SIN paridad automática.
+  // Cada asignatura REAL (con alguna clase con alumnado) ofrece en el
+  // asistente «Promocionar a N+1º» o «Terminar»; la paridad del diseño
+  // anterior (impares promocionan / pares se eliminan o empiezan el curso
+  // sin cambiar de nivel) quedó fuera, junto con la acción de reinicio del
+  // lote de checkboxes que la aplicaba.
+  //
+  // La paridad SOLO sobrevive como utilidad pura de la vista (App.finCurso
+  // .paridadDeCurso) para numerar el botón «Promocionar a N+1º» y detectar
+  // asignaturas sin curso; la escritura de datos vive aquí, junto a la
+  // cascada de borrado.
   //
   // Asignaturas REALES vs SOPORTE ACI: una asignatura es REAL si tiene
   // alguna clase con alumnado (ahí viven sus calificaciones y ahí
@@ -909,12 +975,16 @@ const Storage = {
   // docente carga el del nivel nuevo con «Recuperar currículo oficial» (que
   // exige una asignatura sin currículo). El banco de instrumentos no se
   // toca: sus moldes guardan los criterios por código y sobreviven igual.
-  // Devuelve { clases, instrumentos, criterios } o null si no hay nada.
+  // El GRUPO viaja con ella: si su nombre lleva el curso que se deja
+  // («3ºA»), pasa al nuevo («4ºA») — solo si NINGUNA otra asignatura lo usa
+  // (un grupo compartido se renombra a mano, cuando toque, para no corromper
+  // a la que se queda). Devuelve { clases, instrumentos, criterios, grupos }
+  // o null si no hay nada.
   promocionarAsignatura(asignaturaId, cursoNuevo) {
     const a = this.db.asignaturas.find(x => x.id === asignaturaId);
     const nuevo = String(cursoNuevo == null ? '' : cursoNuevo).trim();
     if (!a || !nuevo) return null;
-    const resp = { clases: 0, instrumentos: 0, criterios: 0 };
+    const resp = { clases: 0, instrumentos: 0, criterios: 0, grupos: [] };
     const claseIds = this.db.clases.filter(c => c.asignaturaId === asignaturaId).map(c => c.id);
     resp.clases = claseIds.length;
     this._purgarInstrumentosDeClases(claseIds, resp);
@@ -932,25 +1002,69 @@ const Storage = {
       a.nombre = nombre.slice(0, nombre.length - anterior.length - 1) + ' ' + nuevo;
     }
     a.curso = nuevo;
+    // El nombre del GRUPO solo se actualiza si encaja el patrón del curso
+    // (ver renombresDeGrupo); la previsión de la UI sale de ESTA MISMA
+    // función, así que la confirmación nunca promete lo que no ocurrirá.
+    resp.grupos = this.renombresDeGrupo(asignaturaId, anterior, nuevo);
+    resp.grupos.forEach(r => {
+      const g = this.db.grupos.find(x => x.id === r.id);
+      if (g) g.nombre = r.despues;
+    });
     this.save();
     return resp;
   },
 
-  // Reinicia una asignatura de curso par para EMPEZAR EL CURSO NUEVO sin
-  // cambiar de nivel: vacía sus instrumentos y sus notas (los del curso que
-  // se cierra) y conserva la asignatura con su curso, su currículo, sus
-  // clases, su grupo y su alumnado. Es la «promoción sin cambio de nivel»:
-  // el docente repite curso con el mismo grupo (2º, 4º, 6º) y el currículo
-  // del nivel sigue siendo el suyo. El banco no se toca. Devuelve el
-  // recuento o null si la asignatura no existe.
-  reiniciarAsignatura(asignaturaId) {
-    const a = this.db.asignaturas.find(x => x.id === asignaturaId);
-    if (!a) return null;
-    const claseIds = this.db.clases.filter(c => c.asignaturaId === asignaturaId).map(c => c.id);
-    const resp = { clases: claseIds.length, instrumentos: 0 };
-    this._purgarInstrumentosDeClases(claseIds, resp);
-    this.save();
-    return resp;
+  // Grupos cuyo nombre se RENOMBRARÍA al promocionar una asignatura de
+  // `cursoActual` a `cursoNuevo` (sin mutar nada: la UI lo usa para la
+  // confirmación, y promocionarAsignatura lo aplica). Un grupo se renombra
+  // SOLO si (1) ninguna otra asignatura tiene clases sobre él y (2) su
+  // nombre encaja el patrón del curso que se deja: «3ºA» → «4ºA», «3º A» →
+  // «4º A». «Equipo azul» no encaja y no se toca.
+  renombresDeGrupo(asignaturaId, cursoActual, cursoNuevo) {
+    const na = parseInt(String(cursoActual == null ? '' : cursoActual).trim(), 10);
+    const nn = parseInt(String(cursoNuevo == null ? '' : cursoNuevo).trim(), 10);
+    if (!na || !nn || nn !== na + 1) return [];
+    const propias = this.db.clases.filter(c => c.asignaturaId === asignaturaId);
+    if (!propias.length) return [];
+    const propiasIds = new Set(propias.map(c => c.id));
+    const deOtras = new Set(this.db.clases.filter(c => !propiasIds.has(c.id)).map(c => c.grupoId));
+    const salida = [];
+    const vistas = new Set();
+    propias.forEach(c => {
+      if (vistas.has(c.grupoId) || deOtras.has(c.grupoId)) return;
+      vistas.add(c.grupoId);
+      const g = this.db.grupos.find(x => x.id === c.grupoId);
+      if (!g) return;
+      const m = new RegExp('^' + na + 'º(.*)$').exec(String(g.nombre || '').trim());
+      const despues = m ? nn + 'º' + m[1] : '';
+      if (despues && despues !== g.nombre) salida.push({ id: g.id, antes: g.nombre, despues });
+    });
+    return salida;
+  },
+
+  // Grupos que quedarían HUÉRFANOS si desaparecieran las asignaturas de
+  // `ids` (con sus clases): los referenciados solo por clases de esas
+  // asignaturas. Los usa la confirmación de «Terminar», que ofrece la
+  // casilla «También eliminar el grupo con su alumnado» MARCADA por
+  // defecto. Devuelve [{ id, nombre, alumnos }].
+  gruposHuerfanosDe(ids) {
+    const van = new Set(Array.isArray(ids) ? ids : []);
+    const deLasQueSeVan = new Set();
+    const deLasSobrevivientes = new Set();
+    this.db.clases.forEach(c => {
+      (van.has(c.asignaturaId) ? deLasQueSeVan : deLasSobrevivientes).add(c.grupoId);
+    });
+    const salida = [];
+    deLasQueSeVan.forEach(gid => {
+      if (deLasSobrevivientes.has(gid) || salida.some(x => x.id === gid)) return;
+      const g = this.db.grupos.find(x => x.id === gid);
+      if (g) salida.push({
+        id: g.id,
+        nombre: g.nombre,
+        alumnos: this.db.alumnos.filter(a => a.grupoId === gid).length
+      });
+    });
+    return salida;
   },
 
   // --- Banco de instrumentos (D-48) ---

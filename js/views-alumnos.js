@@ -32,28 +32,94 @@ const AlumnosView = (() => {
     });
   }
 
+  // Ficha del alumno (fase 1): el modal de siempre ampliado con el bloque
+  // «Historial» — anotaciones propias (alta con fecha, hoy por defecto, y
+  // texto libre, guardadas en `alumno.notas`) y las observaciones de los
+  // instrumentos donde el alumno tiene registro, SOLO LECTURA y con enlace
+  // al instrumento, leídas del almacén real (`db.observaciones`) sin
+  // duplicarlas. Material interno del docente: nunca en cálculos ni informes.
+  function listaHistorialHtml(alumnoId) {
+    const entradas = Storage.historialAlumno(alumnoId);
+    if (!entradas.length) return '<li class="historial-vacio">Sin anotaciones todavía.</li>';
+    const fechaLegible = f => {
+      const d = new Date(f);
+      return isNaN(d.getTime()) ? f : Utils.fechaLegible(d);
+    };
+    return entradas.map(e => `
+      <li class="historial-entrada">
+        <span class="badge ${e.tipo === 'ficha' ? 'na' : 'info'}">${e.tipo === 'ficha' ? 'ficha' : 'instrumento'}</span>
+        <span class="historial-fecha">${Utils.esc(fechaLegible(e.fecha))}</span>
+        <span class="historial-texto">${Utils.esc(e.texto)}${e.instrumentoId
+          ? ` <button type="button" class="btn btn-mini nota-inst" data-inst="${Utils.esc(e.instrumentoId)}">${Utils.esc(e.instrumentoTitulo || 'instrumento')}</button>`
+          : ''}</span>
+      </li>`).join('');
+  }
+
   function modalAlumno(a) {
     const grupos = Storage.db.grupos;
     const grupoId = a ? a.grupoId : grupoSel;
     // El grupo solo se puede cambiar si hay más de uno; con un único grupo no
     // tiene sentido pedirlo.
     const varios = grupos.length > 1;
-    UI.openModal({
-      titulo: a ? 'Editar alumno' : 'Nuevo alumno en ' + nombreGrupo(),
+    const body = UI.openModal({
+      titulo: a ? 'Ficha del alumno' : 'Nuevo alumno en ' + nombreGrupo(),
       cuerpo: `
         <label class="campo"><span>Nombre</span><input type="text" id="f-nombre" placeholder="Nombre" value="${Utils.esc(a ? a.nombre : '')}"></label>
         <label class="campo"><span>Apellidos</span><input type="text" id="f-apellidos" placeholder="Apellidos" value="${Utils.esc(a ? a.apellidos : '')}"></label>
-        ${varios ? `<label class="campo"><span>Grupo</span><select id="f-grupo">${UI.selectHtml(grupos, grupoId, 'id', 'nombre')}</select></label>` : ''}`,
-      alGuardar(body) {
-        const sel = body.querySelector('#f-grupo');
+        ${varios ? `<label class="campo"><span>Grupo</span><select id="f-grupo">${UI.selectHtml(grupos, grupoId, 'id', 'nombre')}</select></label>` : ''}
+        ${a ? `<div class="historial-alumno" id="historial-alumno">
+          <b>Historial</b>
+          <div class="historial-nueva">
+            <input type="date" id="f-nota-fecha" value="${Utils.hoy()}" title="Fecha de la anotación">
+            <input type="text" id="f-nota-texto" placeholder="Anotación (texto libre)">
+            <button type="button" class="btn btn-mini btn-primario" id="btn-nota-add">Añadir</button>
+          </div>
+          <ul class="historial-lista" id="historial-lista">${listaHistorialHtml(a.id)}</ul>
+          <p class="hint">Solo lectura de las observaciones de los instrumentos: se escriben desde el
+            instrumento. Las anotaciones de la ficha nunca salen en informes ni cálculos.</p>
+        </div>` : ''}`,
+      alGuardar(body2) {
+        const sel = body2.querySelector('#f-grupo');
         const guardado = Storage.guardarAlumno({
-          nombre: body.querySelector('#f-nombre').value,
-          apellidos: body.querySelector('#f-apellidos').value,
+          nombre: body2.querySelector('#f-nombre').value,
+          apellidos: body2.querySelector('#f-apellidos').value,
           grupoId: sel ? sel.value : grupoId
         }, a ? a.id : null);
         return guardado !== null;
       }
     });
+    if (!a) return;
+    // Alta de anotación: fecha (editable) + texto obligatorio. El historial
+    // se repinta dentro del modal (la lista queda ordenada por fecha) y los
+    // enlaces se RE-CABLEAN: los nodos nuevos del repintado no heredan el
+    // onclick de los antiguos.
+    const cableaEnlacesInstrumento = () => {
+      body.querySelectorAll('.nota-inst').forEach(b => {
+        b.onclick = () => {
+          const instId = b.dataset.inst;
+          if (!instId || typeof InstrumentosView === 'undefined' || !InstrumentosView.renderCorreccion) return;
+          App.ir('cuadricula'); // cierra la ficha y repinta la vista
+          const el = document.getElementById('app');
+          if (el) InstrumentosView.renderCorreccion(el, instId, () => App.refrescar(), a.id);
+        };
+      });
+    };
+    cableaEnlacesInstrumento();
+    // Enlace al instrumento: cierra la ficha y abre la corrección del
+    // instrumento (donde se editan la nota y la observación), con el alumno
+    // seleccionado; «Volver» regresa a la vista que estaba.
+    const btnAdd = body.querySelector('#btn-nota-add');
+    if (btnAdd) btnAdd.onclick = () => {
+      const campoFecha = body.querySelector('#f-nota-fecha');
+      const campoTexto = body.querySelector('#f-nota-texto');
+      const texto = String(campoTexto.value || '').trim();
+      if (!texto) { UI.toast('Escribe el texto de la anotación', 'error'); return; }
+      Storage.guardarNotaAlumno(a.id, campoFecha.value, texto);
+      campoTexto.value = '';
+      const lista = body.querySelector('#historial-lista');
+      if (lista) lista.innerHTML = listaHistorialHtml(a.id);
+      cableaEnlacesInstrumento();
+    };
   }
 
   function modalAlumnosVarios() {
@@ -78,6 +144,11 @@ const AlumnosView = (() => {
       }
     });
   }
+
+  // Marca neutra junto al nombre en el listado: el alumno tiene anotaciones
+  // en su ficha. Sin color de alarma (material interno del docente).
+  const iconoNotas = '<span class="icono-nota-alumno" title="Tiene anotaciones en su ficha">✎</span>';
+  const conNotas = a => Array.isArray(a.notas) && a.notas.length ? iconoNotas : '';
 
   function render(el) {
     const db = Storage.db;
@@ -115,19 +186,19 @@ const AlumnosView = (() => {
                 // Informe y la corrección): una sola celda a lo ancho de las
                 // dos columnas del nombre.
                 ? `<tr>
-                  <td colspan="2">${Utils.esc(App.nombreVisible(a))}</td>
+                  <td colspan="2">${Utils.esc(App.nombreVisible(a))}${conNotas(a)}</td>
                   <td>
                     <div class="acciones">
-                      <button class="btn btn-mini editar-alumno" data-id="${a.id}">Editar</button>
+                      <button class="btn btn-mini editar-alumno" data-id="${a.id}">Ficha</button>
                       <button class="icon-btn borrar-alumno" data-id="${a.id}" title="Eliminar">×</button>
                     </div></td>
                 </tr>`
                 : `<tr>
                   <td>${Utils.esc(a.apellidos)}</td>
-                  <td>${Utils.esc(a.nombre)}</td>
+                  <td>${Utils.esc(a.nombre)}${conNotas(a)}</td>
                   <td>
                     <div class="acciones">
-                      <button class="btn btn-mini editar-alumno" data-id="${a.id}">Editar</button>
+                      <button class="btn btn-mini editar-alumno" data-id="${a.id}">Ficha</button>
                       <button class="icon-btn borrar-alumno" data-id="${a.id}" title="Eliminar">×</button>
                     </div></td>
                 </tr>`).join('') || '<tr><td colspan="3" class="vacio">Este grupo no tiene alumnos aún.</td></tr>'
