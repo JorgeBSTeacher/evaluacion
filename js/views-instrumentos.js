@@ -765,9 +765,24 @@ function columnasNivel(filas) {
     // curso conocido (moldes viejos a los que la cadena de migrar no pudo
     // deducírselo), el modal no puede decidir solo: lo dice y pregunta de qué
     // curso es — la respuesta se guarda en el molde para la próxima.
-    const sinCurso = !String(molde.curso || '').trim();
-    const ficha = [molde.area || (molde.origen || {}).asignatura || '', molde.curso || '']
+    const cursoMolde = String(molde.curso || '').trim();
+    const sinCurso = !cursoMolde;
+    // El curso del DESTINO con el resolutivo canónico (campo → nombre): sin
+    // él, la clase del docente con el campo vacío hacía saltar la negación en
+    // silencio y el uso «tragaba» el molde de otro curso.
+    const destinoCurso = Storage.cursoDeAsignatura(Calc.asignaturaDeClase(claseSel));
+    // REGLA DEL DOCENTE (el uso se ENDURECE): curso distinto → el uso se
+    // NIEGA de entrada (mensaje de no-paso y «Añadir» desactivado); la
+    // adaptación vive en el editor de moldes (duplicar → editar), no aquí.
+    // FAIL-CLOSED: si el destino no tiene curso conocido, tampoco se decide
+    // a ciegas — no-paso con el aviso.
+    const sinDestino = !destinoCurso;
+    const negado = (!!cursoMolde && !!destinoCurso && cursoMolde !== destinoCurso) || sinDestino;
+    const ficha = [molde.area || (molde.origen || {}).asignatura || '', cursoMolde]
       .filter(Boolean).join(' · ');
+    const mensajeNegado = sinDestino
+      ? 'No se sabe qué curso evalúa esta clase: rellena el curso de la asignatura en «Asignaturas y clases» e inténtalo de nuevo.'
+      : `Este molde es de ${cursoMolde || 'otro curso'} y esta clase evalúa ${destinoCurso}. Si lo quieres para ${destinoCurso}, duplícalo y edítalo a ${destinoCurso}.`;
     UI.openModal({
       titulo: 'Usar del banco',
       cuerpo: `
@@ -777,6 +792,7 @@ function columnasNivel(filas) {
             <small>${Utils.esc(molde.tipo || '')}${n ? ' · ' + n + ' apartado' + (n === 1 ? '' : 's') : ''}${ficha ? ' · ' + Utils.esc(ficha) : ''}</small>
           </span>
         </div>
+        ${negado ? `<div class="aviso aviso-uso">${Utils.esc(mensajeNegado)}</div>` : `
         <label class="campo"><span>Trimestre (T)</span>
           <select id="banco-usar-periodo">${PERIODOS.map(p => `<option ${p === 'T1' ? 'selected' : ''}>${p}</option>`).join('')}</select></label>
         <label class="campo"><span>Unidad de programación (UD, proyecto…)</span>
@@ -784,26 +800,45 @@ function columnasNivel(filas) {
           ${datalistUnidades(asig ? asig.id : '')}</label>
         ${sinCurso ? `
         <div class="aviso">No se sabe el curso de este molde. Dinos de qué curso es para decidir
-          si lleva criterios (se guarda en el molde para la próxima):</div>
+          si puede usarse aquí (se guarda en el molde para la próxima):</div>
         <label class="campo"><span>Curso del molde</span>
           <select id="banco-usar-curso">
             <option value="">— di de qué curso es —</option>
             ${['1º', '2º', '3º', '4º', '5º', '6º'].map(c => `<option value="${c}">${c}</option>`).join('')}
           </select></label>` : `
-        <p class="hint">Si escribes una unidad que no existe, se crea al añadir el instrumento. El molde
-          es de <b>${Utils.esc(molde.curso)}</b>: si esta clase evalúa otro curso, el instrumento se crea
-          con la estructura y <b>sin criterios</b> (los asignas a mano en la ficha).</p>`}`,
+        <p class="hint">Si escribes una unidad que no existe, se crea al añadir el instrumento.</p>`}`}` ,
       textoGuardar: 'Añadir a la clase',
       alGuardar(body2) {
         const periodo = (body2.querySelector('#banco-usar-periodo') || {}).value || 'T1';
         const unidad = String((body2.querySelector('#banco-usar-unidad') || {}).value || '').trim();
         if (sinCurso) {
           // La respuesta del docente queda en el molde (curso PROPIO): la
-          // regla binaria decide con ella y no vuelve a preguntar.
+          // regla decide con ella y no vuelve a preguntar. Sin respuesta,
+          // no-paso: no se importa a ciegas nunca.
           const respuesta = String((body2.querySelector('#banco-usar-curso') || {}).value || '').trim();
           if (respuesta) Storage.fijarCursoMolde(molde.id, respuesta);
+          else {
+            const aviso = body2.querySelector('.aviso-uso');
+            const texto = 'No se ha dicho de qué curso es el molde: no se puede importar sin saberlo. Vuelve a intentarlo diciendo el curso.';
+            if (aviso) aviso.textContent = texto;
+            else body2.insertAdjacentHTML('beforeend', `<div class="aviso aviso-uso">${texto}</div>`);
+            const btn2 = document.getElementById('modal-root-2').querySelector('.guardar');
+            if (btn2) btn2.disabled = true;
+            return false;
+          }
         }
         const r = Storage.anadirDesdeBanco(molde.id, claseSel, '', periodo, unidad);
+        if (r.negado) {
+          // No-paso garantizado: el mensaje dentro del propio modal y
+          // «Añadir» desactivado. El docente cierra y va al editor de moldes.
+          const aviso = body2.querySelector('.aviso-uso');
+          const texto = Utils.esc(r.motivo);
+          if (aviso) aviso.textContent = r.motivo;
+          else body2.insertAdjacentHTML('beforeend', `<div class="aviso aviso-uso">${texto}</div>`);
+          const btn2 = document.getElementById('modal-root-2').querySelector('.guardar');
+          if (btn2) btn2.disabled = true;
+          return false;
+        }
         if (r.faltan.length) {
           // Mismo curso, pero un código del molde no existe en el destino:
           // no se crea nada y se avisan los códigos (como siempre).
@@ -817,20 +852,15 @@ function columnasNivel(filas) {
         // instrumento creado: nada de buscarlo por las vistas.
         UI.closeModal();
         UI.closeModal();
-        if (r.sinCriterios) {
-          // Aviso claro de curso distinto: estructura sí, criterios no.
-          const destinoCurso = ((Calc.asignaturaDeClase(claseSel) || {}).curso || '').trim();
-          const tramo = (molde.curso || '').trim() && destinoCurso
-            ? ' (el molde es de ' + molde.curso + ' y esta clase evalúa ' + destinoCurso + ')'
-            : ' (el molde viene de otro curso)';
-          alert('«' + (r.inst.titulo || molde.titulo) + '» se ha creado sin criterios' + tramo +
-            ': asígnalos a mano en la ficha.');
-        } else {
-          UI.toast('Añadido: ' + r.inst.titulo);
-        }
+        UI.toast('Añadido: ' + r.inst.titulo);
         renderCorreccion(el, r.inst.id, () => render(el));
       }
     }, 2);
+    if (negado) {
+      // Botón de no-paso: «Añadir» desactivado desde que se abre el modal.
+      const btn = document.getElementById('modal-root-2').querySelector('.guardar');
+      if (btn) btn.disabled = true;
+    }
   }
 
   // Ficha del molde (solo lectura, capa 2): título, tipo, origen con curso y

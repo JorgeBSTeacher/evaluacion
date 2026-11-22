@@ -2401,22 +2401,17 @@ async function main() {
     check('la copia recibe ids de apartado nuevos', r.inst.apartados[0].id !== 'p1');
     check('la copia conserva el enlace del molde', r.inst.url === 'https://ejemplo.test/examen', r.inst.url);
 
-    // Regla binaria por CURSO (v0.11.5): molde de 6º a una clase de 4º → se
-    // crea con la estructura (apartados, pesos, descriptores) y SIN criterios.
-    // Antes se rechazaba entero si faltaba cualquier código.
+    // Regla del docente (v0.11.5, el uso se ENDURECE): usar un molde en un
+    // curso distinto se NIEGA — nada se crea; la adaptación de curso vive en
+    // el editor de moldes (duplicar → editar). Antes se creaba «sin criterios
+    // con aviso», y con códigos del decreto que se repiten entre cursos
+    // llegó a resolverse en el curso equivocado.
     const antes = S.db.instrumentos.length;
     const r2 = S.anadirDesdeBanco(molde.id, 'c4', '', 'T1', 'UD1');
-    check('un molde de otro curso se crea SIN criterios (no se rechaza entero)',
-      !!r2.inst && r2.sinCriterios === true && S.db.instrumentos.length === antes + 1,
+    check('usar un molde de otro curso se NIEGA: nada se crea y se dice cómo adaptarlo',
+      !r2.inst && r2.negado === true && S.db.instrumentos.length === antes
+      && !!r2.motivo && r2.motivo.includes('duplícalo'),
       JSON.stringify(r2));
-    check('el instrumento de curso distinto conserva la estructura (apartados, pesos y descriptores)',
-      r2.inst.apartados.length === 2
-      && r2.inst.apartados[0].maxPts === molde.apartados[0].maxPts
-      && r2.inst.apartados[0].peso === molde.apartados[0].peso
-      && r2.inst.apartados[1].descripcion === molde.apartados[1].descripcion);
-    check('el instrumento de curso distinto queda sin criterios y con el T y la UD preguntados',
-      r2.inst.apartados.every(ap => !ap.criterioIds.length) && !r2.inst.criterioIdsGlobal.length
-      && r2.inst.periodo === 'T1' && r2.inst.unidad === 'UD1');
 
     // Modo global y rúbrica: el molde conserva lo que define el motor.
     const instG = Object.assign({}, inst, {
@@ -2552,9 +2547,60 @@ async function main() {
     check('la regla de «curso distinto» lee el CURSO PROPIO del molde (4º ya no es distinto de 4º)',
       !!en4.inst && !en4.sinCriterios && en4.inst.apartados[0].criterioIds.join(',') === 'm1',
       JSON.stringify(en4.inst && en4.inst.apartados.map(a => a.criterioIds)));
-    check('y con el curso propio cambiado, usarla en 6º SÍ cae en la regla de curso distinto',
-      (S.anadirDesdeBanco(copia.id, 'c1', '', 'T1', 'UD1').sinCriterios === true));
-    // Criterios de un curso, agrupados por asignatura (fuente: la base).
+    check('y con el curso propio cambiado, usarla en 6º SÍ cae en la regla (se niega)',
+      S.anadirDesdeBanco(copia.id, 'c1', '', 'T1', 'UD1').negado === true);
+
+    // FAIL-CLOSED en el lado del DESTINO (el caso del docente): su asignatura
+    // de 6º tiene el nombre largo del decreto y el campo curso VACÍO — la
+    // guarda antigua comparaba el campo a secas y saltaba en silencio
+    // («ahora traga»): importaba el molde de 1º, incluso con un código que
+    // el destino resolvía de casualidad.
+    S.db.clases.push({ id: 'c6', asignaturaId: 'sLarga', grupoId: 'g1', nivelesAci: [], adaptaciones: {} });
+    S.db.asignaturas.push({ id: 'sLarga', nombre: 'Conocimiento del Medio Natural, Social y Cultural 6º',
+      area: 'Conocimiento del Medio Natural, Social y Cultural', etapa: 'Primaria', curso: '' });
+    S.db.criterios.push({ id: 'kL', asignaturaId: 'sLarga', codigo: 'CMN.TC.1.1', descripcion: 'Op 6º', peso: 60, espIds: [], claveIds: [] });
+    S.db.bancoInstrumentos.push({
+      id: 'm1c', titulo: 'Prueba 1º', tipo: 'Control', curso: '1º', area: 'Matemáticas',
+      saberes: '', url: '', niveles: [], criteriosModo: 'desglosado', criterioCodesGlobal: [],
+      apartados: [{ descripcion: 'a', maxPts: 10, peso: 1, niveles: [], criterioCodes: ['MAT.PC.1.1'] }],
+      origen: { asignaturaId: '', asignatura: '', etapa: '', guardadoEn: '2025-10-01' }
+    });
+    S.db.bancoInstrumentos.push({
+      id: 'mComun', titulo: 'Prueba con código común', tipo: 'Control', curso: '1º', area: 'Matemáticas',
+      saberes: '', url: '', niveles: [], criteriosModo: 'desglosado', criterioCodesGlobal: [],
+      apartados: [{ descripcion: 'a', maxPts: 10, peso: 1, niveles: [], criterioCodes: ['CMN.TC.1.1'] }],
+      origen: { asignaturaId: '', asignatura: '', etapa: '', guardadoEn: '2025-10-01' }
+    });
+    const antesDestino = S.db.instrumentos.length;
+    const rLarga = S.anadirDesdeBanco('m1c', 'c6', '', 'T1', 'UD1');
+    check('el curso de la clase de 6º se resuelve por el NOMBRE (campo vacío) y el uso de 1º se NIEGA',
+      !rLarga.inst && rLarga.negado === true && S.db.instrumentos.length === antesDestino
+      && rLarga.motivo.includes('1º') && rLarga.motivo.includes('6º'),
+      JSON.stringify(rLarga));
+    const rComun = S.anadirDesdeBanco('mComun', 'c6', '', 'T1', 'UD1');
+    check('ni con un código que el destino resolvería de casualidad se traga (nada creado)',
+      !rComun.inst && rComun.negado === true && S.db.instrumentos.length === antesDestino,
+      JSON.stringify(rComun));
+    // Destino sin curso NI en el campo NI en el nombre: fail-closed, sin crear.
+    S.db.clases.push({ id: 'cX', asignaturaId: 'sSinCurso', grupoId: 'g1', nivelesAci: [], adaptaciones: {} });
+    S.db.asignaturas.push({ id: 'sSinCurso', nombre: 'Taller de ajedrez', area: '', etapa: 'Primaria', curso: '' });
+    const rSinDestino = S.anadirDesdeBanco('m1c', 'cX', '', 'T1', 'UD1');
+    check('destino sin curso conocido (ni campo ni nombre): fail-closed, no se importa a ciegas',
+      !rSinDestino.inst && rSinDestino.negado === true
+      && rSinDestino.motivo.includes('No se sabe qué curso evalúa esta clase'),
+      JSON.stringify(rSinDestino.motivo));
+    // Fail-closed en el lado del MOLDE: sin curso conocido y sin respuesta, no-paso.
+    S.db.bancoInstrumentos.push({
+      id: 'mScurso', titulo: 'Molde sin curso', tipo: 'Control', curso: '', area: '',
+      saberes: '', url: '', niveles: [], criteriosModo: 'desglosado', criterioCodesGlobal: [],
+      apartados: [{ descripcion: 'a', maxPts: 10, peso: 1, niveles: [], criterioCodes: [] }],
+      origen: { asignaturaId: '', asignatura: '', etapa: '', guardadoEn: '2025-10-01' }
+    });
+    const rMoldeScurso = S.anadirDesdeBanco('mScurso', 'c1', '', 'T1', 'UD1');
+    check('molde sin curso conocido: fail-closed también en datos (no se importa a ciegas)',
+      !rMoldeScurso.inst && rMoldeScurso.negado === true
+      && rMoldeScurso.motivo.includes('No se sabe el curso de este molde'),
+      JSON.stringify(rMoldeScurso.motivo));    // Criterios de un curso, agrupados por asignatura (fuente: la base).
     const grupos = S.criteriosDeCurso('6º');
     check('criteriosDeCurso agrupa los criterios REALES del curso por asignatura',
       grupos.length === 1 && grupos[0].asignatura === 'Matemáticas 6º'
@@ -2790,7 +2836,11 @@ async function main() {
       && el.textContent.includes('Proyecto volcán'), el.textContent.slice(0, 160));
     check('mismo curso: la copia nace con criterios y SIN aviso de curso distinto',
       nuevo.apartados[0].criterioIds.join(',') === 'k1' && app.alertas.length === 0);
-    // Curso distinto: molde de 6º a la clase de 4º → sin criterios, con aviso y estructura.
+    check('el instrumento creado NO arrastra claves del molde (su contexto es SU clase, nunca metadatos heredados)',
+      !('area' in nuevo) && !('curso' in nuevo),
+      JSON.stringify(Object.keys(nuevo)));
+    // Curso distinto (diseño nuevo): el flujo muestra el mensaje de no-paso
+    // Y el botón queda desactivado — nada se crea.
     app.App.ir('instrumentos');
     const el2 = doc.getElementById('app');
     el2.querySelector('#sel-clase').value = 'c4';
@@ -2799,17 +2849,16 @@ async function main() {
     body = doc.querySelector('.modal-body');
     body.querySelector('.banco-usar').click();
     flujo = doc.getElementById('modal-root-2').querySelector('.modal-body');
-    flujo.querySelector('#banco-usar-unidad').value = 'UD1';
-    const alertasAntes = app.alertas.length;
+    check('curso distinto: el modal de uso lo dice de entrada (mensaje de no-paso) y desactiva «Añadir»',
+      !!flujo && flujo.textContent.includes('Este molde es de 6º')
+      && flujo.textContent.includes('duplícalo') && flujo.textContent.includes('6º')
+      && !!doc.getElementById('modal-root-2').querySelector('.guardar[disabled]'),
+      'flujo=' + String(!!flujo) + ' · ' + (flujo ? flujo.textContent.replace(/\s+/g, ' ').slice(0, 160) : '(sin flujo)'));
     doc.getElementById('modal-root-2').querySelector('.guardar').click();
-    const cruzado = S.db.instrumentos.filter(i => i.claseId === 'c4')[0];
-    check('curso distinto: se crea SIN criterios, con la estructura, y avisa en claro',
-      !!cruzado && cruzado.apartados.every(a => !a.criterioIds.length)
-      && app.alertas.length === alertasAntes + 1
-      && app.alertas[app.alertas.length - 1].includes('sin criterios'),
-      JSON.stringify(app.alertas));
-    check('el aviso de curso distinto también abre la ficha del instrumento creado',
-      !doc.querySelector('.modal-body') && el2.textContent.includes('Control 1'));
+    check('el no-paso no crea nada (ni instrumento) y el modal queda abierto con el mensaje',
+      !S.db.instrumentos.some(i => i.claseId === 'c4')
+      && !!doc.getElementById('modal-root-2').querySelector('.modal-body')
+      && doc.getElementById('modal-root-2').querySelector('.modal-body').textContent.includes('duplícalo'));
     // Camino REAL del docente (informe: «los criterios siguen bloqueados»):
     // el selector de criterios son PILLS con el checkbox invisible; si las
     // pills no responden al clic (sin wireChips), en el navegador real marcar
@@ -2817,6 +2866,8 @@ async function main() {
     // navegador hace al tocar una pill: toggle del checkbox + 'change'.
     app.App.ir('instrumentos');
     const el4 = doc.getElementById('app');
+    el4.querySelector('#sel-clase').value = 'c1'; // de vuelta a 6º (mismo curso que el molde)
+    el4.querySelector('#sel-clase')._dispara('change');
     el4.querySelector('#btn-banco').click();
     body = doc.querySelector('.modal-body');
     body.querySelector('.banco-usar').click();
@@ -2874,18 +2925,50 @@ async function main() {
       !!flujo && flujo.textContent.includes('No se sabe el curso de este molde')
       && !!flujo.querySelector('#banco-usar-curso'),
       flujo && flujo.textContent.slice(0, 200));
-    // El docente responde 5º: se guarda en el molde y la regla decide con él.
+    // El docente responde 5º: se guarda en el molde y la regla decide con él —
+    // 5º en 6º: se NIEGA (nada se crea) con el mensaje de no-paso.
     flujo.querySelector('#banco-usar-curso').value = '5º';
     flujo.querySelector('#banco-usar-unidad').value = 'UD1';
     doc.getElementById('modal-root-2').querySelector('.guardar').click();
     check('la respuesta del docente se GUARDA en el molde (la próxima ya no pregunta)',
       S.db.bancoInstrumentos.find(m => m.id === 'mViejo').curso === '5º',
       S.db.bancoInstrumentos.find(m => m.id === 'mViejo').curso);
-    const cruzado5a6 = S.db.instrumentos.filter(i => i.titulo === 'Prueba 5º')[0];
-    check('molde de 5º (curso dicho por el docente) usado en 6º: SIN criterios y aviso garantizado',
-      !!cruzado5a6 && cruzado5a6.apartados.every(a => !a.criterioIds.length)
-      && app.alertas.some(a => a.includes('Prueba 5º') && a.includes('sin criterios')),
-      JSON.stringify(app.alertas.map(a => a.slice(0, 60))));
+    check('con lo respondido (5º) en una clase de 6º, el uso se NIEGA: nada creado y mensaje de no-paso',
+      !S.db.instrumentos.some(i => i.titulo === 'Prueba 5º')
+      && !!doc.getElementById('modal-root-2').querySelector('.guardar[disabled]')
+      && flujo.textContent.includes('Este molde es de 5º')
+      && flujo.textContent.includes('duplícalo'),
+      flujo && flujo.textContent.slice(0, 220));
+
+    // El caso REAL del docente por la ENTRADA de uso (nombres largos del
+    // decreto y campo curso vacío): el modal lo niega de entrada.
+    S.db.clases.push({ id: 'cLarga', asignaturaId: 'sLarga', grupoId: 'g1', nivelesAci: [], adaptaciones: {} });
+    S.db.asignaturas.push({ id: 'sLarga', nombre: 'Conocimiento del Medio Natural, Social y Cultural 6º',
+      area: 'Conocimiento del Medio Natural, Social y Cultural', etapa: 'Primaria', curso: '' });
+    S.db.bancoInstrumentos.push({
+      id: 'm1c', titulo: 'Prueba 1º', tipo: 'Control', curso: '1º', area: 'Matemáticas',
+      saberes: '', url: '', niveles: [], criteriosModo: 'desglosado', criterioCodesGlobal: [],
+      apartados: [{ descripcion: 'a', maxPts: 10, peso: 1, niveles: [], criterioCodes: ['MAT.PC.1.1'] }],
+      origen: { asignaturaId: '', asignatura: '', etapa: '', guardadoEn: '2025-10-01' }
+    });
+    app.App.ir('instrumentos');
+    const el6 = doc.getElementById('app');
+    el6.querySelector('#sel-clase').value = 'cLarga'; // la de nombres largos
+    el6.querySelector('#sel-clase')._dispara('change');
+    el6.querySelector('#btn-banco').click();
+    body = doc.querySelector('.modal-body');
+    const tarjetaLarga = Array.from(body.querySelectorAll('.fila-banco')).find(f => f.textContent.includes('Prueba 1º'));
+    tarjetaLarga.querySelector('.banco-usar').click();
+    flujo = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    check('camino real con nombres largos y campo curso vacío: el modal niega de entrada (no traga)',
+      !!flujo && flujo.textContent.includes('Este molde es de 1º')
+      && flujo.textContent.includes('6º') && flujo.textContent.includes('duplícalo')
+      && !!doc.getElementById('modal-root-2').querySelector('.guardar[disabled]'),
+      flujo && flujo.textContent.replace(/\s+/g, ' ').slice(0, 200));
+    doc.getElementById('modal-root-2').querySelector('.guardar').click();
+    check('y el no-paso se cumple: nada creado en la clase de 6º',
+      !S.db.instrumentos.some(i => i.claseId === 'cLarga')
+      && !!doc.getElementById('modal-root-2').querySelector('.modal-body'));
   }
 
   console.log('\n== Banco: los criterios del instrumento creado se editan desde su ficha ==');
@@ -2939,8 +3022,7 @@ async function main() {
     check('cancelar la edición desde la ficha vuelve a la ficha sin tocar nada',
       el.textContent.includes('Guardar y siguiente') && !doc.querySelector('.modal-body'));
 
-    // Curso distinto: el instrumento creado SIN criterios recibe criterios a
-    // mano desde la ficha, sin recrearlo.
+    // Curso distinto (diseño nuevo): el uso en c4 se NIEGA — nada se crea.
     app.App.ir('instrumentos');
     const el2 = doc.getElementById('app');
     el2.querySelector('#sel-clase').value = 'c4';
@@ -2949,42 +3031,85 @@ async function main() {
     body = doc.querySelector('.modal-body');
     body.querySelector('.banco-usar').click();
     flujo = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    doc.getElementById('modal-root-2').querySelector('.guardar').click();
+    check('el uso de un molde de 6º en 4º se NIEGA: nada creado, mensaje de no-paso visible',
+      !S.db.instrumentos.some(i => i.claseId === 'c4')
+      && !!doc.getElementById('modal-root-2').querySelector('.modal-body')
+      && doc.getElementById('modal-root-2').querySelector('.modal-body').textContent.includes('duplícalo'));
+    // La ADAPTACIÓN vive en el editor de moldes: duplicar → editar a 4º con
+    // criterios del currículo oficial de 4º → y AHORA el uso en c4 pasa.
+    body = doc.querySelector('.modal-body');
+    let tarjetaO = Array.from(body.querySelectorAll('.fila-banco')).find(f => f.textContent.includes('Control 1'));
+    tarjetaO.querySelector('.banco-duplicar').click();
+    body = doc.querySelector('.modal-body');
+    const tarjetaC = Array.from(body.querySelectorAll('.fila-banco')).find(f => f.textContent.includes('Control 1 (copia)'));
+    tarjetaC.querySelector('.banco-editar').click();
+    let ed = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    ed.querySelector('#f-molde-curso').value = '4º';
+    ed.querySelector('#f-molde-curso')._dispara('change');
+    ed = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    ed.querySelector('.molde-crit-toggle').click();
+    crit = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    Array.from(crit.querySelectorAll('.chip input')).forEach(i => { i.checked = i.value === 'MAT.SC.1.1'; });
+    doc.getElementById('modal-root-2').querySelector('.guardar').click();
+    ed = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    doc.getElementById('modal-root-2').querySelector('.guardar').click();
+    const copiaAdaptada = S.db.bancoInstrumentos.find(m => m.titulo === 'Control 1 (copia)');
+    check('el molde duplicado queda adaptado a 4º con criterios del currículo oficial de 4º',
+      !!copiaAdaptada && copiaAdaptada.curso === '4º'
+      && copiaAdaptada.apartados[0].criterioCodes.join(',') === 'MAT.SC.1.1',
+      copiaAdaptada && JSON.stringify(copiaAdaptada.apartados.map(a => a.criterioCodes)));
+    body = doc.querySelector('.modal-body');
+    const tarjetaAd = Array.from(body.querySelectorAll('.fila-banco')).find(f => f.textContent.includes('Control 1 (copia)'));
+    tarjetaAd.querySelector('.banco-usar').click();
+    flujo = doc.getElementById('modal-root-2').querySelector('.modal-body');
     flujo.querySelector('#banco-usar-unidad').value = 'UD1';
     doc.getElementById('modal-root-2').querySelector('.guardar').click();
     const cruzado = S.db.instrumentos.filter(i => i.claseId === 'c4')[0];
-    check('la ficha del creado SIN criterios también ofrece «Editar»',
-      !!el2.querySelector('#btn-editar'));
-    el2.querySelector('#btn-editar').click();
-    body = doc.querySelector('.modal-body');
-    Array.from(body.querySelectorAll('.apartado-fila')).forEach(fila => {
-      fila.querySelector('.toggle-crit').click();
-      crit = doc.getElementById('modal-root-2').querySelector('.modal-body');
-      crit.querySelectorAll('.chip input')[0].checked = true;
-      doc.getElementById('modal-root-2').querySelector('.guardar').click();
-    });
-    doc.querySelector('.modal-foot .guardar').click();
-    check('el instrumento de curso distinto recibe criterios a mano desde la ficha (sin recrearlo)',
-      JSON.stringify(S.db.instrumentos.find(i => i.id === cruzado.id).apartados.map(a => a.criterioIds.join(',')))
-        === JSON.stringify(['m1', 'm1'])
-      && S.db.instrumentos.find(i => i.id === cruzado.id).id === cruzado.id,
-      JSON.stringify(S.db.instrumentos.find(i => i.id === cruzado.id).apartados.map(a => a.criterioIds)));
+    check('el uso del molde ADAPTADO a 4º en la clase de 4º pasa: nace con sus criterios',
+      !!cruzado && cruzado.apartados[0].criterioIds.join(',') === 'm1',
+      cruzado && JSON.stringify(cruzado.apartados.map(a => a.criterioIds)));
     check('el aviso del flujo promete exactamente lo que ahora se puede hacer',
       (el2.textContent.includes('Guardar y siguiente')));
-    // Modo global: el molde global cruzado de curso también recibe criterios.
+    // Modo global: el molde global duplicado y adaptado a 4º también funciona.
     app.App.ir('instrumentos');
     const el3 = doc.getElementById('app');
+    el3.querySelector('#sel-clase').value = 'c1';
+    el3.querySelector('#sel-clase')._dispara('change');
     const instG = S.db.instrumentos.find(i => i.id === 'i1');
     instG.criteriosModo = 'global';
     instG.criterioIdsGlobal = ['k1'];
     instG.titulo = 'Examen global';
-    const moldeG = S.guardarEnBanco(instG);
-    el3.querySelector('#sel-clase').value = 'c4';
-    el3.querySelector('#sel-clase')._dispara('change');
+    S.guardarEnBanco(instG);
     el3.querySelector('#btn-banco').click();
     body = doc.querySelector('.modal-body');
     const filaG = Array.from(body.querySelectorAll('.fila-banco'))
       .find(f => f.textContent.includes('Examen global'));
-    filaG.querySelector('.banco-usar').click();
+    filaG.querySelector('.banco-duplicar').click();
+    body = doc.querySelector('.modal-body');
+    const filaGD = Array.from(body.querySelectorAll('.fila-banco'))
+      .find(f => f.textContent.includes('Examen global (copia)'));
+    filaGD.querySelector('.banco-editar').click();
+    ed = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    ed.querySelector('#f-molde-curso').value = '4º';
+    ed.querySelector('#f-molde-curso')._dispara('change');
+    ed = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    ed.querySelector('#molde-crit-global').click();
+    crit = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    Array.from(crit.querySelectorAll('.chip input')).forEach(i => { i.checked = i.value === 'MAT.SC.1.1'; });
+    doc.getElementById('modal-root-2').querySelector('.guardar').click();
+    ed = doc.getElementById('modal-root-2').querySelector('.modal-body');
+    doc.getElementById('modal-root-2').querySelector('.guardar').click();
+    body = doc.querySelector('.modal-body');
+    const filaGA = Array.from(body.querySelectorAll('.fila-banco'))
+      .find(f => f.textContent.includes('Examen global (copia)'));
+    el3.querySelector('#sel-clase').value = 'c4';
+    el3.querySelector('#sel-clase')._dispara('change');
+    el3.querySelector('#btn-banco').click();
+    body = doc.querySelector('.modal-body');
+    const filaGA2 = Array.from(body.querySelectorAll('.fila-banco'))
+      .find(f => f.textContent.includes('Examen global (copia)'));
+    filaGA2.querySelector('.banco-usar').click();
     flujo = doc.getElementById('modal-root-2').querySelector('.modal-body');
     flujo.querySelector('#banco-usar-unidad').value = 'UD2';
     doc.getElementById('modal-root-2').querySelector('.guardar').click();

@@ -1136,6 +1136,22 @@ const Storage = {
     return m;
   },
 
+  // Curso REAL de una asignatura: el campo `curso` y, si está vacío, el nivel
+  // que cierra su nombre («… 6º», «… 1º de Primaria»). Es la MISMA regla que
+  // usa `ClasesView.cursoDeAsignatura` (duplicado a propósito: storage.js no
+  // depende de las vistas y la regla es de 5 líneas); sin ella, el banco
+  // comparaba el campo a secas y una asignatura con el campo vacío pero el
+  // curso en el nombre (las largas del decreto, las creadas a mano) hacía
+  // saltar la regla de curso en silencio: el molde de otro curso se importaba
+  // «tragándolo». Devuelve '' si no hay forma de saberlo (fail-closed).
+  cursoDeAsignatura(a) {
+    if (!a) return '';
+    const campo = String(a.curso || '').trim();
+    if (campo) return campo;
+    const m = String(a.nombre || '').match(/([1-6])º(?:\s+de\s+(?:Primaria|Infantil))?\s*$/i);
+    return m ? m[1] + 'º' : '';
+  },
+
   // Criterios disponibles de un CURSO, agrupados por asignatura — la fuente
   // del selector de criterios del editor de moldes del banco. Se lee de la
   // BASE (el currículo que el docente tiene importado): son los códigos y
@@ -1285,15 +1301,17 @@ const Storage = {
 
   // Crea un instrumento nuevo en `claseId` a partir de un molde del banco, con
   // el T y la unidad de programación (UD, proyecto…) que se preguntan al
-  // usarlo — el molde no guarda ni aporta ninguna de las dos. Regla binaria
-  // por CURSO (v0.11.5): compara el curso PROPIO del molde (con el campo
-  // `origen.curso` como última red para datos a medias migrar) con el del
-  // destino: si coincide (o no se sabe), los códigos se resuelven contra el
-  // currículo de destino y algún código que falte se avisa SIN crear nada; si
-  // el curso del molde es OTRO, se crea con la estructura (apartados, pesos,
-  // descriptores) y SIN criterios, marcado con `sinCriterios` para que la UI
-  // avise en claro («asígnalos a mano»). Antes se rechazaba entero si faltaba
-  // cualquier código: reutilizar un molde de otro curso no creaba nada.
+  // usarlo — el molde no guarda ni aporta ninguna de las dos. REGLA DEL
+  // DOCENTE (el uso se ENDURECE): si el curso PROPIO del molde es distinto
+  // del del destino, el uso se NIEGA — NO se crea nada y se devuelve
+  // `{ negado: true, motivo }` con la receta («duplícalo y edítalo a Nº»):
+  // la adaptación de curso vive en el EDITOR DE MOLDES (duplicar → editar
+  // curso/área → criterios del currículo oficial de ese curso), no en el
+  // momento de usar. Antes se creaba «sin criterios con aviso», y con
+  // códigos del decreto que se repiten entre cursos llegó a resolverse en el
+  // curso equivocado. Con el mismo curso (o por nivel ACI), los códigos se
+  // resuelven contra el currículo de destino como siempre y algún código que
+  // falte se avisa SIN crear nada.
   anadirDesdeBanco(moldeId, claseId, nivel, periodo, unidad) {
     const molde = (this.db.bancoInstrumentos || []).find(m => m.id === moldeId);
     if (!molde) return { faltan: ['(el molde ya no está en el banco)'] };
@@ -1301,20 +1319,34 @@ const Storage = {
     const cursoOrigen = String((molde.curso != null ? molde.curso
       : (molde.origen || {}).curso) || '').trim();
     const asigDestino = Calc.asignaturaDeNivel(claseId, nivel || '');
-    const cursoDestino = asigDestino ? String(asigDestino.curso || '').trim() : '';
-    if (cursoOrigen && cursoDestino && cursoOrigen !== cursoDestino) {
-      // Sin criterios: una copia del molde con los códigos vacíos pasa por el
-      // mismo motor, así que ids de apartado, pesos y descriptores se crean
-      // exactamente igual que en el camino normal.
-      const sinCodigos = Object.assign({}, molde, {
-        apartados: (molde.apartados || []).map(ap => Object.assign({}, ap, { criterioCodes: [] })),
-        criterioCodesGlobal: []
-      });
-      const r = Calc.instrumentoDesdeMolde(sinCodigos, claseId, nivel, periodo);
-      r.inst.unidad = destino;
-      this.db.instrumentos.push(r.inst);
-      this.save();
-      return { inst: r.inst, faltan: [], molde, sinCriterios: true };
+    const cursoDestino = this.cursoDeAsignatura(asigDestino);
+    // FAIL-CLOSED (decisión del docente, tras el «traga»): si no se sabe el
+    // curso del destino o el del molde, NO se decide comparando a ciegas —
+    // se niega el uso con el motivo y nada se crea. La guarda antigua
+    // `if (cursoOrigen && cursoDestino && …)` saltaba en silencio con el
+    // dato vacío y dejaba importar (incluso resolviendo criterios del
+    // destino con un código coincidente).
+    if (!cursoDestino) {
+      return {
+        negado: true,
+        molde,
+        motivo: 'No se sabe qué curso evalúa esta clase: rellena el curso de la asignatura en «Asignaturas y clases» e inténtalo de nuevo.'
+      };
+    }
+    if (!cursoOrigen) {
+      return {
+        negado: true,
+        molde,
+        motivo: 'No se sabe el curso de este molde: dilo en el modal de uso (se guarda en el molde para la próxima).'
+      };
+    }
+    if (cursoOrigen !== cursoDestino) {
+      return {
+        negado: true,
+        molde,
+        motivo: `Este molde es de ${cursoOrigen} y esta clase evalúa ${cursoDestino}. ` +
+          `Si lo quieres para ${cursoDestino}, duplícalo y edítalo a ${cursoDestino}.`
+      };
     }
     const r = Calc.instrumentoDesdeMolde(molde, claseId, nivel, periodo);
     if (r.faltan.length) return { faltan: r.faltan, molde };

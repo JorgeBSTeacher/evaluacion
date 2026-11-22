@@ -1,6 +1,6 @@
 'use strict';
 // tools/datos-evaluador.js — genera un curso completo de DATOS FICTICIOS para
-// entregar a un evaluador externo de la app, y lo vuelca a datos-evaluador.json
+// entregar a un evaluador externo de la app, y lo vuelca a «json prueba no online/datos-evaluador.json» (carpeta ignorada por git)
 // para importarlo en la app real (Configuración → Importar backup).
 //
 // Escenario: 3 grupos (5ºA, 5ºB, 6ºA) · 4 clases (CMN 5ºA, Inglés 5ºA,
@@ -555,7 +555,7 @@ if (require.main === module) {
     fallos.forEach(f => console.error('  - ' + f));
     process.exitCode = 1;
   } else {
-    const destino = path.join(raiz, 'datos-evaluador.json');
+    const destino = path.join(raiz, 'json prueba no online', 'datos-evaluador.json');
     fs.writeFileSync(destino, texto);
     const r = resumen(db);
     console.log('Escrito ' + path.relative(raiz, destino) + ' (' + Math.round(fs.statSync(destino).size / 1024) + ' KB)');
