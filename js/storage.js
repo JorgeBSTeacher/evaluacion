@@ -15,6 +15,11 @@ const Storage = {
   // fichero al guardar en lugar de amontonar backups con fecha.
   nombreFichero: 'evalcrit.json',
   ficheroHandle: null,
+  // Copia de seguridad hecha en ESTA sesión (no se guarda en db ni viaja en
+  // el backup: al recargar la página vuelve a empezar). La pide el asistente
+  // de fin de curso (D-60) antes de dejar actuar; la enciende marcarCopia,
+  // que es el sellado común de exportar/guardar/descargar.
+  copiaEnSesion: false,
 
   defaults() {
     const hoy = new Date();
@@ -328,9 +333,20 @@ const Storage = {
     return true;
   },
 
-  async exportar() {
+  async exportar(nombreOpcional) {
     const contenido = JSON.stringify(this.db, null, 2);
-    const nombre = `backup-${Utils.fechaLegible()}-${Utils.horaCorta()}.json`;
+    const nombre = String(nombreOpcional || '').trim()
+      || `backup-${Utils.fechaLegible()}-${Utils.horaCorta()}.json`;
+    return this.exportarContenido(contenido, nombre);
+  },
+
+  // Escribe un CONTENIDO JSON concreto con el nombre dado, por los mismos
+  // caminos que exportar (carpeta de backups recordada, selector «Guardar
+  // como» y descarga universal que funciona en file://). Es el motor de la
+  // copia: `exportar()` lo usa con su nombre de backup y el fichero de
+  // archivo del fin de curso (D-60) con el suyo. Devuelve true/false según
+  // se haya escrito (un «Guardar como» cancelado devuelve false y no sella).
+  async exportarContenido(contenido, nombre) {
     // En file:// el API de acceso al sistema de ficheros (showSaveFilePicker) NO
     // funciona: no abre el selector nativo y el fallback Blob puede no disparar la
     // descarga. Detectamos el protocolo para saltarnos ese camino por completo y
@@ -594,6 +610,7 @@ const Storage = {
 
   // Sella una exportación correcta: fija la fecha y quita «cambios sin copiar».
   marcarCopia() {
+    this.copiaEnSesion = true; // constancia para el asistente de fin de curso (D-60)
     this.db.meta = this.db.meta || {};
     this.db.meta.ultimaExportacion = new Date().toISOString();
     this.db.meta.cambiosSinCopia = false;
@@ -837,6 +854,101 @@ const Storage = {
     this.db.clases = this.db.clases.filter(x => x.asignaturaId !== asignaturaId);
     this.db.asignaturas = this.db.asignaturas.filter(x => x.id !== asignaturaId);
     this._purgarAciHuerfano();
+    this.save();
+    return resp;
+  },
+
+  // --- Fin de curso (D-60) ---
+  // Paridad del docente: los cursos impares (1º, 3º, 5º) PROMOCIONAN al nivel
+  // siguiente y los pares (2º, 4º, 6º) empiezan el curso nuevo: las marcadas
+  // se ELIMINAN (quedan en el archivo definitivo del paso 1) y las SIN
+  // marcar se REINICIAN (vaciar instrumentos y notas, conservando nivel,
+  // currículo, clase, grupo y alumnado) — ver reiniciarAsignatura. La
+  // paridad la decide la vista (el «curso» de una asignatura también se
+  // deduce del nombre, D-67); aquí vive solo la escritura de datos, junto a
+  // la cascada de borrado.
+  //
+  // Asignaturas REALES vs SOPORTE ACI: una asignatura es REAL si tiene
+  // alguna clase con alumnado (ahí viven sus calificaciones y ahí
+  // pertenecen sus alumnos); las SIN clases con alumnado son contenedoras
+  // de currículo para los niveles ACI de otras clases y no aparecen en el
+  // asistente: se eliminan junto con la real que las usa, si es su única
+  // usuaria (ver soportesAciDe).
+
+  // ¿Es real? Tiene al menos una clase cuyo grupo lleva alumnado.
+  esAsignaturaReal(a) {
+    if (!a) return false;
+    return this.db.clases.some(c => c.asignaturaId === a.id
+      && this.db.alumnos.some(al => al.grupoId === c.grupoId));
+  },
+
+  // Soportes ACI EXCLUSIVAS de las asignaturas que se van: son soporte (sin
+  // clases con alumnado), las referencia alguna clase de esas asignaturas
+  // (nivelesAci[].asignaturaId) y NINGUNA clase que sobrevive las
+  // referencia. Se eliminan junto con su real; si otra clase viva las usa,
+  // se quedan.
+  soportesAciDe(ids) {
+    const van = new Set(Array.isArray(ids) ? ids : []);
+    const referidasPorSobrevivientes = new Set();
+    this.db.clases.filter(c => !van.has(c.asignaturaId)).forEach(c =>
+      (c.nivelesAci || []).forEach(n => { if (n.asignaturaId) referidasPorSobrevivientes.add(n.asignaturaId); }));
+    const salida = [];
+    this.db.clases.filter(c => van.has(c.asignaturaId)).forEach(c =>
+      (c.nivelesAci || []).forEach(n => {
+        const a = n.asignaturaId && this.db.asignaturas.find(x => x.id === n.asignaturaId);
+        if (!a || salida.some(s => s.id === a.id)) return;
+        if (!this.esAsignaturaReal(a) && !referidasPorSobrevivientes.has(a.id)) salida.push(a);
+      }));
+    return salida;
+  },
+
+  // Promociona una asignatura al nivel siguiente. La asignatura CONSERVA su
+  // id (sus clases y su grupo no se tocan), cambia su nivel y arranca SIN
+  // instrumentos, notas ni currículo: lo del nivel que se cierra se elimina,
+  // de modo que la promovida queda en el estado normal «sin currículo» y el
+  // docente carga el del nivel nuevo con «Recuperar currículo oficial» (que
+  // exige una asignatura sin currículo). El banco de instrumentos no se
+  // toca: sus moldes guardan los criterios por código y sobreviven igual.
+  // Devuelve { clases, instrumentos, criterios } o null si no hay nada.
+  promocionarAsignatura(asignaturaId, cursoNuevo) {
+    const a = this.db.asignaturas.find(x => x.id === asignaturaId);
+    const nuevo = String(cursoNuevo == null ? '' : cursoNuevo).trim();
+    if (!a || !nuevo) return null;
+    const resp = { clases: 0, instrumentos: 0, criterios: 0 };
+    const claseIds = this.db.clases.filter(c => c.asignaturaId === asignaturaId).map(c => c.id);
+    resp.clases = claseIds.length;
+    this._purgarInstrumentosDeClases(claseIds, resp);
+    resp.criterios = this.db.criterios.filter(c => c.asignaturaId === asignaturaId).length;
+    this.db.criterios = this.db.criterios.filter(c => c.asignaturaId !== asignaturaId);
+    this.db.competenciasEspecificas = this.db.competenciasEspecificas.filter(c => c.asignaturaId !== asignaturaId);
+    // El currículo importado también trae sus saberes: se van con el nivel.
+    delete a.saberesBasicos;
+    // Nombre visible: si acaba en « Nº» se sustituye el sufijo, para que la
+    // promovida se llame como su nivel nuevo. Un nombre editado a mano (sin
+    // el sufijo del curso) se respeta entero, como en «Editar asignatura».
+    const anterior = String(a.curso || '').trim();
+    const nombre = String(a.nombre || '');
+    if (anterior && nombre.endsWith(' ' + anterior)) {
+      a.nombre = nombre.slice(0, nombre.length - anterior.length - 1) + ' ' + nuevo;
+    }
+    a.curso = nuevo;
+    this.save();
+    return resp;
+  },
+
+  // Reinicia una asignatura de curso par para EMPEZAR EL CURSO NUEVO sin
+  // cambiar de nivel: vacía sus instrumentos y sus notas (los del curso que
+  // se cierra) y conserva la asignatura con su curso, su currículo, sus
+  // clases, su grupo y su alumnado. Es la «promoción sin cambio de nivel»:
+  // el docente repite curso con el mismo grupo (2º, 4º, 6º) y el currículo
+  // del nivel sigue siendo el suyo. El banco no se toca. Devuelve el
+  // recuento o null si la asignatura no existe.
+  reiniciarAsignatura(asignaturaId) {
+    const a = this.db.asignaturas.find(x => x.id === asignaturaId);
+    if (!a) return null;
+    const claseIds = this.db.clases.filter(c => c.asignaturaId === asignaturaId).map(c => c.id);
+    const resp = { clases: claseIds.length, instrumentos: 0 };
+    this._purgarInstrumentosDeClases(claseIds, resp);
     this.save();
     return resp;
   },

@@ -1323,6 +1323,11 @@ const Storage = {
   // fichero al guardar en lugar de amontonar backups con fecha.
   nombreFichero: 'evalcrit.json',
   ficheroHandle: null,
+  // Copia de seguridad hecha en ESTA sesión (no se guarda en db ni viaja en
+  // el backup: al recargar la página vuelve a empezar). La pide el asistente
+  // de fin de curso (D-60) antes de dejar actuar; la enciende marcarCopia,
+  // que es el sellado común de exportar/guardar/descargar.
+  copiaEnSesion: false,
 
   defaults() {
     const hoy = new Date();
@@ -1636,9 +1641,20 @@ const Storage = {
     return true;
   },
 
-  async exportar() {
+  async exportar(nombreOpcional) {
     const contenido = JSON.stringify(this.db, null, 2);
-    const nombre = `backup-${Utils.fechaLegible()}-${Utils.horaCorta()}.json`;
+    const nombre = String(nombreOpcional || '').trim()
+      || `backup-${Utils.fechaLegible()}-${Utils.horaCorta()}.json`;
+    return this.exportarContenido(contenido, nombre);
+  },
+
+  // Escribe un CONTENIDO JSON concreto con el nombre dado, por los mismos
+  // caminos que exportar (carpeta de backups recordada, selector «Guardar
+  // como» y descarga universal que funciona en file://). Es el motor de la
+  // copia: `exportar()` lo usa con su nombre de backup y el fichero de
+  // archivo del fin de curso (D-60) con el suyo. Devuelve true/false según
+  // se haya escrito (un «Guardar como» cancelado devuelve false y no sella).
+  async exportarContenido(contenido, nombre) {
     // En file:// el API de acceso al sistema de ficheros (showSaveFilePicker) NO
     // funciona: no abre el selector nativo y el fallback Blob puede no disparar la
     // descarga. Detectamos el protocolo para saltarnos ese camino por completo y
@@ -1902,6 +1918,7 @@ const Storage = {
 
   // Sella una exportación correcta: fija la fecha y quita «cambios sin copiar».
   marcarCopia() {
+    this.copiaEnSesion = true; // constancia para el asistente de fin de curso (D-60)
     this.db.meta = this.db.meta || {};
     this.db.meta.ultimaExportacion = new Date().toISOString();
     this.db.meta.cambiosSinCopia = false;
@@ -2145,6 +2162,101 @@ const Storage = {
     this.db.clases = this.db.clases.filter(x => x.asignaturaId !== asignaturaId);
     this.db.asignaturas = this.db.asignaturas.filter(x => x.id !== asignaturaId);
     this._purgarAciHuerfano();
+    this.save();
+    return resp;
+  },
+
+  // --- Fin de curso (D-60) ---
+  // Paridad del docente: los cursos impares (1º, 3º, 5º) PROMOCIONAN al nivel
+  // siguiente y los pares (2º, 4º, 6º) empiezan el curso nuevo: las marcadas
+  // se ELIMINAN (quedan en el archivo definitivo del paso 1) y las SIN
+  // marcar se REINICIAN (vaciar instrumentos y notas, conservando nivel,
+  // currículo, clase, grupo y alumnado) — ver reiniciarAsignatura. La
+  // paridad la decide la vista (el «curso» de una asignatura también se
+  // deduce del nombre, D-67); aquí vive solo la escritura de datos, junto a
+  // la cascada de borrado.
+  //
+  // Asignaturas REALES vs SOPORTE ACI: una asignatura es REAL si tiene
+  // alguna clase con alumnado (ahí viven sus calificaciones y ahí
+  // pertenecen sus alumnos); las SIN clases con alumnado son contenedoras
+  // de currículo para los niveles ACI de otras clases y no aparecen en el
+  // asistente: se eliminan junto con la real que las usa, si es su única
+  // usuaria (ver soportesAciDe).
+
+  // ¿Es real? Tiene al menos una clase cuyo grupo lleva alumnado.
+  esAsignaturaReal(a) {
+    if (!a) return false;
+    return this.db.clases.some(c => c.asignaturaId === a.id
+      && this.db.alumnos.some(al => al.grupoId === c.grupoId));
+  },
+
+  // Soportes ACI EXCLUSIVAS de las asignaturas que se van: son soporte (sin
+  // clases con alumnado), las referencia alguna clase de esas asignaturas
+  // (nivelesAci[].asignaturaId) y NINGUNA clase que sobrevive las
+  // referencia. Se eliminan junto con su real; si otra clase viva las usa,
+  // se quedan.
+  soportesAciDe(ids) {
+    const van = new Set(Array.isArray(ids) ? ids : []);
+    const referidasPorSobrevivientes = new Set();
+    this.db.clases.filter(c => !van.has(c.asignaturaId)).forEach(c =>
+      (c.nivelesAci || []).forEach(n => { if (n.asignaturaId) referidasPorSobrevivientes.add(n.asignaturaId); }));
+    const salida = [];
+    this.db.clases.filter(c => van.has(c.asignaturaId)).forEach(c =>
+      (c.nivelesAci || []).forEach(n => {
+        const a = n.asignaturaId && this.db.asignaturas.find(x => x.id === n.asignaturaId);
+        if (!a || salida.some(s => s.id === a.id)) return;
+        if (!this.esAsignaturaReal(a) && !referidasPorSobrevivientes.has(a.id)) salida.push(a);
+      }));
+    return salida;
+  },
+
+  // Promociona una asignatura al nivel siguiente. La asignatura CONSERVA su
+  // id (sus clases y su grupo no se tocan), cambia su nivel y arranca SIN
+  // instrumentos, notas ni currículo: lo del nivel que se cierra se elimina,
+  // de modo que la promovida queda en el estado normal «sin currículo» y el
+  // docente carga el del nivel nuevo con «Recuperar currículo oficial» (que
+  // exige una asignatura sin currículo). El banco de instrumentos no se
+  // toca: sus moldes guardan los criterios por código y sobreviven igual.
+  // Devuelve { clases, instrumentos, criterios } o null si no hay nada.
+  promocionarAsignatura(asignaturaId, cursoNuevo) {
+    const a = this.db.asignaturas.find(x => x.id === asignaturaId);
+    const nuevo = String(cursoNuevo == null ? '' : cursoNuevo).trim();
+    if (!a || !nuevo) return null;
+    const resp = { clases: 0, instrumentos: 0, criterios: 0 };
+    const claseIds = this.db.clases.filter(c => c.asignaturaId === asignaturaId).map(c => c.id);
+    resp.clases = claseIds.length;
+    this._purgarInstrumentosDeClases(claseIds, resp);
+    resp.criterios = this.db.criterios.filter(c => c.asignaturaId === asignaturaId).length;
+    this.db.criterios = this.db.criterios.filter(c => c.asignaturaId !== asignaturaId);
+    this.db.competenciasEspecificas = this.db.competenciasEspecificas.filter(c => c.asignaturaId !== asignaturaId);
+    // El currículo importado también trae sus saberes: se van con el nivel.
+    delete a.saberesBasicos;
+    // Nombre visible: si acaba en « Nº» se sustituye el sufijo, para que la
+    // promovida se llame como su nivel nuevo. Un nombre editado a mano (sin
+    // el sufijo del curso) se respeta entero, como en «Editar asignatura».
+    const anterior = String(a.curso || '').trim();
+    const nombre = String(a.nombre || '');
+    if (anterior && nombre.endsWith(' ' + anterior)) {
+      a.nombre = nombre.slice(0, nombre.length - anterior.length - 1) + ' ' + nuevo;
+    }
+    a.curso = nuevo;
+    this.save();
+    return resp;
+  },
+
+  // Reinicia una asignatura de curso par para EMPEZAR EL CURSO NUEVO sin
+  // cambiar de nivel: vacía sus instrumentos y sus notas (los del curso que
+  // se cierra) y conserva la asignatura con su curso, su currículo, sus
+  // clases, su grupo y su alumnado. Es la «promoción sin cambio de nivel»:
+  // el docente repite curso con el mismo grupo (2º, 4º, 6º) y el currículo
+  // del nivel sigue siendo el suyo. El banco no se toca. Devuelve el
+  // recuento o null si la asignatura no existe.
+  reiniciarAsignatura(asignaturaId) {
+    const a = this.db.asignaturas.find(x => x.id === asignaturaId);
+    if (!a) return null;
+    const claseIds = this.db.clases.filter(c => c.asignaturaId === asignaturaId).map(c => c.id);
+    const resp = { clases: claseIds.length, instrumentos: 0 };
+    this._purgarInstrumentosDeClases(claseIds, resp);
     this.save();
     return resp;
   },
@@ -8305,16 +8417,6 @@ const App = (() => {
     return btn;
   }
 
-  function opcionesCurso(valorActual) {
-    const m = /^(\d{4})\//.exec(String(valorActual || ''));
-    const base = m ? parseInt(m[1], 10) : new Date().getMonth() >= 6 ? new Date().getFullYear() : new Date().getFullYear() - 1;
-    const lista = [];
-    for (let y = base - 2; y <= base + 4; y++) lista.push(`${y}/${y + 1}`);
-    if (!lista.includes(valorActual)) lista.push(valorActual);
-    lista.sort();
-    return lista.map(v => `<option ${v === valorActual ? 'selected' : ''}>${Utils.esc(v)}</option>`).join('');
-  }
-
   // Mensaje de aviso según el estado de la copia de seguridad (R-01).
   // `conDestacado`: cuando el aviso destacado ya muestra el texto (nunca
   // exportado o cambios sin copiar), el discreto no lo repite: solo aporta
@@ -8605,6 +8707,18 @@ const App = (() => {
             <button class="btn btn-mini" id="btn-importar-ajustes">Importar backup</button>
           </div>
         </div>
+        <div class="bloque-copias">
+          <b>Fin de curso</b>
+          <p>Cierra el curso escolar <b>asignatura a asignatura</b> según la paridad: las de curso
+            <b>impar</b> (1º, 3º, 5º) <b>promocionan</b> al nivel siguiente (mismo grupo y alumnado,
+            sin instrumentos ni notas ni currículo del nivel cerrado) y las de curso <b>par</b>
+            (2º, 4º, 6º) se <b>archivan</b> (fichero de archivo consultable + borrado de la
+            asignatura con sus clases, instrumentos y notas).</p>
+          <p class="hint">El grupo, el alumnado, el banco de instrumentos, el perfil, el tema y los ajustes nunca se tocan.</p>
+          <div class="acciones">
+            <button class="btn btn-primario btn-mini" id="btn-fin-curso">Abrir asistente de fin de curso</button>
+          </div>
+        </div>
         <div class="zona-peligro">
           <b>Zona peligrosa</b>
           <p>Elimina <b>todos</b> los grupos, alumnos, clases, currículos, instrumentos y calificaciones guardados en este navegador.</p>
@@ -8789,6 +8903,427 @@ const App = (() => {
         }
       });
     };
+    // Fin de curso (D-60): el asistente vive en su propio modal, con copia
+    // obligatoria y acciones asignatura a asignatura (ver modalFinDeCurso).
+    const btnFinCurso = body.querySelector('#btn-fin-curso');
+    if (btnFinCurso) btnFinCurso.onclick = () => modalFinDeCurso();
+  }
+
+  // --- Fin de curso (D-60 simplificado) -------------------------------------
+  // Estado SOLO de sesión: los ficheros de archivo ya generados (para avisar
+  // de que repetir nombre sobrescribe) y las asignaturas promocionadas en
+  // este asistente (para que una recién promovida no caiga en el grupo de
+  // archivo del mismo año). No viaja en el backup.
+  const ficherosArchivoSesion = [];
+  const promocionadasSesion = [];
+  // Pares reales reiniciadas en esta sesión (empezaron el curso nuevo: ya no
+  // entran en el lote ni cuentan como pendientes).
+  const reiniciadasSesion = [];
+  // Pares reales eliminadas en esta sesión (para el toast de cierre).
+  let eliminadasSesion = 0;
+
+  // Paridad de un curso de Primaria: 1º/3º/5º promocionan, 2º/4º/6º se
+  // archivan. Devuelve el número (1..6) o 0 si el curso no es un nivel
+  // reconocible (vacío, asignatura hecha a mano, Infantil...): las de parity
+  // 0 no ofrecen ninguna acción en el asistente.
+  function paridadDeCurso(curso) {
+    const m = /^([1-6])º/.exec(String(curso == null ? '' : curso).trim());
+    return m ? Number(m[1]) : 0;
+  }
+
+  // Nombre del fichero de archivo para un curso escolar: una barra no puede
+  // ir en un nombre de fichero, así que «2025/2026» → «EVALUACIÓN_2025-2026.json».
+  function nombreFicheroArchivo(cursoEscolar) {
+    return `EVALUACIÓN_${String(cursoEscolar || '').replace(/\//g, '-').trim()}.json`;
+  }
+
+  // Curso escolar siguiente: «2025/2026» → «2026/2027» (por defecto, +1).
+  function cursoEscolarSiguiente(v) {
+    const m = /^(\d{4})\/(\d{4})$/.exec(String(v || '').trim());
+    return m ? `${Number(m[1]) + 1}/${Number(m[2]) + 1}` : String(v || '');
+  }
+
+  // Validación del curso escolar tecleado en el asistente: formato AAAA/AAAA
+  // y el segundo año es el primero + 1. Devuelve '' si es válido o el motivo
+  // en castellano; un valor inválido no se aplica nunca (el curso actual se
+  // conserva y las acciones siguen con él).
+  function validarCursoEscolar(v) {
+    const s = String(v == null ? '' : v).trim();
+    if (!s) return 'Escribe el curso escolar (p. ej. 2026/2027).';
+    const m = /^(\d{4})\/(\d{4})$/.exec(s);
+    if (!m) return 'Formato esperado: AAAA/AAAA (p. ej. 2026/2027).';
+    const a = Number(m[1]);
+    if (Number(m[2]) !== a + 1) return `El segundo año debe ser el primero + 1: «${a}/${a + 1}».`;
+    return '';
+  }
+
+  // Curso escolar de Inicio: un botón con el curso actual abre un modal
+  // pequeño de edición (el desplegable de años llegaba a 2030 a base de
+  // scrolling). La validación es LA MISMA que en el asistente de fin de
+  // curso: un valor inválido avisa junto al campo y no se aplica; uno
+  // válido se guarda por Storage y repinta Inicio (App.refrescar).
+  function modalCursoEscolar() {
+    const db = Storage.db;
+    UI.openModal({
+      titulo: 'Curso escolar',
+      cuerpo: `
+        <label class="campo"><span>Curso escolar</span>
+          <input type="text" id="curso-escolar" value="${Utils.esc(db.cursoEscolar)}" placeholder="AAAA/AAAA (p. ej. 2026/2027)"></label>
+        <p class="hint">Formato AAAA/AAAA: el segundo año es el primero + 1.</p>
+        <div class="hint" id="curso-escolar-error" style="color:#991b1b"></div>`,
+      textoGuardar: 'Guardar',
+      alGuardar(body) {
+        const campo = body.querySelector('#curso-escolar');
+        const motivo = validarCursoEscolar(campo.value);
+        const errorEl = body.querySelector('#curso-escolar-error');
+        if (motivo) {
+          if (errorEl) errorEl.textContent = 'Curso escolar no aplicado: ' + motivo;
+          return false; // el modal queda abierto con el aviso
+        }
+        const v = String(campo.value || '').trim();
+        if (v !== db.cursoEscolar) {
+          db.cursoEscolar = v;
+          Storage.save();
+          UI.toast('Curso escolar: ' + v);
+        }
+        // Al no devolver false, UI.openModal cierra y refresca la vista.
+      }
+    });
+  }
+
+  // Resumen de una asignatura para las filas del asistente: clases que la
+  // usan e instrumentos (con sus notas) que arrastra.
+  function resumenDeAsignatura(asignaturaId) {
+    const clases = Storage.db.clases.filter(c => c.asignaturaId === asignaturaId);
+    const claseIds = new Set(clases.map(c => c.id));
+    const nInst = Storage.db.instrumentos.filter(i => claseIds.has(i.claseId)).length;
+    const nCrit = Storage.db.criterios.filter(c => c.asignaturaId === asignaturaId).length;
+    return { clases: clases.length, instrumentos: nInst, criterios: nCrit };
+  }
+
+  function modalFinDeCurso() {
+    const db = Storage.db;
+    if (!db.asignaturas.length) { UI.toast('No hay asignaturas que cerrar'); return; }
+    // El curso escolar que se cierra se captura AL ABRIR: el fichero de
+    // archivo definitivo del paso 1 lleva siempre este valor, aunque el
+    // campo de curso nuevo se haya editado o aplicado después.
+    const cursoCierre = String(db.cursoEscolar || '');
+    const cuerpo = UI.openModal({ titulo: 'Fin de curso', cuerpo: '' });
+    let copiaHecha = !!Storage.copiaEnSesion;
+    // Asignaturas pares marcadas para eliminar en el paso de pares (solo
+    // sesión y modal: se conserva al repintar para que la etiqueta dinámica
+    // y los checkboxes sobrevivan al render).
+    let marcadasSel = [];
+    // Lo tecleado en el campo del curso escolar (solo sesión): sobrevive a
+    // los repintados que disparan los checkboxes.
+    let cursoSel = null;
+
+    // Paso 2: asignaturas agrupadas por paridad, con su acción.
+    function filaPromo(a, paridad) {
+      const r = resumenDeAsignatura(a.id);
+      const piezas = [r.clases + (r.clases === 1 ? ' clase' : ' clases'),
+        r.instrumentos + (r.instrumentos === 1 ? ' instrumento' : ' instrumentos')];
+      return `<div class="fila-campos">
+        <span style="flex:1"><b>${Utils.esc(a.nombre)}</b> · <small>${Utils.esc(piezas.join(' · '))}</small></span>
+        <button class="btn btn-mini btn-primario fdc-promo" data-id="${Utils.esc(a.id)}">Promocionar a ${paridad + 1}º</button>
+      </div>`;
+    }
+
+    // Fila de una asignatura de curso par: checkbox «Eliminar» (las marcadas
+    // se eliminan; las sin marcar se mantienen empezando el curso nuevo).
+    // Una recién promovida ESTE año ya es «par» para el año siguiente, pero
+    // tocarla ahora sería borrar lo que se acaba de promover: sale como
+    // promocionada, sin checkbox y fuera del lote. Una reiniciada en esta
+    // sesión igual: ya empezó el curso nuevo.
+    function filaPar(a) {
+      const r = resumenDeAsignatura(a.id);
+      const piezas = [r.clases + (r.clases === 1 ? ' clase' : ' clases'),
+        r.instrumentos + (r.instrumentos === 1 ? ' instrumento' : ' instrumentos')];
+      if (promocionadasSesion.includes(a.id)) {
+        return `<div class="fila-campos">
+          <span style="flex:1"><b>${Utils.esc(a.nombre)}</b> · <small>promocionada este curso</small></span>
+          <span class="badge ok">promociona a ${Utils.esc(ClasesView.cursoDeAsignatura(a))}</span>
+        </div>`;
+      }
+      if (reiniciadasSesion.includes(a.id)) {
+        return `<div class="fila-campos">
+          <span style="flex:1"><b>${Utils.esc(a.nombre)}</b> · <small>empezó el curso nuevo (sin instrumentos ni notas)</small></span>
+          <span class="badge ok">empezó el curso</span>
+        </div>`;
+      }
+      return `<label class="campo campo--toggle"><input type="checkbox" class="fdc-marca" data-id="${Utils.esc(a.id)}"${marcadasSel.includes(a.id) ? ' checked' : ''}>
+        <span><b>${Utils.esc(a.nombre)}</b> · <small>${Utils.esc(piezas.join(' · '))}</small></span></label>`;
+    }
+
+    // Pares «vivas» para el lote: todas menos las recién promovidas y las
+    // ya reiniciadas en esta sesión.
+    function paresVivas() {
+      return db.asignaturas.filter(a => {
+        const n = paridadDeCurso(ClasesView.cursoDeAsignatura(a));
+        return n % 2 === 0 && n !== 0 && !promocionadasSesion.includes(a.id)
+          && !reiniciadasSesion.includes(a.id);
+      });
+    }
+
+    // Etiqueta del botón de pares según la selección: sin marcadas la acción
+    // es empezar el curso con TODAS; con alguna marcada, eliminar esas y
+    // pasar al curso nuevo (las sin marcar se mantienen y empiezan).
+    function etiquetaEmpezar() {
+      return marcadasSel.length
+        ? 'Eliminar las marcadas y pasar al curso nuevo'
+        : 'Empezar curso con las asignaturas';
+    }
+
+    // El campo del curso escolar es visible en AMBOS pasos (paso 1 y paso de
+    // acciones): nunca puede desaparecer, y así el docente lo ve desde que
+    // abre el asistente. Su VALOR también sobrevive a los repintados
+    // (cursoSel, solo sesión): los checkboxes repintan el asistente al
+    // cambiar y sin esto se perdería lo tecleado.
+    function valorCursoCampo() {
+      if (cursoSel != null) return cursoSel;
+      // Sin edición a mano: el siguiente al cierre, o el ya aplicado si
+      // alguna acción puso el curso nuevo.
+      return db.cursoEscolar !== cursoCierre ? db.cursoEscolar : cursoEscolarSiguiente(cursoCierre);
+    }
+
+    function campoCursoHtml() {
+      return `
+        <label class="campo"><span>Curso escolar nuevo</span>
+          <input type="text" id="fdc-curso" value="${Utils.esc(valorCursoCampo())}" placeholder="AAAA/AAAA (p. ej. 2026/2027)"></label>
+        <p class="hint">Formato AAAA/AAAA: el segundo año es el primero + 1. Se aplica al completar tu primera acción. El fichero de archivo lleva siempre el curso que se cierra (<b>${Utils.esc(cursoCierre)}</b>).</p>
+        <div class="hint" id="fdc-curso-error" style="color:#991b1b"></div>`;
+    }
+
+    function paso2Html() {
+      const orden = (typeof ClasesView !== 'undefined' && ClasesView.ordenCursos) ? ClasesView.ordenCursos() : [];
+      const porIndice = a => {
+        const i = orden.indexOf(ClasesView.cursoDeAsignatura(a));
+        return i < 0 ? 99 : i;
+      };
+      const asignaturas = db.asignaturas.slice().sort((x, y) => porIndice(x) - porIndice(y));
+      // Solo las REALES (con alguna clase con alumnado) entran en las listas:
+      // las asignaturas sin clases con alumnado son soporte de currículo ACI
+      // y se eliminan junto con la real que las usa (nunca se ofertan).
+      const reales = a => Storage.esAsignaturaReal(a);
+      const impar = asignaturas.filter(a => reales(a) && paridadDeCurso(ClasesView.cursoDeAsignatura(a)) % 2 === 1);
+      const par = asignaturas.filter(a => reales(a) && paridadDeCurso(ClasesView.cursoDeAsignatura(a)) % 2 === 0
+        && paridadDeCurso(ClasesView.cursoDeAsignatura(a)) !== 0);
+      const sinCurso = asignaturas.filter(a => reales(a) && paridadDeCurso(ClasesView.cursoDeAsignatura(a)) === 0);
+      return `
+        <p style="margin:0 0 8px"><b>¿Comenzar nuevo curso?</b></p>
+        <div class="aviso" style="background:#eff6ff;border-color:#bfdbfe;color:#1e40af">
+          El archivo definitivo del curso que se cierra ya se exportó en el paso 1
+          (completo, importable para consultarlo). Ahora puedes promocionar unas
+          (asignatura a asignatura) y eliminar otras el mismo año.</div>
+        ${campoCursoHtml()}
+        <p style="margin:12px 0 4px"><b>Promocionan</b> (cursos impares)</p>
+        <div id="fdc-promo-lista">${impar.map(a => filaPromo(a, paridadDeCurso(ClasesView.cursoDeAsignatura(a)))).join('') || '<p class="hint" style="margin:0">Ninguna asignatura de curso impar.</p>'}</div>
+        <p style="margin:12px 0 4px"><b>Se eliminan</b> (cursos pares)</p>
+        <p class="hint" style="margin:0">Marca las que ELIMINAR (quedarán en el archivo definitivo del paso 1,
+          <b>${Utils.esc(nombreFicheroArchivo(cursoCierre))}</b>). Las que no marques se <b>MANTIENEN empezando el curso
+          nuevo</b>: se vacían sus instrumentos y sus notas y se conservan grupo, alumnado y currículo.</p>
+        <div id="fdc-arch-lista">${par.map(filaPar).join('') || '<p class="hint" style="margin:0">Ninguna asignatura de curso par.</p>'}</div>
+        <div class="acciones">
+          <button class="btn btn-peligro" id="fdc-empezar" ${paresVivas().length ? '' : 'disabled'}>${Utils.esc(etiquetaEmpezar())}</button>
+        </div>
+        <p class="hint">Las asignaturas que solo sostienen currículos ACI (sin clases con alumnado) no aparecen:
+          se eliminan junto con la asignatura real que las usa.</p>
+        ${sinCurso.length ? `<p style="margin:12px 0 4px"><b>Sin curso definido</b></p>
+        <div>${sinCurso.map(a => `<div class="fila-campos"><span style="flex:1"><b>${Utils.esc(a.nombre)}</b></span>
+          <span class="badge na">sin acción: ponle curso en «Asignaturas y clases»</span></div>`).join('')}</div>` : ''}
+        ${ficherosArchivoSesion.length ? '<p class="hint">Ya se generó un fichero de archivo en esta sesión: si repites nombre, el fichero anterior se sobrescribe.</p>' : ''}`;
+    }
+
+    // Aplica el curso escolar nuevo (campo editable) tras cada acción
+    // completada. El valor por defecto es +1; uno inválido (formato o
+    // continuidad) NO se aplica: se avisa junto al campo y el curso actual
+    // se conserva.
+    function aplicarCursoNuevo() {
+      const campo = cuerpo.querySelector('#fdc-curso');
+      if (!campo) return;
+      const motivo = validarCursoEscolar(campo.value);
+      pintaErrorCurso(motivo);
+      if (motivo) return; // valor inválido: no se aplica, el curso actual se conserva
+      const v = String(campo.value || '').trim();
+      if (v && v !== db.cursoEscolar) { db.cursoEscolar = v; Storage.save(); }
+    }
+
+    // Mensaje de validación junto al campo (vacío cuando va bien).
+    function pintaErrorCurso(motivo) {
+      const el = cuerpo.querySelector('#fdc-curso-error');
+      if (el) el.textContent = motivo ? 'Curso escolar no aplicado: ' + motivo : '';
+    }
+
+    // Pendientes de tratar: impares reales por promover y pares vivas por
+    // eliminar. Las sin curso se arreglan a mano y no cuentan.
+    function pendientes() {
+      const impares = db.asignaturas.filter(a =>
+        Storage.esAsignaturaReal(a) && paridadDeCurso(ClasesView.cursoDeAsignatura(a)) % 2 === 1);
+      return { impares, pares: paresVivas() };
+    }
+
+    // Tras CADA acción del asistente: el modal se repinta con el estado nuevo
+    // Y el fondo también (Inicio o la vista abierta, con el aviso de copia y
+    // el indicador), sin que el docente tenga que recargar (F5). Si ya no
+    // queda nada por tratar, el asistente se cierra solo y se lleva al
+    // docente a Inicio repintado, con el resumen de lo hecho en un toast.
+    function trasAccion(eliminadas, mensaje) {
+      eliminadasSesion += eliminadas || 0;
+      aplicarCursoNuevo();
+      marcadasSel = []; // la lista cambió: la selección no sobrevive al render
+      cursoSel = null; // el campo pasa a mostrar el curso ya aplicado
+      repinta();
+      const p = pendientes();
+      if (!p.impares.length && !p.pares.length) {
+        UI.toast(`Curso cerrado: ${promocionadasSesion.length} promovida(s), ${eliminadasSesion} eliminada(s)`);
+        UI.closeModal();
+        App.ir('inicio');
+        return;
+      }
+      if (mensaje) UI.toast(mensaje);
+      // El fondo (Inicio o la vista abierta) y el indicador de copia se
+      // actualizan al instante, sin F5 y SIN cerrar el asistente
+      // (refrescar() iría por ir(), que cierra los modales).
+      if (typeof App !== 'undefined' && App.repintarVista) App.repintarVista();
+    }
+
+    function repinta() {
+      cuerpo.innerHTML = copiaHecha ? paso2Html() : `
+        <p class="hint">Paso 1 de 2 · Exportar el archivo DEFINITIVO del curso</p>
+        <div class="aviso">Esta copia ES el archivo del curso que se cierra: se exporta
+          <b>${Utils.esc(nombreFicheroArchivo(cursoCierre))}</b>, un snapshot <b>completo</b> (todo el estado, importable
+          con «Importar backup» para consultarlo después). Lo que elimines después de aquí solo existirá en este fichero,
+          así que hazlo antes de tocar nada. Las acciones quedan bloqueadas hasta que se haya hecho en esta sesión.</div>
+        ${campoCursoHtml()}
+        <div class="acciones">
+          <button class="btn btn-primario" id="fdc-copia">Exportar archivo del curso</button>
+        </div>`;
+      cablea();
+    }
+
+    function cablea() {
+      // La validación del campo del año va en los dos pasos; lo tecleado se
+      // guarda para sobrevivir a los repintados.
+      const campoCurso = cuerpo.querySelector('#fdc-curso');
+      if (campoCurso) {
+        campoCurso.oninput = () => { cursoSel = campoCurso.value; };
+        campoCurso.onblur = () => pintaErrorCurso(validarCursoEscolar(campoCurso.value));
+      }
+      if (!copiaHecha) {
+        const btn = cuerpo.querySelector('#fdc-copia');
+        if (btn) btn.onclick = async () => {
+          btn.disabled = true; // ocupado: sin doble clic durante la exportación
+          try {
+            // El nombre lo fija el asistente con el curso de cierre capturado
+            // al abrir: el valor del campo en vivo no lo cambia.
+            const nombre = nombreFicheroArchivo(cursoCierre);
+            const ok = await Storage.exportar(nombre);
+            if (ok) {
+              ficherosArchivoSesion.push(nombre);
+              copiaHecha = true;
+              repinta();
+              // El fondo (aviso de copia de Inicio, indicador de la cabecera)
+              // se actualiza al instante, sin F5 y sin cerrar el asistente.
+              if (typeof App !== 'undefined' && App.repintarVista) App.repintarVista();
+            }
+          } catch (e) {
+            alert('Error al exportar: ' + e.message);
+          } finally {
+            btn.disabled = false;
+          }
+        };
+        return;
+      }
+      // Promoción: escribe Storage.promocionarAsignatura y repinta la lista.
+      cuerpo.querySelectorAll('.fdc-promo').forEach(b => {
+        b.onclick = () => {
+          const a = Calc.asignatura(b.dataset.id);
+          if (!a) return;
+          const destino = (paridadDeCurso(ClasesView.cursoDeAsignatura(a)) + 1) + 'º';
+          // Las soportes ACI exclusivas de esta real mueren con ella: su
+          // currículo era del nivel que se cierra y las ACIs se redeclaran
+          // a mano cada curso (los refs muertos los depura migrar/borrado).
+          const soportes = Storage.soportesAciDe([a.id]);
+          const extra = soportes.length
+            ? `\n\nCon ella se eliminarán también sus currículos ACI de soporte (sin clases con alumnado): ${soportes.map(s => '«' + s.nombre + '»').join(', ')}.`
+            : '';
+          if (!confirm(`¿Promocionar «${a.nombre}» a ${destino}? Se eliminarán sus instrumentos y sus notas, y su currículo del nivel actual (el grupo, el alumnado y el banco de instrumentos se conservan). Después podrás cargar el currículo de ${destino} con «Recuperar».${extra}`)) return;
+          const resp = Storage.promocionarAsignatura(a.id, destino);
+          if (!resp) return;
+          soportes.forEach(s => Storage.borrarAsignatura(s.id));
+          promocionadasSesion.push(a.id);
+          trasAccion(0, `«${a.nombre}» promociona a ${destino}`);
+        };
+      });
+      // Lote de pares: un único botón con etiqueta dinámica. Marcadas → se
+      // eliminan; sin marcar → se mantienen empezando el curso nuevo. Lo
+      // PREGUNTA todo antes de tocar nada.
+      const btnEmpezar = cuerpo.querySelector('#fdc-empezar');
+      if (btnEmpezar) btnEmpezar.onclick = () => {
+        marcadasSel = Array.from(cuerpo.querySelectorAll('.fdc-marca:checked')).map(i => i.dataset.id);
+        const mantenidas = paresVivas().filter(a => !marcadasSel.includes(a.id));
+        if (!marcadasSel.length && !mantenidas.length) return; // sin pares por tratar
+        abrirConfirmacionInicio(marcadasSel, mantenidas);
+      };
+      // La etiqueta del botón sigue a los checkboxes (re-render con estado).
+      cuerpo.querySelectorAll('.fdc-marca').forEach(chk => {
+        chk.onchange = () => {
+          marcadasSel = Array.from(cuerpo.querySelectorAll('.fdc-marca:checked')).map(i => i.dataset.id);
+          repinta();
+        };
+      });
+    }
+
+    // Confirmación del lote de pares (capa 2): lista los DOS bloques — lo que
+    // se ELIMINA (quedando en el archivo definitivo del paso 1, con sus
+    // soportes ACI exclusivas) y lo que se MANTIENE empezando el curso nuevo
+    // (vaciar instrumentos y notas; conservar grupo, alumnado y currículo).
+    // Nada cambia hasta que el docente confirma.
+    function abrirConfirmacionInicio(marcadas, mantenidas) {
+      const soportes = Storage.soportesAciDe(marcadas);
+      const nombres = lista => lista.map(a => '«' + a.nombre + '»').join(', ');
+      UI.openModal({
+        titulo: 'Empezar el nuevo curso',
+        cuerpo: `
+          ${marcadas.length
+            ? `<p>Se <b>ELIMINAN</b> (quedan en el archivo definitivo ${Utils.esc(nombreFicheroArchivo(cursoCierre))}):
+              <b>${Utils.esc(nombres(marcadas.map(id => Calc.asignatura(id)).filter(Boolean)))}</b>.</p>
+              ${soportes.length
+                ? `<p>Y con ellas, sus <b>currículos ACI de soporte</b> (sin clases con alumnado):
+                  <b>${Utils.esc(nombres(soportes))}</b>.</p>`
+                : ''}`
+            : '<p>No se elimina ninguna (no hay marcadas).</p>'}
+          ${mantenidas.length
+            ? `<div class="aviso" style="background:#eff6ff;border-color:#bfdbfe;color:#1e40af">Se <b>MANTIENEN empezando
+              el curso nuevo</b> (se vacían sus instrumentos y sus notas; se conservan grupo, alumnado y currículo):
+              <b>${Utils.esc(nombres(mantenidas))}</b>.</div>`
+            : ''}
+          <p class="hint">El curso escolar pasa a <b>${Utils.esc(String((cuerpo.querySelector('#fdc-curso') || {}).value || '').trim())}</b>
+            y todo queda en el archivo definitivo del paso 1. Sus grupos y su alumnado se conservan en la app.</p>`,
+        textoGuardar: 'Sí, empezar el nuevo curso',
+        peligro: true,
+        alGuardar(body2) {
+          marcadas.concat(soportes.map(s => s.id)).forEach(id => Storage.borrarAsignatura(id));
+          mantenidas.forEach(a => {
+            Storage.reiniciarAsignatura(a.id);
+            reiniciadasSesion.push(a.id); // ya empezó el curso: fuera del lote
+          });
+          trasAccion(marcadas.length,
+            (marcadas.length
+              ? `${marcadas.length} asignatura${marcadas.length === 1 ? '' : 's'} eliminada${marcadas.length === 1 ? '' : 's'}`
+                + (soportes.length ? ` (+${soportes.length} soporte${soportes.length === 1 ? '' : 's'} ACI)` : '')
+              : '')
+            + ((marcadas.length && mantenidas.length) ? ' · ' : '')
+            + (mantenidas.length
+              ? `${mantenidas.length} empieza${mantenidas.length === 1 ? '' : 'n'} el curso nuevo`
+              : ''));
+          // La capa 1 se repinta; el modal de confirmación se cierra solo
+          // (alGuardar no devuelve false).
+        }
+      }, 2);
+    }
+
+    repinta();
   }
 
   function renderInicio(el) {
@@ -8805,8 +9340,7 @@ const App = (() => {
       <section class="card">
         <div class="card-head">
           <h1>Bienvenido a Evalora</h1>
-          <label class="campo" style="margin:0"><span>Curso escolar</span>
-            <select id="sel-curso" style="max-width:150px">${opcionesCurso(db.cursoEscolar)}</select></label>
+          <button class="btn btn-mini" id="btn-curso-escolar" title="Cambiar el curso escolar">Curso escolar: <b>${Utils.esc(db.cursoEscolar)}</b></button>
         </div>
         <p style="color:var(--tinta-suave)">Califica con criterios ponderados según la LOMLOE. Los datos se guardan en este navegador:
           <b>exporta tu backup al USB con frecuencia</b>.</p>
@@ -8851,14 +9385,8 @@ const App = (() => {
         </section>
       </details>`;
 
-    const curso = el.querySelector('#sel-curso');
-    if (curso) {
-      curso.addEventListener('change', () => {
-        db.cursoEscolar = curso.value;
-        Storage.save();
-        UI.toast('Curso escolar: ' + db.cursoEscolar);
-      });
-    }
+    const curso = el.querySelector('#btn-curso-escolar');
+    if (curso) curso.onclick = () => modalCursoEscolar();
 
     const info = el.querySelector('#info-backup');
     const avisoCopia = el.querySelector('#aviso-copia');
@@ -9399,6 +9927,13 @@ const App = (() => {
     ir,
     arrancar,
     refrescar() { ir(actual); },
+    // Repinta la vista actual SIN cerrar los modales abiertos: lo usa el
+    // asistente de fin de curso (D-60) para refrescar el fondo (Inicio y el
+    // indicador de copia) tras cada acción, sin F5 y sin cerrar el asistente.
+    repintarVista() {
+      VISTAS.find(v => v.id === actual).render(document.getElementById('app'));
+      pintaNav();
+    },
     // Secciones del menú principal (Fase 1) y utilidades para recorrerlas.
     irSeccion,
     seccionActual,
@@ -9414,6 +9949,10 @@ const App = (() => {
     panelesInicio: { estado: panelesEstadoHtml, cobertura: panelesCoberturaHtml, aci: panelesAciHtml, pendientes: panelPendientesHtml },
     // Configuración expuesta por el mismo motivo (la cabecera no existe en el arnés).
     abrirAjustes: modalAjustes,
+    // Fin de curso (D-60): asistente y helpers puros de paridad/nombre de
+    // fichero, comprobables sin navegador.
+    abrirFinDeCurso: modalFinDeCurso,
+    finCurso: { paridadDeCurso, nombreFicheroArchivo, cursoEscolarSiguiente, validarCursoEscolar },
     // Indicador de copia de la cabecera (M-02): comprobable sin navegador.
     pintaEstadoCopia
   };
